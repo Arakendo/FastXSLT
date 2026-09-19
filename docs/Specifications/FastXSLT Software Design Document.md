@@ -761,6 +761,12 @@ Unbound prefixes and empty names remain structured dynamic errors. This does
 not admit arbitrary name expressions, dynamic namespace AVTs, or a public
 dynamic-QName representation.
 
+For a computed-element name without AVT delimiters, compilation validates the
+lexical QName immediately. A malformed static name reports `XTDE0820`; a valid
+prefixed name without a binding reports `XTDE0830`. Values containing
+unadmitted AVT expressions remain unsupported rather than being guessed to be
+static errors.
+
 Compilation may eventually attach required navigation, retention, buffering,
 or evaluation capabilities to normalized expressions and templates. This is a
 reserved ownership seam, not an accepted metadata schema or requirement to

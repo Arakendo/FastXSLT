@@ -479,6 +479,27 @@ fn computed_element_keeps_dynamic_namespaces_and_unknown_attribute_sets_explicit
 }
 
 #[test]
+fn computed_element_distinguishes_invalid_static_qnames_from_dynamic_names() {
+    for name in ["", ":foo", "foo:", "a:b:c", "not a name"] {
+        let bytes = format!(
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:template match="/"><xsl:element name="{name}"/></xsl:template></xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet("memory:invalid-computed-name.xsl", bytes.as_bytes());
+        let failure = compile_stylesheet(&document).expect_err("invalid QName must fail");
+        assert_eq!(failure.code, "XTDE0820", "{name}");
+        assert_eq!(failure.category, CompileCategory::Invalid, "{name}");
+    }
+
+    let document = parse_stylesheet(
+        "memory:dynamic-computed-name.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:template match="/"><xsl:element name="{@name}"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&document).expect_err("dynamic name stays explicit");
+    assert_eq!(failure.code, "FXST1047");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
 fn local_attribute_set_graph_rejects_undefined_and_circular_references() {
     for (label, declaration, code) in [
         (

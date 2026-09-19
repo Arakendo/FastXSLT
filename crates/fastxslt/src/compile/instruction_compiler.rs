@@ -595,6 +595,13 @@ fn compile_static_computed_element_name(
             document.location(element),
         ));
     }
+    if lexical.contains(['{', '}']) {
+        return Err(unsupported(
+            "FXST1047",
+            "the private xsl:element slice requires a static QName",
+            document.location(element),
+        ));
+    }
     if is_ascii_ncname(lexical) {
         let namespace = match namespace_override {
             Some("") => None,
@@ -617,16 +624,16 @@ fn compile_static_computed_element_name(
         ));
     }
     let Some((prefix, local)) = lexical.split_once(':') else {
-        return Err(unsupported(
-            "FXST1047",
-            "the private xsl:element slice requires a static QName",
+        return Err(invalid(
+            "XTDE0820",
+            format!("xsl:element name is not a lexical QName: {lexical}"),
             document.location(element),
         ));
     };
     if !is_ascii_ncname(prefix) || !is_ascii_ncname(local) || local.contains(':') {
-        return Err(unsupported(
-            "FXST1047",
-            "the private xsl:element slice requires a static QName",
+        return Err(invalid(
+            "XTDE0820",
+            format!("xsl:element name is not a lexical QName: {lexical}"),
             document.location(element),
         ));
     }

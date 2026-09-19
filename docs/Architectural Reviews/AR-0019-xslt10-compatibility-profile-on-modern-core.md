@@ -1961,3 +1961,9 @@ maintained redistributable legacy suite becomes available.
   invalid. The net `FXST1044` frontier falls from 17 to 16; aggregate counts
   and the 1,565 exact lower bound remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-static-sort-control-avts-2026-09-18.md)
+- 2026-09-18 -- Static malformed `xsl:element` names now report structured
+  `XTDE0820 / invalid` rather than masquerading as dynamic-name capability
+  gaps. Ten unchanged OASIS cases leave `FXST1047`, reducing that frontier
+  from 23 to 13; all survivors contain genuinely dynamic AVTs. Aggregate
+  lifecycle counts and the 1,565 exact-result lower bound remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-static-computed-element-qname-errors-2026-09-18.md)
