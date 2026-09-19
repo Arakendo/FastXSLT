@@ -4751,6 +4751,13 @@ host lifecycle.
     `XTDE0410` boundaries; neither receives pass credit, so the strict lower
     bound remains 1,569.
     [Evidence](../Evidence/oasis-xslt10-context-and-literal-computed-attribute-names-2026-09-18.md)
+  - [x] Compile XSLT 1.0 computed-attribute names composed solely from static
+    text and unqualified variable references into a typed part sequence backed
+    by the existing invocation/global runtime frame. All five remaining cases
+    leave `FXST1062`, eliminating that frontier; each reaches an independent
+    later error or unsupported encoding boundary, so the exact lower bound
+    remains 1,569.
+    [Evidence](../Evidence/oasis-xslt10-variable-composed-computed-attribute-names-2026-09-18.md)
   - [x] Classify structurally complete `format-number()` calls with an arity
     other than two or three as static `XPST0017 / invalid` before operand and
     picture capability selection. Four unchanged OASIS cases leave the generic

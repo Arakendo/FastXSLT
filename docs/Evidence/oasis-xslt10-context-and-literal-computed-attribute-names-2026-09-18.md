@@ -17,8 +17,10 @@ string literal is folded at compilation. Both values then use the same
 attribute-specific runtime `QName` and namespace validation as path-valued
 computed names.
 
-Variable composition, temporary-tree paths, multiple AVT parts, and dynamic
-namespace AVTs remain unsupported.
+Variable composition, temporary-tree paths, multiple general AVT parts, and
+dynamic namespace AVTs remained outside this tranche. The separately measured
+variable-only follow-up reuses the existing runtime variable frame without
+changing the result recorded here.
 
 ## Corpus effect
 

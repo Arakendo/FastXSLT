@@ -269,6 +269,33 @@ fn xslt10_literal_name_avt_observes_reserved_xmlns_rule_at_runtime() {
 }
 
 #[test]
+fn xslt10_variable_parts_compose_one_computed_attribute_name() {
+    let stylesheet = document(
+        "memory:variable-dynamic-attribute-name.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:param name="left">joined</xsl:param><xsl:variable name="right">-name</xsl:variable><xsl:template match="/"><out><xsl:attribute name="{$left}{$right}">kept</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document("memory:source.xml", br"<doc/>");
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "variable-dynamic-attribute-name-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let result = serialize_xml(
+        &result,
+        &program.output,
+        "variable-dynamic-attribute-name-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("variable-composed attribute should serialize");
+
+    assert_eq!(result, "<out joined-name=\"kept\"></out>");
+}
+
+#[test]
 fn xslt10_path_valued_attribute_name_reports_invalid_empty_qname() {
     let stylesheet = document(
         "memory:empty-dynamic-attribute-name.xsl",

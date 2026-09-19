@@ -4,7 +4,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
-    ComputedAttribute, DynamicAttributeName, LiteralAttributeValue,
+    ComputedAttribute, DynamicAttributeName, DynamicAttributeNamePart, LiteralAttributeValue,
 };
 
 use super::value_expression_compiler::compile_xslt10_concat;
@@ -156,43 +156,52 @@ fn compile_computed_attribute_name(
             document.location(element),
         ));
     }
-    let expression = lexical
-        .strip_prefix('{')
-        .and_then(|value| value.strip_suffix('}'))
-        .map(str::trim)
-        .filter(|value| !value.contains(['{', '}']))
-        .ok_or_else(|| {
-            unsupported(
-                "FXST1062",
-                "the private computed-attribute name slice supports one path-valued XSLT 1.0 AVT",
-                document.location(element),
-            )
-        })?;
     let namespace_override = namespace.map(str::to_owned);
     let static_namespaces = || document.in_scope_namespaces(element).into();
-    let dynamic_name = if matches!(expression, "name()" | "name(.)") {
-        DynamicAttributeName::ContextName {
-            namespace_override,
-            static_namespaces: static_namespaces(),
-        }
-    } else if let Some(value) = xpath_string_literal(expression) {
-        DynamicAttributeName::Literal {
-            value: value.to_owned(),
-            namespace_override,
-            static_namespaces: static_namespaces(),
-        }
-    } else if let Ok(path) = parse_location_path(expression, document.location(element).clone()) {
-        DynamicAttributeName::Path {
-            path,
+    let dynamic_name = if let Some(parts) = parse_variable_name_avt(lexical) {
+        DynamicAttributeName::VariableAvt {
+            parts,
             namespace_override,
             static_namespaces: static_namespaces(),
         }
     } else {
-        return Err(unsupported(
-            "FXST1062",
-            "the private computed-attribute name slice supports one path, context-name, or string-literal XSLT 1.0 AVT",
-            document.location(element),
-        ));
+        let expression = lexical
+            .strip_prefix('{')
+            .and_then(|value| value.strip_suffix('}'))
+            .map(str::trim)
+            .filter(|value| !value.contains(['{', '}']))
+            .ok_or_else(|| {
+                unsupported(
+                    "FXST1062",
+                    "the private computed-attribute name slice supports path, context-name, string-literal, or variable-only XSLT 1.0 AVTs",
+                    document.location(element),
+                )
+            })?;
+        if matches!(expression, "name()" | "name(.)") {
+            DynamicAttributeName::ContextName {
+                namespace_override,
+                static_namespaces: static_namespaces(),
+            }
+        } else if let Some(value) = xpath_string_literal(expression) {
+            DynamicAttributeName::Literal {
+                value: value.to_owned(),
+                namespace_override,
+                static_namespaces: static_namespaces(),
+            }
+        } else if let Ok(path) = parse_location_path(expression, document.location(element).clone())
+        {
+            DynamicAttributeName::Path {
+                path,
+                namespace_override,
+                static_namespaces: static_namespaces(),
+            }
+        } else {
+            return Err(unsupported(
+                "FXST1062",
+                "the private computed-attribute name slice supports path, context-name, string-literal, or variable-only XSLT 1.0 AVTs",
+                document.location(element),
+            ));
+        }
     };
     Ok((
         ExpandedName {
@@ -201,6 +210,31 @@ fn compile_computed_attribute_name(
         },
         Some(dynamic_name),
     ))
+}
+
+fn parse_variable_name_avt(lexical: &str) -> Option<Vec<DynamicAttributeNamePart>> {
+    let mut parts = Vec::new();
+    let mut remaining = lexical;
+    let mut found_variable = false;
+    while let Some(open) = remaining.find('{') {
+        let (text, after_text) = remaining.split_at(open);
+        if !text.is_empty() {
+            parts.push(DynamicAttributeNamePart::Text(text.to_owned()));
+        }
+        let close = after_text.find('}')?;
+        let expression = &after_text[1..close];
+        let variable = expression.strip_prefix('$')?;
+        if !is_ascii_ncname(variable) {
+            return None;
+        }
+        parts.push(DynamicAttributeNamePart::Variable(variable.to_owned()));
+        found_variable = true;
+        remaining = &after_text[close + 1..];
+    }
+    if !remaining.is_empty() {
+        parts.push(DynamicAttributeNamePart::Text(remaining.to_owned()));
+    }
+    found_variable.then_some(parts)
 }
 
 fn compile_xslt10_local_source_path_count(

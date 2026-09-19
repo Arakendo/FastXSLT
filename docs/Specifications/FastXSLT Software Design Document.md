@@ -790,6 +790,13 @@ source-context operation or fold one XPath string-literal expression. Both feed
 the attribute-specific runtime `QName` validator; they do not widen the plan to
 arbitrary functions or AVT composition.
 
+Under the same XSLT 1.0 compatibility boundary, a computed-attribute name may
+be composed solely from static text and unqualified variable references. The
+typed private part sequence reads invocation-local or prepared-global atomic
+and temporary-tree values through the existing runtime frame before applying
+the shared attribute `QName` rules. This does not establish a general AVT
+expression plan or a second variable store.
+
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid
 prefixed name without a binding reports `XTDE0830`. Values containing

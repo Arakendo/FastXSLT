@@ -2000,3 +2000,10 @@ maintained redistributable legacy suite becomes available.
   credit; the lower bound remains 1,569 and five variable-composition cases
   remain explicit.
   [Evidence](../Evidence/oasis-xslt10-context-and-literal-computed-attribute-names-2026-09-18.md)
+- 2026-09-18 -- Computed-attribute names made only from static text and
+  unqualified variable references now reuse the existing invocation/global
+  variable frame and attribute `QName` validator. The final five cases leave
+  `FXST1062`, eliminating that frontier. They expose two empty-attribute-set
+  errors, two UTF-16 serialization boundaries, and one correctly unbound local
+  variable; no new pass is credited and the lower bound remains 1,569.
+  [Evidence](../Evidence/oasis-xslt10-variable-composed-computed-attribute-names-2026-09-18.md)

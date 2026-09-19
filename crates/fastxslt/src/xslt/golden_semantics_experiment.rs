@@ -1256,6 +1256,17 @@ pub(crate) enum DynamicAttributeName {
         namespace_override: Option<String>,
         static_namespaces: Arc<[NamespaceBinding]>,
     },
+    VariableAvt {
+        parts: Vec<DynamicAttributeNamePart>,
+        namespace_override: Option<String>,
+        static_namespaces: Arc<[NamespaceBinding]>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum DynamicAttributeNamePart {
+    Text(String),
+    Variable(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

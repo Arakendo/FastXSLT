@@ -1261,6 +1261,25 @@ fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
                     + namespace_override.as_ref().map_or(0, String::capacity)
                     + arc_slice_owned(static_namespaces, namespace_owned)
             }
+            crate::xslt::golden_semantics_experiment::DynamicAttributeName::VariableAvt {
+                parts,
+                namespace_override,
+                static_namespaces,
+            } => {
+                parts
+                    .iter()
+                    .map(|part| {
+                        match part {
+                crate::xslt::golden_semantics_experiment::DynamicAttributeNamePart::Text(value)
+                | crate::xslt::golden_semantics_experiment::DynamicAttributeNamePart::Variable(
+                    value,
+                ) => value.capacity(),
+            }
+                    })
+                    .sum::<usize>()
+                    + namespace_override.as_ref().map_or(0, String::capacity)
+                    + arc_slice_owned(static_namespaces, namespace_owned)
+            }
         })
         + literal_attribute_value_owned(&value.value)
         + location_owned(&value.location)

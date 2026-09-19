@@ -4,9 +4,9 @@ use crate::execution_control_experiment::InvocationControl;
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
-use crate::xslt::golden_semantics_experiment::DynamicAttributeName;
+use crate::xslt::golden_semantics_experiment::{DynamicAttributeName, DynamicAttributeNamePart};
 
-use super::runtime_context::SequenceInputs;
+use super::runtime_context::{RuntimeVariables, SequenceInputs};
 use super::{
     ExecutionFailure, FailureCategory, control_failure, failure_at, required_source_context,
 };
@@ -15,6 +15,7 @@ pub(super) fn resolve(
     inputs: &SequenceInputs<'_>,
     context: Option<crate::xdm::owned_tree_experiment::NodeId>,
     name: &DynamicAttributeName,
+    variables: &RuntimeVariables,
     location: &SourceLocation,
     control: &mut InvocationControl,
 ) -> Result<ExpandedName, ExecutionFailure> {
@@ -41,6 +42,15 @@ pub(super) fn resolve(
             namespace_override,
             static_namespaces,
         } => (value.clone(), namespace_override, static_namespaces),
+        DynamicAttributeName::VariableAvt {
+            parts,
+            namespace_override,
+            static_namespaces,
+        } => (
+            variable_avt_value(inputs, variables, parts, location, control)?,
+            namespace_override,
+            static_namespaces,
+        ),
     };
     resolve_lexical_name(
         &lexical,
@@ -49,6 +59,46 @@ pub(super) fn resolve(
         location,
         inputs.request_id,
     )
+}
+
+fn variable_avt_value(
+    inputs: &SequenceInputs<'_>,
+    variables: &RuntimeVariables,
+    parts: &[DynamicAttributeNamePart],
+    location: &SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let mut value = String::new();
+    for part in parts {
+        match part {
+            DynamicAttributeNamePart::Text(text) => value.push_str(text),
+            DynamicAttributeNamePart::Variable(name) => {
+                if let Some(atomic) = variables.atomics.get(name).or_else(|| {
+                    variables
+                        .allows_global_fallback(name)
+                        .then(|| inputs.globals.atomics.get(name))
+                        .flatten()
+                }) {
+                    value.push_str(atomic.lexical());
+                } else if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
+                    value.push_str(&super::runtime_context::temporary_tree_string_value(
+                        tree,
+                        inputs.request_id,
+                        control,
+                    )?);
+                } else {
+                    return Err(failure_at(
+                        "FXRT0002",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        location.clone(),
+                        format!("unbound variable in computed-attribute name: ${name}"),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(value)
 }
 
 fn context_lexical_name(

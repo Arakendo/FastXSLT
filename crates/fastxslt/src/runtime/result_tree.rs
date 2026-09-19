@@ -197,6 +197,7 @@ pub(super) fn materialize_computed_attributes(
                 inputs,
                 focus.source.map(|(_, node)| node),
                 name,
+                variables,
                 &attribute.location,
                 control,
             )?;
