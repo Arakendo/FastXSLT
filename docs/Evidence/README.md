@@ -19,6 +19,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Conditional Static Introspection](oasis-xslt10-conditional-static-introspection-2026-09-19.md)
 - [OASIS XSLT 1.0 Module Decimal-Format Composition](oasis-xslt10-module-decimal-format-composition-2026-09-19.md)
 - [OASIS XSLT 1.0 Local Sequence Temporary Trees](oasis-xslt10-local-sequence-temporary-tree-2026-09-19.md)
+- [OASIS XSLT 1.0 `copy-of` Attribute Content](oasis-xslt10-copy-of-attribute-content-2026-09-19.md)
 - [OASIS XSLT 1.0 Key-Use Path Union](oasis-xslt10-key-use-path-union-2026-09-19.md)
 - [OASIS XSLT 1.0 Variable Division String Conversion](oasis-xslt10-variable-division-string-2026-09-19.md)
 - [OASIS XSLT 1.0 Concatenated `translate()` Maps](oasis-xslt10-concatenated-translate-maps-2026-09-19.md)

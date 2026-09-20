@@ -2817,6 +2817,54 @@ fn xslt10_computed_attribute_for_each_concatenates_selected_string_values() {
 }
 
 #[test]
+fn xslt10_copy_of_attribute_content_retains_only_copied_text_and_attribute_values() {
+    const SOURCE: &str = "urn:fastxslt:computed-attribute-copy-of:source";
+    const STYLESHEET: &str = "urn:fastxslt:computed-attribute-copy-of:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="nodes"><xsl:copy-of select="doc/a/node()"/></xsl:attribute><xsl:attribute name="elements"><xsl:copy-of select="doc/a/b"/></xsl:attribute><xsl:attribute name="source-attribute"><xsl:copy-of select="doc/a/@mark"/></xsl:attribute></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><a mark='kept'>left<b>ignored</b>right</a></doc>".to_vec(),
+        )
+        .expect("admit computed-attribute copy-of source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit computed-attribute copy-of stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile XSLT 1.0 computed-attribute copy-of recovery");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("computed-attribute-copy-of", "result", SOURCE))
+        .expect("admit computed-attribute copy-of request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute XSLT 1.0 computed-attribute copy-of recovery");
+
+    assert_eq!(
+        results.by_request["computed-attribute-copy-of"].serialized,
+        "<out nodes=\"leftright\" elements=\"\" source-attribute=\"kept\"></out>"
+    );
+}
+
+#[test]
+fn modern_copy_of_attribute_content_remains_explicitly_unsupported() {
+    const STYLESHEET: &str = "urn:fastxslt:modern-computed-attribute-copy-of:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="value"><xsl:copy-of select="doc/a/node()"/></xsl:attribute></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 8_192, 8_192));
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit modern computed-attribute copy-of stylesheet");
+    let snapshot = resources.seal();
+
+    let failure = compile_resource(&snapshot, STYLESHEET)
+        .expect_err("modern computed-attribute sequence construction remains unsupported");
+
+    assert_eq!(failure.code, "FXST1033");
+}
+
+#[test]
 fn xslt10_computed_attribute_counts_its_local_source_path_variable() {
     const SOURCE: &str = "urn:fastxslt:computed-attribute-local-count:source";
     const STYLESHEET: &str = "urn:fastxslt:computed-attribute-local-count:stylesheet";

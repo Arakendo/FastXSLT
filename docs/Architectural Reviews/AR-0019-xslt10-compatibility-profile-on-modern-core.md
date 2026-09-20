@@ -2238,3 +2238,12 @@ maintained redistributable legacy suite becomes available.
   strict lower bound to 1,811, successful execution to 1,940, and
   initialization to 2,042 while mismatches remain 54.
   [Evidence](../Evidence/oasis-xslt10-local-sequence-temporary-tree-2026-09-19.md)
+- 2026-09-19 -- An XSLT 1.0 computed attribute containing exactly one
+  path-valued `xsl:copy-of` now reuses the ordinary charged location-path
+  evaluator. Selected text and attribute nodes contribute their string values;
+  selected document, element, comment, and processing-instruction nodes are
+  ignored by this bounded compatibility recovery. Three unchanged Lotus cases
+  become exact, raising the strict lower bound to 1,814, successful execution
+  to 1,943, and initialization to 2,045 while mismatches remain 54. Modern
+  computed-attribute sequence construction remains explicitly unsupported.
+  [Evidence](../Evidence/oasis-xslt10-copy-of-attribute-content-2026-09-19.md)

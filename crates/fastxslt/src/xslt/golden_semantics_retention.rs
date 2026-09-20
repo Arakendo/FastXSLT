@@ -1439,7 +1439,8 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         }
         LiteralAttributeValue::CountSourcePath(path)
         | LiteralAttributeValue::Xslt10LocalSourcePathCount(path)
-        | LiteralAttributeValue::Xslt10ForEachPathStringValue(path) => {
+        | LiteralAttributeValue::Xslt10ForEachPathStringValue(path)
+        | LiteralAttributeValue::Xslt10CopyOfPathAttributeValue(path) => {
             path.known_owned_capacity_bytes()
         }
         LiteralAttributeValue::CountSourcePathUnion(alternatives) => {

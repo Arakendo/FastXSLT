@@ -812,6 +812,16 @@ and temporary-tree values through the existing runtime frame before applying
 the shared attribute `QName` rules. This does not establish a general AVT
 expression plan or a second variable store.
 
+An XSLT 1.0 computed attribute containing exactly one `xsl:copy-of` with an
+admitted location path may use a private compatibility plan. Execution reuses
+the ordinary charged path evaluator and concatenates, in path order, only the
+string values of selected text and attribute nodes; selected document,
+element, comment, and processing-instruction nodes contribute no characters
+under this bounded XSLT 1.0 recovery behavior. The modern static context still
+rejects this constructor shape explicitly. This does not admit general
+attribute sequence construction, copy source structure into an attribute, or
+establish a second path evaluator.
+
 An admitted `xsl:key` declaration is immutable compiled stylesheet state: its
 expanded name, bounded match pattern, typed `use` location path, and source
 location compile once and compose additively across admitted stylesheet-module

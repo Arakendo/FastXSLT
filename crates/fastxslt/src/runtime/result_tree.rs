@@ -139,6 +139,9 @@ pub(super) fn materialize_computed_attributes(
             LiteralAttributeValue::Xslt10ForEachPathStringValue(path) => {
                 materialize_for_each_attribute(attribute, path, &context, control)?
             }
+            LiteralAttributeValue::Xslt10CopyOfPathAttributeValue(path) => {
+                materialize_xslt10_copy_of_attribute(attribute, path, &context, control)?
+            }
             LiteralAttributeValue::Xslt10Concat(expression) => materialize_concat_attribute(
                 inputs, attribute, expression, variables, focus, request_id, control,
             )?,
@@ -217,6 +220,43 @@ fn materialize_for_each_attribute(
     Ok(ResultAttribute {
         name: attribute.name.clone(),
         value: materialize_for_each_path_string_value(path, &attribute.location, context, control)?,
+    })
+}
+
+fn materialize_xslt10_copy_of_attribute(
+    attribute: &ComputedAttribute,
+    path: &LocationPath,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<ResultAttribute, ExecutionFailure> {
+    charge_result_node(control, context.request_id)?;
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            attribute.location.clone(),
+            "xsl:copy-of in an attribute constructor requires a source context item",
+        ));
+    };
+    control
+        .charge(WorkDomain::XsltInstruction, 1)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let selected = evaluate_location_path_controlled(source, node, path, control)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let mut value = String::new();
+    for node in selected {
+        if matches!(
+            source.kind(node),
+            crate::xdm::owned_tree_experiment::NodeKind::Text
+                | crate::xdm::owned_tree_experiment::NodeKind::Attribute
+        ) {
+            value.push_str(source.value(node).unwrap_or_default());
+        }
+    }
+    Ok(ResultAttribute {
+        name: attribute.name.clone(),
+        value,
     })
 }
 
@@ -348,6 +388,7 @@ fn materialize_attribute(
         | LiteralAttributeValue::Xslt10LocalSourcePathCount(_)
         | LiteralAttributeValue::ContextNormalizedStringLength
         | LiteralAttributeValue::Xslt10ForEachPathStringValue(_)
+        | LiteralAttributeValue::Xslt10CopyOfPathAttributeValue(_)
         | LiteralAttributeValue::Xslt10Concat(_) => {
             unreachable!("specialized computed-attribute value is materialized by its owner")
         }

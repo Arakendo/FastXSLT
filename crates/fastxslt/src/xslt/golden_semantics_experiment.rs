@@ -1406,6 +1406,7 @@ pub(crate) enum LiteralAttributeValue {
     Xslt10LocalSourcePathCount(LocationPath),
     ContextNormalizedStringLength,
     Xslt10ForEachPathStringValue(LocationPath),
+    Xslt10CopyOfPathAttributeValue(LocationPath),
     Xslt10Concat(Box<Xslt10ConcatExpression>),
     Xslt10MultiPathAvt(Xslt10AvtExpression),
     Xslt10PathStringLiteralComparison {

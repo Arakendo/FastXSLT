@@ -116,6 +116,18 @@ pub(super) fn compile_computed_attribute(
         LiteralAttributeValue::Xslt10ForEachPathStringValue(
             compile_xslt10_for_each_string_value_path(document, *for_each)?,
         )
+    } else if let [copy_of] = children.as_slice()
+        && is_xslt_element(document, *copy_of, "copy-of")
+        && uses_xslt10_compatibility(document, *copy_of)
+    {
+        ensure_only_attributes(document, *copy_of, &["select"], "xsl:copy-of")?;
+        ensure_no_meaningful_children(document, *copy_of, "xsl:copy-of")?;
+        let select = required_attribute(document, *copy_of, None, "select")?;
+        LiteralAttributeValue::Xslt10CopyOfPathAttributeValue(super::parse_copy_of_path(
+            document,
+            *copy_of,
+            select.trim(),
+        )?)
     } else if let [variable, value_of] = children.as_slice()
         && is_xslt_element(document, *variable, "variable")
         && is_xslt_element(document, *value_of, "value-of")
