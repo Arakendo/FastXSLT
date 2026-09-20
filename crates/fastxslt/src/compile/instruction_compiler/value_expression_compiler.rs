@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use super::super::normalize_variable_qname;
 use super::{
     BooleanParseFailure, CaseConversionParseFailure, CompileCategory, CompileFailure,
     DeepEqualFailureKind, DefaultCollationParseFailure, Document, DurationComponentParseFailure,
@@ -676,17 +677,17 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     } else if let Some((literal, variable)) = parse_literal_variable_concat(expression) {
         ValueExpression::LiteralVariableConcat { literal, variable }
     } else if let Some(variable) = expression.strip_prefix('$') {
-        if !is_ascii_ncname(variable) {
-            return Err(invalid(
+        let variable = normalize_variable_qname(document, element, variable).map_err(|_| {
+            invalid(
                 "FXXP0002",
                 format!("invalid variable reference: {expression}"),
                 location,
-            ));
-        }
+            )
+        })?;
         if static_context.compatibility == ValueCompatibilityMode::Xslt10 {
-            ValueExpression::Xslt10VariableString(variable.to_owned())
+            ValueExpression::Xslt10VariableString(variable)
         } else {
-            ValueExpression::Variable(variable.to_owned())
+            ValueExpression::Variable(variable)
         }
     } else {
         compile_location_path_or_missing_context(

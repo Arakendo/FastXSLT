@@ -2363,3 +2363,12 @@ maintained redistributable legacy suite becomes available.
   initialization to 2,061 while mismatches and execution failures remain
   unchanged.
   [Evidence](../Evidence/oasis-xslt10-variable-position-composition-2026-09-20.md)
+- 2026-09-20 -- Global XSLT 1.0 variables and parameters now normalize QName
+  declarations and direct references to the compiler's existing expanded-name
+  key. Prefix aliases for one namespace therefore resolve without runtime
+  namespace work. Four unchanged Lotus/Microsoft cases become exact, raising
+  the strict lower bound to 1,834, successful execution to 1,963, and
+  initialization to 2,065 while mismatches and execution failures remain
+  unchanged. Qualified variables embedded in broader path expressions remain
+  an explicit frontier.
+  [Evidence](../Evidence/oasis-xslt10-global-variable-qnames-2026-09-20.md)

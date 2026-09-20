@@ -100,6 +100,11 @@ open:
   stylesheet-defined default expression or value, but each invocation owns the
   resulting binding value and any host-supplied parameter override. Compilation
   must not turn an invocation parameter value into shared mutable state.
+- Global variable and parameter QNames are resolved to expanded names during
+  compilation. Direct variable value expressions use the same canonical key,
+  so prefix aliases do not create distinct runtime bindings or require runtime
+  namespace lookup. Broader expressions admit qualified variable references
+  only through their own typed compiler support.
 - Source-derived global values retain identities only within the prepared input
   and invocation that produced them. A compiled stylesheet must not retain node
   identities from one principal source for reuse by another invocation.

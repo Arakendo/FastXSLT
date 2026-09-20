@@ -4351,6 +4351,41 @@ fn xslt10_variable_node_sequence_supports_a_variable_position_filter() {
 }
 
 #[test]
+fn xslt10_global_variable_qnames_compare_by_expanded_name() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-global-variable-qname:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-global-variable-qname:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+        xmlns:decl="urn:fastxslt:variables"
+        xmlns:use="urn:fastxslt:variables"
+        exclude-result-prefixes="decl use">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="decl:value" select="'expanded'"/>
+        <xsl:template match="/"><out><xsl:value-of select="$use:value"/></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit QName-variable source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit QName-variable stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile QName-variable stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("qname-variable", "result", SOURCE))
+        .expect("admit QName-variable request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute QName variable");
+    assert_eq!(
+        results.by_request["qname-variable"].serialized,
+        "<out>expanded</out>"
+    );
+}
+
+#[test]
 fn xslt10_sort_uses_the_first_node_from_a_context_path_key_lookup() {
     const SOURCE: &str = "urn:fastxslt:xslt10-key-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-key-sort:stylesheet";

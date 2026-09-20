@@ -847,14 +847,14 @@ fn compile_global_binding(
         GlobalBindingKind::Parameter => &["name", "select", "required"][..],
     };
     ensure_only_attributes(document, element, allowed_attributes, label)?;
-    let name = required_attribute(document, element, None, "name")?;
-    if !is_ascii_ncname(name) {
-        return Err(invalid(
+    let lexical_name = required_attribute(document, element, None, "name")?;
+    let name = normalize_variable_qname(document, element, lexical_name).map_err(|_| {
+        invalid(
             "FXST0023",
-            format!("invalid global binding name: ${name}"),
+            format!("invalid global binding name: ${lexical_name}"),
             document.location(element),
-        ));
-    }
+        )
+    })?;
     let required = match optional_attribute(document, element, None, "required") {
         None | Some("no") => false,
         Some("yes") => true,
@@ -879,7 +879,7 @@ fn compile_global_binding(
     let default = compile_global_default(document, element, label)?;
     Ok(GlobalBinding {
         kind,
-        name: name.to_owned(),
+        name,
         required,
         default,
     })
@@ -1971,7 +1971,7 @@ fn static_string_literal(expression: &str) -> Option<&str> {
         })
 }
 
-fn normalize_variable_qname(
+pub(super) fn normalize_variable_qname(
     document: &Document,
     element: NodeId,
     lexical_name: &str,
