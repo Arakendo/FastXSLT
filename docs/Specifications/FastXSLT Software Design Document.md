@@ -761,6 +761,15 @@ document node contributes its children as roots. This does not retain source
 nodes in compiled state, share temporary trees across invocations, or admit
 other source-copy paths or mixed global constructors.
 
+A static global temporary tree retains an ordered list of typed constructed
+nodes at its temporary-document root, not merely element roots. This permits
+literal elements and non-whitespace literal text to remain interleaved without
+turning static content into executable instructions. Materialization,
+namespace-alias rewriting, ownership accounting, and XDM-node charging cover
+every root. A declared `element()` type still requires exactly one element
+root. This shared representation does not admit dynamic global instruction
+sequences or change modern temporary-tree semantics.
+
 The private temporary selection path also admits an exact child-element path
 whose origin is one temporary-tree variable and whose steps are lexical QNames
 resolved to expanded names during stylesheet compilation. Execution starts at

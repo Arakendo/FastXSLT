@@ -154,7 +154,7 @@ pub(crate) enum GlobalBindingDefault {
     LocationPath(LocationPath),
     SourceNodeIdentity(LocationPath),
     Variable(String),
-    TemporaryTree(Vec<ConstructedElement>),
+    TemporaryTree(Vec<ConstructedNode>),
     TemporaryText(String),
     Xslt10TemporarySourceString(LocationPath),
     Xslt10TemporarySourceCopy(LocationPath),

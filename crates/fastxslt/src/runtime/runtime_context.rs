@@ -617,8 +617,8 @@ fn materialize_global_default(
         GlobalBindingDefault::Variable(name) => {
             materialize_global_alias(globals, binding, name, request_id)?;
         }
-        GlobalBindingDefault::TemporaryTree(elements) => {
-            let tree = materialize_temporary_tree(elements, request_id, control)?;
+        GlobalBindingDefault::TemporaryTree(nodes) => {
+            let tree = materialize_temporary_nodes(nodes, request_id, control)?;
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
         GlobalBindingDefault::TemporaryText(value) => {

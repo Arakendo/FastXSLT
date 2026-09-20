@@ -960,9 +960,10 @@ fn compile_global_default(
         {
             Ok(temporary)
         } else {
-            let elements = compile_constructed_elements(document, element)?;
+            let nodes = compile_constructed_nodes(document, element)?;
             if declared_type.is_some_and(|declared| declared != "element()")
-                || declared_type == Some("element()") && elements.len() != 1
+                || declared_type == Some("element()")
+                    && !matches!(nodes.as_slice(), [ConstructedNode::Element(_)])
             {
                 return Err(unsupported(
                     "FXST1016",
@@ -970,7 +971,7 @@ fn compile_global_default(
                     document.location(element),
                 ));
             }
-            Ok(GlobalBindingDefault::TemporaryTree(elements))
+            Ok(GlobalBindingDefault::TemporaryTree(nodes))
         }
     } else {
         if let Some(declared_type) = declared_type {
@@ -1413,6 +1414,31 @@ fn compile_constructed_elements(
         elements.push(compile_constructed_element(document, child)?);
     }
     Ok(elements)
+}
+
+fn compile_constructed_nodes(
+    document: &Document,
+    parent: NodeId,
+) -> Result<Vec<ConstructedNode>, CompileFailure> {
+    meaningful_children(document, parent)
+        .into_iter()
+        .map(|child| match document.kind(child) {
+            NodeKind::Text => Ok(ConstructedNode::Text(
+                document.value(child).unwrap_or_default().to_owned(),
+            )),
+            NodeKind::Element => {
+                compile_constructed_element(document, child).map(ConstructedNode::Element)
+            }
+            NodeKind::Comment | NodeKind::ProcessingInstruction => {
+                unreachable!("meaningful_children excludes comments and processing instructions")
+            }
+            NodeKind::Document | NodeKind::Attribute => Err(invalid(
+                "FXST0006",
+                "unexpected node kind in a temporary-tree constructor",
+                document.location(child),
+            )),
+        })
+        .collect()
 }
 
 fn compile_constructed_element(

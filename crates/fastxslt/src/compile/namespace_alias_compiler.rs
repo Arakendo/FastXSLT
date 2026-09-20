@@ -118,9 +118,9 @@ pub(super) fn apply(program: &mut StylesheetProgram, aliases: &[NamespaceAlias])
         apply_instructions(&mut template.template.body, aliases);
     }
     for binding in &mut program.global_bindings {
-        if let GlobalBindingDefault::TemporaryTree(elements) = &mut binding.default {
-            for element in elements {
-                apply_constructed_element(element, aliases);
+        if let GlobalBindingDefault::TemporaryTree(nodes) = &mut binding.default {
+            for node in nodes {
+                apply_constructed_node(node, aliases);
             }
         }
     }
@@ -192,6 +192,12 @@ fn apply_constructed_element(element: &mut ConstructedElement, aliases: &[Namesp
         if let ConstructedNode::Element(child) = child {
             apply_constructed_element(child, aliases);
         }
+    }
+}
+
+fn apply_constructed_node(node: &mut ConstructedNode, aliases: &[NamespaceAlias]) {
+    if let ConstructedNode::Element(element) = node {
+        apply_constructed_element(element, aliases);
     }
 }
 

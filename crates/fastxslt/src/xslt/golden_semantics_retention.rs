@@ -175,9 +175,7 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             | GlobalBindingDefault::SourceNodeIdentity(path)
             | GlobalBindingDefault::Xslt10TemporarySourceCopy(path)
             | GlobalBindingDefault::Xslt10ForEachText(path) => path.known_owned_capacity_bytes(),
-            GlobalBindingDefault::TemporaryTree(elements) => {
-                vec_owned(elements, constructed_element_owned)
-            }
+            GlobalBindingDefault::TemporaryTree(nodes) => vec_owned(nodes, constructed_node_owned),
             GlobalBindingDefault::TemporaryText(value)
             | GlobalBindingDefault::TemporaryComment(value) => value.capacity(),
             GlobalBindingDefault::Xslt10TemporarySourceString(path) => {

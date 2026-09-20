@@ -2471,3 +2471,12 @@ maintained redistributable legacy suite becomes available.
   to 2,006, and the strict lower bound to 1,875 (59.09%) while execution
   failures and mismatches remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-global-source-copy-temporary-tree-2026-09-20.md)
+- 2026-09-20 -- Static global temporary trees now retain ordered typed node
+  roots rather than requiring every root to be an element. This reuses the
+  existing static child representation, preserves interleaved literal text,
+  keeps materialization invocation-owned, and does not admit dynamic global
+  instruction sequences. Lotus `variable46` becomes exact, raising
+  initialization to 2,093, successful execution to 2,007, and the strict lower
+  bound to 1,876 (59.12%) while execution failures and mismatches remain
+  unchanged.
+  [Evidence](../Evidence/oasis-xslt10-mixed-root-static-temporary-tree-2026-09-20.md)

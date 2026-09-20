@@ -9407,6 +9407,35 @@ fn xslt10_global_copy_of_document_materializes_an_invocation_temporary_tree() {
 }
 
 #[test]
+fn xslt10_global_static_tree_preserves_mixed_top_level_nodes() {
+    const SOURCE: &str = "urn:fastxslt:global-mixed-tree:source";
+    const STYLESHEET: &str = "urn:fastxslt:global-mixed-tree:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="tree"><first>one</first>|middle|<last>three</last></xsl:variable><xsl:template match="/"><out><xsl:copy-of select="$tree"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<unused/>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile mixed global tree");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("global-mixed-tree", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute mixed global tree");
+
+    assert_eq!(
+        results.by_request["global-mixed-tree"].serialized,
+        "<out><first>one</first>|middle|<last>three</last></out>"
+    );
+}
+
+#[test]
 fn xslt10_numeric_sort_uses_xpath_number_lexicals_and_equal_zero_keys() {
     const SOURCE: &str = "urn:fastxslt:xslt10-numeric-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-numeric-sort:stylesheet";
