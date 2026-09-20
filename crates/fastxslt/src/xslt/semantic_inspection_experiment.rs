@@ -234,6 +234,15 @@ fn observe_instructions(
         *instruction_count = instruction_count
             .checked_add(1)
             .ok_or(InspectionFailure::CountOverflow)?;
+        if let LocalVariableBody::Leaf | LocalVariableBody::Body(_) =
+            local_variable_body(instruction)
+        {
+            increment_feature(feature_counts, SemanticFeature::LocalVariable)?;
+            if let LocalVariableBody::Body(body) = local_variable_body(instruction) {
+                observe_instructions(body, instruction_count, feature_counts)?;
+            }
+            continue;
+        }
         let (feature, body) = match instruction {
             Instruction::LiteralElement {
                 origin,
@@ -282,23 +291,6 @@ fn observe_instructions(
             }
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
             Instruction::Number { .. } => (SemanticFeature::Number, None),
-            Instruction::Variable { .. }
-            | Instruction::StaticAtomicVariable { .. }
-            | Instruction::AtomicVariableAlias { .. }
-            | Instruction::ContextPositionVariable { .. }
-            | Instruction::ContextNodeNameVariable { .. }
-            | Instruction::ContextCountPathVariable { .. }
-            | Instruction::Xslt10BinaryNumericVariable { .. }
-            | Instruction::SourceNodeVariable { .. }
-            | Instruction::SourceVariablePathVariable { .. }
-            | Instruction::SourceNodeUnionVariable { .. }
-            | Instruction::IntegerRangeVariable { .. }
-            | Instruction::TemporaryTreeVariable { .. }
-            | Instruction::Xslt10TextTreeVariable { .. }
-            | Instruction::Xslt10ValueOfTreeVariable { .. }
-            | Instruction::Xslt10ForEachTextTreeVariable { .. } => {
-                (SemanticFeature::LocalVariable, None)
-            }
             Instruction::SequenceNodes { .. } => (SemanticFeature::SequenceNodes, None),
             Instruction::SequenceItems { .. } => (SemanticFeature::SequenceItems, None),
             Instruction::ApplyTemplates { .. } => (SemanticFeature::ApplyTemplates, None),
@@ -322,6 +314,7 @@ fn observe_instructions(
             | Instruction::CopyOfStaticAtomicText { .. }
             | Instruction::CopyOfVariable { .. }
             | Instruction::CopyOfAtomicValue { .. } => (SemanticFeature::CopyOf, None),
+            _ => unreachable!("local-variable instructions are classified before this match"),
         };
         increment_feature(feature_counts, feature)?;
         if let Some(body) = body {
@@ -330,6 +323,34 @@ fn observe_instructions(
         observe_nested_choose(instruction, instruction_count, feature_counts)?;
     }
     Ok(())
+}
+
+enum LocalVariableBody<'a> {
+    NotVariable,
+    Leaf,
+    Body(&'a [Instruction]),
+}
+
+fn local_variable_body(instruction: &Instruction) -> LocalVariableBody<'_> {
+    match instruction {
+        Instruction::Variable { .. }
+        | Instruction::StaticAtomicVariable { .. }
+        | Instruction::AtomicVariableAlias { .. }
+        | Instruction::ContextPositionVariable { .. }
+        | Instruction::ContextNodeNameVariable { .. }
+        | Instruction::ContextCountPathVariable { .. }
+        | Instruction::Xslt10BinaryNumericVariable { .. }
+        | Instruction::SourceNodeVariable { .. }
+        | Instruction::SourceVariablePathVariable { .. }
+        | Instruction::SourceNodeUnionVariable { .. }
+        | Instruction::IntegerRangeVariable { .. }
+        | Instruction::TemporaryTreeVariable { .. }
+        | Instruction::Xslt10TextTreeVariable { .. }
+        | Instruction::Xslt10ValueOfTreeVariable { .. }
+        | Instruction::Xslt10ForEachTextTreeVariable { .. } => LocalVariableBody::Leaf,
+        Instruction::Xslt10SequenceTreeVariable { body, .. } => LocalVariableBody::Body(body),
+        _ => LocalVariableBody::NotVariable,
+    }
 }
 
 fn increment_feature(

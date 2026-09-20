@@ -2228,3 +2228,13 @@ maintained redistributable legacy suite becomes available.
   execution to 1,934, and initialization to 2,033; visible mismatches remain
   54. Same-name declarations contributed by separate includes remain explicit.
   [Evidence](../Evidence/oasis-xslt10-module-decimal-format-composition-2026-09-19.md)
+- 2026-09-19 -- Local XSLT 1.0 content variables that exceed the compact
+  static/value-only constructors now execute the ordinary instruction sequence
+  into an invocation-owned temporary tree. Materialization preserves result
+  structure, receives fresh private identity, and charges every retained node
+  before retention; modern content-variable semantics remain unchanged. The
+  `FXST1015` initialization frontier falls from 30 to 21. Six unchanged cases
+  become exact and three advance to honest later runtime frontiers, raising the
+  strict lower bound to 1,811, successful execution to 1,940, and
+  initialization to 2,042 while mismatches remain 54.
+  [Evidence](../Evidence/oasis-xslt10-local-sequence-temporary-tree-2026-09-19.md)

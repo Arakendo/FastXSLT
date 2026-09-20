@@ -160,6 +160,7 @@ fn apply_instructions(instructions: &mut [Instruction], aliases: &[NamespaceAlia
             Instruction::ForEachVariable { body, .. }
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }
+            | Instruction::Xslt10SequenceTreeVariable { body, .. }
             | Instruction::If { body, .. }
             | Instruction::Copy { body, .. } => apply_instructions(body, aliases),
             Instruction::Choose {

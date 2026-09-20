@@ -19,6 +19,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::dynamic_document::DynamicDocument;
+use super::result_tree::ResultNode;
 use super::template_selector::DocumentRootedMatchCache;
 use super::value_evaluator::{evaluate_binary_numeric_value, evaluate_xslt10_sum_path};
 use super::{
@@ -1108,6 +1109,102 @@ pub(super) fn materialize_temporary_nodes(
         tree.roots.push(root);
     }
     Ok(tree)
+}
+
+pub(super) fn materialize_result_nodes(
+    nodes: &[ResultNode],
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<TemporaryTree, ExecutionFailure> {
+    let mut tree = TemporaryTree {
+        identity: allocate_temporary_tree_identity(control, request_id)?,
+        roots: Vec::new(),
+        nodes: Vec::new(),
+    };
+    for node in nodes {
+        let root = materialize_result_node(node, None, &mut tree, request_id, control)?;
+        tree.roots.push(root);
+    }
+    Ok(tree)
+}
+
+fn materialize_result_node(
+    result: &ResultNode,
+    parent: Option<usize>,
+    tree: &mut TemporaryTree,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XdmNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let node = tree.nodes.len();
+    let kind = match result {
+        ResultNode::Element {
+            name, namespaces, ..
+        } => TemporaryNodeKind::Element {
+            name: name.clone(),
+            namespaces: namespaces.to_vec(),
+            attributes: Vec::new(),
+        },
+        ResultNode::Text(value) => TemporaryNodeKind::Text(value.clone()),
+        ResultNode::Comment(value) => TemporaryNodeKind::Comment(value.clone()),
+        ResultNode::ProcessingInstruction { target, value } => {
+            TemporaryNodeKind::ProcessingInstruction {
+                target: target.clone(),
+                value: value.clone(),
+            }
+        }
+        ResultNode::PendingAttribute(_) => {
+            return Err(failure(
+                "XTDE0410",
+                FailureCategory::Invalid,
+                Some(request_id),
+                "an attribute cannot be a top-level temporary-tree node",
+            ));
+        }
+    };
+    tree.nodes.push(TemporaryNode {
+        kind,
+        parent,
+        children: Vec::new(),
+    });
+    if let ResultNode::Element {
+        attributes,
+        children,
+        ..
+    } = result
+    {
+        let mut attribute_nodes = Vec::with_capacity(attributes.len());
+        for attribute in attributes {
+            control
+                .charge(WorkDomain::XdmNode, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            let attribute_node = tree.nodes.len();
+            tree.nodes.push(TemporaryNode {
+                kind: TemporaryNodeKind::Attribute {
+                    name: attribute.name.clone(),
+                    value: attribute.value.clone(),
+                },
+                parent: Some(node),
+                children: Vec::new(),
+            });
+            attribute_nodes.push(attribute_node);
+        }
+        let TemporaryNodeKind::Element {
+            attributes: retained,
+            ..
+        } = &mut tree.nodes[node].kind
+        else {
+            unreachable!("result element materializes as a temporary element")
+        };
+        *retained = attribute_nodes;
+        for child in children {
+            let child = materialize_result_node(child, Some(node), tree, request_id, control)?;
+            tree.nodes[node].children.push(child);
+        }
+    }
+    Ok(node)
 }
 
 fn allocate_temporary_tree_identity(

@@ -340,7 +340,8 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::TemporaryTreeVariable { name, .. }
     | Instruction::Xslt10TextTreeVariable { name, .. }
     | Instruction::Xslt10ValueOfTreeVariable { name, .. }
-    | Instruction::Xslt10ForEachTextTreeVariable { name, .. }) = variable
+    | Instruction::Xslt10ForEachTextTreeVariable { name, .. }
+    | Instruction::Xslt10SequenceTreeVariable { name, .. }) = variable
     else {
         unreachable!("compile_variable returns a variable instruction")
     };
@@ -2043,9 +2044,30 @@ fn compile_content_variable(
             .iter()
             .all(|child| document.kind(*child) == NodeKind::Element)
     {
-        return Ok(Instruction::TemporaryTreeVariable {
+        match super::compile_constructed_elements(document, element) {
+            Ok(elements) => {
+                return Ok(Instruction::TemporaryTreeVariable {
+                    name: name.to_owned(),
+                    elements,
+                    location,
+                });
+            }
+            Err(failure)
+                if failure.code == "FXST1015" && uses_xslt10_compatibility(document, element) =>
+            {
+                // The compact static constructor is an optimization. XSLT 1.0
+                // content variables may contain the ordinary instruction
+                // sequence, so fall through to the complete runtime path.
+            }
+            Err(failure) => return Err(failure),
+        }
+    }
+    if optional_attribute(document, element, None, "as").is_none()
+        && uses_xslt10_compatibility(document, element)
+    {
+        return Ok(Instruction::Xslt10SequenceTreeVariable {
             name: name.to_owned(),
-            elements: super::compile_constructed_elements(document, element)?,
+            body: compile_sequence(document, element)?,
             location,
         });
     }

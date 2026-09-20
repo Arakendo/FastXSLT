@@ -659,6 +659,11 @@ pub(crate) enum Instruction {
         select: LocationPath,
         location: SourceLocation,
     },
+    Xslt10SequenceTreeVariable {
+        name: String,
+        body: Vec<Instruction>,
+        location: SourceLocation,
+    },
     SequenceNodes {
         select: Box<ForDistinctValuesExpression>,
         location: SourceLocation,

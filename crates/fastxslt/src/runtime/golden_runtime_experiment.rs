@@ -86,7 +86,7 @@ use result_tree::{
 use runtime_context::{
     InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryNodeKind, TemporaryTree,
     bind_template_parameters, evaluate_template_arguments, materialize_global_defaults,
-    materialize_temporary_tree, required_source_context,
+    materialize_result_nodes, materialize_temporary_tree, required_source_context,
 };
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
@@ -786,7 +786,8 @@ fn execute_instruction(
         | Instruction::TemporaryTreeVariable { .. }
         | Instruction::Xslt10TextTreeVariable { .. }
         | Instruction::Xslt10ValueOfTreeVariable { .. }
-        | Instruction::Xslt10ForEachTextTreeVariable { .. } => {
+        | Instruction::Xslt10ForEachTextTreeVariable { .. }
+        | Instruction::Xslt10SequenceTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution, scope, control)?;
         }
         Instruction::ApplyTemplates { .. } => {
@@ -1720,6 +1721,11 @@ fn execute_binding(
         }
         Instruction::Xslt10ForEachTextTreeVariable { name, select, .. } => {
             bind_xslt10_for_each_text_tree(inputs, scope, name, select, execution.node, control)?;
+        }
+        Instruction::Xslt10SequenceTreeVariable { name, body, .. } => {
+            let nodes = execute_sequence(inputs, body, execution, scope, control)?;
+            let tree = materialize_result_nodes(&nodes, inputs.request_id, control)?;
+            scope.bind_temporary_tree(name.clone(), tree);
         }
         _ => unreachable!("execute_binding receives a variable instruction"),
     }

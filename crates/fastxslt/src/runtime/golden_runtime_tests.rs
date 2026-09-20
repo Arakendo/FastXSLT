@@ -5071,6 +5071,87 @@ fn xslt10_local_value_of_content_builds_a_temporary_text_tree() {
 }
 
 #[test]
+fn xslt10_local_sequence_constructor_builds_an_invocation_owned_temporary_tree() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-local-sequence-tree:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-local-sequence-tree:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:template match="doc">
+            <xsl:variable name="temporary"><B marker="kept"><xsl:value-of select="a"/></B><xsl:text>tail</xsl:text></xsl:variable>
+            <out string="{$temporary}"><xsl:copy-of select="$temporary"/></out>
+        </xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a>dynamic</a></doc>".to_vec())
+        .expect("admit local sequence-tree source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit local sequence-tree stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile local sequence temporary-tree constructor");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("xslt10-local-sequence-tree", "result", SOURCE))
+        .expect("admit local sequence-tree request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute local sequence temporary-tree constructor");
+    assert_eq!(
+        results.by_request["xslt10-local-sequence-tree"].serialized,
+        "<out string=\"dynamictail\"><B marker=\"kept\">dynamic</B>tail</out>"
+    );
+}
+
+#[test]
+fn local_sequence_temporary_tree_charges_xdm_nodes_before_retention() {
+    let mut limits = WorkLimits::unbounded();
+    limits.xdm_nodes = 1;
+    let mut control = InvocationControl::new(CancellationToken::new(), limits);
+    let nodes = [
+        ResultNode::Text("first".to_owned()),
+        ResultNode::Text("second".to_owned()),
+    ];
+
+    let failure = super::materialize_result_nodes(&nodes, "sequence-tree-budget", &mut control)
+        .expect_err("the second temporary-tree node must exceed the XDM budget");
+
+    assert_eq!(failure.code, "FXCT0002");
+    assert_eq!(failure.category, FailureCategory::Limit);
+    assert_eq!(failure.request_id.as_deref(), Some("sequence-tree-budget"));
+    assert_eq!(failure.work_domain, Some(WorkDomain::XdmNode));
+}
+
+#[test]
+fn modern_content_variable_does_not_adopt_xslt10_sequence_tree_semantics() {
+    const SOURCE: &str = "urn:fastxslt:modern-local-sequence-tree:source";
+    const STYLESHEET: &str = "urn:fastxslt:modern-local-sequence-tree:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="3.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:template match="doc">
+            <xsl:variable name="value"><B><xsl:value-of select="a"/></B></xsl:variable>
+            <xsl:value-of select="$value"/>
+        </xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a>dynamic</a></doc>".to_vec())
+        .expect("admit modern sequence-tree source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit modern sequence-tree stylesheet");
+    let snapshot = resources.seal();
+
+    let failure = compile_resource(&snapshot, STYLESHEET)
+        .expect_err("modern sequence constructors require their own admitted semantics");
+
+    assert_eq!(failure.code, "FXST1015");
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+}
+
+#[test]
 fn xslt10_numeric_variables_select_path_positions() {
     const SOURCE: &str = "urn:fastxslt:xslt10-variable-position:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-position:stylesheet";

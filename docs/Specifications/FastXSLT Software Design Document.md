@@ -655,11 +655,18 @@ handle preserve that identity, independently materialized trees within the
 same invocation receive distinct identities, and the identity domain is not
 shared across invocations, workers, snapshots, or generations. The identifier
 spelling remains private and opaque; allocation addresses and variable names
-are not semantic identity. The current representation admits attribute-free
-literal element trees with non-whitespace text children, preserving mixed child
-order and accounting separately for retained XDM nodes and result text bytes.
-Top-level text, attributes, comments, processing instructions, and general
-temporary-tree paths require separate evidence.
+are not semantic identity. The XSLT 1.0 local-content-variable path first
+retains compact typed forms for static text, one value operation, one admitted
+text iteration, and fully static literal trees. When an admitted local
+constructor exceeds those forms, it executes the ordinary compiled instruction
+sequence into semantic result nodes and then materializes one invocation-owned
+temporary tree. Materialization preserves names, namespace slices, attributes,
+child order, text, comments, and processing instructions, and charges every
+retained node to the XDM-node budget before retention. This is a
+compile-selected XSLT 1.0 compatibility path: it does not change modern
+content-variable semantics, widen global constructors, or admit
+cross-invocation temporary-tree retention. General temporary-tree paths still
+require separate evidence.
 
 The private temporary selection path also admits an exact child-element path
 whose origin is one temporary-tree variable and whose steps are lexical QNames

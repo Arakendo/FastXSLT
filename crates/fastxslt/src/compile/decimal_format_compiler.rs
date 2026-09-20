@@ -272,6 +272,7 @@ fn apply_instructions(
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }
             | Instruction::If { body, .. }
+            | Instruction::Xslt10SequenceTreeVariable { body, .. }
             | Instruction::Copy { body, .. } => apply_instructions(body, declarations)?,
             Instruction::Choose {
                 branches,

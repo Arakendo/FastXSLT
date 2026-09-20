@@ -484,6 +484,11 @@ fn instruction_owned(value: &Instruction) -> usize {
         instruction @ Instruction::Xslt10ValueOfTreeVariable { .. } => {
             xslt10_value_of_tree_variable_owned(instruction)
         }
+        Instruction::Xslt10SequenceTreeVariable {
+            name,
+            body,
+            location,
+        } => name.capacity() + vec_owned(body, instruction_owned) + location_owned(location),
         Instruction::SequenceNodes { select, location } => sequence_nodes_owned(select, location),
         Instruction::SequenceItems { select, location } => {
             vec_owned(select, sequence_item_owned) + location_owned(location)
