@@ -2319,3 +2319,12 @@ maintained redistributable legacy suite becomes available.
   mismatches and execution failures remain unchanged. General predicate
   composition and modern admission remain open.
   [Evidence](../Evidence/oasis-xslt10-sequential-ancestor-filters-2026-09-19.md)
+- 2026-09-20 -- Three typed XSLT 1.0 plans now retain the expression-entry
+  source node while same-name predicates establish candidate focus: combined
+  descendant/following EBV, rooted descendant count, and rooted child
+  selection. The unchanged Microsoft `Miscellaneous__84424` and `84426` cases
+  become exact, raising the strict lower bound to 1,824, successful execution
+  to 1,953, and initialization to 2,055 while mismatches and execution failures
+  remain unchanged. General composed `current()` and forward-compatible
+  version policy remain open.
+  [Evidence](../Evidence/oasis-xslt10-current-name-predicates-2026-09-20.md)

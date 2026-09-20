@@ -241,6 +241,11 @@ pub(super) fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
+    if uses_xslt10_compatibility(document, element)
+        && expression.split_whitespace().collect::<String>() == "//*[name()=name(current())]/*"
+    {
+        return Ok(ApplySelection::Xslt10ChildrenOfSameNameElementsAsCurrent);
+    }
     if uses_xslt10_compatibility(document, element) {
         if let Some(selection) =
             parse_xslt10_key_selection(document, element, expression, &location)?

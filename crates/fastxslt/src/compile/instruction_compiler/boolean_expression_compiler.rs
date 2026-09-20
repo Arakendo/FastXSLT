@@ -163,6 +163,12 @@ fn compile_xslt10_special(
     xslt10_compatibility: bool,
 ) -> Option<BooleanExpression> {
     if xslt10_compatibility
+        && expression.split_whitespace().collect::<String>()
+            == "descendant::*[name()=name(current())]|following::*[name()=name(current())]"
+    {
+        return Some(BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent);
+    }
+    if xslt10_compatibility
         && let Some(value) =
             constant_numeric_experiment::fold_xslt10_nested_string_number_equality(expression)
     {

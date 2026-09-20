@@ -261,6 +261,16 @@ pub(super) fn execute_value_of(
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             append_text(result, "1", inputs.request_id, control)?;
         }
+        ValueExpression::Xslt10CountDescendantsSameNameAsCurrent => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let count = super::xslt10_current_name::count_descendants_same_name(
+                source,
+                context,
+                inputs.request_id,
+                control,
+            )?;
+            append_text(result, &count.to_string(), inputs.request_id, control)?;
+        }
         ValueExpression::CountLocationPath(path) => {
             append_location_path_count(inputs, path, context, result, control)?;
         }

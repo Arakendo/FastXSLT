@@ -460,6 +460,7 @@ pub(crate) enum ApplySelection {
         steps: Vec<ExpandedName>,
     },
     VariableFilteredElementPath(VariableFilteredElementPath),
+    Xslt10ChildrenOfSameNameElementsAsCurrent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -865,6 +866,7 @@ pub(crate) enum ValueExpression {
     Xslt10FirstNodeLocationPath(LocationPath),
     Xslt10CurrentPredicatePath(LocationPath),
     Xslt10CountCurrentNode,
+    Xslt10CountDescendantsSameNameAsCurrent,
     CountLocationPath(LocationPath),
     CountSourceNodeVariable(String),
     RootPath(LocationPath),
@@ -1255,6 +1257,7 @@ pub(crate) enum BooleanExpression {
     },
     Xslt10AncestorFilter(Box<Xslt10AncestorFilter>),
     Xslt10KeyLookupEffectiveBooleanValue(Box<Xslt10KeyLookup>),
+    Xslt10DescendantOrFollowingSameNameAsCurrent,
     Xslt10ContextTranslateStartsWith(Xslt10ContextTranslateStartsWith),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     NodeExists(LocationPath),

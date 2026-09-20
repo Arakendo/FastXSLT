@@ -437,6 +437,12 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     if let Some(path) = compile_name_path(document, element, expression, location) {
         return Ok(ValueExpression::NodeNamePath(path));
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && expression.split_whitespace().collect::<String>()
+            == "count(/descendant::*[name()=name(current())])"
+    {
+        return Ok(ValueExpression::Xslt10CountDescendantsSameNameAsCurrent);
+    }
     if let Some(failure) = classify_atomic_path_operand(expression, location.clone()) {
         return Err(CompileFailure {
             code: failure.standard_code,

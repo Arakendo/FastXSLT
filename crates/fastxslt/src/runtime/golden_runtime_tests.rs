@@ -1431,6 +1431,40 @@ fn xslt10_current_predicate_retains_the_outer_source_focus() {
 }
 
 #[test]
+fn xslt10_current_name_predicates_retain_the_outer_source_focus() {
+    const SOURCE: &str = "urn:fastxslt:current-name-predicate:source";
+    const STYLESHEET: &str = "urn:fastxslt:current-name-predicate:stylesheet";
+    let stylesheet =
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+      <xsl:output method="text"/>
+      <xsl:template match="/"><xsl:apply-templates select="//*"/></xsl:template>
+      <xsl:template match="*"><xsl:if test="not(descendant::*[name()=name(current())] | following::*[name()=name(current())])"><xsl:value-of select="name()"/>=<xsl:value-of select="count(/descendant::*[name()=name(current())])"/>:<xsl:for-each select="//*[name()=name(current())]/*"><xsl:value-of select="name()"/></xsl:for-each>;</xsl:if></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 32_768));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><a><a><x/></a></a><b/><a><y/><z/></a></doc>".to_vec(),
+        )
+        .expect("admit current-name-predicate source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit current-name-predicate stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile current-name predicates");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("current-name-predicate", "result", SOURCE))
+        .expect("admit current-name-predicate request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute current-name predicates");
+    assert_eq!(
+        results.by_request["current-name-predicate"].serialized,
+        "doc=1:aba;x=1:;b=1:;a=3:axyz;y=1:;z=1:;"
+    );
+}
+
+#[test]
 fn xslt_current_predicate_does_not_enter_the_general_xpath_path_parser() {
     let stylesheet = parse_document(
         "urn:fastxslt:modern-current-predicate:stylesheet",

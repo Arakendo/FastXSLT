@@ -74,6 +74,8 @@ mod transform_set_experiment;
 mod value_evaluator;
 #[path = "variable_filtered_path.rs"]
 mod variable_filtered_path;
+#[path = "xslt10_current_name.rs"]
+mod xslt10_current_name;
 
 use dynamic_element_name::resolve_dynamic_element_name;
 use number_executor::execute as execute_number_instruction;
@@ -3093,6 +3095,15 @@ fn evaluate_boolean(
         return key_lookup::select(inputs, lookup, context, variables, control)
             .map(|selected| !selected.is_empty());
     }
+    if let BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent = expression {
+        let (source, context) = required_source_context(inputs, context)?;
+        return xslt10_current_name::has_descendant_or_following(
+            source,
+            context,
+            inputs.request_id,
+            control,
+        );
+    }
     if let BooleanExpression::ContextStringEquals(expected) = expression {
         return evaluate_context_string_equals(inputs, context, expected, control);
     }
@@ -3174,6 +3185,7 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::Xslt10ContextNodeSetEqualsVariable { .. }
         | BooleanExpression::Xslt10AncestorFilter(_)
         | BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue(_)
+        | BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent
         | BooleanExpression::ContextStringEquals(_)
         | BooleanExpression::Xslt10ContextNumberIsNaN => {
             unreachable!("specialized expressions return before ordinary boolean dispatch")
@@ -4323,23 +4335,7 @@ fn select_apply_nodes(
             Ok(selected)
         }
         ApplySelection::ChildNodes(node_test) => {
-            let mut selected = Vec::new();
-            for child in source.children(context).iter().copied() {
-                control
-                    .charge(WorkDomain::XPathNodeVisit, 1)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                let matches = match node_test {
-                    NodeTest::Comment => source.kind(child) == NodeKind::Comment,
-                    NodeTest::ProcessingInstruction => {
-                        source.kind(child) == NodeKind::ProcessingInstruction
-                    }
-                    NodeTest::AnyNode => true,
-                };
-                if matches {
-                    selected.push(child);
-                }
-            }
-            Ok(selected)
+            select_child_nodes(source, context, *node_test, inputs.request_id, control)
         }
         ApplySelection::Attribute(name) => {
             let mut selected = Vec::new();
@@ -4361,6 +4357,14 @@ fn select_apply_nodes(
             inputs.request_id,
             control,
         ),
+        ApplySelection::Xslt10ChildrenOfSameNameElementsAsCurrent => {
+            xslt10_current_name::select_children_of_same_name_elements(
+                source,
+                context,
+                inputs.request_id,
+                control,
+            )
+        }
         ApplySelection::VariableSequence(name) => source_variable_nodes(inputs, name, variables),
         ApplySelection::GlobalTemporaryChildren(_)
         | ApplySelection::TemporaryPath { .. }
@@ -4368,6 +4372,32 @@ fn select_apply_nodes(
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }
+}
+
+fn select_child_nodes(
+    source: &Document,
+    context: NodeId,
+    node_test: NodeTest,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let mut selected = Vec::new();
+    for child in source.children(context).iter().copied() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        let matches = match node_test {
+            NodeTest::Comment => source.kind(child) == NodeKind::Comment,
+            NodeTest::ProcessingInstruction => {
+                source.kind(child) == NodeKind::ProcessingInstruction
+            }
+            NodeTest::AnyNode => true,
+        };
+        if matches {
+            selected.push(child);
+        }
+    }
+    Ok(selected)
 }
 
 fn select_child_elements(

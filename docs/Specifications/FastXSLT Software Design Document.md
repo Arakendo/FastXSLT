@@ -479,6 +479,15 @@ testing attribute presence. Ancestor, attribute, and child inspection is work
 charged against the invocation's effective source document. This does not
 rewrite sequential predicates as conjunctions, admit arbitrary predicate
 composition, or broaden the modern expression grammar.
+The compatibility path also admits three exact same-lexical-name forms whose
+predicates compare `name()` with `name(current())`: descendant-or-following
+existence, a rooted descendant count, and selection of element children from
+all rooted same-named elements. The expression-entry source node remains the
+`current()` node while predicate candidates establish their own focus. QName
+comparison preserves both expanded name and retained source prefix; all
+traversal is invocation-local and work charged. This does not admit general
+composed `current()` expressions, alternate `name()` operands, or the forms in
+modern static context.
 The `self` axis additionally admits explicit `text()`, `comment()`, and
 `processing-instruction()` tests alongside its named-element, any-element, and
 any-node forms. The single context candidate is work charged and retained only

@@ -382,7 +382,9 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         ApplySelection::ChildElement(name)
         | ApplySelection::DescendantElement(name)
         | ApplySelection::Attribute(name) => name_owned(name),
-        ApplySelection::AtomicIntegerRange { .. } | ApplySelection::ChildNodes(_) => 0,
+        ApplySelection::AtomicIntegerRange { .. }
+        | ApplySelection::ChildNodes(_)
+        | ApplySelection::Xslt10ChildrenOfSameNameElementsAsCurrent => 0,
         ApplySelection::GlobalTemporaryChildren(name) | ApplySelection::VariableSequence(name) => {
             name.capacity()
         }
@@ -1026,6 +1028,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::ContextNodeNamespaceUri
         | ValueExpression::ContextNodeNormalizedString
         | ValueExpression::Xslt10CountCurrentNode
+        | ValueExpression::Xslt10CountDescendantsSameNameAsCurrent
         | ValueExpression::UpperCaseContextString => 0,
         ValueExpression::ContextLanguageMatches(language) => language.capacity(),
         ValueExpression::ContextNodeStringLength(location)
@@ -1305,7 +1308,8 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
                 + right.reference.capacity()
                 + right.descendant_local.as_ref().map_or(0, String::capacity)
         }
-        BooleanExpression::Xslt10ContextNumberIsNaN
+        BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent
+        | BooleanExpression::Xslt10ContextNumberIsNaN
         | BooleanExpression::ContextStringLengthEquals(_)
         | BooleanExpression::Constant(_) => 0,
     }
