@@ -2328,3 +2328,11 @@ maintained redistributable legacy suite becomes available.
   remain unchanged. General composed `current()` and forward-compatible
   version policy remain open.
   [Evidence](../Evidence/oasis-xslt10-current-name-predicates-2026-09-20.md)
+- 2026-09-20 -- XSLT 1.0 `current()/relative-path` value expressions now
+  lower the relative suffix through the existing charged compatibility path
+  plan rooted at the instruction source focus. The unchanged Lotus
+  `select_select78` case becomes exact, raising the strict lower bound to
+  1,825, successful execution to 1,954, and initialization to 2,056 while
+  mismatches and execution failures remain unchanged. Modern and generally
+  composed `current()` expressions remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-current-rooted-relative-path-2026-09-20.md)

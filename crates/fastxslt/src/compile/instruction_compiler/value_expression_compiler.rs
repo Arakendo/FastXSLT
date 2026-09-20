@@ -583,7 +583,7 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     {
         comparison
     } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
-        && let Some(path) = compile_xslt10_current_predicate_path(expression, location)?
+        && let Some(path) = compile_xslt10_current_path(expression, location)?
     {
         ValueExpression::Xslt10CurrentPredicatePath(path)
     } else if expression.contains('[')
@@ -1874,10 +1874,15 @@ fn compile_location_path_or_missing_context(
     }
 }
 
-fn compile_xslt10_current_predicate_path(
+fn compile_xslt10_current_path(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<Option<LocationPath>, CompileFailure> {
+    if let Some(relative) = expression.trim().strip_prefix("current()/") {
+        return parse_xslt10_location_path(relative, location.clone())
+            .map(Some)
+            .map_err(map_path_failure);
+    }
     let normalized = if expression.matches("[current()]").count() == 1
         && !expression.contains("[count(current())]")
     {

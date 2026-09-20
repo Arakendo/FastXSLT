@@ -488,6 +488,12 @@ comparison preserves both expanded name and retained source prefix; all
 traversal is invocation-local and work charged. This does not admit general
 composed `current()` expressions, alternate `name()` operands, or the forms in
 modern static context.
+An XSLT 1.0 value expression may additionally use `current()/` as the root of
+an otherwise admitted relative location path. The suffix compiles through the
+ordinary compatibility path parser and executes from the instruction's source
+focus with existing first-node string conversion, charging, cancellation,
+identity, and provenance behavior. This does not admit `current()` inside
+arbitrary composed expressions or in modern static context.
 The `self` axis additionally admits explicit `text()`, `comment()`, and
 `processing-instruction()` tests alongside its named-element, any-element, and
 any-node forms. The single context candidate is work charged and retained only
