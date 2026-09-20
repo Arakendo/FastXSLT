@@ -2627,7 +2627,10 @@ fn generated_node_argument(expression: &str) -> Option<&str> {
         .strip_prefix("generate-id(")?
         .strip_suffix(')')?
         .trim();
-    (!argument.is_empty() && has_balanced_parentheses(argument)).then_some(argument)
+    if argument.is_empty() {
+        return Some(".");
+    }
+    has_balanced_parentheses(argument).then_some(argument)
 }
 
 fn has_balanced_parentheses(expression: &str) -> bool {

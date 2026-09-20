@@ -1067,7 +1067,7 @@ fn parse_generated_node_argument(expression: &str) -> Option<&str> {
         .strip_prefix("generate-id(")?
         .strip_suffix(')')?
         .trim();
-    (!argument.is_empty()).then_some(argument)
+    Some(if argument.is_empty() { "." } else { argument })
 }
 
 fn strip_enclosing_parentheses(mut expression: &str) -> &str {

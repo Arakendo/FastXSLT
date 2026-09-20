@@ -2284,3 +2284,12 @@ maintained redistributable legacy suite becomes available.
   1,818, successful execution to 1,947, and initialization to 2,049 while
   mismatches and execution failures remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-child-attribute-variable-predicate-2026-09-19.md)
+- 2026-09-19 -- The optional argument of `generate-id()` now normalizes to the
+  current context-node selection in both value and identity-comparison plans.
+  The zero-argument form reuses existing stable node identity, cardinality,
+  diagnostics, and charging rather than introducing ambient context state.
+  The unchanged Lotus `idkey07` uniqueness case becomes exact, raising the
+  strict lower bound to 1,819, successful execution to 1,948, and
+  initialization to 2,050 while mismatches and execution failures remain
+  unchanged.
+  [Evidence](../Evidence/oasis-xslt10-zero-argument-generate-id-2026-09-19.md)

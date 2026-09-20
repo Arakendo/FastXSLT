@@ -888,6 +888,11 @@ selector. A literal-result attribute may also compose optional static text
 with the stable identity of the first selected key node through the exact
 `generate-id(key(...))` shape. These typed consumers do not admit key lookup or
 general function calls into other expression positions. The private
+`generate-id()` zero-argument form is normalized at compilation to the current
+context-node selection for both value production and identity equality. It
+therefore shares the same stable identity, cardinality checks, diagnostics, and
+work accounting as explicit `generate-id(.)`; it does not create a separate
+ambient-current-node mechanism. The private
 apply/for-each selection plan may union at most eight already typed key
 lookups. It evaluates every alternative through the charged reference scan,
 then restores principal-source document order and removes duplicate node

@@ -1460,7 +1460,7 @@ fn generate_id_uses_stable_distinct_source_node_identity() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><same><xsl:value-of select="generate-id(/doc/a)=generate-id(/doc/a)"/></same><different><xsl:value-of select="generate-id(/doc/a)=generate-id(/doc/b)"/></different><first><xsl:value-of select="generate-id(/doc/a)"/></first><again><xsl:value-of select="generate-id(/doc/a)"/></again><empty><xsl:value-of select="generate-id(/doc/missing)"/></empty></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><same><xsl:value-of select="generate-id(/doc/a)=generate-id(/doc/a)"/></same><different><xsl:value-of select="generate-id(/doc/a)=generate-id(/doc/b)"/></different><current-same><xsl:value-of select="generate-id()=generate-id(.)"/></current-same><current><xsl:value-of select="generate-id()"/></current><first><xsl:value-of select="generate-id(/doc/a)"/></first><again><xsl:value-of select="generate-id(/doc/a)"/></again><empty><xsl:value-of select="generate-id(/doc/missing)"/></empty></out></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -1474,7 +1474,7 @@ fn generate_id_uses_stable_distinct_source_node_identity() {
 
     assert_eq!(
         results.by_request["generate-id"].serialized,
-        "<out><same>true</same><different>false</different><first>fastxslt-principal-n2</first><again>fastxslt-principal-n2</again><empty></empty></out>"
+        "<out><same>true</same><different>false</different><current-same>true</current-same><current>fastxslt-principal-n0</current><first>fastxslt-principal-n2</first><again>fastxslt-principal-n2</again><empty></empty></out>"
     );
 }
 
