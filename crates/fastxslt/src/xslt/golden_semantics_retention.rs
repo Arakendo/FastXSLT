@@ -467,6 +467,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         Instruction::Attribute {
             attribute,
             location,
+            ..
         } => computed_attribute_owned(attribute) + location_owned(location),
         Instruction::ValueOf {
             select,
@@ -556,6 +557,7 @@ fn instruction_owned(value: &Instruction) -> usize {
             attributes,
             body,
             location,
+            ..
         } => copy_owned(attributes, body, location),
     }
 }
@@ -827,18 +829,19 @@ fn apply_templates_instruction_owned(instruction: &Instruction) -> usize {
 
 fn copy_of_owned(instruction: &Instruction) -> usize {
     match instruction {
-        Instruction::CopyOfCurrent { location }
-        | Instruction::CopyOfChildElements { location }
-        | Instruction::CopyOfAncestorOrSelfElements { location } => location_owned(location),
-        Instruction::CopyOfLocationPath { select, location } => {
-            select.known_owned_capacity_bytes() + location_owned(location)
-        }
-        Instruction::CopyOfXslt10KeyLookup { select, location } => {
-            xslt10_key_lookup_owned(select) + location_owned(location)
-        }
+        Instruction::CopyOfCurrent { location, .. }
+        | Instruction::CopyOfChildElements { location, .. }
+        | Instruction::CopyOfAncestorOrSelfElements { location, .. } => location_owned(location),
+        Instruction::CopyOfLocationPath {
+            select, location, ..
+        } => select.known_owned_capacity_bytes() + location_owned(location),
+        Instruction::CopyOfXslt10KeyLookup {
+            select, location, ..
+        } => xslt10_key_lookup_owned(select) + location_owned(location),
         Instruction::CopyOfPathUnion {
             alternatives,
             location,
+            ..
         } => {
             vec_owned(
                 alternatives,
@@ -848,9 +851,9 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
         Instruction::CopyOfStaticAtomicText { value, location } => {
             value.capacity() + location_owned(location)
         }
-        Instruction::CopyOfVariable { variable, location } => {
-            variable.capacity() + location_owned(location)
-        }
+        Instruction::CopyOfVariable {
+            variable, location, ..
+        } => variable.capacity() + location_owned(location),
         Instruction::CopyOfAtomicValue { select, location } => {
             select.known_owned_capacity_bytes() + location_owned(location)
         }

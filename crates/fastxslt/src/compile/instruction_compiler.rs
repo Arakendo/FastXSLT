@@ -372,6 +372,7 @@ fn compile_attribute(document: &Document, element: NodeId) -> Result<Instruction
         let attribute = compile_computed_attribute(document, element)?;
         return Ok(Instruction::Attribute {
             attribute,
+            recover_unattached: uses_xslt10_compatibility(document, element),
             location: document.location(element).clone(),
         });
     }
@@ -405,6 +406,7 @@ fn compile_attribute(document: &Document, element: NodeId) -> Result<Instruction
             value,
             location: document.location(element).clone(),
         },
+        recover_unattached: uses_xslt10_compatibility(document, element),
         location: document.location(element).clone(),
     })
 }
@@ -793,6 +795,7 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     ensure_only_attributes(document, element, &["select"], "xsl:copy-of")?;
     ensure_no_meaningful_children(document, element, "xsl:copy-of")?;
     let select = required_attribute(document, element, None, "select")?;
+    let recover_unattached_attributes = uses_xslt10_compatibility(document, element);
     if uses_xslt10_compatibility(document, element) && select.trim_start().starts_with("key(") {
         return value_expression_compiler::compile_xslt10_literal_key_lookup(
             document,
@@ -802,6 +805,7 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
         )
         .map(|select| Instruction::CopyOfXslt10KeyLookup {
             select: Box::new(select),
+            recover_unattached_attributes,
             location: document.location(element).clone(),
         });
     }
@@ -818,6 +822,7 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     {
         return Ok(Instruction::CopyOfVariable {
             variable: variable.to_owned(),
+            recover_unattached_attributes,
             location: document.location(element).clone(),
         });
     }
@@ -849,22 +854,27 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
             .collect::<Result<Vec<_>, CompileFailure>>()?;
         return Ok(Instruction::CopyOfPathUnion {
             alternatives,
+            recover_unattached_attributes,
             location: document.location(element).clone(),
         });
     }
     match select.trim() {
         "." | "current()" => Ok(Instruction::CopyOfCurrent {
+            recover_unattached_attributes,
             location: document.location(element).clone(),
         }),
         "*" => Ok(Instruction::CopyOfChildElements {
+            recover_unattached_attributes,
             location: document.location(element).clone(),
         }),
         "ancestor-or-self::*" => Ok(Instruction::CopyOfAncestorOrSelfElements {
+            recover_unattached_attributes,
             location: document.location(element).clone(),
         }),
         expression => parse_copy_of_path(document, element, expression).map(|select| {
             Instruction::CopyOfLocationPath {
                 select,
+                recover_unattached_attributes,
                 location: document.location(element).clone(),
             }
         }),

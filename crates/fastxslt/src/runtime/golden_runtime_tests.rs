@@ -6625,6 +6625,126 @@ fn source_element_copy_absorbs_attributes_produced_by_its_body() {
 }
 
 #[test]
+fn xslt10_unattached_attributes_are_ignored_but_attached_calls_remain_attributes() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-unattached-attribute:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-unattached-attribute:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br#"<doc late="ignored"/>"#.to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:attribute name="orphan">ignored</xsl:attribute><out><xsl:call-template name="attribute"/><child/><xsl:copy-of select="doc/@late"/></out></xsl:template><xsl:template name="attribute"><xsl:attribute name="kept">yes</xsl:attribute></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile recovery stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("xslt10-unattached-attribute", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute recovery stylesheet");
+    assert_eq!(
+        results.by_request["xslt10-unattached-attribute"].serialized,
+        "<out kept=\"yes\"><child></child></out>"
+    );
+}
+
+#[test]
+fn modern_unattached_attributes_remain_dynamic_errors() {
+    const SOURCE: &str = "urn:fastxslt:modern-unattached-attribute:source";
+    const STYLESHEET: &str = "urn:fastxslt:modern-unattached-attribute:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:attribute name="orphan">invalid</xsl:attribute></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile modern stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("modern-unattached-attribute", "result", SOURCE))
+        .expect("admit request");
+
+    let failure =
+        execute_transform_set(builder.seal()).expect_err("modern unattached attribute must fail");
+    assert_eq!(failure.code, "XTDE0410");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
+fn xslt10_source_copy_ignores_static_attributes_after_child_content() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-late-copy-attribute:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-late-copy-attribute:stylesheet";
+    const MODERN: &str = "urn:fastxslt:modern-late-copy-attribute:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="doc"><xsl:copy><child/><xsl:attribute name="late">ignored</xsl:attribute></xsl:copy></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            MODERN,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc"><xsl:copy><child/><xsl:attribute name="late">invalid</xsl:attribute></xsl:copy></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let failure = compile_resource(&snapshot, MODERN).expect_err("modern late attribute must fail");
+    assert_eq!(failure.code, "XTDE0410");
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile late-attribute recovery");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("xslt10-late-copy-attribute", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute late-attribute recovery");
+    assert_eq!(
+        results.by_request["xslt10-late-copy-attribute"].serialized,
+        "<doc><child></child></doc>"
+    );
+}
+
+#[test]
+fn source_copy_attribute_ordering_distinguishes_attribute_only_copy_of() {
+    const SOURCE: &str = "urn:fastxslt:copy-attribute-order:source";
+    const STYLESHEET: &str = "urn:fastxslt:copy-attribute-order:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br#"<doc source="copied"/>"#.to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="doc"><xsl:copy><xsl:copy-of select="@source"/><xsl:attribute name="computed">kept</xsl:attribute></xsl:copy></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile attribute ordering");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("copy-attribute-order", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute attribute ordering");
+    assert_eq!(
+        results.by_request["copy-attribute-order"].serialized,
+        "<doc computed=\"kept\" source=\"copied\"></doc>"
+    );
+}
+
+#[test]
 fn xslt10_literal_attribute_composes_text_with_first_source_path_node() {
     const SOURCE: &str = "urn:fastxslt:mixed-path-avt:source";
     const STYLESHEET: &str = "urn:fastxslt:mixed-path-avt:stylesheet";

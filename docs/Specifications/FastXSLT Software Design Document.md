@@ -939,7 +939,13 @@ computed elements plus source and temporary-tree `xsl:copy`: attributes
 produced by nested instructions are absorbed only before child content,
 duplicate expanded names are rejected, and ordinary children retain execution
 order. An attribute that escapes its element or follows child content remains
-`XTDE0410`; the shared assembly rule does not imply XSLT 1.0 optional recovery.
+`XTDE0410` in a modern static context. Under compile-selected XSLT 1.0
+compatibility, attribute, copy, and copy-of plans instead emit a private
+recoverable pending-attribute state: assembly still attaches it normally before
+children, while an unattached or late value is omitted. Source-copy ordering
+recognizes bounded attribute-only copy-of selections without treating them as
+child content. This does not add a runtime stylesheet-version branch, relax
+duplicate-attribute errors, or admit a public result-construction state.
 
 An admitted `xsl:key` declaration is immutable compiled stylesheet state: its
 expanded name, bounded match pattern, typed `use` location path, and source

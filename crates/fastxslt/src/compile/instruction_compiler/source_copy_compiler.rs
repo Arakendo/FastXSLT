@@ -10,6 +10,7 @@ use super::{
     CompileFailure, compile_local_attribute_sets, compile_sequence_excluding,
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
     is_xslt_element, meaningful_children, required_attribute, unsupported,
+    uses_xslt10_compatibility,
 };
 
 pub(super) fn compile_copy(
@@ -27,12 +28,17 @@ pub(super) fn compile_copy(
         })
         .collect::<Vec<_>>();
     let mut content_started = false;
+    let recover_late_attributes = uses_xslt10_compatibility(document, element);
     for child in meaningful_children(document, element) {
         if !is_xslt_element(document, child, "attribute") {
-            content_started = true;
+            content_started |= !is_attribute_only_copy_of(document, child);
             continue;
         }
         if content_started {
+            if recover_late_attributes {
+                attribute_nodes.push(child);
+                continue;
+            }
             return Err(invalid(
                 "XTDE0410",
                 "xsl:attribute must precede child content in xsl:copy",
@@ -52,8 +58,19 @@ pub(super) fn compile_copy(
     Ok(Instruction::Copy {
         attributes,
         body: compile_sequence_excluding(document, element, &attribute_nodes)?,
+        recover_unattached_attributes: recover_late_attributes,
         location: document.location(element).clone(),
     })
+}
+
+fn is_attribute_only_copy_of(document: &Document, element: NodeId) -> bool {
+    is_xslt_element(document, element, "copy-of")
+        && super::optional_attribute(document, element, None, "select").is_some_and(|select| {
+            select
+                .split('|')
+                .map(str::trim)
+                .all(|part| part == "@*" || part.strip_prefix('@').is_some_and(is_ascii_ncname))
+        })
 }
 
 fn compile_static_attribute(

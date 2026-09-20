@@ -743,15 +743,13 @@ fn execute_instruction(
         Instruction::ProcessingInstructionNode { .. }
         | Instruction::Xslt10ProcessingInstructionNode { .. }
         | Instruction::CommentNode { .. }
-        | Instruction::Xslt10CommentNode { .. } => result.push(execute_text_node_constructor(
+        | Instruction::Xslt10CommentNode { .. }
+        | Instruction::Attribute { .. } => result.push(execute_node_constructor(
             inputs,
             instruction,
             execution,
             scope,
             control,
-        )?),
-        Instruction::Attribute { attribute, .. } => result.push(execute_attribute_instruction(
-            inputs, attribute, execution, scope, control,
         )?),
         Instruction::ValueOf {
             select, separator, ..
@@ -828,7 +826,7 @@ fn execute_instruction(
     Ok(())
 }
 
-fn execute_text_node_constructor(
+fn execute_node_constructor(
     inputs: &SequenceInputs<'_>,
     instruction: &Instruction,
     execution: SequenceContext<'_>,
@@ -851,7 +849,19 @@ fn execute_text_node_constructor(
             let value = recover_xslt10_comment_content(&value);
             construct_comment(&value, inputs.request_id, control)
         }
-        _ => unreachable!("only text-node constructors are delegated here"),
+        Instruction::Attribute {
+            attribute,
+            recover_unattached,
+            ..
+        } => execute_attribute_instruction(
+            inputs,
+            attribute,
+            *recover_unattached,
+            execution,
+            scope,
+            control,
+        ),
+        _ => unreachable!("only node constructors are delegated here"),
     }
 }
 
@@ -902,6 +912,7 @@ fn recover_xslt10_comment_content(value: &str) -> String {
 fn execute_attribute_instruction(
     inputs: &SequenceInputs<'_>,
     attribute: &ComputedAttribute,
+    recover_unattached: bool,
     execution: SequenceContext<'_>,
     scope: &RuntimeVariables,
     control: &mut InvocationControl,
@@ -928,9 +939,12 @@ fn execute_attribute_instruction(
         inputs.request_id,
         control,
     )?;
-    Ok(ResultNode::PendingAttribute(materialized.pop().expect(
-        "one compiled attribute materializes one result attribute",
-    )))
+    Ok(result_tree::pending_attribute(
+        materialized
+            .pop()
+            .expect("one compiled attribute materializes one result attribute"),
+        recover_unattached,
+    ))
 }
 
 fn execute_result_instruction<'a>(
@@ -965,26 +979,14 @@ fn execute_result_instruction<'a>(
         Instruction::CallTemplate { .. } => {
             execute_call(inputs, instruction, execution, scope, control)
         }
-        Instruction::CopyOfCurrent { .. } => {
-            execute_copy_of_current(inputs, execution.node, control)
-        }
-        Instruction::CopyOfChildElements { .. } => {
-            execute_copy_of_child_elements(inputs, execution.node, control)
-        }
-        Instruction::CopyOfAncestorOrSelfElements { location } => {
-            execute_copy_of_ancestor_or_self(inputs, execution.node, location, control)
-        }
-        Instruction::CopyOfLocationPath { select, .. } => {
-            execute_copy_of_location_path(inputs, execution.node, select, control)
-        }
-        Instruction::CopyOfXslt10KeyLookup { select, .. } => {
-            execute_copy_of_xslt10_key_lookup(inputs, execution.node, select, scope, control)
-        }
-        Instruction::CopyOfPathUnion { alternatives, .. } => {
-            execute_copy_of_path_union(inputs, execution.node, alternatives, control)
-        }
-        Instruction::CopyOfVariable { variable, location } => {
-            execute_copy_of_variable(inputs, variable, location, scope, control)
+        Instruction::CopyOfCurrent { .. }
+        | Instruction::CopyOfChildElements { .. }
+        | Instruction::CopyOfAncestorOrSelfElements { .. }
+        | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfXslt10KeyLookup { .. }
+        | Instruction::CopyOfPathUnion { .. }
+        | Instruction::CopyOfVariable { .. } => {
+            execute_copy_of_instruction(inputs, instruction, execution, scope, control)
         }
         Instruction::CopyOfAtomicValue { select, .. } => {
             let value = value_evaluator::evaluate_binary_numeric_value(
@@ -1003,18 +1005,111 @@ fn execute_result_instruction<'a>(
     }
 }
 
+fn execute_copy_of_instruction<'a>(
+    inputs: &SequenceInputs<'a>,
+    instruction: &Instruction,
+    execution: SequenceContext<'a>,
+    scope: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    match instruction {
+        Instruction::CopyOfCurrent {
+            recover_unattached_attributes,
+            ..
+        } => execute_copy_of_current(
+            inputs,
+            execution.node,
+            *recover_unattached_attributes,
+            control,
+        ),
+        Instruction::CopyOfChildElements {
+            recover_unattached_attributes,
+            ..
+        } => execute_copy_of_child_elements(
+            inputs,
+            execution.node,
+            *recover_unattached_attributes,
+            control,
+        ),
+        Instruction::CopyOfAncestorOrSelfElements {
+            recover_unattached_attributes,
+            location,
+        } => execute_copy_of_ancestor_or_self(
+            inputs,
+            execution.node,
+            location,
+            *recover_unattached_attributes,
+            control,
+        ),
+        Instruction::CopyOfLocationPath {
+            select,
+            recover_unattached_attributes,
+            ..
+        } => execute_copy_of_location_path(
+            inputs,
+            execution.node,
+            select,
+            *recover_unattached_attributes,
+            control,
+        ),
+        Instruction::CopyOfXslt10KeyLookup {
+            select,
+            recover_unattached_attributes,
+            ..
+        } => execute_copy_of_xslt10_key_lookup(
+            inputs,
+            execution.node,
+            select,
+            scope,
+            *recover_unattached_attributes,
+            control,
+        ),
+        Instruction::CopyOfPathUnion {
+            alternatives,
+            recover_unattached_attributes,
+            ..
+        } => execute_copy_of_path_union(
+            inputs,
+            execution.node,
+            alternatives,
+            *recover_unattached_attributes,
+            control,
+        ),
+        Instruction::CopyOfVariable {
+            variable,
+            recover_unattached_attributes,
+            location,
+        } => execute_copy_of_variable(
+            inputs,
+            variable,
+            location,
+            scope,
+            *recover_unattached_attributes,
+            control,
+        ),
+        _ => unreachable!("copy-of dispatch receives only copy-of instructions"),
+    }
+}
+
 fn execute_copy_of_xslt10_key_lookup(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     select: &crate::xslt::golden_semantics_experiment::Xslt10KeyLookup,
     variables: &RuntimeVariables,
+    recover_unattached_attributes: bool,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let source = inputs.source.expect("key lookup requires a source");
     let selected = key_lookup::select(inputs, select, context, variables, control)?;
     let mut copied = Vec::new();
     for node in selected {
-        copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
+        copied.extend(copy_source_node(
+            source,
+            inputs.request_id,
+            node,
+            recover_unattached_attributes,
+            control,
+        )?);
     }
     Ok(copied)
 }
@@ -1023,6 +1118,7 @@ fn execute_copy_of_path_union(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     alternatives: &[crate::xpath::path_experiment::LocationPath],
+    recover_unattached_attributes: bool,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
@@ -1030,7 +1126,13 @@ fn execute_copy_of_path_union(
 
     let mut copied = Vec::new();
     for node in selected {
-        copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
+        copied.extend(copy_source_node(
+            source,
+            inputs.request_id,
+            node,
+            recover_unattached_attributes,
+            control,
+        )?);
     }
     Ok(copied)
 }
@@ -1054,6 +1156,7 @@ fn execute_copy_of_variable(
     variable: &str,
     location: &crate::xdm::owned_tree_experiment::SourceLocation,
     variables: &RuntimeVariables,
+    recover_unattached_attributes: bool,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     control
@@ -1084,7 +1187,13 @@ fn execute_copy_of_variable(
             )
         })?;
         for node in nodes.iter().copied() {
-            copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
+            copied.extend(copy_source_node(
+                source,
+                inputs.request_id,
+                node,
+                recover_unattached_attributes,
+                control,
+            )?);
         }
         return Ok(copied);
     }
@@ -1109,6 +1218,7 @@ fn execute_copy_of_location_path(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     select: &crate::xpath::path_experiment::LocationPath,
+    recover_unattached_attributes: bool,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
@@ -1116,7 +1226,13 @@ fn execute_copy_of_location_path(
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     let mut copied = Vec::new();
     for node in selected {
-        copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
+        copied.extend(copy_source_node(
+            source,
+            inputs.request_id,
+            node,
+            recover_unattached_attributes,
+            control,
+        )?);
     }
     Ok(copied)
 }
@@ -1124,16 +1240,24 @@ fn execute_copy_of_location_path(
 fn execute_copy_of_current(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
+    recover_unattached_attributes: bool,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (source, node) = required_source_context(inputs, context)?;
-    copy_source_node(source, inputs.request_id, node, control)
+    copy_source_node(
+        source,
+        inputs.request_id,
+        node,
+        recover_unattached_attributes,
+        control,
+    )
 }
 
 fn execute_copy_of_ancestor_or_self(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    recover_unattached_attributes: bool,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let Some(source) = inputs.source else {
@@ -1161,7 +1285,13 @@ fn execute_copy_of_ancestor_or_self(
             .charge(WorkDomain::XPathNodeVisit, 1)
             .map_err(|failure| control_failure(failure, inputs.request_id))?;
         if source.kind(node) == NodeKind::Element {
-            result.extend(copy_source_node(source, inputs.request_id, node, control)?);
+            result.extend(copy_source_node(
+                source,
+                inputs.request_id,
+                node,
+                recover_unattached_attributes,
+                control,
+            )?);
         }
         current = source.parent(node);
     }
@@ -1171,6 +1301,7 @@ fn execute_copy_of_ancestor_or_self(
 fn execute_copy_of_child_elements(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
+    recover_unattached_attributes: bool,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (source, node) = required_source_context(inputs, context)?;
@@ -1180,7 +1311,13 @@ fn execute_copy_of_child_elements(
             .charge(WorkDomain::XPathNodeVisit, 1)
             .map_err(|failure| control_failure(failure, inputs.request_id))?;
         if source.kind(child) == NodeKind::Element {
-            copied.extend(copy_source_node(source, inputs.request_id, child, control)?);
+            copied.extend(copy_source_node(
+                source,
+                inputs.request_id,
+                child,
+                recover_unattached_attributes,
+                control,
+            )?);
         }
     }
     Ok(copied)
@@ -2099,23 +2236,41 @@ fn execute_copy(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let Instruction::Copy {
-        attributes, body, ..
+        attributes,
+        body,
+        recover_unattached_attributes,
+        ..
     } = instruction
     else {
         unreachable!("execute_copy_instruction receives xsl:copy")
     };
     if execution.temporary_focus.is_some() {
         return temporary_tree_executor::execute_temporary_copy(
-            inputs, attributes, body, execution, variables, control,
+            inputs,
+            attributes,
+            body,
+            *recover_unattached_attributes,
+            execution,
+            variables,
+            control,
         );
     }
-    execute_source_element_copy(inputs, attributes, body, execution, variables, control)
+    execute_source_element_copy(
+        inputs,
+        attributes,
+        body,
+        *recover_unattached_attributes,
+        execution,
+        variables,
+        control,
+    )
 }
 
 fn execute_source_element_copy(
     inputs: &SequenceInputs<'_>,
     attributes: &[crate::xslt::golden_semantics_experiment::LiteralAttribute],
     body: &[Instruction],
+    recover_unattached_attributes: bool,
     execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
@@ -2142,7 +2297,9 @@ fn execute_source_element_copy(
                 control,
             )?
             .into_iter()
-            .map(ResultNode::PendingAttribute)
+            .map(|attribute| {
+                result_tree::pending_attribute(attribute, recover_unattached_attributes)
+            })
             .collect::<Vec<_>>();
             copied.extend(execute_sequence(
                 inputs, body, execution, variables, control,
@@ -2180,13 +2337,16 @@ fn execute_source_element_copy(
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            Ok(vec![ResultNode::PendingAttribute(ResultAttribute {
-                name: source
-                    .name(node)
-                    .expect("source attribute has a name")
-                    .clone(),
-                value: source.string_value(node),
-            })])
+            Ok(vec![result_tree::pending_attribute(
+                ResultAttribute {
+                    name: source
+                        .name(node)
+                        .expect("source attribute has a name")
+                        .clone(),
+                    value: source.string_value(node),
+                },
+                recover_unattached_attributes,
+            )])
         }
     }
 }
@@ -2990,7 +3150,13 @@ fn execute_sequence_nodes(
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     let mut result = Vec::new();
     for node in selected {
-        result.extend(copy_source_node(source, inputs.request_id, node, control)?);
+        result.extend(copy_source_node(
+            source,
+            inputs.request_id,
+            node,
+            false,
+            control,
+        )?);
     }
     Ok(result)
 }
@@ -3013,7 +3179,13 @@ fn execute_sequence_items(
                         .charge(WorkDomain::XPathNodeVisit, 1)
                         .map_err(|failure| control_failure(failure, inputs.request_id))?;
                     if source.kind(child) == NodeKind::Element {
-                        result.extend(copy_source_node(source, inputs.request_id, child, control)?);
+                        result.extend(copy_source_node(
+                            source,
+                            inputs.request_id,
+                            child,
+                            false,
+                            control,
+                        )?);
                     }
                 }
                 previous_was_atomic = false;
@@ -4312,13 +4484,20 @@ fn copy_source_node(
     source: &Document,
     request_id: &str,
     node: NodeId,
+    recover_unattached_attributes: bool,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match source.kind(node) {
         NodeKind::Document => {
             let mut copied = Vec::new();
             for child in source.children(node).iter().copied() {
-                copied.extend(copy_source_node(source, request_id, child, control)?);
+                copied.extend(copy_source_node(
+                    source,
+                    request_id,
+                    child,
+                    recover_unattached_attributes,
+                    control,
+                )?);
             }
             Ok(copied)
         }
@@ -4328,7 +4507,13 @@ fn copy_source_node(
                 .map_err(|failure| control_failure(failure, request_id))?;
             let mut children = Vec::new();
             for child in source.children(node).iter().copied() {
-                children.extend(copy_source_node(source, request_id, child, control)?);
+                children.extend(copy_source_node(
+                    source,
+                    request_id,
+                    child,
+                    recover_unattached_attributes,
+                    control,
+                )?);
             }
             let attributes = source
                 .attributes(node)
@@ -4370,13 +4555,16 @@ fn copy_source_node(
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, request_id))?;
-            Ok(vec![ResultNode::PendingAttribute(ResultAttribute {
-                name: source
-                    .name(node)
-                    .expect("source attribute has a name")
-                    .clone(),
-                value: source.string_value(node),
-            })])
+            Ok(vec![result_tree::pending_attribute(
+                ResultAttribute {
+                    name: source
+                        .name(node)
+                        .expect("source attribute has a name")
+                        .clone(),
+                    value: source.string_value(node),
+                },
+                recover_unattached_attributes,
+            )])
         }
         NodeKind::Comment => Ok(vec![construct_comment(
             source.value(node).unwrap_or_default(),

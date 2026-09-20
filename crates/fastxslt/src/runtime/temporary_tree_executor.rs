@@ -655,6 +655,7 @@ pub(super) fn execute_temporary_copy(
     inputs: &SequenceInputs<'_>,
     attributes: &[LiteralAttribute],
     body: &[Instruction],
+    recover_unattached_attributes: bool,
     execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
@@ -716,6 +717,18 @@ pub(super) fn execute_temporary_copy(
                 attributes: result_attributes,
                 children,
             }])
+        }
+        TemporaryNodeKind::Attribute { name, value } if recover_unattached_attributes => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![super::result_tree::pending_attribute(
+                super::result_tree::ResultAttribute {
+                    name: name.clone(),
+                    value: value.clone(),
+                },
+                true,
+            )])
         }
         TemporaryNodeKind::Attribute { .. } => Err(failure(
             "FXRT1012",

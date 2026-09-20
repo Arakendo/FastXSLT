@@ -587,6 +587,7 @@ pub(crate) enum Instruction {
     },
     Attribute {
         attribute: ComputedAttribute,
+        recover_unattached: bool,
         location: SourceLocation,
     },
     ValueOf {
@@ -725,24 +726,30 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     CopyOfCurrent {
+        recover_unattached_attributes: bool,
         location: SourceLocation,
     },
     CopyOfChildElements {
+        recover_unattached_attributes: bool,
         location: SourceLocation,
     },
     CopyOfAncestorOrSelfElements {
+        recover_unattached_attributes: bool,
         location: SourceLocation,
     },
     CopyOfLocationPath {
         select: LocationPath,
+        recover_unattached_attributes: bool,
         location: SourceLocation,
     },
     CopyOfXslt10KeyLookup {
         select: Box<Xslt10KeyLookup>,
+        recover_unattached_attributes: bool,
         location: SourceLocation,
     },
     CopyOfPathUnion {
         alternatives: Vec<LocationPath>,
+        recover_unattached_attributes: bool,
         location: SourceLocation,
     },
     CopyOfStaticAtomicText {
@@ -751,6 +758,7 @@ pub(crate) enum Instruction {
     },
     CopyOfVariable {
         variable: String,
+        recover_unattached_attributes: bool,
         location: SourceLocation,
     },
     CopyOfAtomicValue {
@@ -775,6 +783,7 @@ pub(crate) enum Instruction {
     Copy {
         attributes: Vec<LiteralAttribute>,
         body: Vec<Instruction>,
+        recover_unattached_attributes: bool,
         location: SourceLocation,
     },
 }

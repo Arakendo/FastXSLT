@@ -2447,3 +2447,12 @@ maintained redistributable legacy suite becomes available.
   unchanged OASIS cases exact, raising successful execution to 1,998 and the
   strict lower bound to 1,867 while reducing execution failures to 91.
   [Evidence](../Evidence/oasis-xslt10-shallow-copy-body-attributes-2026-09-20.md)
+- 2026-09-20 -- XSLT 1.0 attribute, copy, and copy-of plans now compile-select
+  a private recoverable pending-attribute state. Attributes still attach
+  normally before child content; only unattached or late results are omitted,
+  while modern contexts retain `XTDE0410`. Five unchanged OASIS cases become
+  exact, raising successful execution to 2,003 and the strict lower bound to
+  1,872 (59.00%) while reducing execution failures to 86. Correct recognition
+  of attribute-only source copy-of ordering advances Lotus `copy40` to the
+  narrower `FXXP1012` frontier without counting it as a pass.
+  [Evidence](../Evidence/oasis-xslt10-result-attribute-recovery-2026-09-20.md)

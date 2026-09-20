@@ -1123,6 +1123,9 @@ pub(super) fn materialize_result_nodes(
         nodes: Vec::new(),
     };
     for node in nodes {
+        if matches!(node, ResultNode::Xslt10RecoverableAttribute(_)) {
+            continue;
+        }
         let root = materialize_result_node(node, None, &mut tree, request_id, control)?;
         tree.roots.push(root);
     }
@@ -1164,6 +1167,9 @@ fn materialize_result_node(
                 "an attribute cannot be a top-level temporary-tree node",
             ));
         }
+        ResultNode::Xslt10RecoverableAttribute(_) => {
+            unreachable!("recoverable top-level attributes are filtered before materialization")
+        }
     };
     tree.nodes.push(TemporaryNode {
         kind,
@@ -1201,6 +1207,9 @@ fn materialize_result_node(
         };
         *retained = attribute_nodes;
         for child in children {
+            if matches!(child, ResultNode::Xslt10RecoverableAttribute(_)) {
+                continue;
+            }
             let child = materialize_result_node(child, Some(node), tree, request_id, control)?;
             tree.nodes[node].children.push(child);
         }

@@ -29,6 +29,7 @@ pub(super) enum ResultNode {
         children: Vec<ResultNode>,
     },
     PendingAttribute(ResultAttribute),
+    Xslt10RecoverableAttribute(ResultAttribute),
     Text(String),
     ProcessingInstruction {
         target: String,
@@ -43,6 +44,14 @@ pub(super) struct ResultAttribute {
     pub(super) value: String,
 }
 
+pub(super) fn pending_attribute(attribute: ResultAttribute, xslt10_recovery: bool) -> ResultNode {
+    if xslt10_recovery {
+        ResultNode::Xslt10RecoverableAttribute(attribute)
+    } else {
+        ResultNode::PendingAttribute(attribute)
+    }
+}
+
 pub(super) fn assemble_element_content(
     attributes: &mut Vec<ResultAttribute>,
     items: Vec<ResultNode>,
@@ -51,7 +60,10 @@ pub(super) fn assemble_element_content(
     let mut children = Vec::new();
     for item in items {
         match item {
-            ResultNode::PendingAttribute(attribute) if children.is_empty() => {
+            ResultNode::PendingAttribute(attribute)
+            | ResultNode::Xslt10RecoverableAttribute(attribute)
+                if children.is_empty() =>
+            {
                 if attributes
                     .iter()
                     .any(|existing| existing.name == attribute.name)
@@ -73,6 +85,7 @@ pub(super) fn assemble_element_content(
                     "result attributes must be constructed before result child nodes",
                 ));
             }
+            ResultNode::Xslt10RecoverableAttribute(_) => {}
             child => children.push(child),
         }
     }

@@ -223,6 +223,7 @@ fn is_significant_result_node(node: &ResultNode) -> bool {
         ResultNode::Text(value) => !value.chars().all(char::is_whitespace),
         ResultNode::Element { .. } => true,
         ResultNode::PendingAttribute(_)
+        | ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::ProcessingInstruction { .. }
         | ResultNode::Comment(_) => false,
     }
@@ -850,7 +851,7 @@ fn is_bounded_html5_document(nodes: &[ResultNode]) -> bool {
     nodes.iter().all(|node| match node {
         ResultNode::Text(value) => value.chars().all(char::is_whitespace),
         ResultNode::Comment(_) | ResultNode::ProcessingInstruction { .. } => true,
-        ResultNode::PendingAttribute(_) => false,
+        ResultNode::PendingAttribute(_) | ResultNode::Xslt10RecoverableAttribute(_) => false,
         ResultNode::Element { .. } => std::ptr::eq(node, *root),
     }) && is_bounded_html5_node(root, true)
 }
@@ -858,7 +859,9 @@ fn is_bounded_html5_document(nodes: &[ResultNode]) -> bool {
 fn is_bounded_html5_node(node: &ResultNode, root: bool) -> bool {
     match node {
         ResultNode::Text(_) | ResultNode::Comment(_) => true,
-        ResultNode::PendingAttribute(_) | ResultNode::ProcessingInstruction { .. } => false,
+        ResultNode::PendingAttribute(_)
+        | ResultNode::Xslt10RecoverableAttribute(_)
+        | ResultNode::ProcessingInstruction { .. } => false,
         ResultNode::Element {
             name,
             namespaces,
@@ -942,7 +945,10 @@ fn validate_html_processing_instructions(
         match node {
             ResultNode::ProcessingInstruction { value, .. } => value.contains('>'),
             ResultNode::Element { children, .. } => children.iter().any(contains_forbidden_data),
-            ResultNode::PendingAttribute(_) | ResultNode::Text(_) | ResultNode::Comment(_) => false,
+            ResultNode::PendingAttribute(_)
+            | ResultNode::Xslt10RecoverableAttribute(_)
+            | ResultNode::Text(_)
+            | ResultNode::Comment(_) => false,
         }
     }
 
@@ -961,6 +967,7 @@ fn is_bounded_html_node(node: &ResultNode, root: bool) -> bool {
     match node {
         ResultNode::Text(_) => true,
         ResultNode::PendingAttribute(_)
+        | ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::ProcessingInstruction { .. }
         | ResultNode::Comment(_) => false,
         ResultNode::Element {
@@ -1359,9 +1366,10 @@ fn contains_pending_attribute(nodes: &[ResultNode]) -> bool {
     nodes.iter().any(|node| match node {
         ResultNode::PendingAttribute(_) => true,
         ResultNode::Element { children, .. } => contains_pending_attribute(children),
-        ResultNode::Text(_) | ResultNode::ProcessingInstruction { .. } | ResultNode::Comment(_) => {
-            false
-        }
+        ResultNode::Xslt10RecoverableAttribute(_)
+        | ResultNode::Text(_)
+        | ResultNode::ProcessingInstruction { .. }
+        | ResultNode::Comment(_) => false,
     })
 }
 
@@ -1376,6 +1384,7 @@ fn serialize_text_node(
             write_character_mapped(value, character_map, normalization_form, output)
         }
         ResultNode::PendingAttribute(_)
+        | ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::ProcessingInstruction { .. }
         | ResultNode::Comment(_) => Ok(()),
         ResultNode::Element { children, .. } => {
@@ -1438,6 +1447,7 @@ fn serialize_node<'a>(
                 "a result attribute escaped its containing element construction",
             ));
         }
+        ResultNode::Xslt10RecoverableAttribute(_) => {}
     }
     Ok(())
 }
