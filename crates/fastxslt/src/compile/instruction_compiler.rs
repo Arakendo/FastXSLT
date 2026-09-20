@@ -1880,16 +1880,16 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
 fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["name", "select", "as"], "xsl:variable")?;
     let location = document.location(element).clone();
-    let name = required_attribute(document, element, None, "name")?;
-    if !is_ascii_ncname(name) {
-        return Err(invalid(
+    let lexical_name = required_attribute(document, element, None, "name")?;
+    let name = normalize_variable_qname(document, element, lexical_name).map_err(|_| {
+        invalid(
             "FXST0016",
-            format!("invalid local variable name: {name}"),
+            format!("invalid local variable name: {lexical_name}"),
             &location,
-        ));
-    }
+        )
+    })?;
     let Some(expression) = optional_attribute(document, element, None, "select") else {
-        return compile_content_variable(document, element, name, location);
+        return compile_content_variable(document, element, &name, location);
     };
     ensure_no_meaningful_children(document, element, "xsl:variable")?;
     if optional_attribute(document, element, None, "as").is_some() {
@@ -1901,14 +1901,14 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
     }
     if let Some(offset) = parse_context_position_offset(expression) {
         return Ok(Instruction::ContextPositionVariable {
-            name: name.to_owned(),
+            name: name.clone(),
             offset,
             location,
         });
     }
     if matches!(expression.trim(), "name()" | "name(.)") {
         return Ok(Instruction::ContextNodeNameVariable {
-            name: name.to_owned(),
+            name: name.clone(),
             location,
         });
     }
@@ -1919,13 +1919,13 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
     {
         if let Ok(select) = parse_location_path(path.trim(), location.clone()) {
             return Ok(Instruction::ContextCountPathVariable {
-                name: name.to_owned(),
+                name: name.clone(),
                 select,
                 location,
             });
         }
     }
-    if let Some(variable) = compile_source_node_union_variable(name, expression, &location)? {
+    if let Some(variable) = compile_source_node_union_variable(&name, expression, &location)? {
         return Ok(variable);
     }
     if let Some(source) = expression
@@ -1934,25 +1934,25 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         .filter(|source| is_ascii_ncname(source))
     {
         return Ok(Instruction::AtomicVariableAlias {
-            name: name.to_owned(),
+            name: name.clone(),
             source: source.to_owned(),
             location,
         });
     }
-    if let Some(variable) = compile_static_atomic_variable(name, expression, &location) {
+    if let Some(variable) = compile_static_atomic_variable(&name, expression, &location) {
         return Ok(variable);
     }
     if let Some(variable) =
-        compile_local_binary_numeric_variable(document, element, name, expression, &location)
+        compile_local_binary_numeric_variable(document, element, &name, expression, &location)
     {
         return Ok(variable);
     }
     if let Some(variable) =
-        compile_local_variable_path_variable(document, element, name, expression, &location)?
+        compile_local_variable_path_variable(document, element, &name, expression, &location)?
     {
         return Ok(variable);
     }
-    compile_local_node_or_cast_variable(document, element, name, expression, location)
+    compile_local_node_or_cast_variable(document, element, &name, expression, location)
 }
 
 fn parse_context_position_offset(expression: &str) -> Option<usize> {

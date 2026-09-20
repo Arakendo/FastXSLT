@@ -4362,7 +4362,7 @@ fn xslt10_global_variable_qnames_compare_by_expanded_name() {
         <xsl:output method="xml" omit-xml-declaration="yes"/>
         <xsl:variable name="decl:value" select="'expanded'"/>
         <xsl:variable name="decl:nodes" select="bookstore"/>
-        <xsl:template match="/"><out><xsl:value-of select="$use:value"/><xsl:for-each select="$use:nodes"><n/></xsl:for-each><xsl:for-each select="$use:nodes/book"><b/></xsl:for-each></out></xsl:template>
+        <xsl:template match="/"><xsl:variable name="decl:local">local</xsl:variable><out><xsl:value-of select="$use:value"/><xsl:value-of select="$use:local"/><xsl:for-each select="$use:nodes"><n/></xsl:for-each><xsl:for-each select="$use:nodes/book"><b/></xsl:for-each></out></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
@@ -4382,7 +4382,7 @@ fn xslt10_global_variable_qnames_compare_by_expanded_name() {
     let results = execute_transform_set(builder.seal()).expect("execute QName variable");
     assert_eq!(
         results.by_request["qname-variable"].serialized,
-        "<out>expanded<n></n><b></b><b></b></out>"
+        "<out>expandedlocal<n></n><b></b><b></b></out>"
     );
 }
 

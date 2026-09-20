@@ -2389,3 +2389,11 @@ maintained redistributable legacy suite becomes available.
   and execution failures remain unchanged. Qualified local declarations and
   arbitrary qualified-variable expressions remain explicit.
   [Evidence](../Evidence/oasis-xslt10-qualified-variable-sequence-selection-2026-09-20.md)
+- 2026-09-20 -- Local XSLT 1.0 variable declarations now normalize QName names
+  to the same compile-time expanded-name key used by direct references. The key
+  enters the existing invocation-local copy-on-write frame; runtime namespace
+  lookup and ownership are unchanged. The unchanged Microsoft `Variables__78162`
+  case becomes exact, raising the strict lower bound to 1,842, successful
+  execution to 1,971, and initialization to 2,073 while mismatches and
+  execution failures remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-local-variable-qnames-2026-09-20.md)
