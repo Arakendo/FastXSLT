@@ -128,6 +128,14 @@ fn compile_xslt10_special(
     {
         return Some(expression);
     }
+    if let Some(variable) =
+        parse_xslt10_context_node_set_variable_equality(expression, xslt10_compatibility)
+    {
+        return Some(BooleanExpression::Xslt10ContextNodeSetEqualsVariable {
+            variable: variable.to_owned(),
+            location: location.clone(),
+        });
+    }
     if let Some(divisor) =
         parse_xslt10_context_position_modulo_variable(expression, xslt10_compatibility)
     {
@@ -148,6 +156,15 @@ fn compile_xslt10_special(
     }
     compile_xslt10_variable_numeric_comparison(expression, xslt10_compatibility)
         .or_else(|| compile_xslt10_context_translate_starts_with(expression, xslt10_compatibility))
+}
+
+fn parse_xslt10_context_node_set_variable_equality(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<&str> {
+    let (left, right) = xslt10_compatibility.then(|| expression.split_once('='))??;
+    let variable = right.trim().strip_prefix('$')?;
+    (left.trim() == "." && is_ascii_ncname(variable)).then_some(variable)
 }
 
 fn compile_xslt10_child_attribute_variable_path(

@@ -7579,6 +7579,49 @@ fn xslt10_child_attribute_predicate_converts_a_constructed_parameter_to_string()
 }
 
 #[test]
+fn xslt10_context_node_set_compares_string_values_with_a_source_variable() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-context-variable-node-set:source";
+    const LEGACY: &str = "urn:fastxslt:xslt10-context-variable-node-set:legacy";
+    const MODERN: &str = "urn:fastxslt:xslt10-context-variable-node-set:modern";
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:call-template name="compare"><xsl:with-param name="Node" select="doc/a"/><xsl:with-param name="Set" select="doc/b"/></xsl:call-template><xsl:call-template name="compare"><xsl:with-param name="Node" select="doc/a"/><xsl:with-param name="Set" select="doc/c"/></xsl:call-template></xsl:template><xsl:template name="compare"><xsl:param name="Node"/><xsl:param name="Set"/><xsl:for-each select="$Set"><xsl:if test=". = $Node"><xsl:value-of select="name()"/>|</xsl:if></xsl:for-each></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 12_288, 24_576));
+    resources
+        .admit(
+            SOURCE,
+            br"<doc><a>same</a><b>same</b><c>different</c></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, LEGACY)
+        .expect("compile XSLT 1.0 context/source-node-variable comparison");
+    compile_resource(&snapshot, MODERN)
+        .expect_err("modern context/source-node-variable comparison remains unsupported");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("context-variable-node-set", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute context/source-node-variable comparison");
+    assert_eq!(
+        results.by_request["context-variable-node-set"].serialized,
+        "b|"
+    );
+}
+
+#[test]
 fn xpath_string_function_composes_static_atoms_and_typed_paths() {
     const SOURCE: &str = "urn:fastxslt:string-function:source";
     const STYLESHEET: &str = "urn:fastxslt:string-function:stylesheet";

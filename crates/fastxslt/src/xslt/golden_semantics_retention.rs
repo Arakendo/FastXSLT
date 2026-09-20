@@ -1244,6 +1244,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             attribute,
             variable,
         } => name_owned(child) + name_owned(attribute) + variable.capacity(),
+        BooleanExpression::Xslt10ContextNodeSetEqualsVariable { variable, location } => {
+            variable.capacity() + location_owned(location)
+        }
         BooleanExpression::Xslt10ContextTranslateStartsWith(expression) => {
             expression.search.capacity()
                 + expression.replacement.capacity()

@@ -507,6 +507,12 @@ the variable once through those same string rules and performs a charged scan
 of matching unqualified child elements and attributes. It does not admit
 qualified names, deeper paths, alternate comparison operators, general
 predicate composition, or modern compatibility behavior.
+The exact XSLT 1.0 comparison `. = $variable` requires the variable to hold a
+source-node sequence and applies XPath 1.0 node-set equality: the result is
+true when the controlled string value of the current source node equals that
+of any variable node. The current value is computed once; candidate values are
+evaluated and charged until a match is found. Atomic, temporary-tree, modern,
+and alternate comparison forms remain outside this bounded plan.
 An untyped local `xsl:variable` may select the exact expression `position()`.
 The binding materializes the current sequence-focus position as an integer in
 invocation-local state and charges one XPath operation. It does not establish

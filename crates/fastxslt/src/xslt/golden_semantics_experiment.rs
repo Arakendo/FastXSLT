@@ -1240,6 +1240,10 @@ pub(crate) enum BooleanExpression {
         attribute: ExpandedName,
         variable: String,
     },
+    Xslt10ContextNodeSetEqualsVariable {
+        variable: String,
+        location: SourceLocation,
+    },
     Xslt10ContextTranslateStartsWith(Xslt10ContextTranslateStartsWith),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     NodeExists(LocationPath),

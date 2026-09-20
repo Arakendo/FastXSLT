@@ -3079,6 +3079,12 @@ fn evaluate_boolean(
             inputs, context, child, attribute, variable, variables, control,
         );
     }
+    if let BooleanExpression::Xslt10ContextNodeSetEqualsVariable { variable, location } = expression
+    {
+        return evaluate_xslt10_context_node_set_equals_variable(
+            inputs, context, variable, location, variables, control,
+        );
+    }
     if let BooleanExpression::ContextStringEquals(expected) = expression {
         return evaluate_context_string_equals(inputs, context, expected, control);
     }
@@ -3157,6 +3163,7 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::Xslt10ContextPositionModuloVariable { .. }
         | BooleanExpression::Xslt10VariableStringLength(_)
         | BooleanExpression::Xslt10ChildAttributeVariableEquals { .. }
+        | BooleanExpression::Xslt10ContextNodeSetEqualsVariable { .. }
         | BooleanExpression::ContextStringEquals(_)
         | BooleanExpression::Xslt10ContextNumberIsNaN => {
             unreachable!("specialized expressions return before ordinary boolean dispatch")
@@ -3194,6 +3201,40 @@ fn evaluate_ordinary_boolean(
                 .map(|value| value != 0)
         }
     }
+}
+
+fn evaluate_xslt10_context_node_set_equals_variable(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    variable: &str,
+    location: &SourceLocation,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let nodes = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure_at(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                location.clone(),
+                format!("node-set comparison requires a source-node variable: ${variable}"),
+            )
+        })?;
+    let context_value = source
+        .string_value_controlled(context, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    for node in nodes {
+        let value = source
+            .string_value_controlled(*node, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if value == context_value {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn evaluate_xslt10_child_attribute_variable_equals(

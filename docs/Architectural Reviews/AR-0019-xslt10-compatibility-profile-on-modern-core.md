@@ -2293,3 +2293,11 @@ maintained redistributable legacy suite becomes available.
   initialization to 2,050 while mismatches and execution failures remain
   unchanged.
   [Evidence](../Evidence/oasis-xslt10-zero-argument-generate-id-2026-09-19.md)
+- 2026-09-19 -- The exact XSLT 1.0 comparison `. = $variable` now applies
+  node-set equality when the variable owns a source-node sequence. It compares
+  controlled string values with any-match semantics and preserves runtime
+  type failure for other value kinds; modern comparison remains unsupported.
+  The unchanged Lotus `variable51` case becomes exact, raising the strict lower
+  bound to 1,820, successful execution to 1,949, and initialization to 2,051
+  while mismatches and execution failures remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-context-node-set-variable-comparison-2026-09-19.md)
