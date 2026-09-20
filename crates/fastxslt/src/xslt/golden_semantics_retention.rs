@@ -1233,6 +1233,11 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::Xslt10SourcePathStringComparison { left, right, .. } => {
             path_pair_owned(left, right) + size_of_val(right.as_ref())
         }
+        BooleanExpression::Xslt10ContextTranslateStartsWith(expression) => {
+            expression.search.capacity()
+                + expression.replacement.capacity()
+                + expression.prefix.capacity()
+        }
         BooleanExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
         BooleanExpression::NodeExists(path)
         | BooleanExpression::NodeIntegerLessThan { path, .. }

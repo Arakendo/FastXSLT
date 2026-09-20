@@ -333,6 +333,13 @@ string values are evaluated through controlled traversal so cancellation and
 work accounting remain active. This is not a general XPath boolean grammar;
 compound expressions, arbitrary comparisons, functions, namespaces, and
 collations require separate admission.
+Under XSLT 1.0 static context, the exact boolean predicate
+`starts-with(translate(., string-literal, string-literal), string-literal)`
+compiles to a private typed plan. Runtime obtains the current source node's
+controlled string value, applies the shared codepoint-correct translation, and
+tests the translated prefix under XPath work accounting. This does not admit a
+general nested-function grammar, alternate translation operands, implicit
+modern compatibility, or a second string-function evaluator.
 The exact `xml:space="preserve"` declaration is admitted on `xsl:choose` and
 inherited by its selected branch sequence constructors. Whitespace-only
 stylesheet text in those constructors becomes explicit result text; the

@@ -7356,6 +7356,56 @@ fn xpath_static_string_functions_preserve_typed_results() {
 }
 
 #[test]
+fn xslt10_context_translate_composes_with_starts_with_boolean() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-context-translate-boolean:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-context-translate-boolean:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            "<doc><value>42😀</value><value>alpha</value></doc>"
+                .as_bytes()
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="doc/value"><xsl:if test="starts-with(translate(., '0123456789😀', '9999999999Z'), '9')"><xsl:value-of select="."/>|</xsl:if></xsl:for-each></xsl:template></xsl:stylesheet>"#.as_bytes().to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile XSLT 1.0 context translate predicate");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("context-translate", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute context predicate");
+    assert_eq!(results.by_request["context-translate"].serialized, "42😀|");
+}
+
+#[test]
+fn modern_context_translate_boolean_composition_remains_unsupported() {
+    const STYLESHEET: &str = "urn:fastxslt:modern-context-translate-boolean:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 4_096, 8_192));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:if test="starts-with(translate(., 'a', 'A'), 'A')"><out/></xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+
+    let failure = compile_resource(&snapshot, STYLESHEET)
+        .expect_err("modern nested string composition remains unsupported");
+
+    assert_eq!(failure.code, "FXXP1002");
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+}
+
+#[test]
 fn xpath_string_function_composes_static_atoms_and_typed_paths() {
     const SOURCE: &str = "urn:fastxslt:string-function:source";
     const STYLESHEET: &str = "urn:fastxslt:string-function:stylesheet";

@@ -6,6 +6,7 @@ use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, DocumentRootReference, EqualityTest, FocusComparison, StringComparison,
+    Xslt10ContextTranslateStartsWith,
 };
 
 use super::{
@@ -108,6 +109,11 @@ pub(super) fn compile(
     {
         return Ok(comparison);
     }
+    if let Some(predicate) =
+        compile_xslt10_context_translate_starts_with(parsed, xslt10_compatibility)
+    {
+        return Ok(predicate);
+    }
     compile_scalar(
         parsed,
         expression,
@@ -115,6 +121,40 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+fn compile_xslt10_context_translate_starts_with(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<BooleanExpression> {
+    let arguments = xslt10_compatibility.then(|| {
+        expression
+            .trim()
+            .strip_prefix("starts-with(")?
+            .strip_suffix(')')
+    })??;
+    let arguments = crate::xpath::static_string_experiment::split_arguments(arguments, 2)?;
+    let [translated, prefix] = arguments.as_slice() else {
+        return None;
+    };
+    let translated = translated
+        .trim()
+        .strip_prefix("translate(")?
+        .strip_suffix(')')?;
+    let translated = crate::xpath::static_string_experiment::split_arguments(translated, 3)?;
+    let [context, search, replacement] = translated.as_slice() else {
+        return None;
+    };
+    if context.trim() != "." {
+        return None;
+    }
+    Some(BooleanExpression::Xslt10ContextTranslateStartsWith(
+        Xslt10ContextTranslateStartsWith {
+            search: xpath_string_literal(search)?.to_owned(),
+            replacement: xpath_string_literal(replacement)?.to_owned(),
+            prefix: xpath_string_literal(prefix)?.to_owned(),
+        },
+    ))
 }
 
 fn compile_scalar(

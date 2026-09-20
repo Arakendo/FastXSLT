@@ -2247,3 +2247,12 @@ maintained redistributable legacy suite becomes available.
   to 1,943, and initialization to 2,045 while mismatches remain 54. Modern
   computed-attribute sequence construction remains explicitly unsupported.
   [Evidence](../Evidence/oasis-xslt10-copy-of-attribute-content-2026-09-19.md)
+- 2026-09-19 -- The exact XSLT 1.0 boolean predicate
+  `starts-with(translate(., literal, literal), literal)` now compiles to a
+  typed compatibility plan over the current source node. It reuses the shared
+  Unicode translation implementation and controlled source string-value path;
+  modern nested string-function composition remains unsupported. The unchanged
+  Microsoft `Miscellaneous__84430` case becomes exact, raising the strict lower
+  bound to 1,815, successful execution to 1,944, and initialization to 2,046
+  while mismatches and execution failures remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-context-translate-prefix-2026-09-19.md)

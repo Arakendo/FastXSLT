@@ -3054,6 +3054,9 @@ fn evaluate_boolean(
             inputs, left, *operator, right, variables, control,
         );
     }
+    if let BooleanExpression::Xslt10ContextTranslateStartsWith(expression) = expression {
+        return evaluate_xslt10_context_translate_starts_with(inputs, context, expression, control);
+    }
     evaluate_ordinary_boolean(inputs, expression, context, focus, variables, control)
 }
 
@@ -3127,8 +3130,9 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::TemporaryRootIdentityEqual { .. }
         | BooleanExpression::DocumentRootIdentityEqual { .. }
         | BooleanExpression::Xslt10VariableStringLengthComparison { .. }
-        | BooleanExpression::Xslt10VariableNumericComparison { .. } => {
-            unreachable!("identity expressions return before ordinary boolean dispatch")
+        | BooleanExpression::Xslt10VariableNumericComparison { .. }
+        | BooleanExpression::Xslt10ContextTranslateStartsWith(_) => {
+            unreachable!("specialized expressions return before ordinary boolean dispatch")
         }
         BooleanExpression::VariableEqualsInteger(test) => {
             evaluate_variable_integer_equality(inputs, test, variables, control)
@@ -3163,6 +3167,27 @@ fn evaluate_ordinary_boolean(
                 .map(|value| value != 0)
         }
     }
+}
+
+fn evaluate_xslt10_context_translate_starts_with(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &crate::xslt::golden_semantics_experiment::Xslt10ContextTranslateStartsWith,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let value = source
+        .string_value_controlled(context, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    control
+        .charge(WorkDomain::XPathOperation, 2)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let translated = crate::xpath::static_string_experiment::evaluate_translate(
+        &value,
+        &expression.search,
+        &expression.replacement,
+    );
+    Ok(translated.starts_with(&expression.prefix))
 }
 
 fn evaluate_xslt10_variable_string_length_comparison(

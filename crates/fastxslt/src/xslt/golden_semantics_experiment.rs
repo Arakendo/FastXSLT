@@ -1073,6 +1073,13 @@ pub(crate) struct Xslt10PathTranslate {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10ContextTranslateStartsWith {
+    pub(crate) search: String,
+    pub(crate) replacement: String,
+    pub(crate) prefix: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Xslt10NormalizedVariableTranslate {
     pub(crate) variable: String,
     pub(crate) search: String,
@@ -1219,6 +1226,7 @@ pub(crate) enum BooleanExpression {
         right: Box<LocationPath>,
         equal: bool,
     },
+    Xslt10ContextTranslateStartsWith(Xslt10ContextTranslateStartsWith),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     NodeExists(LocationPath),
     NodeStringEquals {
