@@ -2407,6 +2407,50 @@ fn xslt10_literal_key_lookup_scans_composed_definitions_in_document_order() {
 }
 
 #[test]
+fn xslt10_key_lookup_has_node_set_effective_boolean_value() {
+    const SOURCE: &str = "urn:fastxslt:key-boolean:source";
+    const LEGACY: &str = "urn:fastxslt:key-boolean:legacy";
+    const MODERN: &str = "urn:fastxslt:key-boolean:modern";
+    let body = r#"<xsl:output method="text"/><xsl:key name="annotations" match="annotation" use="@of"/><xsl:template match="/"><xsl:apply-templates select="doc/item"/></xsl:template><xsl:template match="item"><xsl:choose><xsl:when test="key('annotations', @id)"><xsl:text>found:</xsl:text></xsl:when><xsl:otherwise><xsl:text>missing:</xsl:text></xsl:otherwise></xsl:choose><xsl:value-of select="@id"/><xsl:text>|</xsl:text></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 12_288, 24_576));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><item id="a"/><item id="b"/><annotation of="a"/></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, LEGACY).expect("compile XSLT 1.0 key boolean");
+    let modern = compile_resource(&snapshot, MODERN)
+        .expect_err("modern key effective boolean value remains unsupported");
+    assert_eq!(modern.code, "FXXP1002");
+    assert_eq!(modern.category, FailureCategory::Unsupported);
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-boolean", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute key boolean");
+
+    assert_eq!(
+        results.by_request["key-boolean"].serialized,
+        "found:a|missing:b|"
+    );
+}
+
+#[test]
 fn xslt10_key_use_path_union_restores_document_order_and_node_identity() {
     const SOURCE: &str = "urn:fastxslt:key-use-union:source";
     const STYLESHEET: &str = "urn:fastxslt:key-use-union:stylesheet";

@@ -1244,6 +1244,7 @@ pub(crate) enum BooleanExpression {
         variable: String,
         location: SourceLocation,
     },
+    Xslt10KeyLookupEffectiveBooleanValue(Box<Xslt10KeyLookup>),
     Xslt10ContextTranslateStartsWith(Xslt10ContextTranslateStartsWith),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     NodeExists(LocationPath),

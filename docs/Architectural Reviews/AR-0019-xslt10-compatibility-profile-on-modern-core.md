@@ -2301,3 +2301,12 @@ maintained redistributable legacy suite becomes available.
   bound to 1,820, successful execution to 1,949, and initialization to 2,051
   while mismatches and execution failures remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-context-node-set-variable-comparison-2026-09-19.md)
+- 2026-09-19 -- A structurally complete typed `key()` lookup used directly as
+  an XSLT 1.0 conditional test now obtains its effective boolean value from the
+  existing charged key selector. Non-empty and empty selections remain ordinary
+  true and false results; lookup diagnostics, cancellation, and budgets are
+  unchanged, and modern static context remains unsupported. The unchanged
+  Lotus `impincl17` imported-key case becomes exact, raising the strict lower
+  bound to 1,821, successful execution to 1,950, and initialization to 2,052
+  while mismatches and execution failures remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-key-effective-boolean-value-2026-09-19.md)

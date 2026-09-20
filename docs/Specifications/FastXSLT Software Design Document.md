@@ -890,7 +890,12 @@ conversion may consume an already typed location path evaluated from the
 call's current principal-source context; cross-document context switching and
 nested key calls remain outside the slice. The typed XSLT 1.0 `count()` value
 consumer may count the resulting effective node sequence through the same
-selector. A literal-result attribute may also compose optional static text
+selector. A structurally complete typed lookup used directly as an XSLT 1.0
+conditional test obtains its effective boolean value from whether that same
+charged selector returns any nodes; the equivalent modern expression remains
+outside this private compatibility form. This does not admit arbitrary
+function-call EBV or a second key evaluator. A literal-result attribute may
+also compose optional static text
 with the stable identity of the first selected key node through the exact
 `generate-id(key(...))` shape. These typed consumers do not admit key lookup or
 general function calls into other expression positions. The private

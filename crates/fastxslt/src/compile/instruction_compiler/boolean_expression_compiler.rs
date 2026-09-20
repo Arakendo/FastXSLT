@@ -1,7 +1,7 @@
 //! Private compilation of instruction-local `XPath` boolean expressions.
 
 use crate::compile::golden_stylesheet_experiment::CompileFailure;
-use crate::xdm::owned_tree_experiment::SourceLocation;
+use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::path_experiment::parse_location_path;
@@ -17,6 +17,8 @@ use super::{
 };
 
 pub(super) fn compile(
+    document: &Document,
+    element: NodeId,
     expression: &str,
     location: &SourceLocation,
     comparison: StringComparison,
@@ -44,28 +46,15 @@ pub(super) fn compile(
     if let Some(language) = crate::xpath::language_experiment::parse_literal(parsed) {
         return Ok(BooleanExpression::ContextLanguageMatches(language));
     }
-    if let Some((left, right)) = split_top_level_or(parsed) {
-        return Ok(BooleanExpression::Or {
-            left: Box::new(compile(left, location, comparison, xslt10_compatibility)?),
-            right: Box::new(compile(right, location, comparison, xslt10_compatibility)?),
-        });
-    }
-    if let Some((left, right)) = split_top_level_and(parsed) {
-        return Ok(BooleanExpression::And {
-            left: Box::new(compile(left, location, comparison, xslt10_compatibility)?),
-            right: Box::new(compile(right, location, comparison, xslt10_compatibility)?),
-        });
-    }
-    if let Some(inner) = parsed
-        .strip_prefix("not(")
-        .and_then(|inner| inner.strip_suffix(')'))
-    {
-        return Ok(BooleanExpression::Not(Box::new(compile(
-            inner,
-            location,
-            comparison,
-            xslt10_compatibility,
-        )?)));
+    if let Some(composition) = compile_composition(
+        document,
+        element,
+        parsed,
+        location,
+        comparison,
+        xslt10_compatibility,
+    ) {
+        return composition;
     }
     if let Some(identity) = compile_identity_test(parsed, location)? {
         return Ok(identity);
@@ -100,6 +89,13 @@ pub(super) fn compile(
     if let Some(count) = compile_count_path_equality(parsed, location)? {
         return Ok(count);
     }
+    if xslt10_compatibility && parsed.trim_start().starts_with("key(") {
+        return super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+            document, element, parsed, location,
+        )
+        .map(Box::new)
+        .map(BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue);
+    }
     if let Some(expression) = compile_xslt10_special(parsed, location, xslt10_compatibility) {
         return Ok(expression);
     }
@@ -110,6 +106,55 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+fn compile_composition(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+    comparison: StringComparison,
+    xslt10_compatibility: bool,
+) -> Option<Result<BooleanExpression, CompileFailure>> {
+    let (left, right, is_and) = split_top_level_or(expression)
+        .map(|(left, right)| (left, Some(right), false))
+        .or_else(|| split_top_level_and(expression).map(|(left, right)| (left, Some(right), true)))
+        .or_else(|| {
+            expression
+                .strip_prefix("not(")
+                .and_then(|inner| inner.strip_suffix(')'))
+                .map(|inner| (inner, None, false))
+        })?;
+    let left = compile(
+        document,
+        element,
+        left,
+        location,
+        comparison,
+        xslt10_compatibility,
+    );
+    Some(match right {
+        None => left.map(Box::new).map(BooleanExpression::Not),
+        Some(right) => left.and_then(|left| {
+            compile(
+                document,
+                element,
+                right,
+                location,
+                comparison,
+                xslt10_compatibility,
+            )
+            .map(|right| {
+                let left = Box::new(left);
+                let right = Box::new(right);
+                if is_and {
+                    BooleanExpression::And { left, right }
+                } else {
+                    BooleanExpression::Or { left, right }
+                }
+            })
+        }),
+    })
 }
 
 fn compile_xslt10_special(

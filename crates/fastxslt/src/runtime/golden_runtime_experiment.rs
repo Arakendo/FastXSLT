@@ -3085,6 +3085,10 @@ fn evaluate_boolean(
             inputs, context, variable, location, variables, control,
         );
     }
+    if let BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue(lookup) = expression {
+        return key_lookup::select(inputs, lookup, context, variables, control)
+            .map(|selected| !selected.is_empty());
+    }
     if let BooleanExpression::ContextStringEquals(expected) = expression {
         return evaluate_context_string_equals(inputs, context, expected, control);
     }
@@ -3164,6 +3168,7 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::Xslt10VariableStringLength(_)
         | BooleanExpression::Xslt10ChildAttributeVariableEquals { .. }
         | BooleanExpression::Xslt10ContextNodeSetEqualsVariable { .. }
+        | BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue(_)
         | BooleanExpression::ContextStringEquals(_)
         | BooleanExpression::Xslt10ContextNumberIsNaN => {
             unreachable!("specialized expressions return before ordinary boolean dispatch")

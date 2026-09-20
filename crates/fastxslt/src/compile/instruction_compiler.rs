@@ -2543,6 +2543,8 @@ fn compile_boolean_test(
         return Ok(BooleanExpression::Constant(value));
     }
     boolean_expression_compiler::compile(
+        document,
+        element,
         expression,
         location,
         effective_string_comparison(document, element)?,
