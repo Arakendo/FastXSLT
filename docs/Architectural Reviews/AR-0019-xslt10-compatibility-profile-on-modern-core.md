@@ -2381,3 +2381,11 @@ maintained redistributable legacy suite becomes available.
   initialization to 2,067 while mismatches and execution failures remain
   unchanged.
   [Evidence](../Evidence/oasis-xslt10-qualified-variable-rooted-paths-2026-09-20.md)
+- 2026-09-20 -- Direct XSLT 1.0 apply/for-each selection of a QName-named
+  global variable or parameter now resolves to the same canonical expanded-name
+  key and existing invocation-owned `VariableSequence` plan. Five unchanged
+  Microsoft cases become exact, raising the strict lower bound to 1,841,
+  successful execution to 1,970, and initialization to 2,072 while mismatches
+  and execution failures remain unchanged. Qualified local declarations and
+  arbitrary qualified-variable expressions remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-qualified-variable-sequence-selection-2026-09-20.md)

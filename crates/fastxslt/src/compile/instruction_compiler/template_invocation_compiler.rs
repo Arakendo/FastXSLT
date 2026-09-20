@@ -327,11 +327,14 @@ pub(super) fn parse_apply_selection(
     if let Some(path) = parse_temporary_path(document, element, expression) {
         return path;
     }
-    if let Some(variable) = expression
-        .strip_prefix('$')
-        .filter(|name| is_ascii_ncname(name))
-    {
-        return Ok(ApplySelection::VariableSequence(variable.to_owned()));
+    if let Some(variable) = expression.strip_prefix('$').and_then(|name| {
+        if uses_xslt10_compatibility(document, element) {
+            normalize_variable_qname(document, element, name).ok()
+        } else {
+            is_ascii_ncname(name).then(|| name.to_owned())
+        }
+    }) {
+        return Ok(ApplySelection::VariableSequence(variable));
     }
     if let Some(variable) = expression
         .strip_prefix('$')
