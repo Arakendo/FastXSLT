@@ -721,32 +721,31 @@ fn compiles_static_prefixed_xsl_element_with_its_required_binding() {
 }
 
 #[test]
-fn forward_and_cyclic_global_dependencies_are_explicitly_unsupported() {
-    for (label, declarations) in [
-        (
-            "forward",
-            r#"<xsl:variable name="first" select="$later"/><xsl:variable name="later" select="7"/>"#,
-        ),
-        (
-            "cycle",
-            r#"<xsl:variable name="first" select="$later"/><xsl:variable name="later" select="$first"/>"#,
-        ),
-    ] {
-        let stylesheet = format!(
-            r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{declarations}<xsl:template match="/"/></xsl:stylesheet>"#
-        );
-        let document = parse_stylesheet(
-            &format!("memory:{label}-global-dependency.xsl"),
-            stylesheet.as_bytes(),
-        );
+fn forward_global_dependencies_are_ordered_before_materialization() {
+    let document = parse_stylesheet(
+        "memory:forward-global-dependency.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="first" select="$later"/><xsl:variable name="later" select="7"/><xsl:template match="/"/></xsl:stylesheet>"#,
+    );
 
-        let failure = compile_stylesheet(&document)
-            .expect_err("unordered global dependency should remain explicit");
+    let program = compile_stylesheet(&document).expect("forward dependency should compile");
 
-        assert_eq!(failure.code, "FXST1044");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
-        assert!(failure.detail.contains("$first -> $later"));
-    }
+    assert_eq!(program.global_bindings.len(), 2);
+    assert_eq!(program.global_bindings[0].name, "later");
+    assert_eq!(program.global_bindings[1].name, "first");
+}
+
+#[test]
+fn cyclic_global_dependencies_are_rejected() {
+    let document = parse_stylesheet(
+        "memory:cyclic-global-dependency.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="first" select="$later"/><xsl:variable name="later" select="$first"/><xsl:template match="/"/></xsl:stylesheet>"#,
+    );
+
+    let failure = compile_stylesheet(&document).expect_err("cycle should fail statically");
+
+    assert_eq!(failure.code, "XTDE0640");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+    assert!(failure.detail.contains("circular global dependency"));
 }
 
 #[test]

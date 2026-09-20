@@ -304,7 +304,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         }
     }
     instruction_compiler::validate_local_attribute_set_graph(document, root)?;
-    reject_unordered_global_dependencies(&global_bindings, &global_binding_locations)?;
+    order_global_dependencies(&mut global_bindings, &global_binding_locations)?;
     let output_character_map_names = output
         .as_ref()
         .map(|declaration| declaration.character_map_names.clone())
@@ -617,34 +617,44 @@ fn merge_character_map_entries(target: &mut BTreeMap<char, String>, entries: &[(
     }
 }
 
-fn reject_unordered_global_dependencies(
-    bindings: &[GlobalBinding],
+fn order_global_dependencies(
+    bindings: &mut Vec<GlobalBinding>,
     locations: &[SourceLocation],
 ) -> Result<(), CompileFailure> {
-    for (index, binding) in bindings.iter().enumerate() {
-        let GlobalBindingDefault::Variable(dependency) = &binding.default else {
-            continue;
-        };
-        if bindings[..index]
-            .iter()
-            .any(|candidate| candidate.name == *dependency)
-        {
-            continue;
-        }
-        if bindings[index..]
-            .iter()
-            .any(|candidate| candidate.name == *dependency)
-        {
-            return Err(unsupported(
-                "FXST1044",
+    debug_assert_eq!(bindings.len(), locations.len());
+    let mut pending: Vec<_> = std::mem::take(bindings)
+        .into_iter()
+        .zip(locations.iter().cloned())
+        .collect();
+    let mut ordered = Vec::with_capacity(pending.len());
+
+    while !pending.is_empty() {
+        let ready = pending.iter().position(|(binding, _)| {
+            let GlobalBindingDefault::Variable(dependency) = &binding.default else {
+                return true;
+            };
+            !pending
+                .iter()
+                .any(|(candidate, _)| candidate.name == *dependency)
+        });
+        let Some(ready) = ready else {
+            let (binding, location) = &pending[0];
+            let GlobalBindingDefault::Variable(dependency) = &binding.default else {
+                unreachable!("a dependency cycle contains only variable aliases");
+            };
+            return Err(invalid(
+                "XTDE0640",
                 format!(
-                    "global dependency ordering for ${} -> ${dependency} is outside the private slice",
+                    "circular global dependency includes ${} -> ${dependency}",
                     binding.name
                 ),
-                &locations[index],
+                location,
             ));
-        }
+        };
+        let (binding, _) = pending.remove(ready);
+        ordered.push(binding);
     }
+    *bindings = ordered;
     Ok(())
 }
 

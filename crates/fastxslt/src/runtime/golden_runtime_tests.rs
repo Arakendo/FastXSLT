@@ -492,6 +492,50 @@ fn xslt10_untyped_global_boolean_retains_atomic_value() {
 }
 
 #[test]
+fn forward_global_alias_executes_after_its_dependency() {
+    let source = parse_document(
+        "memory:forward-global-alias.xml",
+        b"<doc/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:forward-global-alias.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="first" select="$later"/><xsl:variable name="later" select="'resolved'"/><xsl:template match="/"><out><xsl:value-of select="$first"/></out></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("forward global alias should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "forward-global-alias-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("forward global alias should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "forward-global-alias-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>resolved</out>");
+}
+
+#[test]
 fn standalone_exact_numeric_literal_uses_the_checked_numeric_value_path() {
     let source = parse_document(
         "memory:standalone-numeric.xml",
