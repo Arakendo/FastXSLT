@@ -1236,6 +1236,10 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             right,
             operator: _,
         } => left.capacity() + right.capacity(),
+        BooleanExpression::Xslt10VariableLessThanNodeCount {
+            numeric_variable,
+            nodes_variable,
+        } => numeric_variable.capacity() + nodes_variable.capacity(),
         BooleanExpression::Xslt10VariableStringLiteralEquals {
             variable,
             literal,
@@ -1308,18 +1312,25 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             descendant_local,
         } => variable.capacity() + descendant_local.capacity(),
         BooleanExpression::DocumentRootIdentityEqual { left, right } => {
-            left.base.capacity()
-                + left.reference.capacity()
-                + left.descendant_local.as_ref().map_or(0, String::capacity)
-                + right.base.capacity()
-                + right.reference.capacity()
-                + right.descendant_local.as_ref().map_or(0, String::capacity)
+            document_identity_pair_owned(left, right)
         }
         BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent
         | BooleanExpression::Xslt10ContextNumberIsNaN
         | BooleanExpression::ContextStringLengthEquals(_)
         | BooleanExpression::Constant(_) => 0,
     }
+}
+
+fn document_identity_pair_owned(
+    left: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
+    right: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
+) -> usize {
+    left.base.capacity()
+        + left.reference.capacity()
+        + left.descendant_local.as_ref().map_or(0, String::capacity)
+        + right.base.capacity()
+        + right.reference.capacity()
+        + right.descendant_local.as_ref().map_or(0, String::capacity)
 }
 
 fn path_pair_owned(
@@ -1566,6 +1577,10 @@ fn xslt10_concat_owned(
 ) -> usize {
     vec_owned(&expression.parts, |part| match part {
         Xslt10ConcatPart::Literal(value) | Xslt10ConcatPart::Variable(value) => value.capacity(),
+        Xslt10ConcatPart::VariablePosition {
+            variable,
+            position_variable,
+        } => variable.capacity() + position_variable.capacity(),
         Xslt10ConcatPart::Path(path) | Xslt10ConcatPart::SumPath(path) => {
             path.known_owned_capacity_bytes()
         }

@@ -793,6 +793,14 @@ owners before ordinary sort typing. Multi-step predicate focus and general
 dynamic sort expressions remain unsupported rather than being flattened into
 a semantically different global filter.
 
+The same compatibility ownership composes invocation-owned source-node
+variables with numeric position variables in the exact `$series[$pos]` and
+`$series[number($pos)]` forms used by apply/for-each selection and `concat()`
+value parts. The recursion guard `$pos < count($series)` is a separate typed
+boolean plan over the same runtime bindings. These plans share conversion,
+work charging, and typed-failure behavior; they do not admit unrestricted
+variable predicates or establish a second XSLT 1.0 value model.
+
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource
 bytes are acquired under the fragmentless identity before fragment semantics

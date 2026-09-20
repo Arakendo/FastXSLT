@@ -3087,6 +3087,19 @@ fn evaluate_boolean(
             inputs, left, *operator, right, variables, control,
         );
     }
+    if let BooleanExpression::Xslt10VariableLessThanNodeCount {
+        numeric_variable,
+        nodes_variable,
+    } = expression
+    {
+        return evaluate_xslt10_variable_less_than_node_count(
+            inputs,
+            numeric_variable,
+            nodes_variable,
+            variables,
+            control,
+        );
+    }
     if let BooleanExpression::Xslt10ContextTranslateStartsWith(expression) = expression {
         return evaluate_xslt10_context_translate_starts_with(inputs, context, expression, control);
     }
@@ -3141,6 +3154,36 @@ fn evaluate_boolean(
         return evaluate_xslt10_context_number_is_nan(inputs, context, control);
     }
     evaluate_ordinary_boolean(inputs, expression, context, focus, variables, control)
+}
+
+fn evaluate_xslt10_variable_less_than_node_count(
+    inputs: &SequenceInputs<'_>,
+    numeric_variable: &str,
+    nodes_variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let left =
+        value_evaluator::xslt10_variable_number(inputs, numeric_variable, variables, control)?;
+    let count = variables
+        .source_nodes(inputs.globals, nodes_variable)
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("count() requires a source-node sequence: ${nodes_variable}"),
+            )
+        })?
+        .len();
+    let right = count
+        .to_string()
+        .parse::<f64>()
+        .expect("a usize count always has a finite XPath number representation");
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(left < right)
 }
 
 fn evaluate_ordinary_boolean(
@@ -3208,6 +3251,7 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::DocumentRootIdentityEqual { .. }
         | BooleanExpression::Xslt10VariableStringLengthComparison { .. }
         | BooleanExpression::Xslt10VariableNumericComparison { .. }
+        | BooleanExpression::Xslt10VariableLessThanNodeCount { .. }
         | BooleanExpression::Xslt10ContextTranslateStartsWith(_)
         | BooleanExpression::Xslt10ContextPositionModuloVariable { .. }
         | BooleanExpression::Xslt10VariableStringLength(_)
@@ -4417,30 +4461,15 @@ fn select_xslt10_variable_position(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
-    let nodes = variables
-        .source_nodes(inputs.globals, variable)
-        .ok_or_else(|| {
-            failure(
-                "XPTY0004",
-                FailureCategory::Invalid,
-                Some(inputs.request_id),
-                format!("positional variable selection requires source nodes: ${variable}"),
-            )
-        })?;
-    let position = value_evaluator::xslt10_variable_string_value(
+    Ok(value_evaluator::xslt10_variable_position_source_node(
         inputs,
+        variable,
         position_variable,
         variables,
         control,
-    )?;
-    control
-        .charge(WorkDomain::XPathOperation, nodes.len().saturating_add(1))
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let selected = crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
-        .filter(|position| position.is_finite() && *position >= 1.0 && position.fract() == 0.0)
-        .and_then(|position| position.to_string().parse::<usize>().ok())
-        .and_then(|position| nodes.get(position.saturating_sub(1)).copied());
-    Ok(selected.into_iter().collect())
+    )?
+    .into_iter()
+    .collect())
 }
 
 fn select_child_nodes(

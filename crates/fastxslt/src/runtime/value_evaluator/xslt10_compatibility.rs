@@ -649,6 +649,28 @@ pub(super) fn concat_value(
                 let value = variable_string_value(inputs, name, variables, control)?;
                 result.push_str(&value);
             }
+            Xslt10ConcatPart::VariablePosition {
+                variable,
+                position_variable,
+            } => {
+                let Some(node) = variable_position_source_node(
+                    inputs,
+                    variable,
+                    position_variable,
+                    variables,
+                    control,
+                )?
+                else {
+                    continue;
+                };
+                let source = inputs
+                    .source
+                    .expect("source-node variable requires a source");
+                let value = source
+                    .string_value_controlled(node, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                result.push_str(&value);
+            }
             Xslt10ConcatPart::Path(path) => {
                 let value = first_path_string(inputs, context, path, control)?;
                 result.push_str(&value);
@@ -660,4 +682,33 @@ pub(super) fn concat_value(
         }
     }
     Ok(result)
+}
+
+pub(super) fn variable_position_source_node(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    position_variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Option<NodeId>, ExecutionFailure> {
+    let nodes = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("positional variable selection requires source nodes: ${variable}"),
+            )
+        })?;
+    let position = variable_string_value(inputs, position_variable, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, nodes.len().saturating_add(1))
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(
+        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
+            .filter(|position| position.is_finite() && *position >= 1.0 && position.fract() == 0.0)
+            .and_then(|position| position.to_string().parse::<usize>().ok())
+            .and_then(|position| nodes.get(position.saturating_sub(1)).copied()),
+    )
 }

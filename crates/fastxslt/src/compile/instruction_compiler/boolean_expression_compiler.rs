@@ -162,6 +162,14 @@ fn compile_xslt10_special(
     location: &SourceLocation,
     xslt10_compatibility: bool,
 ) -> Option<BooleanExpression> {
+    if let Some((numeric_variable, nodes_variable)) =
+        parse_xslt10_variable_less_than_node_count(expression, xslt10_compatibility)
+    {
+        return Some(BooleanExpression::Xslt10VariableLessThanNodeCount {
+            numeric_variable: numeric_variable.to_owned(),
+            nodes_variable: nodes_variable.to_owned(),
+        });
+    }
     if xslt10_compatibility
         && expression.split_whitespace().collect::<String>()
             == "descendant::*[name()=name(current())]|following::*[name()=name(current())]"
@@ -211,6 +219,22 @@ fn compile_xslt10_special(
     }
     compile_xslt10_variable_numeric_comparison(expression, xslt10_compatibility)
         .or_else(|| compile_xslt10_context_translate_starts_with(expression, xslt10_compatibility))
+}
+
+fn parse_xslt10_variable_less_than_node_count(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<(&str, &str)> {
+    let (left, right) = xslt10_compatibility.then(|| expression.split_once('<'))??;
+    let numeric_variable = left.trim().strip_prefix('$')?;
+    let nodes_variable = right
+        .trim()
+        .strip_prefix("count(")?
+        .strip_suffix(')')?
+        .trim()
+        .strip_prefix('$')?;
+    (is_ascii_ncname(numeric_variable) && is_ascii_ncname(nodes_variable))
+        .then_some((numeric_variable, nodes_variable))
 }
 
 fn compile_xslt10_ancestor_filter(

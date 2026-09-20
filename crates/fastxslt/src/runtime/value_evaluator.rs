@@ -109,6 +109,22 @@ pub(super) fn xslt10_variable_string_value(
     xslt10_compatibility::variable_string_value(inputs, variable, variables, control)
 }
 
+pub(super) fn xslt10_variable_position_source_node(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    position_variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Option<NodeId>, ExecutionFailure> {
+    xslt10_compatibility::variable_position_source_node(
+        inputs,
+        variable,
+        position_variable,
+        variables,
+        control,
+    )
+}
+
 pub(super) fn xslt10_variable_number(
     inputs: &SequenceInputs<'_>,
     variable: &str,

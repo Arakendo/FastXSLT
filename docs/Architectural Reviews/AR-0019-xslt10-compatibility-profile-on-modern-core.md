@@ -2353,3 +2353,13 @@ maintained redistributable legacy suite becomes available.
   bound to 1,829, successful execution to 1,958, and initialization to 2,060
   while mismatches and execution failures remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-variable-sequence-position-2026-09-20.md)
+- 2026-09-20 -- The invocation-owned source-node sequence and numeric-variable
+  compatibility semantics now compose inside the exact
+  `concat($series[number($pos)], ...)` value form and the
+  `$pos < count($series)` recursion guard. Both use typed plans, shared
+  conversion, charged work, and typed value-kind failures rather than a legacy
+  expression fallback. The unchanged Lotus `variable53` case becomes exact,
+  raising the strict lower bound to 1,830, successful execution to 1,959, and
+  initialization to 2,061 while mismatches and execution failures remain
+  unchanged.
+  [Evidence](../Evidence/oasis-xslt10-variable-position-composition-2026-09-20.md)

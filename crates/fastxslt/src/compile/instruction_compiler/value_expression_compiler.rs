@@ -1532,6 +1532,15 @@ pub(super) fn compile_xslt10_concat(
             parts.push(Xslt10ConcatPart::Variable(variable.to_owned()));
             continue;
         }
+        if let Some((variable, position_variable)) =
+            parse_xslt10_variable_position_selection(argument)
+        {
+            parts.push(Xslt10ConcatPart::VariablePosition {
+                variable: variable.to_owned(),
+                position_variable: position_variable.to_owned(),
+            });
+            continue;
+        }
         if let Some(path) = compile_xslt10_sum_path(document, element, argument, location)? {
             parts.push(Xslt10ConcatPart::SumPath(path));
             continue;
@@ -1550,6 +1559,19 @@ pub(super) fn compile_xslt10_concat(
         parts.push(Xslt10ConcatPart::Path(path));
     }
     Ok(Some(Xslt10ConcatExpression { parts }))
+}
+
+pub(super) fn parse_xslt10_variable_position_selection(expression: &str) -> Option<(&str, &str)> {
+    let (variable, predicate) = expression.trim().strip_prefix('$')?.split_once('[')?;
+    let predicate = predicate.strip_suffix(']')?.trim();
+    let position = predicate
+        .strip_prefix("number(")
+        .and_then(|value| value.strip_suffix(')'))
+        .unwrap_or(predicate)
+        .trim();
+    let position_variable = position.strip_prefix('$')?;
+    (is_ascii_ncname(variable) && is_ascii_ncname(position_variable))
+        .then_some((variable, position_variable))
 }
 
 fn parse_xslt10_variable_boolean_comparison(expression: &str) -> Option<(&str, bool, bool)> {

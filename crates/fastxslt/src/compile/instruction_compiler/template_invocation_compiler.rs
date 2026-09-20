@@ -12,7 +12,7 @@ use crate::xslt::golden_semantics_experiment::{
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::value_expression_compiler::{
     compile_value_expression, compile_xslt10_binary_numeric, compile_xslt10_sum_path,
-    compile_xslt10_variable_path,
+    compile_xslt10_variable_path, parse_xslt10_variable_position_selection,
 };
 use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
@@ -386,13 +386,6 @@ pub(super) fn parse_apply_selection(
         ));
     }
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
-}
-
-fn parse_xslt10_variable_position_selection(expression: &str) -> Option<(&str, &str)> {
-    let (variable, predicate) = expression.trim().strip_prefix('$')?.split_once('[')?;
-    let position_variable = predicate.strip_suffix(']')?.trim().strip_prefix('$')?;
-    (is_ascii_ncname(variable) && is_ascii_ncname(position_variable))
-        .then_some((variable, position_variable))
 }
 
 fn parse_xslt10_key_selection(

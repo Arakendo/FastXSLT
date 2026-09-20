@@ -1149,6 +1149,10 @@ pub(crate) enum Xslt10AvtPart {
 pub(crate) enum Xslt10ConcatPart {
     Literal(String),
     Variable(String),
+    VariablePosition {
+        variable: String,
+        position_variable: String,
+    },
     Path(LocationPath),
     SumPath(LocationPath),
 }
@@ -1249,6 +1253,10 @@ pub(crate) enum BooleanExpression {
         left: String,
         operator: FocusComparison,
         right: String,
+    },
+    Xslt10VariableLessThanNodeCount {
+        numeric_variable: String,
+        nodes_variable: String,
     },
     Xslt10SourcePathStringComparison {
         left: LocationPath,

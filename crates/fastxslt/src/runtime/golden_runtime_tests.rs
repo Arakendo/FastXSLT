@@ -4317,10 +4317,15 @@ fn xslt10_variable_node_sequence_supports_a_variable_position_filter() {
         </xsl:template>
         <xsl:template name="visit">
           <xsl:param name="path"/>
-          <xsl:for-each select="/doc/n">
-            <xsl:variable name="pos" select="position()"/>
-            <xsl:for-each select="$path[$pos]"><xsl:value-of select="."/></xsl:for-each>
-          </xsl:for-each>
+          <selected><xsl:for-each select="/doc/n">
+              <xsl:variable name="pos" select="position()"/>
+              <xsl:for-each select="$path[$pos]"><xsl:value-of select="."/></xsl:for-each>
+          </xsl:for-each></selected>
+          <values><xsl:for-each select="/doc/n">
+              <xsl:variable name="pos" select="position()"/>
+              <xsl:value-of select="concat($path[number($pos)], '|')"/>
+              <xsl:if test="$pos &lt; count($path)">+</xsl:if>
+          </xsl:for-each></values>
         </xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
@@ -4341,7 +4346,7 @@ fn xslt10_variable_node_sequence_supports_a_variable_position_filter() {
     let results = execute_transform_set(builder.seal()).expect("execute variable position");
     assert_eq!(
         results.by_request["variable-position"].serialized,
-        "<out>102030</out>"
+        "<out><selected>102030</selected><values>10|+20|+30|</values></out>"
     );
 }
 
