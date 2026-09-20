@@ -455,6 +455,10 @@ pub(crate) enum ApplySelection {
     Attribute(ExpandedName),
     GlobalTemporaryChildren(String),
     VariableSequence(String),
+    Xslt10VariablePosition {
+        variable: String,
+        position_variable: String,
+    },
     TemporaryPath {
         variable: String,
         steps: Vec<ExpandedName>,

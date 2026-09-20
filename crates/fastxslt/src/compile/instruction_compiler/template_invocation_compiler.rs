@@ -307,6 +307,15 @@ pub(super) fn parse_apply_selection(
     }) {
         return Ok(ApplySelection::AtomicIntegerRange { start, end });
     }
+    if uses_xslt10_compatibility(document, element)
+        && let Some((variable, position_variable)) =
+            parse_xslt10_variable_position_selection(expression)
+    {
+        return Ok(ApplySelection::Xslt10VariablePosition {
+            variable: variable.to_owned(),
+            position_variable: position_variable.to_owned(),
+        });
+    }
     if let Some(path) = parse_variable_filtered_path(expression) {
         return Ok(ApplySelection::VariableFilteredElementPath(path));
     }
@@ -377,6 +386,13 @@ pub(super) fn parse_apply_selection(
         ));
     }
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
+}
+
+fn parse_xslt10_variable_position_selection(expression: &str) -> Option<(&str, &str)> {
+    let (variable, predicate) = expression.trim().strip_prefix('$')?.split_once('[')?;
+    let position_variable = predicate.strip_suffix(']')?.trim().strip_prefix('$')?;
+    (is_ascii_ncname(variable) && is_ascii_ncname(position_variable))
+        .then_some((variable, position_variable))
 }
 
 fn parse_xslt10_key_selection(

@@ -541,6 +541,12 @@ The binding materializes the current sequence-focus position as an integer in
 invocation-local state and charges one XPath operation. It does not establish
 general focus-function expressions, `last()` variable bindings, or retention
 of focus in compiled or prepared state.
+An XSLT 1.0 apply/for-each selection may filter one invocation-owned
+source-node variable with one numeric variable using the exact `$path[$pos]`
+form. Runtime converts the position through the shared compatibility rules,
+charges the candidate predicate work, and selects at most one node without
+mutating or cloning the retained binding. Temporary trees, alternate predicate
+expressions, and modern sequence filters remain outside this bounded plan.
 Global variables may retain exact schema-namespace-resolved `xs:string`,
 `xs:untypedAtomic`, `xs:boolean`, `xs:integer`, and `xs:double` values from
 admitted literal content, constructor forms, or exact boolean constant

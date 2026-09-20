@@ -4396,12 +4396,51 @@ fn select_apply_nodes(
             )
         }
         ApplySelection::VariableSequence(name) => source_variable_nodes(inputs, name, variables),
+        ApplySelection::Xslt10VariablePosition {
+            variable,
+            position_variable,
+        } => {
+            select_xslt10_variable_position(inputs, variable, position_variable, variables, control)
+        }
         ApplySelection::GlobalTemporaryChildren(_)
         | ApplySelection::TemporaryPath { .. }
         | ApplySelection::AtomicIntegerRange { .. } => {
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }
+}
+
+fn select_xslt10_variable_position(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    position_variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let nodes = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("positional variable selection requires source nodes: ${variable}"),
+            )
+        })?;
+    let position = value_evaluator::xslt10_variable_string_value(
+        inputs,
+        position_variable,
+        variables,
+        control,
+    )?;
+    control
+        .charge(WorkDomain::XPathOperation, nodes.len().saturating_add(1))
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let selected = crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
+        .filter(|position| position.is_finite() && *position >= 1.0 && position.fract() == 0.0)
+        .and_then(|position| position.to_string().parse::<usize>().ok())
+        .and_then(|position| nodes.get(position.saturating_sub(1)).copied());
+    Ok(selected.into_iter().collect())
 }
 
 fn select_child_nodes(

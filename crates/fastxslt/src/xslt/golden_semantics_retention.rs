@@ -388,6 +388,10 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         ApplySelection::GlobalTemporaryChildren(name) | ApplySelection::VariableSequence(name) => {
             name.capacity()
         }
+        ApplySelection::Xslt10VariablePosition {
+            variable,
+            position_variable,
+        } => variable.capacity() + position_variable.capacity(),
         ApplySelection::TemporaryPath { variable, steps } => {
             variable.capacity() + vec_owned(steps, name_owned)
         }

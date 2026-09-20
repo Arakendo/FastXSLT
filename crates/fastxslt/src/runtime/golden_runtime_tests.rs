@@ -4306,6 +4306,46 @@ fn xslt10_sort_supports_numeric_variable_position_keys() {
 }
 
 #[test]
+fn xslt10_variable_node_sequence_supports_a_variable_position_filter() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-variable-sequence-position:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-sequence-position:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:template match="/">
+          <xsl:variable name="nodes" select="doc/n"/>
+          <out><xsl:call-template name="visit"><xsl:with-param name="path" select="$nodes"/></xsl:call-template></out>
+        </xsl:template>
+        <xsl:template name="visit">
+          <xsl:param name="path"/>
+          <xsl:for-each select="/doc/n">
+            <xsl:variable name="pos" select="position()"/>
+            <xsl:for-each select="$path[$pos]"><xsl:value-of select="."/></xsl:for-each>
+          </xsl:for-each>
+        </xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc><n>10</n><n>20</n><n>30</n></doc>".to_vec())
+        .expect("admit variable-position source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit variable-position stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile variable-position stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("variable-position", "result", SOURCE))
+        .expect("admit variable-position request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable position");
+    assert_eq!(
+        results.by_request["variable-position"].serialized,
+        "<out>102030</out>"
+    );
+}
+
+#[test]
 fn xslt10_sort_uses_the_first_node_from_a_context_path_key_lookup() {
     const SOURCE: &str = "urn:fastxslt:xslt10-key-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-key-sort:stylesheet";

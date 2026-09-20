@@ -2345,3 +2345,11 @@ maintained redistributable legacy suite becomes available.
   execution failures remain unchanged. Multi-step predicate focus and general
   dynamic sort expressions remain unsupported.
   [Evidence](../Evidence/oasis-xslt10-variable-position-sort-2026-09-20.md)
+- 2026-09-20 -- XSLT 1.0 apply/for-each selection now admits the exact
+  `$path[$pos]` form over an invocation-owned source-node sequence and a local
+  or global numeric variable. Selection is typed, work-charged, non-mutating,
+  and retains the existing runtime failure for incompatible value kinds. The
+  unchanged Lotus `variable52` case becomes exact, raising the strict lower
+  bound to 1,829, successful execution to 1,958, and initialization to 2,060
+  while mismatches and execution failures remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-variable-sequence-position-2026-09-20.md)
