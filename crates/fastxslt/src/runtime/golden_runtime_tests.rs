@@ -6827,6 +6827,46 @@ fn xpath10_string_of_context_number_is_selected_at_compilation() {
 }
 
 #[test]
+fn xpath10_static_string_number_round_trip_is_selected_at_compilation() {
+    const SOURCE: &str = "urn:fastxslt:xpath10-static-string-number:source";
+    const LEGACY: &str = "urn:fastxslt:xpath10-static-string-number:legacy";
+    const MODERN: &str = "urn:fastxslt:xpath10-static-string-number:modern";
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:if test="string(number(0.047025229999999994)) = string(number(0.04702523))">same</xsl:if><xsl:value-of select="string(number(0.047025229999999994))"/>|<xsl:value-of select="string(number(0.04702523))"/></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, LEGACY).expect("compile XPath 1.0 static string(number())");
+    compile_resource(&snapshot, MODERN)
+        .expect_err("modern static string(number()) stays outside the private slice");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("xpath10-static-string-number", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute XPath 1.0 static string(number())");
+    assert_eq!(
+        results.by_request["xpath10-static-string-number"].serialized,
+        "0.047025229999999994|0.04702523"
+    );
+}
+
+#[test]
 fn xpath10_context_number_nan_test_is_selected_at_compilation() {
     const SOURCE: &str = "urn:fastxslt:xpath10-context-number-nan:source";
     const LEGACY: &str = "urn:fastxslt:xpath10-context-number-nan:legacy";

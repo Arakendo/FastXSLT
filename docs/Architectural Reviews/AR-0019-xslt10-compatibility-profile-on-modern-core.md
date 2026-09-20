@@ -2265,3 +2265,13 @@ maintained redistributable legacy suite becomes available.
   successful execution to 1,945, and initialization to 2,047 while mismatches
   and execution failures remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-variable-focus-string-composition-2026-09-19.md)
+- 2026-09-19 -- The source-free XSLT 1.0 form
+  `string(number(decimal))` now performs its required IEEE-double conversion
+  at compilation, retains the resulting XPath lexical string, and folds exact
+  equality between two such forms. The equivalent modern expression remains
+  unsupported, and exponential formatting is not inferred. The unchanged
+  Microsoft `XSLTFunctions_RoundTripNumber_UsingStringFn` case becomes exact,
+  raising the strict lower bound to 1,817, successful execution to 1,946, and
+  initialization to 2,048 while mismatches and execution failures remain
+  unchanged.
+  [Evidence](../Evidence/oasis-xslt10-static-number-string-round-trip-2026-09-19.md)

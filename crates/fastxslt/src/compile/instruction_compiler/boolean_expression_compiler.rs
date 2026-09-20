@@ -116,6 +116,12 @@ fn compile_xslt10_special(
     location: &SourceLocation,
     xslt10_compatibility: bool,
 ) -> Option<BooleanExpression> {
+    if xslt10_compatibility
+        && let Some(value) =
+            constant_numeric_experiment::fold_xslt10_nested_string_number_equality(expression)
+    {
+        return Some(BooleanExpression::Constant(value));
+    }
     if let Some(divisor) =
         parse_xslt10_context_position_modulo_variable(expression, xslt10_compatibility)
     {

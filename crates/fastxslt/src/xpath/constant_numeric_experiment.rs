@@ -316,7 +316,22 @@ pub(crate) fn fold_xslt10_nested_string_number_equality(expression: &str) -> Opt
     Some(left == right)
 }
 
+pub(crate) fn fold_xslt10_static_string_number(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    expression
+        .strip_prefix("string")
+        .map(str::trim_start)
+        .and_then(|tail| tail.strip_prefix('('))
+        .and_then(|tail| tail.strip_suffix(')'))
+        .map(str::trim)
+        .and_then(number_function_call)
+        .and_then(canonical_finite_double)
+}
+
 fn evaluate_xslt10_nested_string_number(expression: &str) -> Option<String> {
+    if let Some(value) = fold_xslt10_static_string_number(expression) {
+        return Some(value);
+    }
     if let Some(argument) = number_function_call(expression) {
         let string_argument = argument
             .strip_prefix("string")?
@@ -327,6 +342,18 @@ fn evaluate_xslt10_nested_string_number(expression: &str) -> Option<String> {
         return canonical_finite_decimal(string_argument);
     }
     canonical_finite_decimal(expression)
+}
+
+fn canonical_finite_double(expression: &str) -> Option<String> {
+    let value = canonical_finite_decimal(expression)?.parse::<f64>().ok()?;
+    if !value.is_finite() {
+        return None;
+    }
+    if value == 0.0 {
+        return Some("0".to_owned());
+    }
+    let lexical = value.to_string();
+    (!lexical.contains(['e', 'E'])).then_some(lexical)
 }
 
 fn is_xslt10_numeric_operand(expression: &str) -> bool {
@@ -979,8 +1006,8 @@ mod tests {
         fold_exact_integral_arithmetic, fold_integral_equality, fold_integral_function,
         fold_number_conversion, fold_xslt10_finite_arithmetic, fold_xslt10_finite_comparison,
         fold_xslt10_nan_composition, fold_xslt10_nested_string_number_equality,
-        fold_xslt10_non_finite_comparison, fold_xslt10_non_finite_division, integral_function_call,
-        number_function_call,
+        fold_xslt10_non_finite_comparison, fold_xslt10_non_finite_division,
+        fold_xslt10_static_string_number, integral_function_call, number_function_call,
     };
 
     #[test]
@@ -1103,6 +1130,22 @@ mod tests {
         assert_eq!(
             fold_xslt10_nested_string_number_equality("number(string(path)) = 1"),
             None
+        );
+        assert_eq!(
+            fold_xslt10_nested_string_number_equality(
+                "string(number(0.047025229999999994)) = string(number(0.04702523))"
+            ),
+            Some(false)
+        );
+        assert_eq!(
+            fold_xslt10_nested_string_number_equality(
+                "string(number(1.00000000000000001)) = string(number(1))"
+            ),
+            Some(true)
+        );
+        assert_eq!(
+            fold_xslt10_static_string_number("string(number(0.047025229999999994))"),
+            Some("0.047025229999999994".to_owned())
         );
     }
 

@@ -648,7 +648,12 @@ result, including its typed effective boolean value. The equivalent modern
 decimal division remains an error. Ordered comparisons between source-free
 string and finite-number literals use XPath 1.0 numeric conversion in the
 legacy mode while the equivalent modern mixed-type expression stays outside
-the admitted slice. Execution performs no version branch. This initial seam
+the admitted slice. The bounded source-free form `string(number(decimal))`
+likewise converts the admitted decimal through IEEE double precision at compile
+time and retains only its XPath 1.0 lexical string; equality between two such
+forms folds to a typed boolean constant. Exponential lexical output remains
+outside this narrow form rather than silently inheriting Rust formatting.
+Execution performs no version branch. This initial seam
 does not yet interpret local version declarations, general backwards-compatible
 behavior, path operands, or non-literal mixed-type comparison.
 
