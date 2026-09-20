@@ -7,7 +7,7 @@ use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, DocumentRootReference, EqualityTest, FocusComparison, StringComparison,
-    Xslt10ContextTranslateStartsWith,
+    Xslt10AncestorFilter, Xslt10ContextTranslateStartsWith,
 };
 
 use super::{
@@ -181,6 +181,10 @@ fn compile_xslt10_special(
             location: location.clone(),
         });
     }
+    if let Some(filter) = compile_xslt10_ancestor_filter(expression, location, xslt10_compatibility)
+    {
+        return Some(BooleanExpression::Xslt10AncestorFilter(Box::new(filter)));
+    }
     if let Some(divisor) =
         parse_xslt10_context_position_modulo_variable(expression, xslt10_compatibility)
     {
@@ -201,6 +205,46 @@ fn compile_xslt10_special(
     }
     compile_xslt10_variable_numeric_comparison(expression, xslt10_compatibility)
         .or_else(|| compile_xslt10_context_translate_starts_with(expression, xslt10_compatibility))
+}
+
+fn compile_xslt10_ancestor_filter(
+    expression: &str,
+    location: &SourceLocation,
+    xslt10_compatibility: bool,
+) -> Option<Xslt10AncestorFilter> {
+    let predicates = xslt10_compatibility
+        .then(|| expression.trim().strip_prefix("ancestor::*["))??
+        .strip_suffix(']')?;
+    let (first, second) = predicates.split_once("][")?;
+    if second.contains("][") {
+        return None;
+    }
+    let (position, attribute, value, require_absent_text_child) =
+        if let Ok(position) = first.trim().parse::<usize>() {
+            let attribute = second.trim().strip_prefix('@')?;
+            (Some(position), attribute, None, false)
+        } else {
+            let (attribute, value) = first.trim().strip_prefix('@')?.split_once('=')?;
+            if second.trim() != "not(text())" {
+                return None;
+            }
+            (
+                None,
+                attribute.trim(),
+                Some(xpath_string_literal(value.trim())?.to_owned()),
+                true,
+            )
+        };
+    if position == Some(0) || !is_ascii_ncname(attribute) {
+        return None;
+    }
+    Some(Xslt10AncestorFilter {
+        position,
+        attribute: attribute.to_owned(),
+        value,
+        require_absent_text_child,
+        location: location.clone(),
+    })
 }
 
 fn parse_xslt10_context_node_set_variable_equality(

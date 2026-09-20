@@ -22,7 +22,8 @@ use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ComputedAttribute, FocusComparison, FocusEqualityOperand,
     Instruction, LiteralAttribute, NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy,
     SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, SourceWhitespacePolicy,
-    StringComparison, StylesheetProgram, TemplateArgument, Xslt10ApplyUnionPart, Xslt10KeyLookup,
+    StringComparison, StylesheetProgram, TemplateArgument, Xslt10AncestorFilter,
+    Xslt10ApplyUnionPart, Xslt10KeyLookup,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -3085,6 +3086,9 @@ fn evaluate_boolean(
             inputs, context, variable, location, variables, control,
         );
     }
+    if let BooleanExpression::Xslt10AncestorFilter(filter) = expression {
+        return evaluate_xslt10_ancestor_filter(inputs, context, filter, control);
+    }
     if let BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue(lookup) = expression {
         return key_lookup::select(inputs, lookup, context, variables, control)
             .map(|selected| !selected.is_empty());
@@ -3168,11 +3172,38 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::Xslt10VariableStringLength(_)
         | BooleanExpression::Xslt10ChildAttributeVariableEquals { .. }
         | BooleanExpression::Xslt10ContextNodeSetEqualsVariable { .. }
+        | BooleanExpression::Xslt10AncestorFilter(_)
         | BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue(_)
         | BooleanExpression::ContextStringEquals(_)
         | BooleanExpression::Xslt10ContextNumberIsNaN => {
             unreachable!("specialized expressions return before ordinary boolean dispatch")
         }
+        variable @ (BooleanExpression::VariableEqualsInteger(_)
+        | BooleanExpression::VariableEqualsEmptySequence(_)
+        | BooleanExpression::VariableEffectiveBooleanValue(_)
+        | BooleanExpression::VariableStringEquals { .. }
+        | BooleanExpression::Xslt10VariableStringLiteralEquals { .. }) => {
+            evaluate_variable_boolean(inputs, variable, variables, control)
+        }
+        BooleanExpression::Xslt10SourcePathStringComparison { left, right, equal } => {
+            runtime_context::evaluate_source_path_string_comparison(
+                inputs, context, left, right, *equal, control,
+            )
+        }
+        BooleanExpression::ConditionalInteger(expression) => {
+            value_evaluator::evaluate_conditional_integer(inputs, expression, context, control)
+                .map(|value| value != 0)
+        }
+    }
+}
+
+fn evaluate_variable_boolean(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    match expression {
         BooleanExpression::VariableEqualsInteger(test) => {
             evaluate_variable_integer_equality(inputs, test, variables, control)
         }
@@ -3196,15 +3227,7 @@ fn evaluate_ordinary_boolean(
         } => value_evaluator::evaluate_xslt10_variable_string_comparison(
             inputs, variable, literal, *equal, variables, control,
         ),
-        BooleanExpression::Xslt10SourcePathStringComparison { left, right, equal } => {
-            runtime_context::evaluate_source_path_string_comparison(
-                inputs, context, left, right, *equal, control,
-            )
-        }
-        BooleanExpression::ConditionalInteger(expression) => {
-            value_evaluator::evaluate_conditional_integer(inputs, expression, context, control)
-                .map(|value| value != 0)
-        }
+        _ => unreachable!("variable boolean dispatcher receives only variable plans"),
     }
 }
 
@@ -3236,6 +3259,77 @@ fn evaluate_xslt10_context_node_set_equals_variable(
             .string_value_controlled(*node, control)
             .map_err(|failure| control_failure(failure, inputs.request_id))?;
         if value == context_value {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn evaluate_xslt10_ancestor_filter(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    filter: &Xslt10AncestorFilter,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let mut current = source.parent(context);
+    let mut element_position = 0_usize;
+    while let Some(ancestor) = current {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        current = source.parent(ancestor);
+        if source.kind(ancestor) != NodeKind::Element {
+            continue;
+        }
+        element_position += 1;
+        if filter
+            .position
+            .is_some_and(|required| required != element_position)
+        {
+            continue;
+        }
+        let mut attribute_matches = false;
+        for attribute in source.attributes(ancestor) {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            if source
+                .name(*attribute)
+                .is_some_and(|name| name.namespace.is_none() && name.local == filter.attribute)
+                && filter
+                    .value
+                    .as_deref()
+                    .is_none_or(|value| source.value(*attribute) == Some(value))
+            {
+                attribute_matches = true;
+                break;
+            }
+        }
+        if attribute_matches
+            && (!filter.require_absent_text_child
+                || !ancestor_has_text_child(source, ancestor, inputs.request_id, control)?)
+        {
+            return Ok(true);
+        }
+        if filter.position.is_some() {
+            return Ok(false);
+        }
+    }
+    Ok(false)
+}
+
+fn ancestor_has_text_child(
+    source: &Document,
+    ancestor: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    for child in source.children(ancestor) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.kind(*child) == NodeKind::Text {
             return Ok(true);
         }
     }

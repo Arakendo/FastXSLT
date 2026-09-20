@@ -1088,6 +1088,15 @@ pub(crate) struct Xslt10ContextTranslateStartsWith {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10AncestorFilter {
+    pub(crate) position: Option<usize>,
+    pub(crate) attribute: String,
+    pub(crate) value: Option<String>,
+    pub(crate) require_absent_text_child: bool,
+    pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Xslt10NormalizedVariableTranslate {
     pub(crate) variable: String,
     pub(crate) search: String,
@@ -1244,6 +1253,7 @@ pub(crate) enum BooleanExpression {
         variable: String,
         location: SourceLocation,
     },
+    Xslt10AncestorFilter(Box<Xslt10AncestorFilter>),
     Xslt10KeyLookupEffectiveBooleanValue(Box<Xslt10KeyLookup>),
     Xslt10ContextTranslateStartsWith(Xslt10ContextTranslateStartsWith),
     ConditionalInteger(Box<ConditionalIntegerExpression>),

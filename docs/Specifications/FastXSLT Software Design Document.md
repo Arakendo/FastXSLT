@@ -471,6 +471,14 @@ toward the document root, apply positional predicates in reverse-axis order,
 charge candidate visits, and then participate in ordinary document-order path
 normalization. Namespace-qualified ancestor tests and non-node principal kinds
 remain unsupported.
+The XSLT 1.0 compatibility path additionally admits the exact conditional
+forms `ancestor::*[@attribute='literal'][not(text())]` and
+`ancestor::*[positive-integer][@attribute]`. The first applies both predicates
+to each ancestor candidate; the second selects by reverse-axis proximity before
+testing attribute presence. Ancestor, attribute, and child inspection is work
+charged against the invocation's effective source document. This does not
+rewrite sequential predicates as conjunctions, admit arbitrary predicate
+composition, or broaden the modern expression grammar.
 The `self` axis additionally admits explicit `text()`, `comment()`, and
 `processing-instruction()` tests alongside its named-element, any-element, and
 any-node forms. The single context candidate is work charged and retained only

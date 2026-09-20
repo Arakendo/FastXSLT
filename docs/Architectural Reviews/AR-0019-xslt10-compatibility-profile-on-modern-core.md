@@ -2310,3 +2310,12 @@ maintained redistributable legacy suite becomes available.
   bound to 1,821, successful execution to 1,950, and initialization to 2,052
   while mismatches and execution failures remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-key-effective-boolean-value-2026-09-19.md)
+- 2026-09-19 -- The exact XSLT 1.0 ancestor conditions
+  `ancestor::*[@attribute='literal'][not(text())]` and
+  `ancestor::*[positive-integer][@attribute]` now retain sequential-predicate
+  and reverse-axis position semantics in an owned, work-charged plan. The
+  unchanged Lotus `axes13` case becomes exact, raising the strict lower bound
+  to 1,822, successful execution to 1,951, and initialization to 2,053 while
+  mismatches and execution failures remain unchanged. General predicate
+  composition and modern admission remain open.
+  [Evidence](../Evidence/oasis-xslt10-sequential-ancestor-filters-2026-09-19.md)

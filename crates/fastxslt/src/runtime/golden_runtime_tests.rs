@@ -7666,6 +7666,50 @@ fn xslt10_context_node_set_compares_string_values_with_a_source_variable() {
 }
 
 #[test]
+fn xslt10_ancestor_filters_preserve_reverse_axis_position_and_sequential_predicates() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-ancestor-filters:source";
+    const LEGACY: &str = "urn:fastxslt:xslt10-ancestor-filters:legacy";
+    const MODERN: &str = "urn:fastxslt:xslt10-ancestor-filters:modern";
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="doc/foo/baz/text()"><xsl:choose><xsl:when test="ancestor::*[@new='true'][not(text())]"><xsl:text>first|</xsl:text></xsl:when><xsl:when test="ancestor::*[2][@new]"><xsl:text>second|</xsl:text></xsl:when></xsl:choose></xsl:for-each></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 12_288, 24_576));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><foo new="true"><baz>clean</baz></foo><foo new="true">prefix<baz>dirty</baz></foo></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, LEGACY).expect("compile XSLT 1.0 ancestor filters");
+    let modern = compile_resource(&snapshot, MODERN)
+        .expect_err("modern sequential ancestor filters remain unsupported");
+    assert_eq!(modern.code, "FXXP1002");
+    assert_eq!(modern.category, FailureCategory::Unsupported);
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("ancestor-filters", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute ancestor filters");
+
+    assert_eq!(
+        results.by_request["ancestor-filters"].serialized,
+        "first|second|"
+    );
+}
+
+#[test]
 fn xpath_string_function_composes_static_atoms_and_typed_paths() {
     const SOURCE: &str = "urn:fastxslt:string-function:source";
     const STYLESHEET: &str = "urn:fastxslt:string-function:stylesheet";

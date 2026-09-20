@@ -1247,6 +1247,12 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::Xslt10ContextNodeSetEqualsVariable { variable, location } => {
             variable.capacity() + location_owned(location)
         }
+        BooleanExpression::Xslt10AncestorFilter(filter) => {
+            size_of_val(filter.as_ref())
+                + filter.attribute.capacity()
+                + filter.value.as_ref().map_or(0, String::capacity)
+                + location_owned(&filter.location)
+        }
         BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue(lookup) => {
             xslt10_key_lookup_owned(lookup) + size_of_val(lookup.as_ref())
         }
