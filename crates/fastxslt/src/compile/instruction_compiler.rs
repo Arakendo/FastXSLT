@@ -62,9 +62,10 @@ use crate::xpath::string_length_experiment::{
     StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
 };
 use crate::xslt::golden_semantics_experiment::{
-    ChooseBranch, ComputedAttribute, DynamicElementName, ElementConstructorOrigin,
-    FocusEqualityOperand, Instruction, LiteralAttributeValue, SequenceItemExpression, SortDataType,
-    SortKey, SortOrder, SortSelect, StringComparison, TemplateArgument, ValueExpression,
+    BooleanExpression, ChooseBranch, ComputedAttribute, DynamicElementName,
+    ElementConstructorOrigin, FocusEqualityOperand, Instruction, LiteralAttributeValue,
+    SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, StringComparison,
+    TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -2459,12 +2460,7 @@ fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, Compi
     let location = document.location(element).clone();
     let expression = required_conditional_test(document, element)?;
     Ok(Instruction::If {
-        test: boolean_expression_compiler::compile(
-            expression,
-            &location,
-            effective_string_comparison(document, element)?,
-            uses_xslt10_compatibility(document, element),
-        )?,
+        test: compile_boolean_test(document, element, expression, &location)?,
         body: compile_sequence(document, element)?,
         location,
     })
@@ -2489,12 +2485,7 @@ pub(super) fn compile_choose(
             )?;
             let expression = required_conditional_test(document, child)?;
             branches.push(ChooseBranch {
-                test: boolean_expression_compiler::compile(
-                    expression,
-                    document.location(child),
-                    effective_string_comparison(document, child)?,
-                    uses_xslt10_compatibility(document, child),
-                )?,
+                test: compile_boolean_test(document, child, expression, document.location(child))?,
                 body: compile_sequence(document, child)?,
             });
         } else if is_xslt_element(document, child, "otherwise") {
@@ -2514,6 +2505,27 @@ pub(super) fn compile_choose(
         otherwise: otherwise.unwrap_or_default(),
         location: document.location(element).clone(),
     })
+}
+
+fn compile_boolean_test(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+) -> Result<BooleanExpression, CompileFailure> {
+    if uses_xslt10_compatibility(document, element)
+        && let Some(value) = xslt10_static_introspection_compiler::fold_effective_boolean(
+            document, element, expression,
+        )
+    {
+        return Ok(BooleanExpression::Constant(value));
+    }
+    boolean_expression_compiler::compile(
+        expression,
+        location,
+        effective_string_comparison(document, element)?,
+        uses_xslt10_compatibility(document, element),
+    )
 }
 
 fn ensure_choose_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {

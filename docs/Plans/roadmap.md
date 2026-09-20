@@ -5022,6 +5022,15 @@ host lifecycle.
     become exact, raising initialization to 2,031, successful execution to
     1,930, and the exact lower bound to 1,803 while mismatches remain 53.
     [Evidence](../Evidence/oasis-xslt10-forward-global-dependencies-2026-09-19.md)
+  - [x] Reuse namespace-aware static XSLT 1.0 introspection in conditional
+    position, including direct availability tests, bounded vendor containment,
+    and exact numeric system-property comparisons. Two unchanged cases now
+    initialize and execute, raising those totals to 2,033 and 1,932. Exact
+    matches remain 1,803 and visible mismatches rise to 54 because the suite
+    expects reference-processor identity/capabilities that FastXSLT correctly
+    does not claim, including availability of the unimplemented `document()`
+    function.
+    [Evidence](../Evidence/oasis-xslt10-conditional-static-introspection-2026-09-19.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

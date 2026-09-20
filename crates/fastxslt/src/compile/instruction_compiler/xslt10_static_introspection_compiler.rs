@@ -34,6 +34,73 @@ pub(super) fn fold(
     }
 }
 
+pub(super) fn fold_effective_boolean(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Option<bool> {
+    let expression = expression.trim();
+    if let Some(value) = fold(document, element, expression) {
+        return Some(match value {
+            StaticIntrospectionValue::String(value) => !value.is_empty(),
+            StaticIntrospectionValue::Boolean(value) => value,
+        });
+    }
+    if let Some(arguments) = expression
+        .strip_prefix("contains(")
+        .and_then(|tail| tail.strip_suffix(')'))
+        && let Some((value, sought)) = split_arguments(arguments)
+        && let StaticIntrospectionValue::String(value) = fold(document, element, value.trim())?
+    {
+        return Some(value.contains(xpath_string_literal(sought.trim())?));
+    }
+    for operator in [">=", "<=", "!=", ">", "<", "="] {
+        let Some((left, right)) = expression.split_once(operator) else {
+            continue;
+        };
+        let StaticIntrospectionValue::String(left) = fold(document, element, left.trim())? else {
+            return None;
+        };
+        let ordering =
+            crate::xpath::constant_numeric_experiment::compare(&left, right.trim()).ok()?;
+        return Some(match operator {
+            ">=" => ordering.is_gt() || ordering.is_eq(),
+            "<=" => ordering.is_lt() || ordering.is_eq(),
+            "!=" => !ordering.is_eq(),
+            ">" => ordering.is_gt(),
+            "<" => ordering.is_lt(),
+            "=" => ordering.is_eq(),
+            _ => unreachable!("operators are enumerated above"),
+        });
+    }
+    None
+}
+
+fn split_arguments(arguments: &str) -> Option<(&str, &str)> {
+    let mut quote = None;
+    let mut depth = 0_usize;
+    for (index, character) in arguments.char_indices() {
+        if matches!(character, '\'' | '"') {
+            if quote == Some(character) {
+                quote = None;
+            } else if quote.is_none() {
+                quote = Some(character);
+            }
+            continue;
+        }
+        if quote.is_some() {
+            continue;
+        }
+        match character {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => return Some((&arguments[..index], &arguments[index + 1..])),
+            _ => {}
+        }
+    }
+    None
+}
+
 fn parse_call(expression: &str) -> Option<(&str, &str)> {
     ["system-property", "function-available", "element-available"]
         .into_iter()
@@ -196,6 +263,26 @@ mod tests {
         assert_eq!(
             fold(&document, element, "element-available('xsl:stylesheet')"),
             Some(StaticIntrospectionValue::Boolean(false))
+        );
+        assert_eq!(
+            super::fold_effective_boolean(
+                &document,
+                element,
+                "system-property('xsl:version') >= 1"
+            ),
+            Some(true)
+        );
+        assert_eq!(
+            super::fold_effective_boolean(
+                &document,
+                element,
+                "contains(system-property('xsl:vendor-url'), 'Arakendo')"
+            ),
+            Some(true)
+        );
+        assert_eq!(
+            super::fold_effective_boolean(&document, element, "element-available('xsl:value-of')"),
+            Some(true)
         );
     }
 }

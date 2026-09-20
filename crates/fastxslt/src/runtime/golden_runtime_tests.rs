@@ -6700,7 +6700,7 @@ fn xslt10_static_introspection_is_namespace_aware_and_compiled_once() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="system-property('xsl:version')"/>|<xsl:value-of select="function-available('current')"/>|<xsl:value-of select="function-available('format-number')"/>|<xsl:value-of select="function-available('missing')"/>|<xsl:value-of select="element-available('xsl:value-of')"/>|<xsl:value-of select="element-available('xsl:stylesheet')"/>|<xsl:value-of select="element-available('value-of')"/>|<xsl:value-of xmlns="http://www.w3.org/1999/XSL/Transform" select="element-available('apply-templates')"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="system-property('xsl:version')"/>|<xsl:value-of select="function-available('current')"/>|<xsl:value-of select="function-available('format-number')"/>|<xsl:value-of select="function-available('missing')"/>|<xsl:value-of select="element-available('xsl:value-of')"/>|<xsl:value-of select="element-available('xsl:stylesheet')"/>|<xsl:value-of select="element-available('value-of')"/>|<xsl:value-of xmlns="http://www.w3.org/1999/XSL/Transform" select="element-available('apply-templates')"/>|<xsl:if test="element-available('xsl:value-of')">if</xsl:if>|<xsl:choose><xsl:when test="system-property('xsl:version') >= 1">version</xsl:when><xsl:otherwise>bad</xsl:otherwise></xsl:choose>|<xsl:if test="contains(system-property('xsl:vendor-url'), 'Arakendo')">vendor</xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -6714,7 +6714,7 @@ fn xslt10_static_introspection_is_namespace_aware_and_compiled_once() {
     let results = execute_transform_set(builder.seal()).expect("execute static introspection");
     assert_eq!(
         results.by_request["static-introspection"].serialized,
-        "1|true|true|false|true|false|false|true"
+        "1|true|true|false|true|false|false|true|if|version|vendor"
     );
 }
 
