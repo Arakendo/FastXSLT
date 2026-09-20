@@ -770,6 +770,15 @@ every root. A declared `element()` type still requires exactly one element
 root. This shared representation does not admit dynamic global instruction
 sequences or change modern temporary-tree semantics.
 
+Under compile-selected XSLT 1.0 compatibility, a bounded global temporary text
+tree may compose literal text with `xsl:value-of` over string literals and
+direct global-variable references. Referenced expanded-name keys participate
+in global topological ordering and cycle detection. Invocation materialization
+uses already-materialized atomic, first source-node, empty-sequence, or
+temporary-tree string semantics and creates one charged temporary text node.
+This is not a general global instruction executor, and dynamic values do not
+enter compiled state.
+
 The private temporary selection path also admits an exact child-element path
 whose origin is one temporary-tree variable and whose steps are lexical QNames
 resolved to expanded names during stylesheet compilation. Execution starts at

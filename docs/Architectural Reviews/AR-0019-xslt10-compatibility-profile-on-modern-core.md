@@ -2480,3 +2480,12 @@ maintained redistributable legacy suite becomes available.
   bound to 1,876 (59.12%) while execution failures and mismatches remain
   unchanged.
   [Evidence](../Evidence/oasis-xslt10-mixed-root-static-temporary-tree-2026-09-20.md)
+- 2026-09-20 -- Bounded XSLT 1.0 global temporary text constructors now retain
+  ordered literal/direct-global parts, and every referenced expanded-name key
+  participates in the existing topological ordering and cycle detector. One
+  unchanged Microsoft forward-reference case becomes exact, raising the strict
+  lower bound to 1,877 (59.15%). Two other cases advance visibly: one expected
+  error reaches its unbound dependency at execution, while one valid case
+  exposes a separate local-shadowing defect. Initialization reaches 2,096,
+  successful execution 2,008, execution failures 88, and mismatches remain 55.
+  [Evidence](../Evidence/oasis-xslt10-global-text-part-dependencies-2026-09-20.md)

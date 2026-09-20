@@ -735,6 +735,26 @@ fn forward_global_dependencies_are_ordered_before_materialization() {
 }
 
 #[test]
+fn xslt10_content_global_dependencies_are_ordered_and_cycles_rejected() {
+    let forward = parse_stylesheet(
+        "memory:xslt10-content-forward-global-dependency.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="first"><xsl:value-of select="$later"/></xsl:variable><xsl:variable name="later"><xsl:value-of select="'value'"/></xsl:variable><xsl:template match="/"/></xsl:stylesheet>"#,
+    );
+    let cycle = parse_stylesheet(
+        "memory:xslt10-content-global-cycle.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="first"><xsl:value-of select="$later"/></xsl:variable><xsl:variable name="later"><xsl:value-of select="$first"/></xsl:variable><xsl:template match="/"/></xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&forward).expect("forward content dependency should compile");
+    assert_eq!(program.global_bindings[0].name, "later");
+    assert_eq!(program.global_bindings[1].name, "first");
+
+    let failure = compile_stylesheet(&cycle).expect_err("content dependency cycle should fail");
+    assert_eq!(failure.code, "XTDE0640");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
 fn cyclic_global_dependencies_are_rejected() {
     let document = parse_stylesheet(
         "memory:cyclic-global-dependency.xsl",

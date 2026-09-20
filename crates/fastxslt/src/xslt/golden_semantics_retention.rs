@@ -14,6 +14,7 @@ use super::{
     StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue, TemplateParameter,
     TemplateParameterDefault, ValueExpression, VariableFilteredElementPath, Xslt10ApplyUnionPart,
     Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyValue,
+    Xslt10TemporaryTextPart,
 };
 
 impl StylesheetProgram {
@@ -180,6 +181,12 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             | GlobalBindingDefault::TemporaryComment(value) => value.capacity(),
             GlobalBindingDefault::Xslt10TemporarySourceString(path) => {
                 path.known_owned_capacity_bytes()
+            }
+            GlobalBindingDefault::Xslt10TemporaryTextParts(parts) => {
+                vec_owned(parts, |part| match part {
+                    Xslt10TemporaryTextPart::Text(value)
+                    | Xslt10TemporaryTextPart::Variable(value) => value.capacity(),
+                })
             }
             GlobalBindingDefault::TemporaryAttribute { name, value } => {
                 name_owned(name) + value.capacity()

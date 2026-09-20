@@ -638,18 +638,21 @@ fn order_global_dependencies(
 
     while !pending.is_empty() {
         let ready = pending.iter().position(|(binding, _)| {
-            let GlobalBindingDefault::Variable(dependency) = &binding.default else {
-                return true;
-            };
-            !pending
-                .iter()
-                .any(|(candidate, _)| candidate.name == *dependency)
+            global_dependencies(&binding.default).all(|dependency| {
+                !pending
+                    .iter()
+                    .any(|(candidate, _)| candidate.name == dependency)
+            })
         });
         let Some(ready) = ready else {
             let (binding, location) = &pending[0];
-            let GlobalBindingDefault::Variable(dependency) = &binding.default else {
-                unreachable!("a dependency cycle contains only variable aliases");
-            };
+            let dependency = global_dependencies(&binding.default)
+                .find(|dependency| {
+                    pending
+                        .iter()
+                        .any(|(candidate, _)| candidate.name == **dependency)
+                })
+                .expect("an unresolved dependency cycle retains one pending dependency");
             return Err(invalid(
                 "XTDE0640",
                 format!(
@@ -664,6 +667,23 @@ fn order_global_dependencies(
     }
     *bindings = ordered;
     Ok(())
+}
+
+fn global_dependencies(default: &GlobalBindingDefault) -> impl Iterator<Item = &str> {
+    use crate::xslt::golden_semantics_experiment::Xslt10TemporaryTextPart;
+
+    let mut dependencies = Vec::new();
+    match default {
+        GlobalBindingDefault::Variable(name) => dependencies.push(name.as_str()),
+        GlobalBindingDefault::Xslt10TemporaryTextParts(parts) => {
+            dependencies.extend(parts.iter().filter_map(|part| match part {
+                Xslt10TemporaryTextPart::Variable(name) => Some(name.as_str()),
+                Xslt10TemporaryTextPart::Text(_) => None,
+            }));
+        }
+        _ => {}
+    }
+    dependencies.into_iter()
 }
 
 #[derive(Default)]
@@ -946,33 +966,7 @@ fn compile_global_default(
         .iter()
         .any(|node| document.kind(*node) == NodeKind::Element)
     {
-        if declared_type.is_none()
-            && let Some(select) =
-                instruction_compiler::compile_xslt10_for_each_text_path(document, element)?
-        {
-            return Ok(GlobalBindingDefault::Xslt10ForEachText(select));
-        }
-        if let Some(text) = compile_xslt10_static_text_global(document, element, declared_type)? {
-            return Ok(text);
-        }
-        if let Some(temporary) =
-            compile_parentless_temporary_node(document, element, declared_type)?
-        {
-            Ok(temporary)
-        } else {
-            let nodes = compile_constructed_nodes(document, element)?;
-            if declared_type.is_some_and(|declared| declared != "element()")
-                || declared_type == Some("element()")
-                    && !matches!(nodes.as_slice(), [ConstructedNode::Element(_)])
-            {
-                return Err(unsupported(
-                    "FXST1016",
-                    "the private typed global-variable slice requires one static node constructor matching its declared type",
-                    document.location(element),
-                ));
-            }
-            Ok(GlobalBindingDefault::TemporaryTree(nodes))
-        }
+        compile_content_global_default(document, element, declared_type)
     } else {
         if let Some(declared_type) = declared_type {
             return compile_typed_atomic_global(
@@ -992,6 +986,40 @@ fn compile_global_default(
     }
 }
 
+fn compile_content_global_default(
+    document: &Document,
+    element: NodeId,
+    declared_type: Option<&str>,
+) -> Result<GlobalBindingDefault, CompileFailure> {
+    if declared_type.is_none()
+        && let Some(select) =
+            instruction_compiler::compile_xslt10_for_each_text_path(document, element)?
+    {
+        return Ok(GlobalBindingDefault::Xslt10ForEachText(select));
+    }
+    if let Some(text) = compile_xslt10_static_text_global(document, element, declared_type)? {
+        return Ok(text);
+    }
+    if let Some(parts) = compile_xslt10_temporary_text_parts(document, element, declared_type)? {
+        return Ok(parts);
+    }
+    if let Some(temporary) = compile_parentless_temporary_node(document, element, declared_type)? {
+        return Ok(temporary);
+    }
+    let nodes = compile_constructed_nodes(document, element)?;
+    if declared_type.is_some_and(|declared| declared != "element()")
+        || declared_type == Some("element()")
+            && !matches!(nodes.as_slice(), [ConstructedNode::Element(_)])
+    {
+        return Err(unsupported(
+            "FXST1016",
+            "the private typed global-variable slice requires one static node constructor matching its declared type",
+            document.location(element),
+        ));
+    }
+    Ok(GlobalBindingDefault::TemporaryTree(nodes))
+}
+
 fn compile_xslt10_static_text_global(
     document: &Document,
     element: NodeId,
@@ -1002,6 +1030,61 @@ fn compile_xslt10_static_text_global(
     }
     instruction_compiler::compile_xslt10_static_text_tree(document, element)
         .map(|value| value.map(GlobalBindingDefault::TemporaryText))
+}
+
+fn compile_xslt10_temporary_text_parts(
+    document: &Document,
+    element: NodeId,
+    declared_type: Option<&str>,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    use crate::xslt::golden_semantics_experiment::Xslt10TemporaryTextPart;
+
+    if declared_type.is_some()
+        || !document.parent(element).is_some_and(|stylesheet| {
+            optional_attribute(document, stylesheet, None, "version") == Some("1.0")
+        })
+    {
+        return Ok(None);
+    }
+    let children = meaningful_children(document, element);
+    if children.is_empty()
+        || !children
+            .iter()
+            .any(|child| is_xslt_element(document, *child, "value-of"))
+        || !children.iter().all(|child| {
+            document.kind(*child) == NodeKind::Text || is_xslt_element(document, *child, "value-of")
+        })
+    {
+        return Ok(None);
+    }
+    let mut parts = Vec::with_capacity(children.len());
+    for child in children {
+        if document.kind(child) == NodeKind::Text {
+            parts.push(Xslt10TemporaryTextPart::Text(
+                document.value(child).unwrap_or_default().to_owned(),
+            ));
+            continue;
+        }
+        ensure_only_attributes(document, child, &["select"], "xsl:value-of")?;
+        ensure_no_meaningful_children(document, child, "xsl:value-of")?;
+        let select = required_attribute(document, child, None, "select")?.trim();
+        if let Some(value) = xpath_string_literal(select) {
+            parts.push(Xslt10TemporaryTextPart::Text(value.to_owned()));
+        } else if let Some(variable) = select.strip_prefix('$') {
+            parts.push(Xslt10TemporaryTextPart::Variable(
+                normalize_variable_qname(document, child, variable).map_err(|_| {
+                    invalid(
+                        "FXXP0002",
+                        format!("invalid variable reference: {select}"),
+                        document.location(child),
+                    )
+                })?,
+            ));
+        } else {
+            return Ok(None);
+        }
+    }
+    Ok(Some(GlobalBindingDefault::Xslt10TemporaryTextParts(parts)))
 }
 
 fn compile_variable_global(

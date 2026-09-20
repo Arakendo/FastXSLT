@@ -633,42 +633,48 @@ fn materialize_global_default(
         | GlobalBindingDefault::Xslt10TemporarySourceCopy(_) => {
             materialize_global_xslt10_source_tree(globals, binding, source, request_id, control)?;
         }
+        GlobalBindingDefault::Xslt10TemporaryTextParts(parts) => {
+            let tree = materialize_xslt10_temporary_text_parts(
+                globals, parts, source, request_id, control,
+            )?;
+            globals.temporary_trees.insert(binding.name.clone(), tree);
+        }
         GlobalBindingDefault::Xslt10ForEachText(path) => {
             materialize_global_xslt10_for_each_text(
                 globals, binding, path, source, request_id, control,
             )?;
         }
-        GlobalBindingDefault::TemporaryAttribute { name, value } => {
-            let tree = materialize_parentless_temporary_node(
-                TemporaryNodeKind::Attribute {
-                    name: name.clone(),
-                    value: value.clone(),
-                },
-                request_id,
-                control,
-            )?;
-            globals.temporary_trees.insert(binding.name.clone(), tree);
-        }
-        GlobalBindingDefault::TemporaryComment(value) => {
-            let tree = materialize_parentless_temporary_node(
-                TemporaryNodeKind::Comment(value.clone()),
-                request_id,
-                control,
-            )?;
-            globals.temporary_trees.insert(binding.name.clone(), tree);
-        }
-        GlobalBindingDefault::TemporaryProcessingInstruction { target, value } => {
-            let tree = materialize_parentless_temporary_node(
-                TemporaryNodeKind::ProcessingInstruction {
-                    target: target.clone(),
-                    value: value.clone(),
-                },
-                request_id,
-                control,
-            )?;
-            globals.temporary_trees.insert(binding.name.clone(), tree);
+        GlobalBindingDefault::TemporaryAttribute { .. }
+        | GlobalBindingDefault::TemporaryComment(_)
+        | GlobalBindingDefault::TemporaryProcessingInstruction { .. } => {
+            materialize_parentless_global(globals, binding, request_id, control)?;
         }
     }
+    Ok(())
+}
+
+fn materialize_parentless_global(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let kind = match &binding.default {
+        GlobalBindingDefault::TemporaryAttribute { name, value } => TemporaryNodeKind::Attribute {
+            name: name.clone(),
+            value: value.clone(),
+        },
+        GlobalBindingDefault::TemporaryComment(value) => TemporaryNodeKind::Comment(value.clone()),
+        GlobalBindingDefault::TemporaryProcessingInstruction { target, value } => {
+            TemporaryNodeKind::ProcessingInstruction {
+                target: target.clone(),
+                value: value.clone(),
+            }
+        }
+        _ => unreachable!("parentless global dispatch receives one parentless node"),
+    };
+    let tree = materialize_parentless_temporary_node(kind, request_id, control)?;
+    globals.temporary_trees.insert(binding.name.clone(), tree);
     Ok(())
 }
 
@@ -690,6 +696,71 @@ fn materialize_global_xslt10_source_tree(
     };
     globals.temporary_trees.insert(binding.name.clone(), tree);
     Ok(())
+}
+
+fn materialize_xslt10_temporary_text_parts(
+    globals: &RuntimeGlobals,
+    parts: &[crate::xslt::golden_semantics_experiment::Xslt10TemporaryTextPart],
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<TemporaryTree, ExecutionFailure> {
+    use crate::xslt::golden_semantics_experiment::Xslt10TemporaryTextPart;
+
+    let mut value = String::new();
+    for part in parts {
+        match part {
+            Xslt10TemporaryTextPart::Text(text) => value.push_str(text),
+            Xslt10TemporaryTextPart::Variable(name) => {
+                value.push_str(&global_string_value(
+                    globals, name, source, request_id, control,
+                )?);
+            }
+        }
+    }
+    materialize_parentless_temporary_node(TemporaryNodeKind::Text(value), request_id, control)
+}
+
+fn global_string_value(
+    globals: &RuntimeGlobals,
+    name: &str,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    if let Some(value) = globals.atomics.get(name) {
+        return Ok(value.lexical().to_owned());
+    }
+    if globals.empty_sequences.contains(name) {
+        return Ok(String::new());
+    }
+    if let Some(nodes) = globals.nodes.get(name) {
+        let source = source.ok_or_else(|| {
+            failure(
+                "FXRT1004",
+                FailureCategory::Unsupported,
+                Some(request_id),
+                "a source-node global value requires a principal source",
+            )
+        })?;
+        return nodes.first().map_or_else(
+            || Ok(String::new()),
+            |node| {
+                source
+                    .string_value_controlled(*node, control)
+                    .map_err(|failure| control_failure(failure, request_id))
+            },
+        );
+    }
+    if let Some(tree) = globals.temporary_trees.get(name) {
+        return temporary_tree_string_value(tree, request_id, control);
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(request_id),
+        format!("unbound global dependency: ${name}"),
+    ))
 }
 
 fn materialize_global_count(
