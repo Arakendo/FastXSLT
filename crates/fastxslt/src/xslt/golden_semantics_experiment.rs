@@ -1235,6 +1235,11 @@ pub(crate) enum BooleanExpression {
         right: Box<LocationPath>,
         equal: bool,
     },
+    Xslt10ChildAttributeVariableEquals {
+        child: ExpandedName,
+        attribute: ExpandedName,
+        variable: String,
+    },
     Xslt10ContextTranslateStartsWith(Xslt10ContextTranslateStartsWith),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     NodeExists(LocationPath),

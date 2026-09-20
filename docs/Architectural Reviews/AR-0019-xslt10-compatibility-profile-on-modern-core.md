@@ -2275,3 +2275,12 @@ maintained redistributable legacy suite becomes available.
   initialization to 2,048 while mismatches and execution failures remain
   unchanged.
   [Evidence](../Evidence/oasis-xslt10-static-number-string-round-trip-2026-09-19.md)
+- 2026-09-19 -- The exact XSLT 1.0 boolean path
+  `child[@attribute=string($variable)]` now reuses shared variable string
+  conversion and performs a charged scan of unqualified children and
+  attributes. The bounded form accepts an optional `./`; qualified names,
+  deeper paths, and modern semantics remain unsupported. The unchanged Lotus
+  `namedtemplate07` case becomes exact, raising the strict lower bound to
+  1,818, successful execution to 1,947, and initialization to 2,049 while
+  mismatches and execution failures remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-child-attribute-variable-predicate-2026-09-19.md)

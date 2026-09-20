@@ -1239,6 +1239,11 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::Xslt10SourcePathStringComparison { left, right, .. } => {
             path_pair_owned(left, right) + size_of_val(right.as_ref())
         }
+        BooleanExpression::Xslt10ChildAttributeVariableEquals {
+            child,
+            attribute,
+            variable,
+        } => name_owned(child) + name_owned(attribute) + variable.capacity(),
         BooleanExpression::Xslt10ContextTranslateStartsWith(expression) => {
             expression.search.capacity()
                 + expression.replacement.capacity()

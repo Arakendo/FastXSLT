@@ -7536,6 +7536,49 @@ fn modern_position_modulo_variable_boolean_remains_unsupported() {
 }
 
 #[test]
+fn xslt10_child_attribute_predicate_converts_a_constructed_parameter_to_string() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-child-attribute-variable:source";
+    const LEGACY: &str = "urn:fastxslt:xslt10-child-attribute-variable:legacy";
+    const MODERN: &str = "urn:fastxslt:xslt10-child-attribute-variable:modern";
+    let body = r#"<xsl:output method="text"/><xsl:template match="todo"><xsl:call-template name="section"><xsl:with-param name="x">high</xsl:with-param></xsl:call-template><xsl:call-template name="section"><xsl:with-param name="x">low</xsl:with-param></xsl:call-template></xsl:template><xsl:template name="section"><xsl:param name="x"/><xsl:if test="./action[@priority=string($x)]"><xsl:value-of select="$x"/>|</xsl:if></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 12_288, 24_576));
+    resources
+        .admit(
+            SOURCE,
+            br#"<todo><action priority="high"/></todo>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, LEGACY)
+        .expect("compile XSLT 1.0 child attribute-variable predicate");
+    compile_resource(&snapshot, MODERN)
+        .expect_err("modern child attribute-variable predicate remains unsupported");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("child-attribute-variable", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute child attribute-variable predicate");
+    assert_eq!(
+        results.by_request["child-attribute-variable"].serialized,
+        "high|"
+    );
+}
+
+#[test]
 fn xpath_string_function_composes_static_atoms_and_typed_paths() {
     const SOURCE: &str = "urn:fastxslt:string-function:source";
     const STYLESHEET: &str = "urn:fastxslt:string-function:stylesheet";

@@ -501,6 +501,12 @@ once through the shared XSLT 1.0 string rules, charges the function operation,
 and emits the typed boolean or string result. This does not admit dynamic
 second operands, general nested calls, or the equivalent modern expression
 grammar.
+The exact XSLT 1.0 effective-boolean path
+`child[@attribute=string($variable)]`, with an optional leading `./`, converts
+the variable once through those same string rules and performs a charged scan
+of matching unqualified child elements and attributes. It does not admit
+qualified names, deeper paths, alternate comparison operators, general
+predicate composition, or modern compatibility behavior.
 An untyped local `xsl:variable` may select the exact expression `position()`.
 The binding materializes the current sequence-focus position as an integer in
 invocation-local state and charges one XPath operation. It does not establish

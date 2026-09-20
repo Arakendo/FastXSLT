@@ -2,6 +2,7 @@
 
 use crate::compile::golden_stylesheet_experiment::CompileFailure;
 use crate::xdm::owned_tree_experiment::SourceLocation;
+use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
@@ -122,6 +123,11 @@ fn compile_xslt10_special(
     {
         return Some(BooleanExpression::Constant(value));
     }
+    if let Some(expression) =
+        compile_xslt10_child_attribute_variable_path(expression, xslt10_compatibility)
+    {
+        return Some(expression);
+    }
     if let Some(divisor) =
         parse_xslt10_context_position_modulo_variable(expression, xslt10_compatibility)
     {
@@ -142,6 +148,41 @@ fn compile_xslt10_special(
     }
     compile_xslt10_variable_numeric_comparison(expression, xslt10_compatibility)
         .or_else(|| compile_xslt10_context_translate_starts_with(expression, xslt10_compatibility))
+}
+
+fn compile_xslt10_child_attribute_variable_path(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<BooleanExpression> {
+    let expression = xslt10_compatibility.then(|| {
+        expression
+            .trim()
+            .strip_prefix("./")
+            .unwrap_or(expression.trim())
+    })?;
+    let (child, predicate) = expression.split_once("[@")?;
+    let predicate = predicate.strip_suffix(']')?;
+    let (attribute, value) = predicate.split_once('=')?;
+    let variable = value
+        .trim()
+        .strip_prefix("string(")?
+        .strip_suffix(')')?
+        .trim()
+        .strip_prefix('$')?;
+    if !is_ascii_ncname(child) || !is_ascii_ncname(attribute) || !is_ascii_ncname(variable) {
+        return None;
+    }
+    Some(BooleanExpression::Xslt10ChildAttributeVariableEquals {
+        child: ExpandedName {
+            namespace: None,
+            local: child.to_owned(),
+        },
+        attribute: ExpandedName {
+            namespace: None,
+            local: attribute.to_owned(),
+        },
+        variable: variable.to_owned(),
+    })
 }
 
 fn parse_xslt10_variable_string_length_boolean(

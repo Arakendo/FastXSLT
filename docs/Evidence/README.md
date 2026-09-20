@@ -23,6 +23,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Context Translation Prefix](oasis-xslt10-context-translate-prefix-2026-09-19.md)
 - [OASIS XSLT 1.0 Variable/Focus String Composition](oasis-xslt10-variable-focus-string-composition-2026-09-19.md)
 - [OASIS XSLT 1.0 Static Number/String Round Trip](oasis-xslt10-static-number-string-round-trip-2026-09-19.md)
+- [OASIS XSLT 1.0 Child Attribute/Variable Predicate](oasis-xslt10-child-attribute-variable-predicate-2026-09-19.md)
 - [OASIS XSLT 1.0 Key-Use Path Union](oasis-xslt10-key-use-path-union-2026-09-19.md)
 - [OASIS XSLT 1.0 Variable Division String Conversion](oasis-xslt10-variable-division-string-2026-09-19.md)
 - [OASIS XSLT 1.0 Concatenated `translate()` Maps](oasis-xslt10-concatenated-translate-maps-2026-09-19.md)

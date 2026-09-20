@@ -3069,6 +3069,16 @@ fn evaluate_boolean(
         )
         .map(|length| length != 0);
     }
+    if let BooleanExpression::Xslt10ChildAttributeVariableEquals {
+        child,
+        attribute,
+        variable,
+    } = expression
+    {
+        return evaluate_xslt10_child_attribute_variable_equals(
+            inputs, context, child, attribute, variable, variables, control,
+        );
+    }
     if let BooleanExpression::ContextStringEquals(expected) = expression {
         return evaluate_context_string_equals(inputs, context, expected, control);
     }
@@ -3146,6 +3156,7 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::Xslt10ContextTranslateStartsWith(_)
         | BooleanExpression::Xslt10ContextPositionModuloVariable { .. }
         | BooleanExpression::Xslt10VariableStringLength(_)
+        | BooleanExpression::Xslt10ChildAttributeVariableEquals { .. }
         | BooleanExpression::ContextStringEquals(_)
         | BooleanExpression::Xslt10ContextNumberIsNaN => {
             unreachable!("specialized expressions return before ordinary boolean dispatch")
@@ -3183,6 +3194,39 @@ fn evaluate_ordinary_boolean(
                 .map(|value| value != 0)
         }
     }
+}
+
+fn evaluate_xslt10_child_attribute_variable_equals(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    child_name: &ExpandedName,
+    attribute_name: &ExpandedName,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let expected =
+        value_evaluator::xslt10_variable_string_value(inputs, variable, variables, control)?;
+    let (source, context) = required_source_context(inputs, context)?;
+    for child in source.children(context) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if source.kind(*child) != NodeKind::Element || source.name(*child) != Some(child_name) {
+            continue;
+        }
+        for attribute in source.attributes(*child) {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            if source.name(*attribute) == Some(attribute_name)
+                && source.string_value(*attribute) == expected
+            {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 fn evaluate_xslt10_context_position_modulo_variable(
