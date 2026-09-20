@@ -301,8 +301,14 @@ fn apply_arguments(
     declarations: &[DecimalFormatDefinition],
 ) -> Result<(), CompileFailure> {
     for argument in arguments {
-        if let TemplateArgumentValue::Xslt10Content(content) = &mut argument.value {
-            apply_value(&mut content.value, declarations)?;
+        match &mut argument.value {
+            TemplateArgumentValue::Xslt10Content(content) => {
+                apply_value(&mut content.value, declarations)?;
+            }
+            TemplateArgumentValue::Xslt10SequenceConstructor(instructions) => {
+                apply_instructions(instructions, declarations)?;
+            }
+            _ => {}
         }
     }
     Ok(())

@@ -3240,6 +3240,38 @@ fn xslt10_template_argument_constructs_a_mixed_temporary_tree() {
 }
 
 #[test]
+fn xslt10_template_argument_materializes_a_nested_template_call() {
+    const SOURCE: &str = "urn:fastxslt:argument-nested-call:source";
+    const STYLESHEET: &str = "urn:fastxslt:argument-nested-call:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:output omit-xml-declaration="yes"/>
+      <xsl:template match="/"><out><xsl:call-template name="outer"><xsl:with-param name="tree"><xsl:call-template name="inner"><xsl:with-param name="text" select="'ok'"/></xsl:call-template></xsl:with-param></xsl:call-template></out></xsl:template>
+      <xsl:template name="inner"><xsl:param name="text"/><child><xsl:value-of select="$text"/></child></xsl:template>
+      <xsl:template name="outer"><xsl:param name="tree"/><xsl:copy-of select="$tree"/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit nested-call argument source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit nested-call argument stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile nested template-call argument constructor");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("nested-call", "result", SOURCE))
+        .expect("admit nested-call argument request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute nested-call argument");
+    assert_eq!(
+        results.by_request["nested-call"].serialized,
+        "<out><child>ok</child></out>"
+    );
+}
+
+#[test]
 fn positional_patterns_and_avts_share_the_apply_templates_focus() {
     const POSITION_SOURCE: &str = "urn:fastxslt:position-focus:source";
     const POSITION_STYLESHEET: &str = "urn:fastxslt:position-focus:stylesheet";

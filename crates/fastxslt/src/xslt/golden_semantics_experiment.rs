@@ -1404,6 +1404,7 @@ pub(crate) enum TemplateArgumentValue {
     Xslt10Content(Box<Xslt10ContentArgument>),
     Xslt10ForEachPathStringContent(LocationPath),
     Xslt10ConstructedContent(Vec<ConstructedNode>),
+    Xslt10SequenceConstructor(Box<[Instruction]>),
     SourcePathStringComparison {
         left: LocationPath,
         right: Box<LocationPath>,

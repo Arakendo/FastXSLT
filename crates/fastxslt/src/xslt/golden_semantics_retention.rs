@@ -1416,6 +1416,10 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             TemplateArgumentValue::Xslt10ConstructedContent(nodes) => {
                 vec_owned(nodes, constructed_node_owned)
             }
+            TemplateArgumentValue::Xslt10SequenceConstructor(instructions) => {
+                size_of_val(instructions.as_ref())
+                    + instructions.iter().map(instruction_owned).sum::<usize>()
+            }
             TemplateArgumentValue::SourcePathStringComparison { left, right, .. } => {
                 path_pair_owned(left, right) + size_of_val(right.as_ref())
             }

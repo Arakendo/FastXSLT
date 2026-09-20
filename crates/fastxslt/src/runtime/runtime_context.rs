@@ -113,23 +113,14 @@ pub(super) fn evaluate_template_arguments(
     arguments: &[TemplateArgument],
     variables: &RuntimeVariables,
     inputs: &SequenceInputs<'_>,
-    context: Option<NodeId>,
-    focus_position: usize,
-    focus_size: usize,
+    execution: super::SequenceContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<BTreeMap<String, InvocationParameter>, ExecutionFailure> {
     arguments
         .iter()
         .map(|argument| {
-            let value = evaluate_template_argument(
-                argument,
-                variables,
-                inputs,
-                context,
-                focus_position,
-                focus_size,
-                control,
-            )?;
+            let value =
+                evaluate_template_argument(argument, variables, inputs, execution, control)?;
             Ok((
                 argument.name.clone(),
                 InvocationParameter {
@@ -145,11 +136,12 @@ fn evaluate_template_argument(
     argument: &TemplateArgument,
     variables: &RuntimeVariables,
     inputs: &SequenceInputs<'_>,
-    context: Option<NodeId>,
-    focus_position: usize,
-    focus_size: usize,
+    execution: super::SequenceContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<InvocationParameterValue, ExecutionFailure> {
+    let context = execution.node;
+    let focus_position = execution.focus_position;
+    let focus_size = execution.focus_size;
     Ok(match &argument.value {
         TemplateArgumentValue::Text(value) => {
             InvocationParameterValue::Atomic(AtomicValue::string(value.clone()))
@@ -220,6 +212,15 @@ fn evaluate_template_argument(
         TemplateArgumentValue::Xslt10ConstructedContent(nodes) => {
             InvocationParameterValue::TemporaryTree(materialize_temporary_nodes(
                 nodes,
+                inputs.request_id,
+                control,
+            )?)
+        }
+        TemplateArgumentValue::Xslt10SequenceConstructor(instructions) => {
+            let nodes =
+                super::execute_sequence(inputs, instructions, execution, variables, control)?;
+            InvocationParameterValue::TemporaryTree(materialize_result_nodes(
+                &nodes,
                 inputs.request_id,
                 control,
             )?)

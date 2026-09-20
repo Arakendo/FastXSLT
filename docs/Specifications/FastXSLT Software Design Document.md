@@ -109,8 +109,12 @@ open:
   supplied-argument QNames use the same key. Content-built arguments for
   admitted template invocations reuse the bounded typed constructor plans and
   invocation-owned parameter frame; they do not establish a separate XSLT 1.0
-  binding model. Broader expressions admit qualified variable references only
-  through their own typed compiler support.
+  binding model. An admitted XSLT 1.0 argument instruction sequence executes
+  through the ordinary instruction engine with the caller's complete dynamic
+  context, then materializes its result as invocation-owned temporary content.
+  It remains bounded by compiled child count, ordinary recursion/work limits,
+  and temporary-node accounting. Broader expressions admit qualified variable
+  references only through their own typed compiler support.
 - Source-derived global values retain identities only within the prepared input
   and invocation that produced them. A compiled stylesheet must not retain node
   identities from one principal source for reuse by another invocation.

@@ -2405,3 +2405,11 @@ maintained redistributable legacy suite becomes available.
   2,077 while mismatches and execution failures remain unchanged. The
   missing-name error remains explicitly invalid.
   [Evidence](../Evidence/oasis-xslt10-template-argument-qnames-and-content-2026-09-20.md)
+- 2026-09-20 -- A bounded XSLT 1.0 template-argument instruction constructor
+  now executes through the ordinary instruction engine with the complete
+  caller context and materializes its charged result as an invocation-owned
+  temporary value. The unchanged imported-library `variable47` case becomes
+  exact, raising the strict lower bound to 1,847, successful execution to
+  1,976, and initialization to 2,078 while mismatches and execution failures
+  remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-nested-template-argument-constructor-2026-09-20.md)

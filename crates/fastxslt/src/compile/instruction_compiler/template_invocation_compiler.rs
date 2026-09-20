@@ -838,6 +838,21 @@ fn compile_content_argument_value(
             )?,
         ));
     }
+    if uses_xslt10_compatibility(document, element) {
+        const MAX_SEQUENCE_CONSTRUCTOR_CHILDREN: usize = 64;
+        if children.len() > MAX_SEQUENCE_CONSTRUCTOR_CHILDREN {
+            return Err(unsupported(
+                "FXST1033",
+                format!(
+                    "the private XSLT 1.0 template-argument sequence constructor is limited to {MAX_SEQUENCE_CONSTRUCTOR_CHILDREN} children"
+                ),
+                document.location(element),
+            ));
+        }
+        return Ok(TemplateArgumentValue::Xslt10SequenceConstructor(
+            super::compile_sequence(document, element)?.into_boxed_slice(),
+        ));
+    }
     Err(unsupported(
         "FXST1033",
         "the private call-template argument content slice permits literal text or one admitted XSLT 1.0 value constructor",
