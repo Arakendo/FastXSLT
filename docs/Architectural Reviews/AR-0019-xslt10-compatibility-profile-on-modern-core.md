@@ -2456,3 +2456,9 @@ maintained redistributable legacy suite becomes available.
   of attribute-only source copy-of ordering advances Lotus `copy40` to the
   narrower `FXXP1012` frontier without counting it as a pass.
   [Evidence](../Evidence/oasis-xslt10-result-attribute-recovery-2026-09-20.md)
+- 2026-09-20 -- The XSLT 1.0 source-copy attribute slice now lowers an
+  admitted `xsl:value-of` location path into the shared typed first-node
+  string-value plan. Lotus `copy40` becomes exact, raising initialization to
+  2,090, successful execution to 2,004, and the strict lower bound to 1,873
+  (59.03%) while execution failures and mismatches remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-source-copy-path-attribute-2026-09-20.md)

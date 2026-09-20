@@ -45,7 +45,7 @@ pub(super) fn compile_copy(
                 document.location(child),
             ));
         }
-        let attribute = compile_static_attribute(document, child)?;
+        let attribute = compile_static_attribute(document, child, recover_late_attributes)?;
         if let Some(index) = attributes
             .iter()
             .position(|existing| existing.name == attribute.name)
@@ -76,6 +76,7 @@ fn is_attribute_only_copy_of(document: &Document, element: NodeId) -> bool {
 fn compile_static_attribute(
     document: &Document,
     element: NodeId,
+    xslt10_compatibility: bool,
 ) -> Result<LiteralAttribute, CompileFailure> {
     ensure_only_attributes(document, element, &["name"], "xsl:attribute")?;
     let name = required_attribute(document, element, None, "name")?;
@@ -102,6 +103,17 @@ fn compile_static_attribute(
                     namespace: None,
                     local: local.to_owned(),
                 })
+            } else if xslt10_compatibility
+                && let Ok(path) = crate::xpath::path_experiment::parse_location_path(
+                    select.trim(),
+                    document.location(*value_of).clone(),
+                )
+            {
+                LiteralAttributeValue::Xslt10TextAndPath {
+                    prefix: String::new(),
+                    path,
+                    suffix: String::new(),
+                }
             } else {
                 return Err(unsupported(
                     "FXXP1012",

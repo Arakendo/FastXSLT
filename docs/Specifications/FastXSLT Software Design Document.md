@@ -946,6 +946,12 @@ children, while an unattached or late value is omitted. Source-copy ordering
 recognizes bounded attribute-only copy-of selections without treating them as
 child content. This does not add a runtime stylesheet-version branch, relax
 duplicate-attribute errors, or admit a public result-construction state.
+Within that XSLT 1.0 source-copy slice, an `xsl:attribute` value may use an
+admitted typed location path. It takes the first selected node's string value
+through the shared charged evaluator; the empty selection produces an empty
+string. Existing direct context and unqualified source-attribute plans remain
+specialized, and the modern static context is not widened by this compatibility
+rule.
 
 An admitted `xsl:key` declaration is immutable compiled stylesheet state: its
 expanded name, bounded match pattern, typed `use` location path, and source

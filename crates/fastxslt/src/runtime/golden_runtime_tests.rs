@@ -9322,6 +9322,44 @@ fn source_copy_computed_attribute_reads_the_current_source_attribute() {
 }
 
 #[test]
+fn xslt10_source_copy_attribute_uses_first_selected_node_string_value() {
+    const SOURCE: &str = "urn:fastxslt:source-copy-path-attribute:source";
+    const STYLESHEET: &str = "urn:fastxslt:source-copy-path-attribute:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:copy><xsl:copy-of select="@level"/><xsl:attribute name="data"><xsl:value-of select="text()"/></xsl:attribute></xsl:copy></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item level=\"1\">first<child/>second</item></doc>".to_vec(),
+        )
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile source-copy path attribute");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "source-copy-path-attribute",
+            "source-copy-path-attribute-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute source-copy path attribute request");
+
+    assert_eq!(
+        results.by_request["source-copy-path-attribute"].serialized,
+        "<out><item data=\"first\" level=\"1\"></item></out>"
+    );
+}
+
+#[test]
 fn xslt10_numeric_sort_uses_xpath_number_lexicals_and_equal_zero_keys() {
     const SOURCE: &str = "urn:fastxslt:xslt10-numeric-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-numeric-sort:stylesheet";
