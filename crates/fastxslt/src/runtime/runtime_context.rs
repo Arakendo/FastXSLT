@@ -463,6 +463,50 @@ impl RuntimeVariables {
         Arc::make_mut(&mut self.temporary_trees).insert(name, tree);
     }
 
+    pub(super) fn bind_alias(
+        &mut self,
+        name: String,
+        source: &str,
+        globals: &RuntimeGlobals,
+    ) -> bool {
+        if let Some(value) = self.atomics.get(source).cloned() {
+            self.bind_atomic(name, value);
+            return true;
+        }
+        if let Some(values) = self.atomic_sequences.get(source).cloned() {
+            self.bind_atomic_sequence(name, values);
+            return true;
+        }
+        if let Some(nodes) = self.source_nodes.get(source).cloned() {
+            self.bind_source_nodes(name, nodes);
+            return true;
+        }
+        if let Some(tree) = self.temporary_trees.get(source).cloned() {
+            self.bind_temporary_tree(name, tree);
+            return true;
+        }
+        if !self.allows_global_fallback(source) {
+            return false;
+        }
+        if let Some(value) = globals.atomics.get(source).cloned() {
+            self.bind_atomic(name, value);
+            return true;
+        }
+        if globals.empty_sequences.contains(source) {
+            self.bind_atomic_sequence(name, Vec::new());
+            return true;
+        }
+        if let Some(nodes) = globals.nodes.get(source).cloned() {
+            self.bind_source_nodes(name, nodes);
+            return true;
+        }
+        if let Some(tree) = globals.temporary_trees.get(source).cloned() {
+            self.bind_temporary_tree(name, tree);
+            return true;
+        }
+        false
+    }
+
     pub(super) fn source_nodes<'a>(
         &'a self,
         globals: &'a RuntimeGlobals,

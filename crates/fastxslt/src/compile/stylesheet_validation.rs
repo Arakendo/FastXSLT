@@ -68,7 +68,7 @@ fn validate_named_calls(
             | Instruction::ValueOf { .. }
             | Instruction::Variable { .. }
             | Instruction::StaticAtomicVariable { .. }
-            | Instruction::AtomicVariableAlias { .. }
+            | Instruction::VariableAlias { .. }
             | Instruction::ContextPositionVariable { .. }
             | Instruction::ContextNodeNameVariable { .. }
             | Instruction::ContextCountPathVariable { .. }

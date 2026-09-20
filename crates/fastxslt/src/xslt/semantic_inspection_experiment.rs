@@ -341,7 +341,7 @@ fn local_variable_body(instruction: &Instruction) -> LocalVariableBody<'_> {
     match instruction {
         Instruction::Variable { .. }
         | Instruction::StaticAtomicVariable { .. }
-        | Instruction::AtomicVariableAlias { .. }
+        | Instruction::VariableAlias { .. }
         | Instruction::ContextPositionVariable { .. }
         | Instruction::ContextNodeNameVariable { .. }
         | Instruction::ContextCountPathVariable { .. }

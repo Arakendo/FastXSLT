@@ -487,7 +487,7 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => local_atomic_variable_owned(name, select, location),
         instruction @ (Instruction::StaticAtomicVariable { .. }
-        | Instruction::AtomicVariableAlias { .. }) => scalar_binding_owned(instruction),
+        | Instruction::VariableAlias { .. }) => scalar_binding_owned(instruction),
         Instruction::ContextPositionVariable { name, location, .. }
         | Instruction::ContextNodeNameVariable { name, location }
         | Instruction::IntegerRangeVariable { name, location, .. } => {
@@ -736,7 +736,7 @@ fn scalar_binding_owned(value: &Instruction) -> usize {
             value,
             location,
         } => static_atomic_variable_owned(name, value, location),
-        Instruction::AtomicVariableAlias {
+        Instruction::VariableAlias {
             name,
             source,
             location,

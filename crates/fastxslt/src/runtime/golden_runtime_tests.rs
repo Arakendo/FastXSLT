@@ -726,6 +726,55 @@ fn local_atomic_variable_alias_preserves_the_bound_type_and_value() {
 }
 
 #[test]
+fn local_variable_initializer_can_reference_a_same_named_global() {
+    let source = parse_document(
+        "memory:local-global-shadow.xml",
+        b"<doc/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:local-global-shadow.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:variable name="suffix" select="'tree'"/>
+          <xsl:variable name="value">global <xsl:value-of select="$suffix"/></xsl:variable>
+          <xsl:template match="doc"><xsl:variable name="value" select="$value"/><out><xsl:value-of select="$value"/></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("same-named global fallback should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "local-global-shadow-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("local initializer should see the same-named global binding");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "local-global-shadow-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>global tree</out>");
+}
+
+#[test]
 fn xslt10_named_call_ignores_undeclared_arguments_and_retains_global_fallback() {
     let source = parse_document(
         "memory:ignored-argument.xml",

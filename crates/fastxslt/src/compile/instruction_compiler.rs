@@ -346,7 +346,7 @@ fn text_run_contains_non_whitespace(
 fn local_variable_name(variable: &Instruction) -> &String {
     let (Instruction::Variable { name, .. }
     | Instruction::StaticAtomicVariable { name, .. }
-    | Instruction::AtomicVariableAlias { name, .. }
+    | Instruction::VariableAlias { name, .. }
     | Instruction::ContextPositionVariable { name, .. }
     | Instruction::ContextNodeNameVariable { name, .. }
     | Instruction::ContextCountPathVariable { name, .. }
@@ -2012,7 +2012,7 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         .strip_prefix('$')
         .filter(|source| is_ascii_ncname(source))
     {
-        return Ok(Instruction::AtomicVariableAlias {
+        return Ok(Instruction::VariableAlias {
             name: name.clone(),
             source: source.to_owned(),
             location,

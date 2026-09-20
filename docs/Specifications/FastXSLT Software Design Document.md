@@ -779,6 +779,15 @@ temporary-tree string semantics and creates one charged temporary text node.
 This is not a general global instruction executor, and dynamic values do not
 enter compiled state.
 
+A direct local-variable alias preserves the resolved binding's value kind.
+Resolution first considers earlier lexical local bindings and falls back to a
+global only while that expanded name has not yet been shadowed locally. The
+new binding is installed only after its initializer resolves, so a local
+variable may initialize from a same-named global atomic value, sequence,
+source-node sequence, empty sequence, or temporary tree. Temporary-tree aliases
+retain the originating invocation-local semantic identity; this does not admit
+cross-invocation sharing or a second legacy value model.
+
 The private temporary selection path also admits an exact child-element path
 whose origin is one temporary-tree variable and whose steps are lexical QNames
 resolved to expanded names during stylesheet compilation. Execution starts at

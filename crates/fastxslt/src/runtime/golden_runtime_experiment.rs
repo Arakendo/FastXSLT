@@ -775,7 +775,7 @@ fn execute_instruction(
         }
         Instruction::Variable { .. }
         | Instruction::StaticAtomicVariable { .. }
-        | Instruction::AtomicVariableAlias { .. }
+        | Instruction::VariableAlias { .. }
         | Instruction::ContextPositionVariable { .. }
         | Instruction::ContextNodeNameVariable { .. }
         | Instruction::ContextCountPathVariable { .. }
@@ -1909,7 +1909,7 @@ fn execute_binding(
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             scope.bind_atomic(name.clone(), value.clone());
         }
-        Instruction::AtomicVariableAlias {
+        Instruction::VariableAlias {
             name,
             source,
             location,
@@ -1917,16 +1917,15 @@ fn execute_binding(
             control
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            let value = scope.atomics.get(source).cloned().ok_or_else(|| {
-                failure_at(
+            if !scope.bind_alias(name.clone(), source, inputs.globals) {
+                return Err(failure_at(
                     "FXRT0002",
                     FailureCategory::Invalid,
                     Some(inputs.request_id),
                     location.clone(),
-                    format!("unbound or non-atomic local variable alias: ${source}"),
-                )
-            })?;
-            scope.bind_atomic(name.clone(), value);
+                    format!("unbound local variable alias: ${source}"),
+                ));
+            }
         }
         Instruction::ContextPositionVariable { name, offset, .. } => {
             bind_context_position(inputs, execution, name, *offset, scope, control)?;

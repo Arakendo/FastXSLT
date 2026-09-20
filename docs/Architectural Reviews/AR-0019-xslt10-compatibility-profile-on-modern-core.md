@@ -2489,3 +2489,11 @@ maintained redistributable legacy suite becomes available.
   exposes a separate local-shadowing defect. Initialization reaches 2,096,
   successful execution 2,008, execution failures 88, and mismatches remain 55.
   [Evidence](../Evidence/oasis-xslt10-global-text-part-dependencies-2026-09-20.md)
+- 2026-09-20 -- Direct local-variable aliases now preserve the resolved value
+  kind and consult a still-visible global binding before installing the local
+  shadow. This includes temporary-tree globals while retaining their
+  invocation-local semantic identity. Microsoft `BVTs_bvt036` becomes exact,
+  raising successful execution to 2,009 and the strict lower bound to 1,878
+  (59.19%); execution failures fall to 87 while initialization and mismatches
+  remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-same-name-local-global-alias-2026-09-20.md)

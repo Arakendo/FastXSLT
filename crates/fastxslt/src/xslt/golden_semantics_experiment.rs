@@ -621,7 +621,7 @@ pub(crate) enum Instruction {
         value: AtomicValue,
         location: SourceLocation,
     },
-    AtomicVariableAlias {
+    VariableAlias {
         name: String,
         source: String,
         location: SourceLocation,
