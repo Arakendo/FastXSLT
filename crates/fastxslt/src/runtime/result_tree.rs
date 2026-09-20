@@ -43,6 +43,42 @@ pub(super) struct ResultAttribute {
     pub(super) value: String,
 }
 
+pub(super) fn assemble_element_content(
+    attributes: &mut Vec<ResultAttribute>,
+    items: Vec<ResultNode>,
+    request_id: &str,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let mut children = Vec::new();
+    for item in items {
+        match item {
+            ResultNode::PendingAttribute(attribute) if children.is_empty() => {
+                if attributes
+                    .iter()
+                    .any(|existing| existing.name == attribute.name)
+                {
+                    return Err(super::failure(
+                        "XTDE0410",
+                        FailureCategory::Invalid,
+                        Some(request_id),
+                        "result element construction produced duplicate expanded attribute names",
+                    ));
+                }
+                attributes.push(attribute);
+            }
+            ResultNode::PendingAttribute(_) => {
+                return Err(super::failure(
+                    "XTDE0410",
+                    FailureCategory::Invalid,
+                    Some(request_id),
+                    "result attributes must be constructed before result child nodes",
+                ));
+            }
+            child => children.push(child),
+        }
+    }
+    Ok(children)
+}
+
 pub(super) fn literal_attributes_require_context_string(attributes: &[LiteralAttribute]) -> bool {
     attributes
         .iter()

@@ -690,24 +690,31 @@ pub(super) fn execute_temporary_copy(
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let mut result_attributes = materialize_literal_attributes(
+                inputs,
+                attributes,
+                variables,
+                LiteralAttributeFocus {
+                    position: execution.focus_position,
+                    size: execution.focus_size,
+                    name: Some(name),
+                    value: context_string.as_deref(),
+                    source: None,
+                },
+                inputs.request_id,
+                control,
+            )?;
+            let body = execute_sequence(inputs, body, execution, variables, control)?;
+            let children = super::result_tree::assemble_element_content(
+                &mut result_attributes,
+                body,
+                inputs.request_id,
+            )?;
             Ok(vec![ResultNode::Element {
                 name: name.clone(),
                 namespaces: namespaces.clone().into(),
-                attributes: materialize_literal_attributes(
-                    inputs,
-                    attributes,
-                    variables,
-                    LiteralAttributeFocus {
-                        position: execution.focus_position,
-                        size: execution.focus_size,
-                        name: Some(name),
-                        value: context_string.as_deref(),
-                        source: None,
-                    },
-                    inputs.request_id,
-                    control,
-                )?,
-                children: execute_sequence(inputs, body, execution, variables, control)?,
+                attributes: result_attributes,
+                children,
             }])
         }
         TemporaryNodeKind::Attribute { .. } => Err(failure(

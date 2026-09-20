@@ -2440,3 +2440,10 @@ maintained redistributable legacy suite becomes available.
   makes one additional execution failure and one mismatch visible rather than
   hiding either behind the former compile frontier.
   [Evidence](../Evidence/oasis-xslt10-comment-sequence-constructor-2026-09-20.md)
+- 2026-09-20 -- Source and temporary `xsl:copy` now use the same private
+  result-element assembly rule as literal/computed elements. Body-produced
+  attributes are absorbed before children; duplicate, late, and escaping
+  attributes retain `XTDE0410`. This shared defect repair makes twelve
+  unchanged OASIS cases exact, raising successful execution to 1,998 and the
+  strict lower bound to 1,867 while reducing execution failures to 91.
+  [Evidence](../Evidence/oasis-xslt10-shallow-copy-body-attributes-2026-09-20.md)

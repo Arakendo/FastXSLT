@@ -934,6 +934,13 @@ work and cancellation controls, recursion limits, variable-frame isolation,
 and decimal-format binding. This compatibility behavior is not admitted for a
 modern static context and does not define a public sequence-constructor type.
 
+Result-element assembly has one private ownership rule across literal and
+computed elements plus source and temporary-tree `xsl:copy`: attributes
+produced by nested instructions are absorbed only before child content,
+duplicate expanded names are rejected, and ordinary children retain execution
+order. An attribute that escapes its element or follows child content remains
+`XTDE0410`; the shared assembly rule does not imply XSLT 1.0 optional recovery.
+
 An admitted `xsl:key` declaration is immutable compiled stylesheet state: its
 expanded name, bounded match pattern, typed `use` location path, and source
 location compile once and compose additively across admitted stylesheet-module

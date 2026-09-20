@@ -2149,37 +2149,9 @@ fn execute_source_element_copy(
             )?);
             Ok(copied)
         }
-        NodeKind::Element => {
-            let context_string = literal_attributes_require_context_string(attributes)
-                .then(|| source.string_value_controlled(node, control))
-                .transpose()
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            control
-                .charge(WorkDomain::ResultNode, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            Ok(vec![ResultNode::Element {
-                name: source
-                    .name(node)
-                    .expect("element context has a name")
-                    .clone(),
-                namespaces: source.in_scope_namespaces(node).into(),
-                attributes: materialize_literal_attributes(
-                    inputs,
-                    attributes,
-                    variables,
-                    LiteralAttributeFocus {
-                        position: execution.focus_position,
-                        size: execution.focus_size,
-                        name: source.name(node),
-                        value: context_string.as_deref(),
-                        source: Some((source, node)),
-                    },
-                    inputs.request_id,
-                    control,
-                )?,
-                children: execute_sequence(inputs, body, execution, variables, control)?,
-            }])
-        }
+        NodeKind::Element => execute_source_element_copy_element(
+            inputs, source, node, attributes, body, execution, variables, control,
+        ),
         NodeKind::Text => {
             let mut copied = Vec::new();
             append_text(
@@ -2217,6 +2189,52 @@ fn execute_source_element_copy(
             })])
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn execute_source_element_copy_element(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    node: NodeId,
+    attributes: &[crate::xslt::golden_semantics_experiment::LiteralAttribute],
+    body: &[Instruction],
+    execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let context_string = literal_attributes_require_context_string(attributes)
+        .then(|| source.string_value_controlled(node, control))
+        .transpose()
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let mut result_attributes = materialize_literal_attributes(
+        inputs,
+        attributes,
+        variables,
+        LiteralAttributeFocus {
+            position: execution.focus_position,
+            size: execution.focus_size,
+            name: source.name(node),
+            value: context_string.as_deref(),
+            source: Some((source, node)),
+        },
+        inputs.request_id,
+        control,
+    )?;
+    let body = execute_sequence(inputs, body, execution, variables, control)?;
+    let children =
+        result_tree::assemble_element_content(&mut result_attributes, body, inputs.request_id)?;
+    Ok(vec![ResultNode::Element {
+        name: source
+            .name(node)
+            .expect("element context has a name")
+            .clone(),
+        namespaces: source.in_scope_namespaces(node).into(),
+        attributes: result_attributes,
+        children,
+    }])
 }
 
 fn execute_literal_element(
@@ -2270,34 +2288,8 @@ fn execute_literal_element(
         inputs.request_id,
         control,
     )?);
-    let mut children = Vec::new();
-    for item in execute_sequence(inputs, body, execution, variables, control)? {
-        match item {
-            ResultNode::PendingAttribute(attribute) if children.is_empty() => {
-                if attributes
-                    .iter()
-                    .any(|existing| existing.name == attribute.name)
-                {
-                    return Err(failure(
-                        "XTDE0410",
-                        FailureCategory::Invalid,
-                        Some(inputs.request_id),
-                        "result element construction produced duplicate expanded attribute names",
-                    ));
-                }
-                attributes.push(attribute);
-            }
-            ResultNode::PendingAttribute(_) => {
-                return Err(failure(
-                    "XTDE0410",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    "result attributes must be constructed before result child nodes",
-                ));
-            }
-            child => children.push(child),
-        }
-    }
+    let body = execute_sequence(inputs, body, execution, variables, control)?;
+    let children = result_tree::assemble_element_content(&mut attributes, body, inputs.request_id)?;
     let result_namespaces = namespaces;
     #[cfg(test)]
     let result_namespaces = if control.complete_result_namespace_clones() {

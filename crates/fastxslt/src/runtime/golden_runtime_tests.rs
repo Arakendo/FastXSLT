@@ -6594,6 +6594,37 @@ fn source_attribute_copy_uses_the_existing_pending_attribute_owner() {
 }
 
 #[test]
+fn source_element_copy_absorbs_attributes_produced_by_its_body() {
+    const SOURCE: &str = "urn:fastxslt:identity-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:identity-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc b="B" a="A"><child>value</child></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates/></xsl:template><xsl:template match="@*|node()"><xsl:copy><xsl:apply-templates select="@*|node()"/></xsl:copy></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile identity copy");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("identity-copy", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute identity copy");
+    assert_eq!(
+        results.by_request["identity-copy"].serialized,
+        "<doc b=\"B\" a=\"A\"><child>value</child></doc>"
+    );
+}
+
+#[test]
 fn xslt10_literal_attribute_composes_text_with_first_source_path_node() {
     const SOURCE: &str = "urn:fastxslt:mixed-path-avt:source";
     const STYLESHEET: &str = "urn:fastxslt:mixed-path-avt:stylesheet";
