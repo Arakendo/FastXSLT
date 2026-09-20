@@ -946,6 +946,7 @@ pub(crate) enum ValueExpression {
         variable: String,
         path: LocationPath,
     },
+    Xslt10VariableStringFunction(Box<Xslt10VariableStringFunction>),
     Xslt10PathStringFunction(Box<Xslt10PathStringFunction>),
     Xslt10SumPath(LocationPath),
     Xslt10VariableSum(String),
@@ -1050,6 +1051,13 @@ pub(crate) struct Xslt10PathStringFunction {
     pub(crate) kind: Xslt10PathStringFunctionKind,
     pub(crate) path: LocationPath,
     pub(crate) operand: Xslt10StringOperand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10VariableStringFunction {
+    pub(crate) kind: Xslt10PathStringFunctionKind,
+    pub(crate) variable: String,
+    pub(crate) operand: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1216,6 +1224,7 @@ pub(crate) enum BooleanExpression {
         operator: FocusComparison,
         numeric_variable: String,
     },
+    Xslt10VariableStringLength(String),
     Xslt10VariableNumericComparison {
         left: String,
         operator: FocusComparison,
@@ -1268,6 +1277,10 @@ pub(crate) enum BooleanExpression {
     ContextPositionModuloEquals {
         divisor: usize,
         remainder: usize,
+        location: SourceLocation,
+    },
+    Xslt10ContextPositionModuloVariable {
+        divisor: String,
         location: SourceLocation,
     },
     ContextLanguageMatches(String),

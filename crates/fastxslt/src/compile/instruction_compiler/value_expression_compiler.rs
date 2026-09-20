@@ -28,7 +28,7 @@ use crate::xslt::golden_semantics_experiment::{
     Xslt10ComposedPathTranslate, Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup,
     Xslt10KeyName, Xslt10KeyNodePredicate, Xslt10KeyValue, Xslt10NormalizedVariableTranslate,
     Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
-    Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand,
+    Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand, Xslt10VariableStringFunction,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -334,6 +334,13 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             haystack: haystack.to_owned(),
             needle: needle.to_owned(),
         });
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(function) = compile_xslt10_variable_string_function(expression)
+    {
+        return Ok(ValueExpression::Xslt10VariableStringFunction(Box::new(
+            function,
+        )));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(function) =
@@ -1216,6 +1223,44 @@ fn compile_xslt10_path_string_function(
         path,
         operand,
     }))
+}
+
+fn compile_xslt10_variable_string_function(
+    expression: &str,
+) -> Option<Xslt10VariableStringFunction> {
+    let expression = expression.trim();
+    let (kind, arguments) = [
+        (Xslt10PathStringFunctionKind::Contains, "contains("),
+        (Xslt10PathStringFunctionKind::StartsWith, "starts-with("),
+        (
+            Xslt10PathStringFunctionKind::SubstringBefore,
+            "substring-before(",
+        ),
+        (
+            Xslt10PathStringFunctionKind::SubstringAfter,
+            "substring-after(",
+        ),
+    ]
+    .into_iter()
+    .find_map(|(kind, prefix)| {
+        expression
+            .strip_prefix(prefix)
+            .and_then(|value| value.strip_suffix(')'))
+            .map(|arguments| (kind, arguments))
+    })?;
+    let arguments = crate::xpath::static_string_experiment::split_arguments(arguments, 2)?;
+    let [variable, operand] = arguments.as_slice() else {
+        return None;
+    };
+    let variable = variable.trim().strip_prefix('$')?;
+    if !is_ascii_ncname(variable) {
+        return None;
+    }
+    Some(Xslt10VariableStringFunction {
+        kind,
+        variable: variable.to_owned(),
+        operand: xpath_string_literal(operand)?.to_owned(),
+    })
 }
 
 pub(super) fn compile_xslt10_sum_path(

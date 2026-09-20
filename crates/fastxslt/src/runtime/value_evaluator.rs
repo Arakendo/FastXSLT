@@ -541,6 +541,11 @@ pub(super) fn execute_value_of(
                 inputs, variable, path, variables, result, control,
             )?;
         }
+        ValueExpression::Xslt10VariableStringFunction(expression) => {
+            xslt10_compatibility::append_variable_string_function(
+                inputs, expression, variables, result, control,
+            )?;
+        }
         ValueExpression::Xslt10PathStringFunction(expression) => {
             xslt10_compatibility::append_path_string_function(
                 inputs, context, expression, result, control,

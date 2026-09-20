@@ -367,6 +367,13 @@ The exact `relative-path < integer` conditional form parses selected node string
 values as `i64` and uses existential comparison. It preserves ordered branch
 short-circuiting but does not admit decimal, floating-point, promotion, or
 general ordering semantics.
+Under XSLT 1.0 static context, the exact numeric conditional
+`position() mod $variable` converts the bound variable with the shared XPath
+1.0 number rules and applies effective boolean value to the floating-point
+remainder. Missing focus remains `XPDY0002`; NaN, zero divisors, and zero
+remainders evaluate false. The divisor name and source location are retained
+in the typed plan, and modern static context does not inherit this specialized
+composition.
 An exact final `[. = string-literal]` predicate may filter a relative child path
 for conditional effective boolean value. Explicit context-child paths beginning
 with `./` share ordinary relative-child navigation. These forms do not admit a
@@ -486,6 +493,14 @@ The exact `string-length(.) = nonnegative-integer` conditional form counts
 Unicode codepoints in the controlled context string value and charges the scan
 to XPath work. It does not admit general string functions, alternate operands,
 Unicode grapheme counting, or arbitrary numeric comparisons.
+The XSLT 1.0 compatibility plan also admits `string-length($variable)` as a
+numeric effective-boolean-value conditional, plus `contains()`,
+`starts-with()`, `substring-before()`, and `substring-after()` with one
+variable value and one string-literal operand. Runtime converts the variable
+once through the shared XSLT 1.0 string rules, charges the function operation,
+and emits the typed boolean or string result. This does not admit dynamic
+second operands, general nested calls, or the equivalent modern expression
+grammar.
 An untyped local `xsl:variable` may select the exact expression `position()`.
 The binding materializes the current sequence-focus position as an integer in
 invocation-local state and charges one XPath operation. It does not establish

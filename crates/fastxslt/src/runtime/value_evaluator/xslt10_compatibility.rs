@@ -10,6 +10,7 @@ use crate::xslt::golden_semantics_experiment::{
     Xslt10ComposedPathTranslate, Xslt10ConcatExpression, Xslt10ConcatPart,
     Xslt10NormalizedVariableTranslate, Xslt10PathStringFunction, Xslt10PathStringFunctionKind,
     Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand,
+    Xslt10VariableStringFunction,
 };
 
 use super::super::{
@@ -380,6 +381,46 @@ pub(super) fn append_path_string_function(
         Xslt10PathStringFunctionKind::SubstringAfter => append_text(
             result,
             value.split_once(operand).map_or("", |pair| pair.1),
+            inputs.request_id,
+            control,
+        ),
+    }
+}
+
+pub(super) fn append_variable_string_function(
+    inputs: &SequenceInputs<'_>,
+    expression: &Xslt10VariableStringFunction,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = variable_string_value(inputs, &expression.variable, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    match expression.kind {
+        Xslt10PathStringFunctionKind::Contains => {
+            append_boolean(inputs, value.contains(&expression.operand), result, control)
+        }
+        Xslt10PathStringFunctionKind::StartsWith => append_boolean(
+            inputs,
+            value.starts_with(&expression.operand),
+            result,
+            control,
+        ),
+        Xslt10PathStringFunctionKind::SubstringBefore => append_text(
+            result,
+            value
+                .split_once(&expression.operand)
+                .map_or("", |pair| pair.0),
+            inputs.request_id,
+            control,
+        ),
+        Xslt10PathStringFunctionKind::SubstringAfter => append_text(
+            result,
+            value
+                .split_once(&expression.operand)
+                .map_or("", |pair| pair.1),
             inputs.request_id,
             control,
         ),

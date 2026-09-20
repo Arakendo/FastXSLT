@@ -5299,6 +5299,51 @@ fn xslt10_binary_string_functions_convert_first_path_node() {
 }
 
 #[test]
+fn xslt10_binary_string_functions_convert_variable_values() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-variable-string-functions:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-string-functions:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:variable name="value"><xsl:text>alpha/beta</xsl:text></xsl:variable><xsl:value-of select="starts-with($value, 'alpha')"/>|<xsl:value-of select="contains($value, '/b')"/>|<xsl:value-of select="substring-before($value, '/')"/>|<xsl:value-of select="substring-after($value, '/')"/>|<xsl:value-of select="substring-before($value, '')"/>|<xsl:value-of select="substring-after($value, '')"/><xsl:if test="string-length($value)">|nonempty</xsl:if></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit variable string-function source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit variable string-function stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile XSLT 1.0 variable string functions");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("variable-string-functions", "result", SOURCE))
+        .expect("admit variable string-function request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable string functions");
+    assert_eq!(
+        results.by_request["variable-string-functions"].serialized,
+        "true|true|alpha|beta||alpha/beta|nonempty"
+    );
+}
+
+#[test]
+fn modern_variable_substring_composition_remains_unsupported() {
+    const STYLESHEET: &str = "urn:fastxslt:modern-variable-substring:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 4_096, 8_192));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:param name="value" select="'alpha/beta'"/><xsl:template match="/"><xsl:value-of select="substring-before($value, '/')"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+
+    let failure = compile_resource(&snapshot, STYLESHEET)
+        .expect_err("modern variable string-function composition remains unsupported");
+
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+}
+
+#[test]
 fn xslt10_sum_converts_every_selected_node_and_empty_to_zero() {
     const SOURCE: &str = "urn:fastxslt:xslt10-sum-path:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-sum-path:stylesheet";
@@ -7400,6 +7445,51 @@ fn modern_context_translate_boolean_composition_remains_unsupported() {
 
     let failure = compile_resource(&snapshot, STYLESHEET)
         .expect_err("modern nested string composition remains unsupported");
+
+    assert_eq!(failure.code, "FXXP1002");
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+}
+
+#[test]
+fn xslt10_position_modulo_variable_uses_numeric_effective_boolean_value() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-position-modulo-variable:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-position-modulo-variable:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc><n/><n/><n/><n/><n/></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:call-template name="emit"><xsl:with-param name="divisor" select="3"/></xsl:call-template></xsl:template><xsl:template name="emit"><xsl:param name="divisor"/><xsl:for-each select="doc/n"><xsl:if test="position() mod $divisor"><xsl:value-of select="position()"/></xsl:if></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile XSLT 1.0 position modulo variable predicate");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("position-modulo", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute modulo predicate");
+    assert_eq!(results.by_request["position-modulo"].serialized, "1245");
+}
+
+#[test]
+fn modern_position_modulo_variable_boolean_remains_unsupported() {
+    const STYLESHEET: &str = "urn:fastxslt:modern-position-modulo-variable:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 4_096, 8_192));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:param name="divisor" select="3"/><xsl:template match="/"><xsl:if test="position() mod $divisor"><out/></xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+
+    let failure = compile_resource(&snapshot, STYLESHEET)
+        .expect_err("modern variable modulo composition remains unsupported");
 
     assert_eq!(failure.code, "FXXP1002");
     assert_eq!(failure.category, FailureCategory::Unsupported);

@@ -99,20 +99,8 @@ pub(super) fn compile(
     if let Some(count) = compile_count_path_equality(parsed, location)? {
         return Ok(count);
     }
-    if let Some(comparison) =
-        compile_xslt10_variable_string_length_comparison(parsed, xslt10_compatibility)
-    {
-        return Ok(comparison);
-    }
-    if let Some(comparison) =
-        compile_xslt10_variable_numeric_comparison(parsed, xslt10_compatibility)
-    {
-        return Ok(comparison);
-    }
-    if let Some(predicate) =
-        compile_xslt10_context_translate_starts_with(parsed, xslt10_compatibility)
-    {
-        return Ok(predicate);
+    if let Some(expression) = compile_xslt10_special(parsed, location, xslt10_compatibility) {
+        return Ok(expression);
     }
     compile_scalar(
         parsed,
@@ -121,6 +109,58 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+fn compile_xslt10_special(
+    expression: &str,
+    location: &SourceLocation,
+    xslt10_compatibility: bool,
+) -> Option<BooleanExpression> {
+    if let Some(divisor) =
+        parse_xslt10_context_position_modulo_variable(expression, xslt10_compatibility)
+    {
+        return Some(BooleanExpression::Xslt10ContextPositionModuloVariable {
+            divisor,
+            location: location.clone(),
+        });
+    }
+    if let Some(comparison) =
+        compile_xslt10_variable_string_length_comparison(expression, xslt10_compatibility)
+    {
+        return Some(comparison);
+    }
+    if let Some(variable) =
+        parse_xslt10_variable_string_length_boolean(expression, xslt10_compatibility)
+    {
+        return Some(BooleanExpression::Xslt10VariableStringLength(variable));
+    }
+    compile_xslt10_variable_numeric_comparison(expression, xslt10_compatibility)
+        .or_else(|| compile_xslt10_context_translate_starts_with(expression, xslt10_compatibility))
+}
+
+fn parse_xslt10_variable_string_length_boolean(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<String> {
+    let variable = xslt10_compatibility
+        .then(|| {
+            expression
+                .trim()
+                .strip_prefix("string-length($")?
+                .strip_suffix(')')
+        })??
+        .trim();
+    is_ascii_ncname(variable).then(|| variable.to_owned())
+}
+
+fn parse_xslt10_context_position_modulo_variable(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<String> {
+    let variable = xslt10_compatibility
+        .then(|| expression.trim().strip_prefix("position() mod $"))??
+        .trim();
+    is_ascii_ncname(variable).then(|| variable.to_owned())
 }
 
 fn compile_xslt10_context_translate_starts_with(

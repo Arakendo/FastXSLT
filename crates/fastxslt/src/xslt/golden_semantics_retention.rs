@@ -1085,6 +1085,11 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                     }
                 }
         }
+        ValueExpression::Xslt10VariableStringFunction(expression) => {
+            size_of_val(expression.as_ref())
+                + expression.variable.capacity()
+                + expression.operand.capacity()
+        }
         ValueExpression::Xslt10PathSubstring(expression) => {
             size_of_val(expression.as_ref()) + expression.path.known_owned_capacity_bytes()
         }
@@ -1209,7 +1214,8 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
     match value {
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
         BooleanExpression::VariableEqualsEmptySequence(variable)
-        | BooleanExpression::VariableEffectiveBooleanValue(variable) => variable.capacity(),
+        | BooleanExpression::VariableEffectiveBooleanValue(variable)
+        | BooleanExpression::Xslt10VariableStringLength(variable) => variable.capacity(),
         BooleanExpression::VariableStringEquals {
             left,
             right,
@@ -1258,6 +1264,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         | BooleanExpression::ContextFocusCompares { location, .. }
         | BooleanExpression::ContextPositionModuloEquals { location, .. } => {
             location_owned(location)
+        }
+        BooleanExpression::Xslt10ContextPositionModuloVariable { divisor, location } => {
+            divisor.capacity() + location_owned(location)
         }
         BooleanExpression::Or { left, right } | BooleanExpression::And { left, right } => {
             boolean_expression_owned(left) + boolean_expression_owned(right)

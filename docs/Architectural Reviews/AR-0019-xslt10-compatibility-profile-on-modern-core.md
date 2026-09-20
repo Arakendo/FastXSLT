@@ -2256,3 +2256,12 @@ maintained redistributable legacy suite becomes available.
   bound to 1,815, successful execution to 1,944, and initialization to 2,046
   while mismatches and execution failures remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-context-translate-prefix-2026-09-19.md)
+- 2026-09-19 -- XSLT 1.0 variable/focus string composition now admits numeric
+  EBV for `position() mod $variable` and `string-length($variable)`, together
+  with variable/literal `contains()`, `starts-with()`, `substring-before()`,
+  and `substring-after()`. All reuse existing controlled variable conversion
+  and retain modern rejection. The unchanged Microsoft `Variables__84438`
+  recursive table case becomes exact, raising the strict lower bound to 1,816,
+  successful execution to 1,945, and initialization to 2,047 while mismatches
+  and execution failures remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-variable-focus-string-composition-2026-09-19.md)

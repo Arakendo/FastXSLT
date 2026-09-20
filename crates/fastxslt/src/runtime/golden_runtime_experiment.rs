@@ -3057,6 +3057,24 @@ fn evaluate_boolean(
     if let BooleanExpression::Xslt10ContextTranslateStartsWith(expression) = expression {
         return evaluate_xslt10_context_translate_starts_with(inputs, context, expression, control);
     }
+    if let BooleanExpression::Xslt10ContextPositionModuloVariable { divisor, location } = expression
+    {
+        return evaluate_xslt10_context_position_modulo_variable(
+            inputs, focus, divisor, location, variables, control,
+        );
+    }
+    if let BooleanExpression::Xslt10VariableStringLength(variable) = expression {
+        return value_evaluator::xslt10_variable_string_length(
+            inputs, variable, variables, control,
+        )
+        .map(|length| length != 0);
+    }
+    if let BooleanExpression::ContextStringEquals(expected) = expression {
+        return evaluate_context_string_equals(inputs, context, expected, control);
+    }
+    if let BooleanExpression::Xslt10ContextNumberIsNaN = expression {
+        return evaluate_xslt10_context_number_is_nan(inputs, context, control);
+    }
     evaluate_ordinary_boolean(inputs, expression, context, focus, variables, control)
 }
 
@@ -3089,12 +3107,6 @@ fn evaluate_ordinary_boolean(
             lexical,
             comparison,
         } => evaluate_context_node_name_equals(inputs, context, lexical, *comparison, control),
-        BooleanExpression::ContextStringEquals(expected) => {
-            evaluate_context_string_equals(inputs, context, expected, control)
-        }
-        BooleanExpression::Xslt10ContextNumberIsNaN => {
-            evaluate_xslt10_context_number_is_nan(inputs, context, control)
-        }
         BooleanExpression::ContextStringLengthEquals(expected) => {
             evaluate_context_string_length(inputs, context, *expected, control)
         }
@@ -3131,7 +3143,11 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::DocumentRootIdentityEqual { .. }
         | BooleanExpression::Xslt10VariableStringLengthComparison { .. }
         | BooleanExpression::Xslt10VariableNumericComparison { .. }
-        | BooleanExpression::Xslt10ContextTranslateStartsWith(_) => {
+        | BooleanExpression::Xslt10ContextTranslateStartsWith(_)
+        | BooleanExpression::Xslt10ContextPositionModuloVariable { .. }
+        | BooleanExpression::Xslt10VariableStringLength(_)
+        | BooleanExpression::ContextStringEquals(_)
+        | BooleanExpression::Xslt10ContextNumberIsNaN => {
             unreachable!("specialized expressions return before ordinary boolean dispatch")
         }
         BooleanExpression::VariableEqualsInteger(test) => {
@@ -3167,6 +3183,36 @@ fn evaluate_ordinary_boolean(
                 .map(|value| value != 0)
         }
     }
+}
+
+fn evaluate_xslt10_context_position_modulo_variable(
+    inputs: &SequenceInputs<'_>,
+    focus: Option<SequenceFocus>,
+    divisor: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let focus = focus.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "position() requires a dynamic focus",
+        )
+    })?;
+    let divisor = value_evaluator::xslt10_variable_number(inputs, divisor, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let position = focus
+        .position
+        .to_string()
+        .parse::<f64>()
+        .expect("a usize lexical always converts to f64");
+    let remainder = position % divisor;
+    Ok(remainder != 0.0 && !remainder.is_nan())
 }
 
 fn evaluate_xslt10_context_translate_starts_with(
