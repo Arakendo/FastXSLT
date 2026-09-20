@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Processing-Instruction Sequence Constructor](oasis-xslt10-processing-instruction-sequence-constructor-2026-09-20.md)
 - [OASIS XSLT 1.0 Variable-Sequence Position Filter](oasis-xslt10-variable-sequence-position-2026-09-20.md)
 - [OASIS XSLT 1.0 Variable-Position Sort Keys](oasis-xslt10-variable-position-sort-2026-09-20.md)
 - [OASIS XSLT 1.0 Variable-Position Composition](oasis-xslt10-variable-position-composition-2026-09-20.md)

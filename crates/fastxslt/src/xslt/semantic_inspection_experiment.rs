@@ -280,6 +280,9 @@ fn observe_instructions(
             Instruction::ProcessingInstructionNode { .. } => {
                 (SemanticFeature::ProcessingInstruction, None)
             }
+            Instruction::Xslt10ProcessingInstructionNode { body, .. } => {
+                (SemanticFeature::ProcessingInstruction, Some(body.as_ref()))
+            }
             Instruction::CommentNode { .. } => (SemanticFeature::Comment, None),
             Instruction::Attribute { attribute, .. } => {
                 observe_computed_attribute_values(

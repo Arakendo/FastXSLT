@@ -177,6 +177,24 @@ pub(super) fn compile_sequence_excluding(
     compile_sequence_excluding_with_bindings(document, parent, excluded, &[])
 }
 
+fn xslt10_text_constructor_exclusions(document: &Document, children: &[NodeId]) -> Vec<NodeId> {
+    children
+        .iter()
+        .copied()
+        .filter(|child| {
+            if document.kind(*child) != NodeKind::Element {
+                return false;
+            }
+            let name = document.name(*child).expect("element nodes have names");
+            name.namespace.as_deref() != Some(XSLT_NAMESPACE)
+                || matches!(
+                    name.local.as_str(),
+                    "attribute" | "comment" | "copy" | "element" | "processing-instruction"
+                )
+        })
+        .collect()
+}
+
 pub(super) fn compile_sequence_excluding_with_bindings(
     document: &Document,
     parent: NodeId,
@@ -1481,8 +1499,10 @@ pub(super) fn compile_processing_instruction(
             document.location(element),
         ));
     }
+    let children = meaningful_children(document, element);
     let mut value = String::new();
-    for child in meaningful_children(document, element) {
+    let mut requires_dynamic_content = false;
+    for child in children.iter().copied() {
         match document.kind(child) {
             NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
             NodeKind::Comment | NodeKind::ProcessingInstruction => {}
@@ -1495,6 +1515,8 @@ pub(super) fn compile_processing_instruction(
                     && let Some(static_value) = compile_static_node_content_value(document, child)?
                 {
                     value.push_str(&static_value);
+                } else if uses_xslt10_compatibility(document, element) {
+                    requires_dynamic_content = true;
                 } else {
                     return Err(unsupported(
                         "FXST1034",
@@ -1512,18 +1534,44 @@ pub(super) fn compile_processing_instruction(
             }
         }
     }
+    if requires_dynamic_content {
+        const MAX_SEQUENCE_CONSTRUCTOR_CHILDREN: usize = 64;
+        if children.len() > MAX_SEQUENCE_CONSTRUCTOR_CHILDREN {
+            return Err(unsupported(
+                "FXST1034",
+                format!(
+                    "the private XSLT 1.0 processing-instruction sequence constructor is limited to {MAX_SEQUENCE_CONSTRUCTOR_CHILDREN} children"
+                ),
+                document.location(element),
+            ));
+        }
+        let excluded = xslt10_text_constructor_exclusions(document, &children);
+        return Ok(Instruction::Xslt10ProcessingInstructionNode {
+            target: target.to_owned(),
+            body: compile_sequence_excluding(document, element, &excluded)?.into_boxed_slice(),
+            location: document.location(element).clone(),
+        });
+    }
     if value.contains("?>") {
-        return Err(unsupported(
-            "FXST1035",
-            "processing-instruction data containing ?> requires recovery outside the private slice",
-            document.location(element),
-        ));
+        if uses_xslt10_compatibility(document, element) {
+            value = recover_xslt10_processing_instruction_content(&value);
+        } else {
+            return Err(unsupported(
+                "FXST1035",
+                "processing-instruction data containing ?> requires recovery outside the private slice",
+                document.location(element),
+            ));
+        }
     }
     Ok(Instruction::ProcessingInstructionNode {
         target: target.to_owned(),
         value,
         location: document.location(element).clone(),
     })
+}
+
+fn recover_xslt10_processing_instruction_content(value: &str) -> String {
+    value.replace("?>", "? >")
 }
 
 pub(super) fn compile_comment(

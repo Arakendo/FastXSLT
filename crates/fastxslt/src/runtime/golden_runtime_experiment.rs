@@ -737,16 +737,18 @@ fn execute_instruction(
             scope,
             control,
         )?),
-        Instruction::Text { value, .. } => append_text(result, value, inputs.request_id, control)?,
-        Instruction::CopyOfStaticAtomicText { value, .. } => {
+        Instruction::Text { value, .. } | Instruction::CopyOfStaticAtomicText { value, .. } => {
             append_text(result, value, inputs.request_id, control)?;
         }
-        Instruction::ProcessingInstructionNode { target, value, .. } => result.push(
-            construct_processing_instruction(target, value, inputs.request_id, control)?,
-        ),
-        Instruction::CommentNode { value, .. } => {
-            result.push(construct_comment(value, inputs.request_id, control)?);
-        }
+        Instruction::ProcessingInstructionNode { .. }
+        | Instruction::Xslt10ProcessingInstructionNode { .. }
+        | Instruction::CommentNode { .. } => result.push(execute_text_node_constructor(
+            inputs,
+            instruction,
+            execution,
+            scope,
+            control,
+        )?),
         Instruction::Attribute { attribute, .. } => result.push(execute_attribute_instruction(
             inputs, attribute, execution, scope, control,
         )?),
@@ -793,15 +795,13 @@ fn execute_instruction(
         | Instruction::Xslt10SequenceTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution, scope, control)?;
         }
-        Instruction::ApplyTemplates { .. } => {
-            result.extend(execute_apply_instruction(
-                inputs,
-                instruction,
-                execution,
-                scope,
-                control,
-            )?);
-        }
+        Instruction::ApplyTemplates { .. } => result.extend(execute_apply_instruction(
+            inputs,
+            instruction,
+            execution,
+            scope,
+            control,
+        )?),
         Instruction::ForEachVariable { .. }
         | Instruction::ForEachStaticIntegerRange { .. }
         | Instruction::ForEachNodes { .. }
@@ -827,6 +827,46 @@ fn execute_instruction(
         )?),
     }
     Ok(())
+}
+
+fn execute_text_node_constructor(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    execution: SequenceContext<'_>,
+    scope: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<ResultNode, ExecutionFailure> {
+    match instruction {
+        Instruction::ProcessingInstructionNode { target, value, .. } => {
+            construct_processing_instruction(target, value, inputs.request_id, control)
+        }
+        Instruction::Xslt10ProcessingInstructionNode { target, body, .. } => {
+            execute_xslt10_processing_instruction(inputs, target, body, execution, scope, control)
+        }
+        Instruction::CommentNode { value, .. } => {
+            construct_comment(value, inputs.request_id, control)
+        }
+        _ => unreachable!("only text-node constructors are delegated here"),
+    }
+}
+
+fn execute_xslt10_processing_instruction(
+    inputs: &SequenceInputs<'_>,
+    target: &str,
+    body: &[Instruction],
+    execution: SequenceContext<'_>,
+    scope: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<ResultNode, ExecutionFailure> {
+    let nodes = execute_sequence(inputs, body, execution, scope, control)?;
+    let mut value = String::new();
+    for node in nodes {
+        if let ResultNode::Text(text) = node {
+            value.push_str(&text);
+        }
+    }
+    let value = value.replace("?>", "? >");
+    construct_processing_instruction(target, &value, inputs.request_id, control)
 }
 
 fn execute_attribute_instruction(

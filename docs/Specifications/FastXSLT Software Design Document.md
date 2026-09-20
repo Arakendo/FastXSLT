@@ -1176,14 +1176,18 @@ empty-element syntax. Other empty XHTML elements retain paired tags, and
 attribute values are never minimized merely because their names resemble HTML
 boolean attributes.
 The private sequence-constructor slice admits `xsl:processing-instruction`
-with a static NCName target other than reserved `xml` and literal character
-data that excludes `?>`. It produces a distinct semantic result node rather
-than markup-shaped text, participates in result-node and retained-text work
-accounting, serializes as `<?target data?>`, and contributes no characters to
-text-method output. Processing instructions do not select an inferred output
-method or disqualify an otherwise valid XHTML document element for bounded
-DOCTYPE emission. Computed targets/content and PI-terminator recovery remain
-explicitly unsupported.
+with a static NCName target other than reserved `xml`. Literal content uses the
+static constructor. Under XSLT 1.0 compatibility, computed content may instead
+retain at most 64 meaningful children as an ordinary instruction sequence.
+Execution keeps only top-level text results, ignores direct non-text
+constructors with their content, and recovers `?>` as `? >`; the modern static
+context retains explicit computed-content and terminator-recovery boundaries.
+Both forms produce a distinct semantic result node rather than markup-shaped
+text, participate in result-node and retained-text work accounting, serialize
+as `<?target data?>`, and contribute no characters to text-method output.
+Processing instructions do not select an inferred output method or disqualify
+an otherwise valid XHTML document element for bounded DOCTYPE emission.
+Computed targets remain explicitly unsupported.
 The bounded `xsl:copy-of select="."` slice treats a source document node as a
 sequence boundary and recursively copies its children; it does not construct a
 nested document node in the result sequence. Element and text descendants use

@@ -449,6 +449,16 @@ fn instruction_owned(value: &Instruction) -> usize {
             value,
             location,
         } => target.capacity() + value.capacity() + location_owned(location),
+        Instruction::Xslt10ProcessingInstructionNode {
+            target,
+            body,
+            location,
+        } => {
+            target.capacity()
+                + size_of_val(body.as_ref())
+                + body.iter().map(instruction_owned).sum::<usize>()
+                + location_owned(location)
+        }
         Instruction::Attribute {
             attribute,
             location,

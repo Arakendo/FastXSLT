@@ -572,6 +572,11 @@ pub(crate) enum Instruction {
         value: String,
         location: SourceLocation,
     },
+    Xslt10ProcessingInstructionNode {
+        target: String,
+        body: Box<[Instruction]>,
+        location: SourceLocation,
+    },
     CommentNode {
         value: String,
         location: SourceLocation,

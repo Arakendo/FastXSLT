@@ -2924,6 +2924,35 @@ fn xslt10_computed_attribute_sequence_runs_text_producers_and_ignores_non_text_n
 }
 
 #[test]
+fn xslt10_processing_instruction_sequence_runs_text_producers_and_recovers_delimiter() {
+    const SOURCE: &str = "urn:fastxslt:processing-instruction-sequence:source";
+    const STYLESHEET: &str = "urn:fastxslt:processing-instruction-sequence:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:processing-instruction name="joined">prefix<ignored>bad</ignored><xsl:for-each select="doc/a"><xsl:value-of select="."/></xsl:for-each>?>suffix</xsl:processing-instruction></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a>one</a><a>two</a></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("bounded XSLT 1.0 PI sequence should compile");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("processing-instruction-sequence", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("bounded XSLT 1.0 PI sequence should execute");
+
+    assert_eq!(
+        results.by_request["processing-instruction-sequence"].serialized,
+        "<out><?joined prefixonetwo? >suffix?></out>"
+    );
+}
+
+#[test]
 fn xslt10_copy_of_attribute_content_retains_only_copied_text_and_attribute_values() {
     const SOURCE: &str = "urn:fastxslt:computed-attribute-copy-of:source";
     const STYLESHEET: &str = "urn:fastxslt:computed-attribute-copy-of:stylesheet";

@@ -2424,3 +2424,11 @@ maintained redistributable legacy suite becomes available.
   unchanged. All eleven sibling `FXST1033` observations advance visibly to
   their next distinct frontiers.
   [Evidence](../Evidence/oasis-xslt10-computed-attribute-sequence-constructor-2026-09-20.md)
+- 2026-09-20 -- XSLT 1.0 processing-instruction content may now retain a
+  bounded ordinary instruction sequence and execute with the complete dynamic
+  context. Only top-level text results contribute data; direct non-text
+  constructors are omitted, and the legacy `?>` recovery inserts a separating
+  space. The modern static context remains unchanged. Initialization reaches
+  2,083, successful execution 1,981, and the exact lower bound 1,851 while
+  mismatches and execution failures remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-processing-instruction-sequence-constructor-2026-09-20.md)

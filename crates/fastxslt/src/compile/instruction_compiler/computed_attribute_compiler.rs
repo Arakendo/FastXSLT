@@ -136,11 +136,7 @@ pub(super) fn compile_computed_attribute(
     {
         compile_xslt10_local_source_path_count(document, *variable, *value_of)?
     } else if uses_xslt10_compatibility(document, element) && children.len() <= 64 {
-        let excluded = children
-            .iter()
-            .copied()
-            .filter(|child| xslt10_attribute_constructor_ignores(document, *child))
-            .collect::<Vec<_>>();
+        let excluded = super::xslt10_text_constructor_exclusions(document, &children);
         LiteralAttributeValue::Xslt10SequenceConstructor(
             super::compile_sequence_excluding(document, element, &excluded)?.into_boxed_slice(),
         )
@@ -166,20 +162,6 @@ fn is_xslt10_for_each_string_value_shape(document: &Document, for_each: NodeId) 
     };
     is_xslt_element(document, *value_of, "value-of")
         && optional_attribute(document, *value_of, None, "select").map(str::trim) == Some(".")
-}
-
-fn xslt10_attribute_constructor_ignores(document: &Document, child: NodeId) -> bool {
-    if document.kind(child) != crate::xdm::owned_tree_experiment::NodeKind::Element {
-        return false;
-    }
-    let name = document.name(child).expect("element nodes have names");
-    if name.namespace.as_deref() != Some(super::XSLT_NAMESPACE) {
-        return true;
-    }
-    matches!(
-        name.local.as_str(),
-        "attribute" | "comment" | "copy" | "element" | "processing-instruction"
-    )
 }
 
 fn compile_computed_attribute_name(
