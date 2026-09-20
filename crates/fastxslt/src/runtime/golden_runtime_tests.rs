@@ -4387,6 +4387,46 @@ fn xslt10_global_variable_qnames_compare_by_expanded_name() {
 }
 
 #[test]
+fn xslt10_apply_templates_accepts_content_and_qname_arguments() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-apply-argument-qname:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-apply-argument-qname:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+        xmlns:decl="urn:fastxslt:arguments"
+        xmlns:use="urn:fastxslt:arguments"
+        exclude-result-prefixes="decl use">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:template match="/"><out><xsl:call-template name="emit"><xsl:with-param name="decl:called">Call</xsl:with-param></xsl:call-template><xsl:text>|</xsl:text><xsl:apply-templates select="doc/item"><xsl:with-param name="decl:value">Book</xsl:with-param></xsl:apply-templates></out></xsl:template>
+        <xsl:template name="emit"><xsl:param name="use:called">missing</xsl:param><xsl:value-of select="$decl:called"/></xsl:template>
+        <xsl:template match="item"><xsl:param name="use:value">Magazine</xsl:param><xsl:value-of select="$decl:value"/><xsl:text>:</xsl:text><xsl:apply-templates select="title"><xsl:with-param name="plain" select="title/text()"/></xsl:apply-templates><xsl:text>|</xsl:text></xsl:template>
+        <xsl:template match="title"><xsl:param name="plain">missing</xsl:param><xsl:value-of select="$plain"/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br"<doc><item><title>One</title></item><item><title>Two</title></item></doc>".to_vec(),
+        )
+        .expect("admit apply-argument source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit apply-argument stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile content and QName apply-template arguments");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("apply-argument", "result", SOURCE))
+        .expect("admit apply-argument request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute apply-template arguments");
+    assert_eq!(
+        results.by_request["apply-argument"].serialized,
+        "<out>Call|Book:One|Book:Two|</out>"
+    );
+}
+
+#[test]
 fn xslt10_sort_uses_the_first_node_from_a_context_path_key_lookup() {
     const SOURCE: &str = "urn:fastxslt:xslt10-key-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-key-sort:stylesheet";

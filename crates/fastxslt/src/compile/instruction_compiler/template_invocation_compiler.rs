@@ -112,23 +112,26 @@ fn compile_with_params_excluding(
             ));
         }
         ensure_only_attributes(document, child, &["name", "select"], "xsl:with-param")?;
-        ensure_no_meaningful_children(document, child, "xsl:with-param")?;
-        let argument_name = required_attribute(document, child, None, "name")?;
-        if !is_ascii_ncname(argument_name)
-            || arguments
-                .iter()
-                .any(|argument: &TemplateArgument| argument.name == argument_name)
+        let lexical_name = required_attribute(document, child, None, "name")?;
+        let argument_name = normalize_template_argument_name(document, child, lexical_name)?;
+        if arguments
+            .iter()
+            .any(|argument: &TemplateArgument| argument.name == argument_name)
         {
             return Err(invalid(
                 "FXST0013",
-                format!("invalid or duplicate template argument: {argument_name}"),
+                format!("invalid or duplicate template argument: {lexical_name}"),
                 document.location(child),
             ));
         }
-        let select = required_attribute(document, child, None, "select")?;
-        let value = compile_selected_argument_value(document, child, select)?;
+        let value = if let Some(select) = optional_attribute(document, child, None, "select") {
+            ensure_no_meaningful_children(document, child, "xsl:with-param")?;
+            compile_selected_argument_value(document, child, select)?
+        } else {
+            compile_content_argument_value(document, child)?
+        };
         arguments.push(TemplateArgument {
-            name: argument_name.to_owned(),
+            name: argument_name,
             value,
             location: document.location(child).clone(),
         });
@@ -154,14 +157,25 @@ fn compile_selected_argument_value(
         return Ok(TemplateArgumentValue::SourceVariablePath { variable, path });
     }
     if let Some(variable) = select.strip_prefix('$') {
-        if !is_ascii_ncname(variable) {
-            return Err(invalid(
-                "FXXP0002",
-                format!("invalid variable reference: {select}"),
-                document.location(element),
-            ));
-        }
-        return Ok(TemplateArgumentValue::Variable(variable.to_owned()));
+        let variable = if uses_xslt10_compatibility(document, element) {
+            normalize_variable_qname(document, element, variable).map_err(|_| {
+                invalid(
+                    "FXXP0002",
+                    format!("invalid variable reference: {select}"),
+                    document.location(element),
+                )
+            })?
+        } else {
+            if !is_ascii_ncname(variable) {
+                return Err(invalid(
+                    "FXXP0002",
+                    format!("invalid variable reference: {select}"),
+                    document.location(element),
+                ));
+            }
+            variable.to_owned()
+        };
+        return Ok(TemplateArgumentValue::Variable(variable));
     }
     if let Ok(value) = select.parse::<i64>() {
         return Ok(TemplateArgumentValue::Integer(value));
@@ -689,15 +703,15 @@ pub(super) fn compile_call_template(
             ));
         }
         ensure_only_attributes(document, child, &["name", "select"], "xsl:with-param")?;
-        let argument_name = required_attribute(document, child, None, "name")?;
-        if !is_ascii_ncname(argument_name)
-            || arguments
-                .iter()
-                .any(|argument: &TemplateArgument| argument.name == argument_name)
+        let lexical_name = required_attribute(document, child, None, "name")?;
+        let argument_name = normalize_template_argument_name(document, child, lexical_name)?;
+        if arguments
+            .iter()
+            .any(|argument: &TemplateArgument| argument.name == argument_name)
         {
             return Err(invalid(
                 "FXST0013",
-                format!("invalid or duplicate template argument: {argument_name}"),
+                format!("invalid or duplicate template argument: {lexical_name}"),
                 document.location(child),
             ));
         }
@@ -708,7 +722,7 @@ pub(super) fn compile_call_template(
             compile_content_argument_value(document, child)?
         };
         arguments.push(TemplateArgument {
-            name: argument_name.to_owned(),
+            name: argument_name,
             value,
             location: document.location(child).clone(),
         });
@@ -718,6 +732,31 @@ pub(super) fn compile_call_template(
         arguments,
         location: document.location(element).clone(),
     })
+}
+
+fn normalize_template_argument_name(
+    document: &Document,
+    element: NodeId,
+    lexical_name: &str,
+) -> Result<String, CompileFailure> {
+    if uses_xslt10_compatibility(document, element) {
+        normalize_variable_qname(document, element, lexical_name).map_err(|_| {
+            invalid(
+                "FXST0013",
+                format!("invalid template argument name: {lexical_name}"),
+                document.location(element),
+            )
+        })
+    } else {
+        if !is_ascii_ncname(lexical_name) {
+            return Err(invalid(
+                "FXST0013",
+                format!("invalid template argument name: {lexical_name}"),
+                document.location(element),
+            ));
+        }
+        Ok(lexical_name.to_owned())
+    }
 }
 
 fn compile_content_argument_value(

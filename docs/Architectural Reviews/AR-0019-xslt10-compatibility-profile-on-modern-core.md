@@ -2397,3 +2397,11 @@ maintained redistributable legacy suite becomes available.
   execution to 1,971, and initialization to 2,073 while mismatches and
   execution failures remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-local-variable-qnames-2026-09-20.md)
+- 2026-09-20 -- Template parameter declarations and supplied argument names now
+  normalize to the same expanded-name key, and apply-style invocations reuse
+  the bounded content-argument constructor already exercised by named-template
+  calls. Four unchanged Lotus/Microsoft cases become exact, raising the strict
+  lower bound to 1,846, successful execution to 1,975, and initialization to
+  2,077 while mismatches and execution failures remain unchanged. The
+  missing-name error remains explicitly invalid.
+  [Evidence](../Evidence/oasis-xslt10-template-argument-qnames-and-content-2026-09-20.md)

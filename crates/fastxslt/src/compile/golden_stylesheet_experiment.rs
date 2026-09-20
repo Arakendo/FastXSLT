@@ -1695,11 +1695,18 @@ fn compile_named_template_parameter(
         &["name", "tunnel", "select", "required"],
         "xsl:param",
     )?;
-    let parameter = required_attribute(document, child, None, "name")?;
-    if !is_ascii_ncname(parameter) || preceding.iter().any(|existing| existing.name == parameter) {
+    let lexical_parameter = required_attribute(document, child, None, "name")?;
+    let parameter = normalize_variable_qname(document, child, lexical_parameter).map_err(|_| {
+        invalid(
+            "FXST0012",
+            format!("invalid named-template parameter: {lexical_parameter}"),
+            document.location(child),
+        )
+    })?;
+    if preceding.iter().any(|existing| existing.name == parameter) {
         return Err(invalid(
             "FXST0012",
-            format!("invalid or duplicate named-template parameter: {parameter}"),
+            format!("duplicate named-template parameter: {lexical_parameter}"),
             document.location(child),
         ));
     }
@@ -1727,7 +1734,7 @@ fn compile_named_template_parameter(
     }
     let default = compile_template_parameter_default(document, child, &children)?;
     Ok(TemplateParameter {
-        name: parameter.to_owned(),
+        name: parameter,
         tunnel,
         required,
         default,

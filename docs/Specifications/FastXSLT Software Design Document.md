@@ -105,8 +105,12 @@ open:
   same canonical key, so prefix aliases do not create distinct runtime bindings
   or require runtime namespace lookup. In XSLT 1.0 compatibility, the same key
   may root an admitted typed relative child path or identify a directly
-  selected invocation-owned source-node sequence. Broader expressions admit
-  qualified variable references only through their own typed compiler support.
+  selected invocation-owned source-node sequence. Template parameter and
+  supplied-argument QNames use the same key. Content-built arguments for
+  admitted template invocations reuse the bounded typed constructor plans and
+  invocation-owned parameter frame; they do not establish a separate XSLT 1.0
+  binding model. Broader expressions admit qualified variable references only
+  through their own typed compiler support.
 - Source-derived global values retain identities only within the prepared input
   and invocation that produced them. A compiled stylesheet must not retain node
   identities from one principal source for reuse by another invocation.
