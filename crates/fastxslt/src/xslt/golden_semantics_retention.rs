@@ -444,6 +444,11 @@ fn instruction_owned(value: &Instruction) -> usize {
         Instruction::Text { value, location } | Instruction::CommentNode { value, location } => {
             value.capacity() + location_owned(location)
         }
+        Instruction::Xslt10CommentNode { body, location } => {
+            size_of_val(body.as_ref())
+                + body.iter().map(instruction_owned).sum::<usize>()
+                + location_owned(location)
+        }
         Instruction::ProcessingInstructionNode {
             target,
             value,

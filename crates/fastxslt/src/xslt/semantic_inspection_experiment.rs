@@ -284,6 +284,9 @@ fn observe_instructions(
                 (SemanticFeature::ProcessingInstruction, Some(body.as_ref()))
             }
             Instruction::CommentNode { .. } => (SemanticFeature::Comment, None),
+            Instruction::Xslt10CommentNode { body, .. } => {
+                (SemanticFeature::Comment, Some(body.as_ref()))
+            }
             Instruction::Attribute { attribute, .. } => {
                 observe_computed_attribute_values(
                     std::slice::from_ref(attribute),

@@ -294,7 +294,8 @@ fn apply_instructions(
             | Instruction::If { body, .. }
             | Instruction::Xslt10SequenceTreeVariable { body, .. }
             | Instruction::Copy { body, .. } => apply_instructions(body, declarations)?,
-            Instruction::Xslt10ProcessingInstructionNode { body, .. } => {
+            Instruction::Xslt10ProcessingInstructionNode { body, .. }
+            | Instruction::Xslt10CommentNode { body, .. } => {
                 apply_instructions(body.as_mut(), declarations)?;
             }
             Instruction::Choose {

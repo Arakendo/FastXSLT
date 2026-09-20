@@ -581,6 +581,10 @@ pub(crate) enum Instruction {
         value: String,
         location: SourceLocation,
     },
+    Xslt10CommentNode {
+        body: Box<[Instruction]>,
+        location: SourceLocation,
+    },
     Attribute {
         attribute: ComputedAttribute,
         location: SourceLocation,

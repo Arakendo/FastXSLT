@@ -742,7 +742,8 @@ fn execute_instruction(
         }
         Instruction::ProcessingInstructionNode { .. }
         | Instruction::Xslt10ProcessingInstructionNode { .. }
-        | Instruction::CommentNode { .. } => result.push(execute_text_node_constructor(
+        | Instruction::CommentNode { .. }
+        | Instruction::Xslt10CommentNode { .. } => result.push(execute_text_node_constructor(
             inputs,
             instruction,
             execution,
@@ -756,9 +757,6 @@ fn execute_instruction(
             select, separator, ..
         } => {
             execute_value_of(inputs, select, separator, execution, scope, result, control)?;
-        }
-        Instruction::Number { .. } => {
-            execute_number_instruction(inputs, instruction, execution, result, control)?;
         }
         Instruction::SequenceNodes { select, .. } => {
             result.extend(execute_sequence_nodes(
@@ -802,7 +800,8 @@ fn execute_instruction(
             scope,
             control,
         )?),
-        Instruction::ForEachVariable { .. }
+        Instruction::Number { .. }
+        | Instruction::ForEachVariable { .. }
         | Instruction::ForEachStaticIntegerRange { .. }
         | Instruction::ForEachNodes { .. }
         | Instruction::NextMatch { .. }
@@ -846,6 +845,12 @@ fn execute_text_node_constructor(
         Instruction::CommentNode { value, .. } => {
             construct_comment(value, inputs.request_id, control)
         }
+        Instruction::Xslt10CommentNode { body, .. } => {
+            let value =
+                execute_xslt10_text_constructor_value(inputs, body, execution, scope, control)?;
+            let value = recover_xslt10_comment_content(&value);
+            construct_comment(&value, inputs.request_id, control)
+        }
         _ => unreachable!("only text-node constructors are delegated here"),
     }
 }
@@ -858,15 +863,40 @@ fn execute_xslt10_processing_instruction(
     scope: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<ResultNode, ExecutionFailure> {
-    let nodes = execute_sequence(inputs, body, execution, scope, control)?;
-    let mut value = String::new();
-    for node in nodes {
-        if let ResultNode::Text(text) = node {
-            value.push_str(&text);
-        }
-    }
+    let value = execute_xslt10_text_constructor_value(inputs, body, execution, scope, control)?;
     let value = value.replace("?>", "? >");
     construct_processing_instruction(target, &value, inputs.request_id, control)
+}
+
+fn execute_xslt10_text_constructor_value(
+    inputs: &SequenceInputs<'_>,
+    body: &[Instruction],
+    execution: SequenceContext<'_>,
+    scope: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let nodes = execute_sequence(inputs, body, execution, scope, control)?;
+    Ok(nodes
+        .into_iter()
+        .filter_map(|node| match node {
+            ResultNode::Text(text) => Some(text),
+            _ => None,
+        })
+        .collect())
+}
+
+fn recover_xslt10_comment_content(value: &str) -> String {
+    let characters = value.chars().collect::<Vec<_>>();
+    let mut recovered = String::with_capacity(value.len() + 1);
+    for (index, character) in characters.iter().copied().enumerate() {
+        recovered.push(character);
+        if character == '-'
+            && (characters.get(index + 1) == Some(&'-') || index + 1 == characters.len())
+        {
+            recovered.push(' ');
+        }
+    }
+    recovered
 }
 
 fn execute_attribute_instruction(
@@ -911,6 +941,11 @@ fn execute_result_instruction<'a>(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match instruction {
+        Instruction::Number { .. } => {
+            let mut result = Vec::new();
+            execute_number_instruction(inputs, instruction, execution, &mut result, control)?;
+            Ok(result)
+        }
         Instruction::ForEachVariable { .. }
         | Instruction::ForEachStaticIntegerRange { .. }
         | Instruction::ForEachNodes { .. } => {

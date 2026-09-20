@@ -2432,3 +2432,11 @@ maintained redistributable legacy suite becomes available.
   2,083, successful execution 1,981, and the exact lower bound 1,851 while
   mismatches and execution failures remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-processing-instruction-sequence-constructor-2026-09-20.md)
+- 2026-09-20 -- XSLT 1.0 comment content now uses the same bounded ordinary
+  instruction sequence and top-level-text projection as adjacent legacy
+  constructors, followed by comment-specific delimiter recovery. Four
+  unchanged Lotus cases become exact. Initialization reaches 2,089, successful
+  execution 1,986, and the exact lower bound 1,855; newly exposed behavior also
+  makes one additional execution failure and one mismatch visible rather than
+  hiding either behind the former compile frontier.
+  [Evidence](../Evidence/oasis-xslt10-comment-sequence-constructor-2026-09-20.md)

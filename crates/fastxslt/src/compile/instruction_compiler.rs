@@ -1589,8 +1589,10 @@ pub(super) fn compile_comment(
             )
         })?
     } else {
+        let children = meaningful_children(document, element);
         let mut value = String::new();
-        for child in meaningful_children(document, element) {
+        let mut requires_dynamic_content = false;
+        for child in children.iter().copied() {
             match document.kind(child) {
                 NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
                 NodeKind::Comment | NodeKind::ProcessingInstruction => {}
@@ -1604,6 +1606,8 @@ pub(super) fn compile_comment(
                             compile_static_node_content_value(document, child)?
                     {
                         value.push_str(&static_value);
+                    } else if uses_xslt10_compatibility(document, element) {
+                        requires_dynamic_content = true;
                     } else {
                         return Err(unsupported(
                             "FXST1036",
@@ -1620,6 +1624,23 @@ pub(super) fn compile_comment(
                     ));
                 }
             }
+        }
+        if requires_dynamic_content {
+            const MAX_SEQUENCE_CONSTRUCTOR_CHILDREN: usize = 64;
+            if children.len() > MAX_SEQUENCE_CONSTRUCTOR_CHILDREN {
+                return Err(unsupported(
+                    "FXST1036",
+                    format!(
+                        "the private XSLT 1.0 comment sequence constructor is limited to {MAX_SEQUENCE_CONSTRUCTOR_CHILDREN} children"
+                    ),
+                    document.location(element),
+                ));
+            }
+            let excluded = xslt10_text_constructor_exclusions(document, &children);
+            return Ok(Instruction::Xslt10CommentNode {
+                body: compile_sequence_excluding(document, element, &excluded)?.into_boxed_slice(),
+                location: document.location(element).clone(),
+            });
         }
         value
     };

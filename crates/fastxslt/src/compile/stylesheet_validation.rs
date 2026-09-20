@@ -33,7 +33,8 @@ fn validate_named_calls(
             | Instruction::If { body, .. } => {
                 validate_named_calls(program, body)?;
             }
-            Instruction::Xslt10ProcessingInstructionNode { body, .. } => {
+            Instruction::Xslt10ProcessingInstructionNode { body, .. }
+            | Instruction::Xslt10CommentNode { body, .. } => {
                 validate_named_calls(program, body.as_ref())?;
             }
             Instruction::Choose {

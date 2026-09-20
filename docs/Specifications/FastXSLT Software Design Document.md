@@ -1147,8 +1147,12 @@ result attributes remain outside the current private compilation slice.
 Static `xsl:comment` content may be literal sequence-constructor text or a
 compile-time concatenation of single-quoted strings and single-integer
 `codepoints-to-string()` calls. Generated codepoints must be XML 1.0
-characters; comment data containing `--` or ending in `-` remains unsupported
-rather than receiving implicit lexical recovery.
+characters. Under XSLT 1.0 compatibility, dynamic content may retain at most
+64 meaningful children as an ordinary instruction sequence; only top-level
+text results contribute data and direct non-text constructors are ignored with
+their content. Static and dynamic XSLT 1.0 values recover `--` and a trailing
+hyphen by inserting a space after the offending hyphen. Modern contexts retain
+the explicit computed-content and lexical-recovery boundaries.
 For XHTML output, `include-content-type` defaults to enabled. An XHTML `head`
 receives one serializer-owned empty `meta` whose content combines the explicit
 media type or `text/html` default with UTF-8; an existing Content-Type meta is
