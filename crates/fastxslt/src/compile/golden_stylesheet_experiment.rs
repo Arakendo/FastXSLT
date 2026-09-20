@@ -327,6 +327,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
         output_specified_properties,
         character_maps,
+        decimal_formats: decimal_formats.into_definitions(),
         output_character_map_names,
         output_character_map_location,
         local_attribute_set_names,
@@ -338,8 +339,15 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         global_bindings,
     };
     namespace_alias_compiler::apply(&mut program, &namespace_aliases);
-    decimal_format_compiler::apply(&mut program, &decimal_formats)?;
+    finalize_decimal_formats(&mut program)?;
     Ok(program)
+}
+
+pub(super) fn finalize_decimal_formats(
+    program: &mut StylesheetProgram,
+) -> Result<(), CompileFailure> {
+    let declarations = program.decimal_formats.clone();
+    decimal_format_compiler::apply(program, &declarations)
 }
 
 fn compile_key_definition(

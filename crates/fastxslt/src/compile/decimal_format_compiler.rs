@@ -10,7 +10,8 @@ use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::format_number_experiment::DecimalFormat;
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, StylesheetProgram, TemplateArgument, TemplateArgumentValue, ValueExpression,
+    DecimalFormatDefinition, Instruction, StylesheetProgram, TemplateArgument,
+    TemplateArgumentValue, ValueExpression,
 };
 
 const PROPERTIES: [&str; 10] = [
@@ -37,6 +38,28 @@ struct DecimalFormatDeclaration {
 pub(super) struct DecimalFormats {
     default: Option<DecimalFormatDeclaration>,
     named: Vec<(ExpandedName, DecimalFormatDeclaration)>,
+}
+
+impl DecimalFormats {
+    pub(super) fn into_definitions(self) -> Vec<DecimalFormatDefinition> {
+        self.default
+            .into_iter()
+            .map(|declaration| DecimalFormatDefinition {
+                name: None,
+                format: declaration.format,
+                location: declaration.location,
+            })
+            .chain(
+                self.named
+                    .into_iter()
+                    .map(|(name, declaration)| DecimalFormatDefinition {
+                        name: Some(name),
+                        format: declaration.format,
+                        location: declaration.location,
+                    }),
+            )
+            .collect()
+    }
 }
 
 pub(super) fn compile_declaration(
@@ -220,12 +243,9 @@ fn validate_distinct_symbols(
 
 pub(super) fn apply(
     program: &mut StylesheetProgram,
-    declarations: &DecimalFormats,
+    declarations: &[DecimalFormatDefinition],
 ) -> Result<(), CompileFailure> {
-    if let Some(declaration) = &declarations.default {
-        validate_distinct_symbols(&declaration.format, &declaration.location)?;
-    }
-    for (_, declaration) in &declarations.named {
+    for declaration in declarations {
         validate_distinct_symbols(&declaration.format, &declaration.location)?;
     }
     if let Some(template) = &mut program.root_template {
@@ -242,7 +262,7 @@ pub(super) fn apply(
 
 fn apply_instructions(
     instructions: &mut [Instruction],
-    declarations: &DecimalFormats,
+    declarations: &[DecimalFormatDefinition],
 ) -> Result<(), CompileFailure> {
     for instruction in instructions {
         match instruction {
@@ -277,7 +297,7 @@ fn apply_instructions(
 
 fn apply_arguments(
     arguments: &mut [TemplateArgument],
-    declarations: &DecimalFormats,
+    declarations: &[DecimalFormatDefinition],
 ) -> Result<(), CompileFailure> {
     for argument in arguments {
         if let TemplateArgumentValue::Xslt10Content(content) = &mut argument.value {
@@ -289,17 +309,15 @@ fn apply_arguments(
 
 fn apply_value(
     value: &mut ValueExpression,
-    declarations: &DecimalFormats,
+    declarations: &[DecimalFormatDefinition],
 ) -> Result<(), CompileFailure> {
     if let ValueExpression::FormatNumber(expression)
     | ValueExpression::Xslt10NumberOfFormatNumber(expression) = value
     {
         let declaration = if let Some(name) = expression.requested_format() {
             declarations
-                .named
                 .iter()
-                .find(|(candidate, _)| candidate == name)
-                .map(|(_, declaration)| declaration)
+                .find(|candidate| candidate.name.as_ref() == Some(name))
                 .ok_or_else(|| {
                     unsupported(
                         "FXST1092",
@@ -310,7 +328,10 @@ fn apply_value(
                         expression.location(),
                     )
                 })?
-        } else if let Some(declaration) = &declarations.default {
+        } else if let Some(declaration) = declarations
+            .iter()
+            .find(|candidate| candidate.name.is_none())
+        {
             declaration
         } else {
             return Ok(());

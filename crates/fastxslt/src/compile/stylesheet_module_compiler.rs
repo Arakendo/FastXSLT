@@ -10,9 +10,9 @@ use super::stylesheet_validation::validate_named_template_references;
 use super::{
     CompileFailure, XSLT_NAMESPACE, compile_stylesheet_at_excluding_unvalidated,
     compile_stylesheet_excluding_unvalidated, default_output_settings, document_element,
-    ensure_no_meaningful_children, ensure_only_attributes, finalize_character_maps, invalid,
-    is_xslt_element, meaningful_children, optional_attribute, require_stylesheet_root,
-    required_attribute, unsupported,
+    ensure_no_meaningful_children, ensure_only_attributes, finalize_character_maps,
+    finalize_decimal_formats, invalid, is_xslt_element, meaningful_children, optional_attribute,
+    require_stylesheet_root, required_attribute, unsupported,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,6 +96,7 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
         false,
     )?;
     finalize_character_maps(&mut program)?;
+    finalize_decimal_formats(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
 }
@@ -120,6 +121,7 @@ fn merge_included_program(
         .mode_policies
         .append(&mut included_program.mode_policies);
     merge_included_character_maps(program, included_program.character_maps, location)?;
+    merge_included_decimal_formats(program, included_program.decimal_formats, location)?;
     program
         .key_definitions
         .append(&mut included_program.key_definitions);
@@ -226,6 +228,7 @@ pub(crate) fn compile_stylesheet_with_two_included_programs_at(
         merge_included_program(&mut program, included, principal.location(include), true)?;
     }
     finalize_character_maps(&mut program)?;
+    finalize_decimal_formats(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
 }
@@ -281,8 +284,10 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
     merge_imported_named_templates(&mut program, imported_program.named_templates);
     merge_imported_global_bindings(&mut program, imported_program.global_bindings);
     merge_imported_character_maps(&mut program, imported_program.character_maps);
+    merge_imported_decimal_formats(&mut program, imported_program.decimal_formats);
     merge_key_definitions(&mut program, imported_program.key_definitions);
     finalize_character_maps(&mut program)?;
+    finalize_decimal_formats(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
 }
@@ -367,9 +372,11 @@ pub(crate) fn compile_stylesheet_with_imports(
         merge_imported_named_templates(&mut principal_program, program.named_templates);
         merge_imported_global_bindings(&mut principal_program, program.global_bindings);
         merge_imported_character_maps(&mut principal_program, program.character_maps);
+        merge_imported_decimal_formats(&mut principal_program, program.decimal_formats);
         merge_key_definitions(&mut principal_program, program.key_definitions);
     }
     finalize_character_maps(&mut principal_program)?;
+    finalize_decimal_formats(&mut principal_program)?;
     validate_named_template_references(&principal_program)?;
     Ok(principal_program)
 }
@@ -421,9 +428,11 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
         merge_imported_named_templates(&mut principal_program, program.named_templates);
         merge_imported_global_bindings(&mut principal_program, program.global_bindings);
         merge_imported_character_maps(&mut principal_program, program.character_maps);
+        merge_imported_decimal_formats(&mut principal_program, program.decimal_formats);
         merge_key_definitions(&mut principal_program, program.key_definitions);
     }
     finalize_character_maps(&mut principal_program)?;
+    finalize_decimal_formats(&mut principal_program)?;
     validate_named_template_references(&principal_program)?;
     Ok(principal_program)
 }
@@ -468,8 +477,10 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
     merge_imported_named_templates(&mut principal_program, imported_program.named_templates);
     merge_imported_global_bindings(&mut principal_program, imported_program.global_bindings);
     merge_imported_character_maps(&mut principal_program, imported_program.character_maps);
+    merge_imported_decimal_formats(&mut principal_program, imported_program.decimal_formats);
     merge_key_definitions(&mut principal_program, imported_program.key_definitions);
     finalize_character_maps(&mut principal_program)?;
+    finalize_decimal_formats(&mut principal_program)?;
     validate_named_template_references(&principal_program)?;
     Ok(principal_program)
 }
@@ -717,6 +728,43 @@ fn merge_imported_character_maps(
     principal.character_maps = imported;
 }
 
+fn merge_imported_decimal_formats(
+    principal: &mut StylesheetProgram,
+    imported: Vec<crate::xslt::golden_semantics_experiment::DecimalFormatDefinition>,
+) {
+    for declaration in imported {
+        if !principal
+            .decimal_formats
+            .iter()
+            .any(|existing| existing.name == declaration.name)
+        {
+            principal.decimal_formats.push(declaration);
+        }
+    }
+}
+
+fn merge_included_decimal_formats(
+    principal: &mut StylesheetProgram,
+    included: Vec<crate::xslt::golden_semantics_experiment::DecimalFormatDefinition>,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    for declaration in included {
+        if principal
+            .decimal_formats
+            .iter()
+            .any(|existing| existing.name == declaration.name)
+        {
+            return Err(unsupported(
+                "FXST1093",
+                "same-name decimal-format composition across included modules is outside the bounded module slice",
+                location,
+            ));
+        }
+        principal.decimal_formats.push(declaration);
+    }
+    Ok(())
+}
+
 fn merge_key_definitions(
     principal: &mut StylesheetProgram,
     mut definitions: Vec<crate::xslt::golden_semantics_experiment::KeyDefinition>,
@@ -775,6 +823,7 @@ pub(super) fn compile_simplified_stylesheet_at(
         output: default_output_settings(),
         output_specified_properties: Vec::new(),
         character_maps: Vec::new(),
+        decimal_formats: Vec::new(),
         output_character_map_names: Vec::new(),
         output_character_map_location: None,
         local_attribute_set_names: Vec::new(),
@@ -890,5 +939,29 @@ mod tests {
                 .iter()
                 .all(|definition| definition.name.local == "shared")
         );
+    }
+
+    #[test]
+    fn rejects_same_name_decimal_format_composition_across_includes() {
+        let principal = stylesheet(
+            "urn:fastxslt:decimal-format-include:principal",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="included.xsl"/><xsl:decimal-format decimal-separator="." grouping-separator=","/><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+        let included = stylesheet(
+            "urn:fastxslt:decimal-format-include:included",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:decimal-format decimal-separator="," grouping-separator="."/></xsl:stylesheet>"#,
+        );
+        let root = included
+            .children(included.document_node())
+            .iter()
+            .copied()
+            .find(|node| included.name(*node).is_some())
+            .expect("included stylesheet root");
+
+        let failure = compile_stylesheet_with_single_include(&principal, &included, root)
+            .expect_err("same-name decimal formats at one precedence remain explicit");
+
+        assert_eq!(failure.code, "FXST1093");
+        assert!(failure.detail.contains("across included modules"));
     }
 }

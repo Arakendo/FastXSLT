@@ -5,15 +5,15 @@ use super::{
     CharacterMapDefinition, ChildPresenceTest, ChooseBranch, ComputedAttribute,
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
     ConditionalPathBranch, ConditionalPathExpression, ConstructedAttribute, ConstructedElement,
-    ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
-    FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
-    GlobalBindingDefault, Instruction, IntegerForExpression, KeyDefinition, KeyUseExpression,
-    LiteralAttribute, LiteralAttributeValue, LocationPath, MatchNodeTest, MatchPattern,
-    MatchSequencePredicate, MatchStringPredicate, MatchedTemplate, NamedTemplate, NamespaceBinding,
-    OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram,
-    Template, TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
-    ValueExpression, VariableFilteredElementPath, Xslt10ApplyUnionPart, Xslt10AvtPart,
-    Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyValue,
+    ConstructedNode, DecimalFormatDefinition, DecimalSumForExpression, DeepEqualBooleanExpression,
+    ExpandedName, FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression,
+    GlobalBinding, GlobalBindingDefault, Instruction, IntegerForExpression, KeyDefinition,
+    KeyUseExpression, LiteralAttribute, LiteralAttributeValue, LocationPath, MatchNodeTest,
+    MatchPattern, MatchSequencePredicate, MatchStringPredicate, MatchedTemplate, NamedTemplate,
+    NamespaceBinding, OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation,
+    StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue, TemplateParameter,
+    TemplateParameterDefault, ValueExpression, VariableFilteredElementPath, Xslt10ApplyUnionPart,
+    Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyValue,
 };
 
 impl StylesheetProgram {
@@ -32,6 +32,7 @@ impl StylesheetProgram {
             + output_owned(&self.output)
             + vec_owned(&self.output_specified_properties, String::capacity)
             + vec_owned(&self.character_maps, character_map_owned)
+            + vec_owned(&self.decimal_formats, decimal_format_owned)
             + vec_owned(&self.output_character_map_names, name_owned)
             + vec_owned(&self.local_attribute_set_names, name_owned)
             + vec_owned(&self.key_definitions, key_definition_owned)
@@ -45,6 +46,13 @@ impl StylesheetProgram {
             + vec_owned(&self.named_templates, named_template_owned)
             + vec_owned(&self.global_bindings, global_binding_owned)
     }
+}
+
+fn decimal_format_owned(value: &DecimalFormatDefinition) -> usize {
+    value.name.as_ref().map_or(0, name_owned)
+        + value.format.infinity.capacity()
+        + value.format.nan.capacity()
+        + location_owned(&value.location)
 }
 
 fn key_definition_owned(value: &KeyDefinition) -> usize {

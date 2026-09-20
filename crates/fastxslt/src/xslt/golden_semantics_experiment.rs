@@ -17,6 +17,7 @@ use crate::xpath::encode_for_uri_expression::EncodeForUriExpression;
 use crate::xpath::escape_html_uri_expression::EscapeHtmlUriExpression;
 use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
 use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
+use crate::xpath::format_number_experiment::DecimalFormat;
 use crate::xpath::format_number_experiment::FormatNumberExpression;
 use crate::xpath::integer_for_experiment::IntegerForExpression;
 use crate::xpath::iri_to_uri_expression::IriToUriExpression;
@@ -41,6 +42,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) output: OutputSettings,
     pub(crate) output_specified_properties: Vec<String>,
     pub(crate) character_maps: Vec<CharacterMapDefinition>,
+    pub(crate) decimal_formats: Vec<DecimalFormatDefinition>,
     pub(crate) output_character_map_names: Vec<ExpandedName>,
     pub(crate) output_character_map_location: Option<SourceLocation>,
     pub(crate) local_attribute_set_names: Vec<ExpandedName>,
@@ -50,6 +52,13 @@ pub(crate) struct StylesheetProgram {
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DecimalFormatDefinition {
+    pub(crate) name: Option<ExpandedName>,
+    pub(crate) format: DecimalFormat,
+    pub(crate) location: SourceLocation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

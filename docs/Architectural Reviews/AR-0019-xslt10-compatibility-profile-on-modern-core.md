@@ -2219,3 +2219,12 @@ maintained redistributable legacy suite becomes available.
   1,916. Both remain visibly blocked by the HTML comparator, so the strict
   exact lower bound remains 1,625.
   [Evidence](../Evidence/oasis-xslt10-variable-division-string-2026-09-19.md)
+- 2026-09-19 -- Compiled decimal-format declarations now survive admitted
+  module composition and specialize the whole program only after include/import
+  merging. Dependency declarations bind principal calls and a principal
+  declaration shadows a lower-precedence imported definition without runtime
+  lookup. The unchanged Lotus `numberformat45` and `numberformat46` cases
+  become exact, bringing the current strict lower bound to 1,805, successful
+  execution to 1,934, and initialization to 2,033; visible mismatches remain
+  54. Same-name declarations contributed by separate includes remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-module-decimal-format-composition-2026-09-19.md)

@@ -2227,6 +2227,67 @@ fn principal_template_after_two_includes_wins_same_precedence_conflict() {
 }
 
 #[test]
+fn dependency_decimal_formats_bind_after_module_composition() {
+    const SOURCE: &str = "urn:fastxslt:module-decimal-format:source";
+    const PRINCIPAL: &str = "https://example.invalid/module-format/main.xsl";
+    const DEPENDENCY: &str = "https://example.invalid/module-format/dependency.xsl";
+    let principal = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:include href="dependency.xsl"/><xsl:template match="/"><xsl:value-of select="format-number(12345.67,'000.000,###')"/><xsl:text>|</xsl:text><xsl:call-template name="sub"/></xsl:template></xsl:stylesheet>"#;
+    let dependency = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:decimal-format decimal-separator="," grouping-separator="."/><xsl:template name="sub"><xsl:value-of select="format-number(12345.67,'000.000,###')"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 24_576));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(PRINCIPAL, principal.to_vec())
+        .expect("admit principal stylesheet");
+    resources
+        .admit(DEPENDENCY, dependency.to_vec())
+        .expect("admit included stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PRINCIPAL).expect("compile include graph");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("module-format", "module-format-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute include graph");
+
+    assert_eq!(
+        results.by_request["module-format"].serialized,
+        "012.345,67|012.345,67"
+    );
+}
+
+#[test]
+fn principal_decimal_format_overrides_imported_format_for_the_whole_program() {
+    const SOURCE: &str = "urn:fastxslt:import-decimal-format:source";
+    const PRINCIPAL: &str = "https://example.invalid/import-format/main.xsl";
+    const IMPORTED: &str = "https://example.invalid/import-format/imported.xsl";
+    let principal = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:import href="imported.xsl"/><xsl:output method="text"/><xsl:decimal-format decimal-separator="." grouping-separator=","/><xsl:template match="/"><xsl:call-template name="sub"/></xsl:template></xsl:stylesheet>"#;
+    let imported = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:decimal-format decimal-separator="," grouping-separator="."/><xsl:template name="sub"><xsl:value-of select="format-number(12345.67,'#,###.00')"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 24_576));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(PRINCIPAL, principal.to_vec())
+        .expect("admit principal stylesheet");
+    resources
+        .admit(IMPORTED, imported.to_vec())
+        .expect("admit imported stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PRINCIPAL).expect("compile import graph");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("import-format", "import-format-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute import graph");
+
+    assert_eq!(results.by_request["import-format"].serialized, "12,345.67");
+}
+
+#[test]
 fn principal_namespace_alias_rewrites_included_literal_results() {
     const SOURCE: &str = "urn:fastxslt:included-namespace-alias:source";
     const PRINCIPAL: &str = "https://example.invalid/alias/main.xsl";

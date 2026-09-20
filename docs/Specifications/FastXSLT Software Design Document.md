@@ -578,6 +578,14 @@ a valid-arity call outside the admitted formatting slice remains explicitly
 unsupported. Malformed or unbalanced syntax is not inferred to be an arity
 error.
 
+Compiled decimal-format declarations remain immutable stylesheet-derived
+state until the admitted include/import graph is composed. The compiler then
+binds every retained `format-number()` plan to the effective definition;
+principal definitions shadow lower-precedence imports across the whole
+program. Execution receives the specialized typed plan and performs no
+decimal-format declaration lookup. Same-name declarations contributed by
+separate included modules remain an explicit unsupported composition boundary.
+
 A typed `number(location-path)` value operation evaluates the shared path,
 requires zero or one selected node, and converts its XDM string value to a
 canonical finite decimal. Empty selections and ordinary non-convertible
