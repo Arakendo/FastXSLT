@@ -9360,6 +9360,53 @@ fn xslt10_source_copy_attribute_uses_first_selected_node_string_value() {
 }
 
 #[test]
+fn xslt10_global_copy_of_document_materializes_an_invocation_temporary_tree() {
+    const SOURCE: &str = "urn:fastxslt:global-source-copy:source";
+    const OTHER_SOURCE: &str = "urn:fastxslt:global-source-copy:other-source";
+    const STYLESHEET: &str = "urn:fastxslt:global-source-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="tree"><xsl:copy-of select="/"/></xsl:variable><xsl:template match="/"><out><xsl:copy-of select="$tree"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            SOURCE,
+            b"<doc id=\"source\">first<child/>second<!--note--><?pi value?></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(OTHER_SOURCE, b"<other>separate invocation</other>".to_vec())
+        .expect("admit other source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile global source copy");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 2, policy(8_192));
+    builder
+        .add(request("global-source-copy", "result", SOURCE))
+        .expect("admit request");
+    builder
+        .add(request(
+            "other-global-source-copy",
+            "other-result",
+            OTHER_SOURCE,
+        ))
+        .expect("admit other request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute global source copy");
+
+    assert_eq!(
+        results.by_request["global-source-copy"].serialized,
+        "<out><doc id=\"source\">first<child></child>second<!--note--><?pi value?></doc></out>"
+    );
+    assert_eq!(
+        results.by_request["other-global-source-copy"].serialized,
+        "<out><other>separate invocation</other></out>"
+    );
+}
+
+#[test]
 fn xslt10_numeric_sort_uses_xpath_number_lexicals_and_equal_zero_keys() {
     const SOURCE: &str = "urn:fastxslt:xslt10-numeric-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-numeric-sort:stylesheet";

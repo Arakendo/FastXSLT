@@ -751,6 +751,16 @@ content-variable semantics, widen global constructors, or admit
 cross-invocation temporary-tree retention. General temporary-tree paths still
 require separate evidence.
 
+The bounded XSLT 1.0 global-content path may also retain one typed
+`xsl:copy-of select="/"` plan. The compiled generation retains only the
+stylesheet-derived path. Each invocation evaluates it against that invocation's
+principal source and constructs a fresh temporary tree, preserving copied
+names, namespace slices, attributes, child order, text, comments, and
+processing instructions under the same XDM-node accounting. A selected
+document node contributes its children as roots. This does not retain source
+nodes in compiled state, share temporary trees across invocations, or admit
+other source-copy paths or mixed global constructors.
+
 The private temporary selection path also admits an exact child-element path
 whose origin is one temporary-tree variable and whose steps are lexical QNames
 resolved to expanded names during stylesheet compilation. Execution starts at

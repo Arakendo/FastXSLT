@@ -173,6 +173,7 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             GlobalBindingDefault::CountLocationPath(path)
             | GlobalBindingDefault::LocationPath(path)
             | GlobalBindingDefault::SourceNodeIdentity(path)
+            | GlobalBindingDefault::Xslt10TemporarySourceCopy(path)
             | GlobalBindingDefault::Xslt10ForEachText(path) => path.known_owned_capacity_bytes(),
             GlobalBindingDefault::TemporaryTree(elements) => {
                 vec_owned(elements, constructed_element_owned)

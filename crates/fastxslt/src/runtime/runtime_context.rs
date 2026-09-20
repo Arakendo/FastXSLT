@@ -629,10 +629,9 @@ fn materialize_global_default(
             )?;
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
-        GlobalBindingDefault::Xslt10TemporarySourceString(path) => {
-            let tree =
-                materialize_xslt10_temporary_source_string(path, source, request_id, control)?;
-            globals.temporary_trees.insert(binding.name.clone(), tree);
+        GlobalBindingDefault::Xslt10TemporarySourceString(_)
+        | GlobalBindingDefault::Xslt10TemporarySourceCopy(_) => {
+            materialize_global_xslt10_source_tree(globals, binding, source, request_id, control)?;
         }
         GlobalBindingDefault::Xslt10ForEachText(path) => {
             materialize_global_xslt10_for_each_text(
@@ -670,6 +669,26 @@ fn materialize_global_default(
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
     }
+    Ok(())
+}
+
+fn materialize_global_xslt10_source_tree(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let tree = match &binding.default {
+        GlobalBindingDefault::Xslt10TemporarySourceString(path) => {
+            materialize_xslt10_temporary_source_string(path, source, request_id, control)?
+        }
+        GlobalBindingDefault::Xslt10TemporarySourceCopy(path) => {
+            materialize_xslt10_temporary_source_copy(path, source, request_id, control)?
+        }
+        _ => unreachable!("source-tree dispatch receives only source-tree defaults"),
+    };
+    globals.temporary_trees.insert(binding.name.clone(), tree);
     Ok(())
 }
 
@@ -741,6 +760,132 @@ fn materialize_xslt10_temporary_source_string(
         request_id,
         control,
     )
+}
+
+fn materialize_xslt10_temporary_source_copy(
+    path: &crate::xpath::path_experiment::LocationPath,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<TemporaryTree, ExecutionFailure> {
+    let source = source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "an XSLT 1.0 source-copy temporary tree requires a principal source",
+        )
+    })?;
+    let selected = evaluate_location_path_controlled(source, source.document_node(), path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let mut tree = TemporaryTree {
+        identity: allocate_temporary_tree_identity(control, request_id)?,
+        roots: Vec::new(),
+        nodes: Vec::new(),
+    };
+    for selected in selected {
+        append_source_copy_roots(source, selected, &mut tree, request_id, control)?;
+    }
+    Ok(tree)
+}
+
+fn append_source_copy_roots(
+    source: &Document,
+    node: NodeId,
+    tree: &mut TemporaryTree,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    if source.kind(node) == crate::xdm::owned_tree_experiment::NodeKind::Document {
+        for child in source.children(node) {
+            let copied = copy_source_to_temporary(source, *child, None, tree, request_id, control)?;
+            tree.roots.push(copied);
+        }
+        return Ok(());
+    }
+    let copied = copy_source_to_temporary(source, node, None, tree, request_id, control)?;
+    tree.roots.push(copied);
+    Ok(())
+}
+
+fn copy_source_to_temporary(
+    source: &Document,
+    node: NodeId,
+    parent: Option<usize>,
+    tree: &mut TemporaryTree,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    use crate::xdm::owned_tree_experiment::NodeKind;
+
+    control
+        .charge(WorkDomain::XdmNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let copied = tree.nodes.len();
+    let kind = match source.kind(node) {
+        NodeKind::Element => TemporaryNodeKind::Element {
+            name: source
+                .name(node)
+                .expect("source element has a name")
+                .clone(),
+            namespaces: source.in_scope_namespaces(node),
+            attributes: Vec::new(),
+        },
+        NodeKind::Attribute => TemporaryNodeKind::Attribute {
+            name: source
+                .name(node)
+                .expect("source attribute has a name")
+                .clone(),
+            value: source.value(node).unwrap_or_default().to_owned(),
+        },
+        NodeKind::Text => {
+            TemporaryNodeKind::Text(source.value(node).unwrap_or_default().to_owned())
+        }
+        NodeKind::Comment => {
+            TemporaryNodeKind::Comment(source.value(node).unwrap_or_default().to_owned())
+        }
+        NodeKind::ProcessingInstruction => TemporaryNodeKind::ProcessingInstruction {
+            target: source
+                .name(node)
+                .expect("source processing instruction has a target")
+                .local
+                .clone(),
+            value: source.value(node).unwrap_or_default().to_owned(),
+        },
+        NodeKind::Document => unreachable!("document copies are expanded at the root boundary"),
+    };
+    tree.nodes.push(TemporaryNode {
+        kind,
+        parent,
+        children: Vec::new(),
+    });
+    if source.kind(node) == NodeKind::Element {
+        let mut attributes = Vec::new();
+        for attribute in source.attributes(node) {
+            attributes.push(copy_source_to_temporary(
+                source,
+                *attribute,
+                Some(copied),
+                tree,
+                request_id,
+                control,
+            )?);
+        }
+        let TemporaryNodeKind::Element {
+            attributes: retained,
+            ..
+        } = &mut tree.nodes[copied].kind
+        else {
+            unreachable!("source element copy retains an element kind")
+        };
+        *retained = attributes;
+        for child in source.children(node) {
+            let child =
+                copy_source_to_temporary(source, *child, Some(copied), tree, request_id, control)?;
+            tree.nodes[copied].children.push(child);
+        }
+    }
+    Ok(copied)
 }
 
 pub(super) fn materialize_xslt10_temporary_context_string(

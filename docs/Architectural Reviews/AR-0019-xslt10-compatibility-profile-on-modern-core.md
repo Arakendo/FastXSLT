@@ -2462,3 +2462,12 @@ maintained redistributable legacy suite becomes available.
   2,090, successful execution to 2,004, and the strict lower bound to 1,873
   (59.03%) while execution failures and mismatches remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-source-copy-path-attribute-2026-09-20.md)
+- 2026-09-20 -- A global XSLT 1.0 variable whose sole constructor is
+  `xsl:copy-of select="/"` now retains only that typed path in compiled state.
+  Every invocation materializes a fresh, charged temporary copy of its own
+  source document children, preserving names, namespaces, attributes, child
+  order, text, comments, and processing instructions. Lotus `copy59` and
+  `copy60` become exact, raising initialization to 2,092, successful execution
+  to 2,006, and the strict lower bound to 1,875 (59.09%) while execution
+  failures and mismatches remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-global-source-copy-temporary-tree-2026-09-20.md)

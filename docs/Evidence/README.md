@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Global Source-Copy Temporary Tree](oasis-xslt10-global-source-copy-temporary-tree-2026-09-20.md)
 - [OASIS XSLT 1.0 Source-Copy Path Attribute](oasis-xslt10-source-copy-path-attribute-2026-09-20.md)
 - [OASIS XSLT 1.0 Result-Attribute Recovery](oasis-xslt10-result-attribute-recovery-2026-09-20.md)
 - [OASIS XSLT 1.0 Shallow-Copy Body Attributes](oasis-xslt10-shallow-copy-body-attributes-2026-09-20.md)
