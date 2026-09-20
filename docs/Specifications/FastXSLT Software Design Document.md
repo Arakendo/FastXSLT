@@ -103,8 +103,10 @@ open:
 - Global variable and parameter QNames are resolved to expanded names during
   compilation. Direct variable value expressions use the same canonical key,
   so prefix aliases do not create distinct runtime bindings or require runtime
-  namespace lookup. Broader expressions admit qualified variable references
-  only through their own typed compiler support.
+  namespace lookup. In XSLT 1.0 compatibility, the same key may root an
+  admitted typed relative child path over an invocation-owned source-node
+  sequence. Broader expressions admit qualified variable references only
+  through their own typed compiler support.
 - Source-derived global values retain identities only within the prepared input
   and invocation that produced them. A compiled stylesheet must not retain node
   identities from one principal source for reuse by another invocation.

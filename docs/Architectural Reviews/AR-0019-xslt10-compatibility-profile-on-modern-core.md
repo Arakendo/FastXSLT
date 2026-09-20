@@ -2372,3 +2372,12 @@ maintained redistributable legacy suite becomes available.
   unchanged. Qualified variables embedded in broader path expressions remain
   an explicit frontier.
   [Evidence](../Evidence/oasis-xslt10-global-variable-qnames-2026-09-20.md)
+- 2026-09-20 -- QName-named source-node variables may now root an admitted
+  relative XSLT 1.0 child path through the existing charged
+  `SourceVariablePath` plan. Namespace aliases resolve to the canonical
+  expanded-name key at compilation; runtime path semantics remain unchanged.
+  Two unchanged Microsoft qualified-variable cases become exact, raising the
+  strict lower bound to 1,836, successful execution to 1,965, and
+  initialization to 2,067 while mismatches and execution failures remain
+  unchanged.
+  [Evidence](../Evidence/oasis-xslt10-qualified-variable-rooted-paths-2026-09-20.md)

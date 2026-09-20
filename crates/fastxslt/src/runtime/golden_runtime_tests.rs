@@ -4361,11 +4361,12 @@ fn xslt10_global_variable_qnames_compare_by_expanded_name() {
         exclude-result-prefixes="decl use">
         <xsl:output method="xml" omit-xml-declaration="yes"/>
         <xsl:variable name="decl:value" select="'expanded'"/>
-        <xsl:template match="/"><out><xsl:value-of select="$use:value"/></out></xsl:template>
+        <xsl:variable name="decl:nodes" select="bookstore"/>
+        <xsl:template match="/"><out><xsl:value-of select="$use:value"/><xsl:for-each select="$use:nodes/book"><b/></xsl:for-each></out></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
-        .admit(SOURCE, br"<doc/>".to_vec())
+        .admit(SOURCE, br"<bookstore><book/><book/></bookstore>".to_vec())
         .expect("admit QName-variable source");
     resources
         .admit(STYLESHEET, stylesheet.to_vec())
@@ -4381,7 +4382,7 @@ fn xslt10_global_variable_qnames_compare_by_expanded_name() {
     let results = execute_transform_set(builder.seal()).expect("execute QName variable");
     assert_eq!(
         results.by_request["qname-variable"].serialized,
-        "<out>expanded</out>"
+        "<out>expanded<b></b><b></b></out>"
     );
 }
 

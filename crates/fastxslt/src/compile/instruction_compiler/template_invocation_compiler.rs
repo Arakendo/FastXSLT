@@ -9,6 +9,7 @@ use crate::xslt::golden_semantics_experiment::{
     Xslt10ApplyUnionPart, Xslt10ContentArgument, Xslt10ContentTextBinding,
 };
 
+use super::super::normalize_variable_qname;
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::value_expression_compiler::{
     compile_value_expression, compile_xslt10_binary_numeric, compile_xslt10_sum_path,
@@ -466,11 +467,22 @@ fn parse_source_variable_path(
     location: SourceLocation,
 ) -> Option<Result<ApplySelection, CompileFailure>> {
     let (variable, path) = expression.strip_prefix('$')?.split_once('/')?;
-    let xslt10_descendant_path =
-        uses_xslt10_compatibility(document, element) && path.starts_with('/') && path.len() > 1;
-    if !is_ascii_ncname(variable) || (!path.contains('[') && !xslt10_descendant_path) {
+    let xslt10_compatibility = uses_xslt10_compatibility(document, element);
+    let xslt10_descendant_path = xslt10_compatibility && path.starts_with('/') && path.len() > 1;
+    let qualified_variable = variable.contains(':');
+    let admitted = path.contains('[')
+        || xslt10_descendant_path
+        || (xslt10_compatibility && qualified_variable);
+    if !admitted {
         return None;
     }
+    let Ok(variable) = normalize_variable_qname(document, element, variable) else {
+        return Some(Err(invalid(
+            "FXXP0002",
+            format!("invalid variable reference in path: ${variable}"),
+            &location,
+        )));
+    };
     let descendant_path;
     let path = if xslt10_descendant_path {
         descendant_path = format!(".//{}", &path[1..]);
@@ -479,12 +491,8 @@ fn parse_source_variable_path(
         path
     };
     Some(
-        parse_selection_path(document, element, path, location).map(|path| {
-            ApplySelection::SourceVariablePath {
-                variable: variable.to_owned(),
-                path,
-            }
-        }),
+        parse_selection_path(document, element, path, location)
+            .map(|path| ApplySelection::SourceVariablePath { variable, path }),
     )
 }
 
