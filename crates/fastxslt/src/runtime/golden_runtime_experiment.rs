@@ -845,6 +845,7 @@ fn execute_attribute_instruction(
         inputs,
         std::slice::from_ref(attribute),
         scope,
+        execution,
         LiteralAttributeFocus {
             position: execution.focus_position,
             size: execution.focus_size,
@@ -2183,6 +2184,7 @@ fn execute_literal_element(
         inputs,
         computed_attributes,
         variables,
+        execution,
         LiteralAttributeFocus {
             position: execution.focus_position,
             size: execution.focus_size,

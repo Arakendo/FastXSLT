@@ -111,6 +111,7 @@ pub(super) fn materialize_computed_attributes(
     inputs: &SequenceInputs<'_>,
     attributes: &[ComputedAttribute],
     variables: &RuntimeVariables,
+    execution: SequenceContext<'_>,
     focus: LiteralAttributeFocus<'_>,
     request_id: &str,
     control: &mut InvocationControl,
@@ -127,74 +128,8 @@ pub(super) fn materialize_computed_attributes(
     };
     let mut materialized = Vec::with_capacity(attributes.len());
     for attribute in attributes {
-        let mut result = match &attribute.value {
-            LiteralAttributeValue::Number(instruction) => materialize_number_attribute(
-                inputs,
-                attribute,
-                instruction,
-                focus,
-                request_id,
-                control,
-            )?,
-            LiteralAttributeValue::Xslt10ForEachPathStringValue(path) => {
-                materialize_for_each_attribute(attribute, path, &context, control)?
-            }
-            LiteralAttributeValue::Xslt10CopyOfPathAttributeValue(path) => {
-                materialize_xslt10_copy_of_attribute(attribute, path, &context, control)?
-            }
-            LiteralAttributeValue::Xslt10Concat(expression) => materialize_concat_attribute(
-                inputs, attribute, expression, variables, focus, request_id, control,
-            )?,
-            LiteralAttributeValue::CountSourceNodeVariable(variable) => {
-                materialize_source_node_variable_count(
-                    inputs, attribute, variable, variables, request_id, control,
-                )?
-            }
-            LiteralAttributeValue::CountSourcePath(path)
-            | LiteralAttributeValue::Xslt10LocalSourcePathCount(path) => {
-                materialize_source_path_count(
-                    attribute,
-                    std::slice::from_ref(path),
-                    focus.source,
-                    request_id,
-                    control,
-                )?
-            }
-            LiteralAttributeValue::CountSourcePathUnion(alternatives) => {
-                materialize_source_path_count(
-                    attribute,
-                    alternatives,
-                    focus.source,
-                    request_id,
-                    control,
-                )?
-            }
-            LiteralAttributeValue::ContextNormalizedStringLength => {
-                control
-                    .charge(WorkDomain::ResultNode, 1)
-                    .map_err(|failure| control_failure(failure, request_id))?;
-                let node = focus.source.map(|(_, node)| node).ok_or_else(|| {
-                    failure_at(
-                        "XPDY0002",
-                        FailureCategory::Invalid,
-                        Some(request_id),
-                        attribute.location.clone(),
-                        "normalized string length requires a source context item",
-                    )
-                })?;
-                ResultAttribute {
-                    name: attribute.name.clone(),
-                    value: normalized_node_string_length(inputs, node, control)?.to_string(),
-                }
-            }
-            _ => materialize_attribute(
-                &attribute.name,
-                &attribute.value,
-                &attribute.location,
-                &context,
-                control,
-            )?,
-        };
+        let mut result =
+            materialize_computed_attribute_value(attribute, &context, execution, focus, control)?;
         if let Some(name) = &attribute.dynamic_name {
             result.name = super::dynamic_attribute_name::resolve(
                 inputs,
@@ -208,6 +143,121 @@ pub(super) fn materialize_computed_attributes(
         materialized.push(result);
     }
     Ok(materialized)
+}
+
+fn materialize_computed_attribute_value(
+    attribute: &ComputedAttribute,
+    context: &AttributeContext<'_>,
+    execution: SequenceContext<'_>,
+    focus: LiteralAttributeFocus<'_>,
+    control: &mut InvocationControl,
+) -> Result<ResultAttribute, ExecutionFailure> {
+    match &attribute.value {
+        LiteralAttributeValue::Number(instruction) => materialize_number_attribute(
+            context.inputs,
+            attribute,
+            instruction,
+            focus,
+            context.request_id,
+            control,
+        ),
+        LiteralAttributeValue::Xslt10ForEachPathStringValue(path) => {
+            materialize_for_each_attribute(attribute, path, context, control)
+        }
+        LiteralAttributeValue::Xslt10CopyOfPathAttributeValue(path) => {
+            materialize_xslt10_copy_of_attribute(attribute, path, context, control)
+        }
+        LiteralAttributeValue::Xslt10SequenceConstructor(instructions) => {
+            materialize_xslt10_sequence_attribute(
+                context.inputs,
+                attribute,
+                instructions,
+                execution,
+                context.variables,
+                control,
+            )
+        }
+        LiteralAttributeValue::Xslt10Concat(expression) => materialize_concat_attribute(
+            context.inputs,
+            attribute,
+            expression,
+            context.variables,
+            focus,
+            context.request_id,
+            control,
+        ),
+        LiteralAttributeValue::CountSourceNodeVariable(variable) => {
+            materialize_source_node_variable_count(
+                context.inputs,
+                attribute,
+                variable,
+                context.variables,
+                context.request_id,
+                control,
+            )
+        }
+        LiteralAttributeValue::CountSourcePath(path)
+        | LiteralAttributeValue::Xslt10LocalSourcePathCount(path) => materialize_source_path_count(
+            attribute,
+            std::slice::from_ref(path),
+            focus.source,
+            context.request_id,
+            control,
+        ),
+        LiteralAttributeValue::CountSourcePathUnion(alternatives) => materialize_source_path_count(
+            attribute,
+            alternatives,
+            focus.source,
+            context.request_id,
+            control,
+        ),
+        LiteralAttributeValue::ContextNormalizedStringLength => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, context.request_id))?;
+            let node = focus.source.map(|(_, node)| node).ok_or_else(|| {
+                failure_at(
+                    "XPDY0002",
+                    FailureCategory::Invalid,
+                    Some(context.request_id),
+                    attribute.location.clone(),
+                    "normalized string length requires a source context item",
+                )
+            })?;
+            Ok(ResultAttribute {
+                name: attribute.name.clone(),
+                value: normalized_node_string_length(context.inputs, node, control)?.to_string(),
+            })
+        }
+        _ => materialize_attribute(
+            &attribute.name,
+            &attribute.value,
+            &attribute.location,
+            context,
+            control,
+        ),
+    }
+}
+
+fn materialize_xslt10_sequence_attribute(
+    inputs: &SequenceInputs<'_>,
+    attribute: &ComputedAttribute,
+    instructions: &[crate::xslt::golden_semantics_experiment::Instruction],
+    execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<ResultAttribute, ExecutionFailure> {
+    let nodes = super::execute_sequence(inputs, instructions, execution, variables, control)?;
+    let mut value = String::new();
+    for node in nodes {
+        if let ResultNode::Text(text) = node {
+            value.push_str(&text);
+        }
+    }
+    Ok(ResultAttribute {
+        name: attribute.name.clone(),
+        value,
+    })
 }
 
 fn materialize_for_each_attribute(
@@ -389,6 +439,7 @@ fn materialize_attribute(
         | LiteralAttributeValue::ContextNormalizedStringLength
         | LiteralAttributeValue::Xslt10ForEachPathStringValue(_)
         | LiteralAttributeValue::Xslt10CopyOfPathAttributeValue(_)
+        | LiteralAttributeValue::Xslt10SequenceConstructor(_)
         | LiteralAttributeValue::Xslt10Concat(_) => {
             unreachable!("specialized computed-attribute value is materialized by its owner")
         }

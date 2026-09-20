@@ -2413,3 +2413,14 @@ maintained redistributable legacy suite becomes available.
   1,976, and initialization to 2,078 while mismatches and execution failures
   remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-nested-template-argument-constructor-2026-09-20.md)
+- 2026-09-20 -- The XSLT 1.0 computed-attribute fallback now retains a bounded
+  ordinary instruction sequence and concatenates only its top-level text
+  results. Direct and dynamically produced non-text nodes follow the legacy
+  recovery rule without creating a second evaluator; ignored direct node
+  constructors cannot recursively expand attribute sets. The unchanged
+  Microsoft `Text_ReservedCharsInAttribute` case becomes exact, raising the
+  strict lower bound to 1,848, successful execution to 1,977, and
+  initialization to 2,079 while mismatches and execution failures remain
+  unchanged. All eleven sibling `FXST1033` observations advance visibly to
+  their next distinct frontiers.
+  [Evidence](../Evidence/oasis-xslt10-computed-attribute-sequence-constructor-2026-09-20.md)

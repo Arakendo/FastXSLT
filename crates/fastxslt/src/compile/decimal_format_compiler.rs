@@ -267,8 +267,28 @@ fn apply_instructions(
     for instruction in instructions {
         match instruction {
             Instruction::ValueOf { select, .. } => apply_value(select, declarations)?,
-            Instruction::LiteralElement { body, .. }
-            | Instruction::ForEachVariable { body, .. }
+            Instruction::LiteralElement {
+                computed_attributes,
+                body,
+                ..
+            }
+            | Instruction::ContextNameElement {
+                computed_attributes,
+                body,
+                ..
+            }
+            | Instruction::DynamicNameElement {
+                computed_attributes,
+                body,
+                ..
+            } => {
+                apply_computed_attributes(computed_attributes, declarations)?;
+                apply_instructions(body, declarations)?;
+            }
+            Instruction::Attribute { attribute, .. } => {
+                apply_computed_attribute(attribute, declarations)?;
+            }
+            Instruction::ForEachVariable { body, .. }
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }
             | Instruction::If { body, .. }
@@ -292,6 +312,29 @@ fn apply_instructions(
             }
             _ => {}
         }
+    }
+    Ok(())
+}
+
+fn apply_computed_attributes(
+    attributes: &mut [crate::xslt::golden_semantics_experiment::ComputedAttribute],
+    declarations: &[DecimalFormatDefinition],
+) -> Result<(), CompileFailure> {
+    for attribute in attributes {
+        apply_computed_attribute(attribute, declarations)?;
+    }
+    Ok(())
+}
+
+fn apply_computed_attribute(
+    attribute: &mut crate::xslt::golden_semantics_experiment::ComputedAttribute,
+    declarations: &[DecimalFormatDefinition],
+) -> Result<(), CompileFailure> {
+    if let crate::xslt::golden_semantics_experiment::LiteralAttributeValue::Xslt10SequenceConstructor(
+        instructions,
+    ) = &mut attribute.value
+    {
+        apply_instructions(instructions, declarations)?;
     }
     Ok(())
 }

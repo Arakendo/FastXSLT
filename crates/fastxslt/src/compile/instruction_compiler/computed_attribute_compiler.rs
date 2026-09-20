@@ -112,6 +112,7 @@ pub(super) fn compile_computed_attribute(
     } else if let [for_each] = children.as_slice()
         && is_xslt_element(document, *for_each, "for-each")
         && uses_xslt10_compatibility(document, *for_each)
+        && is_xslt10_for_each_string_value_shape(document, *for_each)
     {
         LiteralAttributeValue::Xslt10ForEachPathStringValue(
             compile_xslt10_for_each_string_value_path(document, *for_each)?,
@@ -134,10 +135,19 @@ pub(super) fn compile_computed_attribute(
         && uses_xslt10_compatibility(document, *variable)
     {
         compile_xslt10_local_source_path_count(document, *variable, *value_of)?
+    } else if uses_xslt10_compatibility(document, element) && children.len() <= 64 {
+        let excluded = children
+            .iter()
+            .copied()
+            .filter(|child| xslt10_attribute_constructor_ignores(document, *child))
+            .collect::<Vec<_>>();
+        LiteralAttributeValue::Xslt10SequenceConstructor(
+            super::compile_sequence_excluding(document, element, &excluded)?.into_boxed_slice(),
+        )
     } else {
         return Err(unsupported(
             "FXST1033",
-            "the private computed-attribute value requires literal text or one admitted text, value-of, or number instruction",
+            "the private computed-attribute constructor exceeds 64 meaningful children",
             document.location(element),
         ));
     };
@@ -147,6 +157,29 @@ pub(super) fn compile_computed_attribute(
         value,
         location: document.location(element).clone(),
     })
+}
+
+fn is_xslt10_for_each_string_value_shape(document: &Document, for_each: NodeId) -> bool {
+    let children = meaningful_children(document, for_each);
+    let [value_of] = children.as_slice() else {
+        return false;
+    };
+    is_xslt_element(document, *value_of, "value-of")
+        && optional_attribute(document, *value_of, None, "select").map(str::trim) == Some(".")
+}
+
+fn xslt10_attribute_constructor_ignores(document: &Document, child: NodeId) -> bool {
+    if document.kind(child) != crate::xdm::owned_tree_experiment::NodeKind::Element {
+        return false;
+    }
+    let name = document.name(child).expect("element nodes have names");
+    if name.namespace.as_deref() != Some(super::XSLT_NAMESPACE) {
+        return true;
+    }
+    matches!(
+        name.local.as_str(),
+        "attribute" | "comment" | "copy" | "element" | "processing-instruction"
+    )
 }
 
 fn compile_computed_attribute_name(

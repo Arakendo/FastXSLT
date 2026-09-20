@@ -1503,6 +1503,10 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         LiteralAttributeValue::CountSourcePathUnion(alternatives) => {
             vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
         }
+        LiteralAttributeValue::Xslt10SequenceConstructor(instructions) => {
+            size_of_val(instructions.as_ref())
+                + instructions.iter().map(instruction_owned).sum::<usize>()
+        }
         LiteralAttributeValue::Xslt10Concat(expression) => {
             size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
         }

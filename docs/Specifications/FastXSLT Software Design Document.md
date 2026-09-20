@@ -918,9 +918,21 @@ the ordinary charged path evaluator and concatenates, in path order, only the
 string values of selected text and attribute nodes; selected document,
 element, comment, and processing-instruction nodes contribute no characters
 under this bounded XSLT 1.0 recovery behavior. The modern static context still
-rejects this constructor shape explicitly. This does not admit general
-attribute sequence construction, copy source structure into an attribute, or
-establish a second path evaluator.
+rejects this constructor shape explicitly. This does not copy source structure
+into an attribute or establish a second path evaluator.
+
+After the smaller specialized value plans have been considered, an XSLT 1.0
+computed attribute may retain an ordinary compiled instruction sequence of at
+most 64 meaningful stylesheet children. It executes with the complete current
+dynamic context through the reference instruction engine. Only top-level text
+results contribute characters to the attribute value; constructed elements,
+attributes, comments, and processing instructions are ignored with their
+content under the XSLT 1.0 recovery rule. Direct non-text constructors are
+omitted during compilation, so an ignored `xsl:copy` cannot recursively expand
+attribute sets. The sequence remains covered by compiled-capacity accounting,
+work and cancellation controls, recursion limits, variable-frame isolation,
+and decimal-format binding. This compatibility behavior is not admitted for a
+modern static context and does not define a public sequence-constructor type.
 
 An admitted `xsl:key` declaration is immutable compiled stylesheet state: its
 expanded name, bounded match pattern, typed `use` location path, and source
