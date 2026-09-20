@@ -1064,54 +1064,13 @@ pub(super) fn compile_sort_keys(
         )?;
         ensure_no_meaningful_children(document, child, "xsl:sort")?;
         let location = document.location(child).clone();
-        let select = optional_attribute(document, child, None, "select").unwrap_or(".");
-        let select = if xslt10_numeric_conversion && select.trim_start().starts_with("key(") {
-            SortSelect::Xslt10KeyLookup(Box::new(
-                value_expression_compiler::compile_xslt10_literal_key_lookup(
-                    document, child, select, &location,
-                )?,
-            ))
-        } else if let Some(alternatives) = split_top_level_union(select) {
-            let alternatives = alternatives
-                .into_iter()
-                .map(str::trim)
-                .map(|alternative| {
-                    if alternative.is_empty() {
-                        return Err(invalid(
-                            "XPST0003",
-                            "xsl:sort path union contains an empty alternative",
-                            &location,
-                        ));
-                    }
-                    compile_sort_path(document, child, alternative, &location)
-                })
-                .collect::<Result<Vec<_>, CompileFailure>>()?;
-            SortSelect::PathUnion(alternatives)
-        } else if let Some(value) = xpath_string_literal(select.trim()) {
-            SortSelect::Literal(value.to_owned())
-        } else if let Some(variable) = select.trim().strip_prefix('$')
-            && is_ascii_ncname(variable)
-        {
-            SortSelect::Variable(variable.to_owned())
-        } else if select.trim() == "position()" {
-            SortSelect::ContextPosition
-        } else if select.trim() == "last()" {
-            SortSelect::ContextSize
-        } else if matches!(select.trim(), "name()" | "name(.)") {
-            SortSelect::ContextNodeName
-        } else if matches!(select.trim(), "string-length()" | "string-length(.)") {
-            SortSelect::ContextStringLength
-        } else if let Some(path) =
-            compile_sort_function_path(document, child, select, "count", &location)?
-        {
-            SortSelect::CountPath(path)
-        } else if let Some(path) =
-            compile_sort_function_path(document, child, select, "number", &location)?
-        {
-            SortSelect::NumberPath(path)
-        } else {
-            SortSelect::LocationPath(compile_sort_path(document, child, select, &location)?)
-        };
+        let select = compile_sort_select(
+            document,
+            child,
+            optional_attribute(document, child, None, "select").unwrap_or("."),
+            xslt10_numeric_conversion,
+            &location,
+        )?;
         let data_type = compile_sort_data_type(
             optional_attribute(document, child, None, "data-type"),
             &location,
@@ -1131,6 +1090,80 @@ pub(super) fn compile_sort_keys(
         sort_nodes.push(child);
     }
     Ok((sorts, sort_nodes))
+}
+
+fn compile_sort_select(
+    document: &Document,
+    sort: NodeId,
+    select: &str,
+    xslt10_compatibility: bool,
+    location: &SourceLocation,
+) -> Result<SortSelect, CompileFailure> {
+    if xslt10_compatibility && select.trim_start().starts_with("key(") {
+        return Ok(SortSelect::Xslt10KeyLookup(Box::new(
+            value_expression_compiler::compile_xslt10_literal_key_lookup(
+                document, sort, select, location,
+            )?,
+        )));
+    }
+    if let Some(alternatives) = split_top_level_union(select) {
+        let alternatives = alternatives
+            .into_iter()
+            .map(str::trim)
+            .map(|alternative| {
+                if alternative.is_empty() {
+                    return Err(invalid(
+                        "XPST0003",
+                        "xsl:sort path union contains an empty alternative",
+                        location,
+                    ));
+                }
+                compile_sort_path(document, sort, alternative, location)
+            })
+            .collect::<Result<Vec<_>, CompileFailure>>()?;
+        return Ok(SortSelect::PathUnion(alternatives));
+    }
+    if let Some(value) = xpath_string_literal(select.trim()) {
+        return Ok(SortSelect::Literal(value.to_owned()));
+    }
+    if let Some(variable) = select.trim().strip_prefix('$')
+        && is_ascii_ncname(variable)
+    {
+        return Ok(SortSelect::Variable(variable.to_owned()));
+    }
+    if xslt10_compatibility
+        && let Some((path, variable, explicit_position_comparison)) =
+            value_expression_compiler::compile_xslt10_variable_position_path(
+                document, sort, select, location,
+            )?
+    {
+        return Ok(SortSelect::Xslt10VariablePositionPath {
+            path,
+            variable,
+            explicit_position_comparison,
+        });
+    }
+    match select.trim() {
+        "position()" => Ok(SortSelect::ContextPosition),
+        "last()" => Ok(SortSelect::ContextSize),
+        "name()" | "name(.)" => Ok(SortSelect::ContextNodeName),
+        "string-length()" | "string-length(.)" => Ok(SortSelect::ContextStringLength),
+        _ => {
+            if let Some(path) =
+                compile_sort_function_path(document, sort, select, "count", location)?
+            {
+                return Ok(SortSelect::CountPath(path));
+            }
+            if let Some(path) =
+                compile_sort_function_path(document, sort, select, "number", location)?
+            {
+                return Ok(SortSelect::NumberPath(path));
+            }
+            Ok(SortSelect::LocationPath(compile_sort_path(
+                document, sort, select, location,
+            )?))
+        }
+    }
 }
 
 fn compile_sort_data_type(

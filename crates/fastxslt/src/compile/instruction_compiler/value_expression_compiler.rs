@@ -1074,7 +1074,7 @@ fn parse_xslt10_variable_division_string(expression: &str) -> Option<(&str, &str
     (is_ascii_ncname(numerator) && is_ascii_ncname(denominator)).then_some((numerator, denominator))
 }
 
-fn compile_xslt10_variable_position_path(
+pub(super) fn compile_xslt10_variable_position_path(
     document: &Document,
     element: NodeId,
     expression: &str,

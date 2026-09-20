@@ -4266,6 +4266,46 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
 }
 
 #[test]
+fn xslt10_sort_supports_numeric_variable_position_keys() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-variable-position-sort:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-position-sort:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="global-index" select="2"/>
+        <xsl:template match="/">
+          <out>
+            <local><xsl:variable name="index" select="1"/><xsl:for-each select="doc/row"><xsl:sort select="*[$index]"/><xsl:value-of select="@id"/></xsl:for-each></local>
+            <global><xsl:apply-templates select="doc/row" mode="global"><xsl:sort select="*[position() = $global-index]"/></xsl:apply-templates></global>
+          </out>
+        </xsl:template>
+        <xsl:template match="row" mode="global"><xsl:value-of select="@id"/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><row id="a"><first>z</first><second>a</second></row><row id="b"><first>a</first><second>z</second></row></doc>"#.to_vec(),
+        )
+        .expect("admit variable-position sort source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit variable-position sort stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile variable-position sort stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("variable-position-sort", "result", SOURCE))
+        .expect("admit variable-position sort request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable-position sort");
+    assert_eq!(
+        results.by_request["variable-position-sort"].serialized,
+        "<out><local>ba</local><global>ab</global></out>"
+    );
+}
+
+#[test]
 fn xslt10_sort_uses_the_first_node_from_a_context_path_key_lookup() {
     const SOURCE: &str = "urn:fastxslt:xslt10-key-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-key-sort:stylesheet";

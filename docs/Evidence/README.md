@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Variable-Position Sort Keys](oasis-xslt10-variable-position-sort-2026-09-20.md)
 - [OASIS XSLT 1.0 Indentation-Neutral XML Comparison](oasis-xslt10-indentation-comparison-2026-09-19.md)
 - [OASIS XSLT 1.0 Finite Constant Arithmetic](oasis-xslt10-finite-constant-arithmetic-2026-09-19.md)
 - [OASIS XSLT 1.0 Non-Finite Constant Comparison](oasis-xslt10-non-finite-constant-comparison-2026-09-19.md)

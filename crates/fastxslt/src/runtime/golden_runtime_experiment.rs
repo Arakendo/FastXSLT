@@ -1398,6 +1398,36 @@ fn evaluate_sort_key_value(
                 .first()
                 .map_or_else(String::new, |selected| source.string_value(*selected)))
         }
+        SortSelect::Xslt10VariablePositionPath {
+            path,
+            variable,
+            explicit_position_comparison,
+        } => {
+            let nodes = evaluate_location_path_controlled(source, node, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            if !explicit_position_comparison
+                && variables.temporary_tree(inputs.globals, variable).is_some()
+            {
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                return Ok(nodes
+                    .first()
+                    .map_or_else(String::new, |selected| source.string_value(*selected)));
+            }
+            let position = sort_variable(inputs, variable, variables, control)?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let selected =
+                crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
+                    .filter(|position| {
+                        position.is_finite() && *position >= 1.0 && position.fract() == 0.0
+                    })
+                    .and_then(|position| position.to_string().parse::<usize>().ok())
+                    .and_then(|position| nodes.get(position.saturating_sub(1)).copied());
+            Ok(selected.map_or_else(String::new, |selected| source.string_value(selected)))
+        }
         SortSelect::Xslt10KeyLookup(lookup) => {
             Ok(
                 key_lookup::select(inputs, lookup, Some(node), variables, control)?

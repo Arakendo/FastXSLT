@@ -778,6 +778,15 @@ at compilation. Variable-valued, path-valued, mixed-text, and other dynamic
 sort controls remain explicit unsupported boundaries; execution does not gain
 a separate sort-control AVT evaluator.
 
+Within XSLT 1.0 compatibility, a sort-key expression may apply one numeric
+variable predicate to one child step, including the direct `*[$index]` and
+explicit `*[position() = $index]` forms. Compilation uses the same typed
+variable-position path plan as value production, and execution evaluates it
+per sort candidate through the charged path and XSLT 1.0 variable-conversion
+owners before ordinary sort typing. Multi-step predicate focus and general
+dynamic sort expressions remain unsupported rather than being flattened into
+a semantically different global filter.
+
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource
 bytes are acquired under the fragmentless identity before fragment semantics

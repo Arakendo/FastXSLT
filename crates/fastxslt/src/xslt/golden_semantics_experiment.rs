@@ -516,6 +516,11 @@ pub(crate) struct SortKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SortSelect {
     LocationPath(LocationPath),
+    Xslt10VariablePositionPath {
+        path: LocationPath,
+        variable: String,
+        explicit_position_comparison: bool,
+    },
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     PathUnion(Vec<LocationPath>),
     Literal(String),

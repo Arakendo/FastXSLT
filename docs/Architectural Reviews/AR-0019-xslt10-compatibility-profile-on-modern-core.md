@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-09-04 |
-| Last reviewed | 2026-09-09 |
+| Last reviewed | 2026-09-20 |
 | Scope | Named XSLT 1.0 compatibility, backwards-compatible behavior, and shared modern execution |
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
@@ -2336,3 +2336,12 @@ maintained redistributable legacy suite becomes available.
   mismatches and execution failures remain unchanged. Modern and generally
   composed `current()` expressions remain explicit.
   [Evidence](../Evidence/oasis-xslt10-current-rooted-relative-path-2026-09-20.md)
+- 2026-09-20 -- One-child-step XSLT 1.0 sort keys may now use a local or global
+  numeric variable as their positional predicate. The plan reuses the existing
+  compatibility conversion and charged path semantics rather than adding a
+  sort-only evaluator. The unchanged Lotus `sort29`, `sort30`, and `sort31`
+  cases become exact, raising the strict lower bound to 1,828, successful
+  execution to 1,957, and initialization to 2,059 while mismatches and
+  execution failures remain unchanged. Multi-step predicate focus and general
+  dynamic sort expressions remain unsupported.
+  [Evidence](../Evidence/oasis-xslt10-variable-position-sort-2026-09-20.md)
