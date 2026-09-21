@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Nested Relative-Path Existence](oasis-xslt10-nested-relative-path-existence-2026-09-20.md)
 - [OASIS XSLT 1.0 Intermediate Ancestor-Count Predicate](oasis-xslt10-intermediate-ancestor-count-predicate-2026-09-20.md)
 - [OASIS XSLT 1.0 Relative Element-Count Predicate](oasis-xslt10-relative-element-count-predicate-2026-09-20.md)
 - [OASIS XSLT 1.0 `xml:lang` Expanded-Attribute Path](oasis-xslt10-xml-lang-expanded-attribute-path-2026-09-20.md)

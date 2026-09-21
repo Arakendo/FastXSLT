@@ -2652,3 +2652,12 @@ maintained redistributable legacy suite becomes available.
   strict lower bound 1,902 (59.94%); execution failures and mismatches remain
   unchanged, while generic `FXXP1001` initialization failures fall to 24.
   [Evidence](../Evidence/oasis-xslt10-intermediate-ancestor-count-predicate-2026-09-20.md)
+- 2026-09-20 -- A typed nested relative-path existence predicate now applies
+  one admitted child path to nodes selected by another and short-circuits on
+  the first nonempty inner result. It reuses charged child traversal and does
+  not add a general filter-expression evaluator. Unchanged Microsoft
+  `Template_MatchPatternVariation8` becomes exact. Initialization reaches
+  2,123, successful execution 2,034, and the strict lower bound 1,903 (59.97%);
+  execution failures and mismatches remain unchanged, while generic
+  `FXXP1001` initialization failures fall to 23.
+  [Evidence](../Evidence/oasis-xslt10-nested-relative-path-existence-2026-09-20.md)

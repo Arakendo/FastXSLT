@@ -2138,6 +2138,30 @@ fn path_boolean_predicates_compare_ancestor_element_counts() {
 }
 
 #[test]
+fn path_boolean_predicates_select_nested_relative_path_existence() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><doc><element1><foo><bar/></foo></element1></doc><doc><element1><foo/></element1></doc></root>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let path = parse_location_path("doc[(element1/foo)[bar]]", location())
+        .expect("nested relative-path existence predicate should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, root, &path, &mut control)
+        .expect("nested relative-path existence evaluation should succeed");
+
+    assert_eq!(selected, [document.children(root)[0]]);
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+}
+
+#[test]
 fn constant_integer_arithmetic_selects_the_matching_node_position() {
     let parsed = parse_document(
         "memory:source.xml",

@@ -84,6 +84,10 @@ pub(super) enum PathBooleanPredicate {
         value: String,
         equal: bool,
     },
+    NestedChildPathExists {
+        outer: Vec<RelativeChildStep>,
+        inner: Vec<RelativeChildStep>,
+    },
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
@@ -130,6 +134,9 @@ impl PathBooleanPredicate {
             Self::ParentAttributeStringComparison {
                 attribute, value, ..
             } => attribute.capacity() + value.capacity(),
+            Self::NestedChildPathExists { outer, inner } => {
+                child_path_capacity(outer) + child_path_capacity(inner)
+            }
             Self::ContextStringEquals(value)
             | Self::ContextNameComparison { value, .. }
             | Self::ContextNameStartsWith(value)
@@ -239,6 +246,9 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
         return Some(PathBooleanPredicate::NestedPositionalChildStringEquals(
             comparison,
         ));
+    }
+    if let Some((outer, inner)) = parse_nested_child_path_existence(predicate) {
+        return Some(PathBooleanPredicate::NestedChildPathExists { outer, inner });
     }
     if let Some((name, position, value)) = parse_positional_child_string_equality(predicate) {
         return Some(PathBooleanPredicate::PositionalChildStringEquals {
@@ -380,6 +390,9 @@ pub(super) fn evaluate(
             value,
             equal,
         } => parent_attribute_string_comparison(document, node, attribute, value, *equal, control),
+        PathBooleanPredicate::NestedChildPathExists { outer, inner } => {
+            nested_child_path_exists(document, node, outer, inner, control)
+        }
         PathBooleanPredicate::Not(operand) => Ok(!evaluate(document, node, operand, control)?),
         PathBooleanPredicate::And(left, right) => {
             if !evaluate(document, node, left, control)? {
@@ -426,6 +439,21 @@ fn child_path_capacity(path: &[RelativeChildStep]) -> usize {
                 RelativeChildStep::Text => 0,
             })
             .sum::<usize>()
+}
+
+fn nested_child_path_exists(
+    document: &Document,
+    node: NodeId,
+    outer: &[RelativeChildStep],
+    inner: &[RelativeChildStep],
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for outer_node in select_relative_child_path(document, node, outer, control)? {
+        if !select_relative_child_path(document, outer_node, inner, control)?.is_empty() {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn context_string_equals(
@@ -560,6 +588,18 @@ fn parse_relative_child_path(path: &str) -> Option<Vec<RelativeChildStep>> {
             }
         })
         .collect()
+}
+
+fn parse_nested_child_path_existence(
+    predicate: &str,
+) -> Option<(Vec<RelativeChildStep>, Vec<RelativeChildStep>)> {
+    let nested = predicate.strip_prefix('(')?;
+    let (outer, inner) = nested.split_once(")[")?;
+    let inner = inner.strip_suffix(']')?;
+    Some((
+        parse_relative_child_path(outer.trim())?,
+        parse_relative_child_path(inner.trim())?,
+    ))
 }
 
 fn child_path_string_equals(

@@ -586,6 +586,12 @@ family on an intermediate step, applying it before positional filtering and
 subsequent path navigation. The exact `count(ancestor::*)` operand counts
 element ancestors through charged parent traversal. It does not admit named
 ancestor tests, alternate axes, dynamic operands, or a public predicate AST.
+The exact nested predicate `(relative-child-path)[relative-child-path]`
+compiles to two private typed child paths. Runtime evaluates the inner path
+from each outer selection and returns true on the first nonempty result while
+preserving charged traversal and cancellation. This does not admit general
+filter expressions, axes, qualified names, positional predicates, or dynamic
+operands.
 A final path predicate may compare one immediate-parent unqualified attribute
 with one string literal using `=` or `!=`. Runtime charges the parent visit and
 attribute scan, preserves XPath node-set comparison behavior when the parent or
