@@ -678,7 +678,7 @@ fn global_dependencies(default: &GlobalBindingDefault) -> impl Iterator<Item = &
         GlobalBindingDefault::Xslt10TemporaryTextParts(parts) => {
             dependencies.extend(parts.iter().filter_map(|part| match part {
                 Xslt10TemporaryTextPart::Variable(name) => Some(name.as_str()),
-                Xslt10TemporaryTextPart::Text(_) => None,
+                Xslt10TemporaryTextPart::Text(_) | Xslt10TemporaryTextPart::SourcePath(_) => None,
             }));
         }
         _ => {}
@@ -1080,6 +1080,8 @@ fn compile_xslt10_temporary_text_parts(
                     )
                 })?,
             ));
+        } else if let Ok(path) = parse_location_path(select, document.location(child).clone()) {
+            parts.push(Xslt10TemporaryTextPart::SourcePath(path));
         } else {
             return Ok(None);
         }

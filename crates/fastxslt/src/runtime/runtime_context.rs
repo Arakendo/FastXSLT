@@ -760,6 +760,11 @@ fn materialize_xslt10_temporary_text_parts(
                     globals, name, source, request_id, control,
                 )?);
             }
+            Xslt10TemporaryTextPart::SourcePath(path) => {
+                value.push_str(&source_path_string_value(
+                    path, source, request_id, control,
+                )?);
+            }
         }
     }
     materialize_parentless_temporary_node(TemporaryNodeKind::Text(value), request_id, control)
@@ -860,6 +865,16 @@ fn materialize_xslt10_temporary_source_string(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<TemporaryTree, ExecutionFailure> {
+    let value = source_path_string_value(path, source, request_id, control)?;
+    materialize_parentless_temporary_node(TemporaryNodeKind::Text(value), request_id, control)
+}
+
+fn source_path_string_value(
+    path: &crate::xpath::path_experiment::LocationPath,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
     let source = source.ok_or_else(|| {
         failure(
             "FXRT1004",
@@ -868,12 +883,15 @@ fn materialize_xslt10_temporary_source_string(
             "an XSLT 1.0 source-dependent temporary tree requires a principal source",
         )
     })?;
-    materialize_xslt10_temporary_context_string(
-        source,
-        source.document_node(),
-        path,
-        request_id,
-        control,
+    let selected = evaluate_location_path_controlled(source, source.document_node(), path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    selected.first().map_or_else(
+        || Ok(String::new()),
+        |node| {
+            source
+                .string_value_controlled(*node, control)
+                .map_err(|failure| control_failure(failure, request_id))
+        },
     )
 }
 
@@ -1001,26 +1019,6 @@ fn copy_source_to_temporary(
         }
     }
     Ok(copied)
-}
-
-pub(super) fn materialize_xslt10_temporary_context_string(
-    source: &Document,
-    context: NodeId,
-    path: &crate::xpath::path_experiment::LocationPath,
-    request_id: &str,
-    control: &mut InvocationControl,
-) -> Result<TemporaryTree, ExecutionFailure> {
-    let selected = evaluate_location_path_controlled(source, context, path, control)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    let value = selected.first().map_or_else(
-        || Ok(String::new()),
-        |node| {
-            source
-                .string_value_controlled(*node, control)
-                .map_err(|failure| control_failure(failure, request_id))
-        },
-    )?;
-    materialize_parentless_temporary_node(TemporaryNodeKind::Text(value), request_id, control)
 }
 
 fn materialize_global_xslt10_for_each_text(

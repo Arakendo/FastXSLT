@@ -175,6 +175,7 @@ pub(crate) enum GlobalBindingDefault {
 pub(crate) enum Xslt10TemporaryTextPart {
     Text(String),
     Variable(String),
+    SourcePath(LocationPath),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -186,6 +186,7 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
                 vec_owned(parts, |part| match part {
                     Xslt10TemporaryTextPart::Text(value)
                     | Xslt10TemporaryTextPart::Variable(value) => value.capacity(),
+                    Xslt10TemporaryTextPart::SourcePath(path) => path.known_owned_capacity_bytes(),
                 })
             }
             GlobalBindingDefault::TemporaryAttribute { name, value } => {

@@ -9514,6 +9514,35 @@ fn xslt10_global_text_parts_resolve_forward_dependencies_before_materialization(
 }
 
 #[test]
+fn xslt10_global_text_parts_compose_source_paths_and_literal_text() {
+    const SOURCE: &str = "urn:fastxslt:global-source-text-parts:source";
+    const STYLESHEET: &str = "urn:fastxslt:global-source-text-parts:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="first"><xsl:value-of select="//Test/@a"/>x</xsl:variable><xsl:variable name="second"><xsl:value-of select="//Test/@b"/>y</xsl:variable><xsl:template match="/"><out><xsl:copy-of select="$first"/><xsl:text>|</xsl:text><xsl:copy-of select="$second"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, br#"<doc><Test a="A" b="B"/></doc>"#.to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile source text parts");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("global-source-text-parts", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute source text parts");
+
+    assert_eq!(
+        results.by_request["global-source-text-parts"].serialized,
+        "<out>Ax|By</out>"
+    );
+}
+
+#[test]
 fn xslt10_numeric_sort_uses_xpath_number_lexicals_and_equal_zero_keys() {
     const SOURCE: &str = "urn:fastxslt:xslt10-numeric-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-numeric-sort:stylesheet";

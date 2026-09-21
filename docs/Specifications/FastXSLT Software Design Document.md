@@ -771,13 +771,15 @@ root. This shared representation does not admit dynamic global instruction
 sequences or change modern temporary-tree semantics.
 
 Under compile-selected XSLT 1.0 compatibility, a bounded global temporary text
-tree may compose literal text with `xsl:value-of` over string literals and
-direct global-variable references. Referenced expanded-name keys participate
-in global topological ordering and cycle detection. Invocation materialization
-uses already-materialized atomic, first source-node, empty-sequence, or
-temporary-tree string semantics and creates one charged temporary text node.
-This is not a general global instruction executor, and dynamic values do not
-enter compiled state.
+tree may compose literal text with `xsl:value-of` over string literals, direct
+global-variable references, and compiled source location paths. Referenced
+expanded-name keys participate in global topological ordering and cycle
+detection. Each invocation evaluates source paths from its own principal
+document and uses first-node XSLT 1.0 string semantics; variable parts use
+already-materialized atomic, first source-node, empty-sequence, or
+temporary-tree string semantics. The result is one charged temporary text
+node. This is not a general global instruction executor, and source or other
+dynamic values do not enter compiled state.
 
 A direct local-variable alias preserves the resolved binding's value kind.
 Resolution first considers earlier lexical local bindings and falls back to a

@@ -2497,3 +2497,11 @@ maintained redistributable legacy suite becomes available.
   (59.19%); execution failures fall to 87 while initialization and mismatches
   remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-same-name-local-global-alias-2026-09-20.md)
+- 2026-09-20 -- The bounded global temporary-text plan now admits compiled
+  source location paths alongside literal and direct-global parts. Paths are
+  evaluated from each invocation's principal document with first-node XSLT
+  1.0 string semantics. Lotus `variable64` becomes exact and both `variable65`
+  variants expose their later template-argument boundary. Initialization
+  reaches 2,097, successful execution 2,010, and the strict lower bound 1,879
+  (59.22%); execution failures and mismatches remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-global-source-path-text-parts-2026-09-20.md)

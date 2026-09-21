@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Global Source-Path Text Parts](oasis-xslt10-global-source-path-text-parts-2026-09-20.md)
 - [OASIS XSLT 1.0 Same-Name Local/Global Alias](oasis-xslt10-same-name-local-global-alias-2026-09-20.md)
 - [OASIS XSLT 1.0 Global Text-Part Dependencies](oasis-xslt10-global-text-part-dependencies-2026-09-20.md)
 - [OASIS XSLT 1.0 Mixed-Root Static Temporary Tree](oasis-xslt10-mixed-root-static-temporary-tree-2026-09-20.md)
