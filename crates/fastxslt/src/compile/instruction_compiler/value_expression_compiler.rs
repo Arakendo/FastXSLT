@@ -273,6 +273,14 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     {
         return Ok(ValueExpression::LiteralString(value));
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((numerator, denominator)) = parse_xslt10_variable_division_string(expression)
+    {
+        return Ok(ValueExpression::Xslt10VariableDivisionString {
+            numerator: numerator.to_owned(),
+            denominator: denominator.to_owned(),
+        });
+    }
     if let Some(value) = compile_binary_numeric_path(expression, location, static_context) {
         return Ok(value);
     }
@@ -419,14 +427,6 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         )?
     {
         return Ok(value);
-    }
-    if static_context.compatibility == ValueCompatibilityMode::Xslt10
-        && let Some((numerator, denominator)) = parse_xslt10_variable_division_string(expression)
-    {
-        return Ok(ValueExpression::Xslt10VariableDivisionString {
-            numerator: numerator.to_owned(),
-            denominator: denominator.to_owned(),
-        });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(comparison) =
@@ -1071,10 +1071,11 @@ fn parse_xslt10_variable_conversion<'a>(expression: &'a str, function: &str) -> 
 }
 
 fn parse_xslt10_variable_division_string(expression: &str) -> Option<(&str, &str)> {
+    let expression = expression.trim();
     let division = expression
-        .trim()
-        .strip_prefix("string(")?
-        .strip_suffix(')')?;
+        .strip_prefix("string(")
+        .and_then(|value| value.strip_suffix(')'))
+        .unwrap_or(expression);
     let (numerator, operator, denominator) =
         crate::xpath::binary_numeric_experiment::split_paths(division)?;
     if operator != BinaryNumericOperator::Divide {
@@ -2513,8 +2514,15 @@ fn compile_xslt10_string_numeric_expression(
     else {
         return Ok(None);
     };
-    if crate::xpath::constant_numeric_experiment::number_function_call(numeric_expression).is_some()
+    if let Some(argument) =
+        crate::xpath::constant_numeric_experiment::number_function_call(numeric_expression)
     {
+        if static_context.compatibility == ValueCompatibilityMode::Xslt10
+            && let Some(variable) = argument.trim().strip_prefix('$')
+        {
+            let variable = normalize_variable_qname(document, element, variable)?;
+            return Ok(Some(ValueExpression::Xslt10VariableNumber(variable)));
+        }
         return compile_number_path(document, element, numeric_expression, location)
             .map(|path| path.map(ValueExpression::NumberPath));
     }

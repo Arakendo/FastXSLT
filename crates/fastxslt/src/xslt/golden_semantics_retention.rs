@@ -173,6 +173,7 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             } => numerator.known_owned_capacity_bytes() + denominator.known_owned_capacity_bytes(),
             GlobalBindingDefault::CountLocationPath(path)
             | GlobalBindingDefault::LocationPath(path)
+            | GlobalBindingDefault::Xslt10NumberLocationPath(path)
             | GlobalBindingDefault::SourceNodeIdentity(path)
             | GlobalBindingDefault::Xslt10TemporarySourceCopy(path)
             | GlobalBindingDefault::Xslt10ForEachText(path) => path.known_owned_capacity_bytes(),

@@ -2554,3 +2554,12 @@ maintained redistributable legacy suite becomes available.
   2,104, successful execution 2,017, and the strict lower bound 1,886 (59.44%)
   while execution failures and mismatches remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-grouped-variable-position-path-2026-09-20.md)
+- 2026-09-20 -- Untyped global `number(path)` now retains a source-dependent
+  typed plan and materializes a double from the first selected node for each
+  invocation. Direct-variable division, including an outer `string()`, is
+  selected before the exact-rational path so zero divisors preserve XPath 1.0
+  `Infinity`, `-Infinity`, and `NaN`. Unchanged Microsoft
+  `Miscellaneous__84362` becomes exact. Initialization reaches 2,105,
+  successful execution 2,018, and the strict lower bound 1,887 (59.47%) while
+  execution failures and mismatches remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-global-number-path-and-variable-division-2026-09-20.md)

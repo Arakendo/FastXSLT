@@ -9665,6 +9665,67 @@ fn xslt10_grouped_path_filters_by_variable_before_navigating_suffix() {
 }
 
 #[test]
+fn xslt10_global_number_uses_first_node_conversion() {
+    const SOURCE: &str = "urn:fastxslt:global-number-path:source";
+    const STYLESHEET: &str = "urn:fastxslt:global-number-path:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="value" select="number(//number)"/><xsl:template match="/"><out><xsl:value-of select="$value"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            SOURCE,
+            b"<root><number>12</number><number>99</number></root>".to_vec(),
+        )
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile global number path");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("global-number-path", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute global number path");
+
+    assert_eq!(
+        results.by_request["global-number-path"].serialized,
+        "<out>12</out>"
+    );
+}
+
+#[test]
+fn xslt10_variable_division_preserves_non_finite_results() {
+    const SOURCE: &str = "urn:fastxslt:variable-division-non-finite:source";
+    const STYLESHEET: &str = "urn:fastxslt:variable-division-non-finite:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="positive" select="9"/><xsl:variable name="negative" select="-9"/><xsl:variable name="zero" select="0"/><xsl:template match="/"><out><xsl:value-of select="string($positive div $zero)"/>|<xsl:value-of select="string($negative div $zero)"/>|<xsl:value-of select="$zero div $zero"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<unused/>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable divisions");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("variable-division-non-finite", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable divisions");
+
+    assert_eq!(
+        results.by_request["variable-division-non-finite"].serialized,
+        "<out>Infinity|-Infinity|NaN</out>"
+    );
+}
+
+#[test]
 fn xslt10_template_argument_converts_a_temporary_tree_variable_to_string() {
     const SOURCE: &str = "urn:fastxslt:template-argument-variable-string:source";
     const STYLESHEET: &str = "urn:fastxslt:template-argument-variable-string:stylesheet";

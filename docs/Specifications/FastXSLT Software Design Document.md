@@ -571,7 +571,13 @@ either empty operand yields the empty sequence, while two numeric operands
 produce a typed double including `NaN`. Path traversal, string-value access,
 and division remain cancellable and work-accounted. The compiled atomic or
 path identity is materialized independently for each invocation and included
-in prepared-engine retention accounting. A bare
+in prepared-engine retention accounting. Under the compile-selected XSLT 1.0
+compatibility mode, an untyped global may also retain one `number(path)` plan.
+Each invocation evaluates that path from its own principal source, converts the
+first node in document order or an empty selection according to XPath 1.0, and
+stores the canonical double lexical as an invocation-owned atomic value. This
+does not weaken the modern zero-or-one `number(path)` value operation or retain
+source nodes in compiled state. A bare
 variable conditional applies effective boolean value to atomic string families,
 singleton supported numerics and booleans, source-node sequences, temporary
 trees, and bounded atomic sequences; values without a defined effective boolean
@@ -641,6 +647,13 @@ expressions remain unsupported. Modulo uses the same checked integer domain and
 rejects a zero divisor. Supported path operations compose recursively with
 ordinary arithmetic precedence and left associativity; this private tree is not
 a general public XPath AST.
+
+XSLT 1.0 value production separately recognizes division whose two operands
+are direct variables, with or without an outer `string()` conversion. Runtime
+uses the shared compatibility variable-number conversion and IEEE division, so
+zero divisors produce the required `Infinity`, `-Infinity`, or `NaN` lexical
+result. The plan remains restricted to two variable operands and does not
+broaden the exact-rational source-path evaluator or modern numeric semantics.
 
 `number()` around one source-free finite decimal literal or quoted finite
 decimal lexical value may likewise be folded to its canonical decimal string.

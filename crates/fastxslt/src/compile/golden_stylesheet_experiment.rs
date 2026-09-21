@@ -981,6 +981,8 @@ fn compile_global_default(
             ))
         } else if let Some(count) = compile_count_global(select, document.location(element))? {
             Ok(count)
+        } else if let Some(number) = compile_xslt10_number_path_global(document, element, select)? {
+            Ok(number)
         } else if let Some(path) = select
             .strip_prefix("generate-id(")
             .and_then(|path| path.strip_suffix(')'))
@@ -1024,6 +1026,29 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::TemporaryText(value))
         }
     }
+}
+
+fn compile_xslt10_number_path_global(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    let is_xslt10 = document.parent(element).is_some_and(|stylesheet| {
+        optional_attribute(document, stylesheet, None, "version") == Some("1.0")
+    });
+    if !is_xslt10 {
+        return Ok(None);
+    }
+    let Some(argument) =
+        crate::xpath::constant_numeric_experiment::number_function_call(expression)
+    else {
+        return Ok(None);
+    };
+    let argument = if argument.is_empty() { "." } else { argument };
+    parse_location_path(argument, document.location(element).clone())
+        .map(GlobalBindingDefault::Xslt10NumberLocationPath)
+        .map(Some)
+        .map_err(map_path_failure)
 }
 
 fn compile_content_global_default(

@@ -637,19 +637,16 @@ fn materialize_global_default(
             globals.empty_sequences.insert(binding.name.clone());
         }
         GlobalBindingDefault::Text(value) => {
-            Arc::make_mut(&mut globals.atomics)
-                .insert(binding.name.clone(), AtomicValue::untyped(value.clone()));
+            bind_global_atomic(globals, binding, AtomicValue::untyped(value.clone()));
         }
         GlobalBindingDefault::Atomic(value) => {
-            Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value.clone());
+            bind_global_atomic(globals, binding, value.clone());
         }
         GlobalBindingDefault::Integer(value) => {
-            Arc::make_mut(&mut globals.atomics).insert(
-                binding.name.clone(),
-                AtomicValue::from_validated_lexical(
-                    crate::xdm::atomic_value_experiment::BuiltinAtomicType::Integer,
-                    value.to_string(),
-                ),
+            bind_global_atomic(
+                globals,
+                binding,
+                AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, value.to_string()),
             );
         }
         GlobalBindingDefault::DoubleDivision { .. } => {
@@ -671,6 +668,9 @@ fn materialize_global_default(
                 evaluate_location_path_controlled(source, source.document_node(), path, control)
                     .map_err(|failure| control_failure(failure, request_id))?;
             globals.nodes.insert(binding.name.clone(), nodes);
+        }
+        GlobalBindingDefault::Xslt10NumberLocationPath(path) => {
+            materialize_global_number(globals, binding, path, source, request_id, control)?;
         }
         GlobalBindingDefault::SourceNodeIdentity(path) => {
             materialize_source_node_identity(globals, binding, path, source, request_id, control)?;
@@ -731,6 +731,61 @@ fn materialize_global_default(
         }
     }
     Ok(())
+}
+
+fn bind_global_atomic(globals: &mut RuntimeGlobals, binding: &GlobalBinding, value: AtomicValue) {
+    Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value);
+}
+
+fn materialize_global_number(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    path: &crate::xpath::path_experiment::LocationPath,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "an XSLT 1.0 numeric global requires a principal source",
+        )
+    })?;
+    let nodes = evaluate_location_path_controlled(source, source.document_node(), path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let lexical = if let Some(node) = nodes.first().copied() {
+        source
+            .string_value_controlled(node, control)
+            .map_err(|failure| control_failure(failure, request_id))?
+    } else {
+        String::new()
+    };
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let lexical = crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&lexical)
+        .map_or_else(|| "NaN".to_owned(), xslt10_double_lexical);
+    Arc::make_mut(&mut globals.atomics).insert(
+        binding.name.clone(),
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Double, lexical),
+    );
+    Ok(())
+}
+
+fn xslt10_double_lexical(value: f64) -> String {
+    if value.is_nan() {
+        "NaN".to_owned()
+    } else if value == f64::INFINITY {
+        "Infinity".to_owned()
+    } else if value == f64::NEG_INFINITY {
+        "-Infinity".to_owned()
+    } else if value == 0.0 {
+        "0".to_owned()
+    } else {
+        value.to_string()
+    }
 }
 
 fn materialize_parentless_global(
