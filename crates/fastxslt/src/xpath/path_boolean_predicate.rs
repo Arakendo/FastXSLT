@@ -1,8 +1,9 @@
 //! Typed boolean composition for bounded predicates in location paths.
 
 use super::{
-    ControlFailure, Document, InvocationControl, NodeId, NodeKind, WorkDomain, descendant_nodes,
-    following_siblings, has_named_attribute, is_ncname, parse_attribute_value_predicate,
+    ControlFailure, Document, InvocationControl, NodeId, NodeKind, PositionPredicate, WorkDomain,
+    descendant_nodes, following_siblings, has_named_attribute, is_ncname,
+    parse_attribute_value_predicate, parse_position_predicate, position_predicate_matches,
     split_top_level_predicate_operator,
 };
 
@@ -37,6 +38,7 @@ pub(super) enum PathBooleanPredicate {
         value: usize,
         operator: NumberComparison,
     },
+    ContextPosition(PositionPredicate),
     ChildElementIntegerEquals {
         name: Option<String>,
         value: i32,
@@ -144,6 +146,7 @@ impl PathBooleanPredicate {
             Self::ContextNameLengthEquals(_)
             | Self::ChildElementIntegerEquals { name: None, .. }
             | Self::AncestorElementCountComparison { .. }
+            | Self::ContextPosition(_)
             | Self::FollowingSiblingElementNumberComparison { .. }
             | Self::FollowingSiblingDescendantStringEquals => 0,
             Self::RelativeElementCountComparison { steps, .. } => {
@@ -164,23 +167,11 @@ impl PathBooleanPredicate {
 
 pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     let predicate = strip_outer_parentheses(predicate.trim());
-    if let Some((left, right)) = split_top_level_predicate_operator(predicate, " or ") {
-        return Some(PathBooleanPredicate::Or(
-            Box::new(parse(left)?),
-            Box::new(parse(right)?),
-        ));
+    if let Some(composed) = parse_boolean_composition(predicate) {
+        return Some(composed);
     }
-    if let Some((left, right)) = split_top_level_predicate_operator(predicate, " and ") {
-        return Some(PathBooleanPredicate::And(
-            Box::new(parse(left)?),
-            Box::new(parse(right)?),
-        ));
-    }
-    if let Some(operand) = predicate
-        .strip_prefix("not(")
-        .and_then(|value| value.strip_suffix(')'))
-    {
-        return Some(PathBooleanPredicate::Not(Box::new(parse(operand)?)));
+    if let Some(position) = parse_position_predicate(predicate) {
+        return Some(PathBooleanPredicate::ContextPosition(position));
     }
     if let Some((name, value)) = parse_attribute_value_predicate(predicate) {
         return Some(PathBooleanPredicate::Equals {
@@ -263,6 +254,25 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
         .map(|name| PathBooleanPredicate::Present(name.to_owned()))
 }
 
+fn parse_boolean_composition(predicate: &str) -> Option<PathBooleanPredicate> {
+    if let Some((left, right)) = split_top_level_predicate_operator(predicate, " or ") {
+        return Some(PathBooleanPredicate::Or(
+            Box::new(parse(left)?),
+            Box::new(parse(right)?),
+        ));
+    }
+    if let Some((left, right)) = split_top_level_predicate_operator(predicate, " and ") {
+        return Some(PathBooleanPredicate::And(
+            Box::new(parse(left)?),
+            Box::new(parse(right)?),
+        ));
+    }
+    let operand = predicate
+        .strip_prefix("not(")
+        .and_then(|value| value.strip_suffix(')'))?;
+    Some(PathBooleanPredicate::Not(Box::new(parse(operand)?)))
+}
+
 pub(super) fn recognizes_child_path_string_comparison(predicate: &str) -> bool {
     let predicate = strip_outer_parentheses(predicate.trim());
     parse_child_path_string_comparison(predicate).is_some()
@@ -307,6 +317,54 @@ pub(super) fn evaluate(
     document: &Document,
     node: NodeId,
     predicate: &PathBooleanPredicate,
+    context_position: usize,
+    context_size: usize,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    match predicate {
+        PathBooleanPredicate::Not(operand) => evaluate_not(
+            document,
+            node,
+            operand,
+            context_position,
+            context_size,
+            control,
+        ),
+        PathBooleanPredicate::And(left, right) => evaluate_and(
+            document,
+            node,
+            left,
+            right,
+            context_position,
+            context_size,
+            control,
+        ),
+        PathBooleanPredicate::Or(left, right) => evaluate_or(
+            document,
+            node,
+            left,
+            right,
+            context_position,
+            context_size,
+            control,
+        ),
+        _ => evaluate_atomic(
+            document,
+            node,
+            predicate,
+            context_position,
+            context_size,
+            control,
+        ),
+    }
+}
+
+fn evaluate_atomic(
+    document: &Document,
+    node: NodeId,
+    predicate: &PathBooleanPredicate,
+    context_position: usize,
+    context_size: usize,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
     match predicate {
@@ -345,6 +403,11 @@ pub(super) fn evaluate(
         PathBooleanPredicate::AncestorElementCountComparison { value, operator } => {
             ancestor_element_count_compare(document, node, *value, *operator, control)
         }
+        PathBooleanPredicate::ContextPosition(predicate) => Ok(position_predicate_matches(
+            Some(predicate),
+            context_position,
+            context_size,
+        )),
         PathBooleanPredicate::ChildElementIntegerEquals { name, value } => {
             child_integer_equals(document, node, name.as_deref(), *value, control)
         }
@@ -393,20 +456,88 @@ pub(super) fn evaluate(
         PathBooleanPredicate::NestedChildPathExists { outer, inner } => {
             nested_child_path_exists(document, node, outer, inner, control)
         }
-        PathBooleanPredicate::Not(operand) => Ok(!evaluate(document, node, operand, control)?),
-        PathBooleanPredicate::And(left, right) => {
-            if !evaluate(document, node, left, control)? {
-                return Ok(false);
-            }
-            evaluate(document, node, right, control)
-        }
-        PathBooleanPredicate::Or(left, right) => {
-            if evaluate(document, node, left, control)? {
-                return Ok(true);
-            }
-            evaluate(document, node, right, control)
+        PathBooleanPredicate::Not(_)
+        | PathBooleanPredicate::And(_, _)
+        | PathBooleanPredicate::Or(_, _) => {
+            unreachable!("boolean composition is dispatched by evaluate")
         }
     }
+}
+
+fn evaluate_not(
+    document: &Document,
+    node: NodeId,
+    operand: &PathBooleanPredicate,
+    context_position: usize,
+    context_size: usize,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    Ok(!evaluate(
+        document,
+        node,
+        operand,
+        context_position,
+        context_size,
+        control,
+    )?)
+}
+
+fn evaluate_and(
+    document: &Document,
+    node: NodeId,
+    left: &PathBooleanPredicate,
+    right: &PathBooleanPredicate,
+    context_position: usize,
+    context_size: usize,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    if !evaluate(
+        document,
+        node,
+        left,
+        context_position,
+        context_size,
+        control,
+    )? {
+        return Ok(false);
+    }
+    evaluate(
+        document,
+        node,
+        right,
+        context_position,
+        context_size,
+        control,
+    )
+}
+
+fn evaluate_or(
+    document: &Document,
+    node: NodeId,
+    left: &PathBooleanPredicate,
+    right: &PathBooleanPredicate,
+    context_position: usize,
+    context_size: usize,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    if evaluate(
+        document,
+        node,
+        left,
+        context_position,
+        context_size,
+        control,
+    )? {
+        return Ok(true);
+    }
+    evaluate(
+        document,
+        node,
+        right,
+        context_position,
+        context_size,
+        control,
+    )
 }
 
 fn following_sibling_element_number_compare(

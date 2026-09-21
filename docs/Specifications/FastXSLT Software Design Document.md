@@ -592,6 +592,12 @@ from each outer selection and returns true on the first nonempty result while
 preserving charged traversal and cancellation. This does not admit general
 filter expressions, axes, qualified names, positional predicates, or dynamic
 operands.
+An admitted typed boolean path predicate may use `position()` or `last()` as
+an operand of `not`, `and`, or `or`. The evaluator supplies the original
+path-step candidate position and size to every operand and preserves ordered
+short-circuiting; it does not filter and renumber candidates between operands.
+This does not alter the separate semantics of sequential predicates or admit
+general focus-dependent arithmetic.
 A final path predicate may compare one immediate-parent unqualified attribute
 with one string literal using `=` or `!=`. Runtime charges the parent visit and
 attribute scan, preserves XPath node-set comparison behavior when the parent or

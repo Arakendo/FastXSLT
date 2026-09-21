@@ -1816,7 +1816,14 @@ pub(crate) fn evaluate_location_path_controlled(
                     path.step_boolean_predicates[step_index].as_deref().map_or(
                         Ok(true),
                         |predicate| {
-                            path_boolean_predicate::evaluate(document, child, predicate, control)
+                            path_boolean_predicate::evaluate(
+                                document,
+                                child,
+                                predicate,
+                                offset + 1,
+                                named_count,
+                                control,
+                            )
                         },
                     )?
                 } else {
@@ -1878,7 +1885,14 @@ fn final_predicates_match(
     }
     if is_final_step
         && let Some(predicate) = path.final_boolean_predicate.as_deref()
-        && !path_boolean_predicate::evaluate(document, node, predicate, control)?
+        && !path_boolean_predicate::evaluate(
+            document,
+            node,
+            predicate,
+            context_position,
+            context_size,
+            control,
+        )?
     {
         return Ok(false);
     }

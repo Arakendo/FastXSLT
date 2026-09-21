@@ -2661,3 +2661,11 @@ maintained redistributable legacy suite becomes available.
   execution failures and mismatches remain unchanged, while generic
   `FXXP1001` initialization failures fall to 23.
   [Evidence](../Evidence/oasis-xslt10-nested-relative-path-existence-2026-09-20.md)
+- 2026-09-20 -- Typed boolean path predicates now receive their owning step's
+  original position and size, allowing admitted `position()` and `last()`
+  operands inside short-circuit boolean composition without filter-then-
+  renumber behavior. Unchanged Lotus `select48` becomes exact. Initialization
+  reaches 2,124, successful execution 2,035, and the strict lower bound 1,904
+  (60.01%); execution failures and mismatches remain unchanged, while generic
+  `FXXP1001` initialization failures fall to 22.
+  [Evidence](../Evidence/oasis-xslt10-boolean-predicate-focus-position-2026-09-20.md)

@@ -2162,6 +2162,34 @@ fn path_boolean_predicates_select_nested_relative_path_existence() {
 }
 
 #[test]
+fn path_boolean_conjunction_preserves_original_position_focus() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<book><author><name real='no'>first</name></author><author><name real='no'>middle</name></author><author><name real='yes'>last</name></author></book>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let book = document.children(document.document_node())[0];
+    let first = parse_location_path("author[(name/@real='no' and position()=1)]", location())
+        .expect("first-position conjunction should parse");
+    let last = parse_location_path(
+        "author[(name/@real='yes' and position()=last())]",
+        location(),
+    )
+    .expect("last-position conjunction should parse");
+
+    let first_selected = evaluate_location_path(&document, book, &first);
+    let last_selected = evaluate_location_path(&document, book, &last);
+
+    assert_eq!(first_selected, [document.children(book)[0]]);
+    assert_eq!(last_selected, [document.children(book)[2]]);
+}
+
+#[test]
 fn constant_integer_arithmetic_selects_the_matching_node_position() {
     let parsed = parse_document(
         "memory:source.xml",
