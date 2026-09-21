@@ -803,6 +803,18 @@ a template from compiled global state. Template parameters, mixed or dynamic
 bodies, imported/included named-template resolution, source focus, and general
 global template execution remain outside this boundary.
 
+A separate compile-selected XSLT 1.0 global-tree specialization admits
+sequential local `xsl:variable` bindings whose values are string literals.
+Those local values may be consumed later in the same constructor by a
+variable-only literal-result attribute value template or a direct-variable
+`xsl:value-of` nested in an otherwise static literal tree. The compiler folds
+the local values into the existing immutable constructed-node representation;
+the declarations themselves produce no result nodes. Lexical declaration
+order, duplicate rejection, result namespaces, and ordinary temporary-tree
+materialization remain intact. This does not retain mutable local frames in
+compiled state or admit dynamic local initializers, global references, source
+focus, arbitrary AVTs, or general global sequence execution.
+
 A direct local-variable alias preserves the resolved binding's value kind.
 Resolution first considers earlier lexical local bindings and falls back to a
 global only while that expanded name has not yet been shadowed locally. The

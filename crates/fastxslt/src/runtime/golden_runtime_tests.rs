@@ -9574,6 +9574,35 @@ fn xslt10_global_text_can_use_a_bounded_named_template_constructor() {
 }
 
 #[test]
+fn xslt10_global_tree_can_use_prior_static_local_bindings() {
+    const SOURCE: &str = "urn:fastxslt:global-static-locals:source";
+    const STYLESHEET: &str = "urn:fastxslt:global-static-locals:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="first"><xsl:variable name="value" select="'one'"/><item value="{$value}"/></xsl:variable><xsl:variable name="second"><xsl:variable name="value" select="'two'"/><item><xsl:value-of select="$value"/></item></xsl:variable><xsl:template match="/"><out><xsl:copy-of select="$first"/><xsl:copy-of select="$second"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<unused/>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile static local globals");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("global-static-locals", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute static local globals");
+
+    assert_eq!(
+        results.by_request["global-static-locals"].serialized,
+        r#"<out><item value="one"></item><item>two</item></out>"#
+    );
+}
+
+#[test]
 fn xslt10_template_argument_converts_a_temporary_tree_variable_to_string() {
     const SOURCE: &str = "urn:fastxslt:template-argument-variable-string:source";
     const STYLESHEET: &str = "urn:fastxslt:template-argument-variable-string:stylesheet";

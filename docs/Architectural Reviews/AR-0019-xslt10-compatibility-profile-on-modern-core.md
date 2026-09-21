@@ -2529,3 +2529,14 @@ maintained redistributable legacy suite becomes available.
   to 2,101, successful execution to 2,014, and the strict lower bound to 1,883
   (59.34%); execution failures and mismatches remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-named-template-global-text-2026-09-20.md)
+- 2026-09-20 -- Sequential XSLT 1.0 local variables with string-literal
+  initializers may now be compile-folded inside one global temporary-tree
+  constructor. Later variable-only literal-result AVTs and direct-variable
+  `xsl:value-of` instructions reuse those lexical values while the compiled
+  result remains the existing immutable static tree. The specialization is
+  isolated in a private compiler module and does not admit mutable compiled
+  frames or general global execution. Unchanged Microsoft
+  `Variables_GlobalVarHaveLocalVarDefinedWithin` becomes exact, raising
+  initialization to 2,102, successful execution to 2,015, and the strict lower
+  bound to 1,884 (59.38%); execution failures and mismatches remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-static-locals-global-tree-2026-09-20.md)

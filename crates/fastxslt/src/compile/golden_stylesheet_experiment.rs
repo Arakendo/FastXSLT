@@ -33,6 +33,8 @@ mod stylesheet_validation;
 mod template_pattern_compiler;
 #[path = "variable_filtered_path_compiler.rs"]
 mod variable_filtered_path_compiler;
+#[path = "xslt10_global_constructor_compiler.rs"]
+mod xslt10_global_constructor_compiler;
 
 pub(crate) use stylesheet_module_compiler::{
     StylesheetDependencyKind, compile_stylesheet_with_import_and_include,
@@ -1042,6 +1044,13 @@ fn compile_content_global_default(
         compile_xslt10_named_template_text_global(document, element, declared_type)?
     {
         return Ok(parts);
+    }
+    if let Some(tree) = xslt10_global_constructor_compiler::compile_static_local_tree(
+        document,
+        element,
+        declared_type,
+    )? {
+        return Ok(tree);
     }
     if let Some(parts) = compile_xslt10_temporary_text_parts(document, element, declared_type)? {
         return Ok(parts);
