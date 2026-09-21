@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 `xml:lang` Expanded-Attribute Path](oasis-xslt10-xml-lang-expanded-attribute-path-2026-09-20.md)
 - [OASIS XSLT 1.0 Grouped Reverse-Axis Position](oasis-xslt10-grouped-reverse-axis-position-2026-09-20.md)
 - [OASIS XSLT 1.0 Chained Relational Predicates](oasis-xslt10-chained-relational-predicates-2026-09-20.md)
 - [OASIS XSLT 1.0 Unicode Name Tests](oasis-xslt10-unicode-name-tests-2026-09-20.md)

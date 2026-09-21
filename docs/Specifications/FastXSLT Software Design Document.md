@@ -377,6 +377,12 @@ including non-ASCII names. It performs no Unicode normalization: lexical names
 continue into the existing namespace resolution and exact expanded-name
 matching rules. Unicode name admission does not broaden the supported path
 grammar or create a separate XSLT 1.0 evaluator.
+The standard predeclared `xml:lang` attribute name is admitted as the expanded
+name `Q{http://www.w3.org/XML/1998/namespace}lang` in attribute-presence
+predicates and attribute path steps. Runtime compares expanded identity rather
+than prefix spelling and retains charged traversal and document-order
+normalization. This exact predeclared name does not imply general lexical QName
+resolution inside the otherwise unqualified path grammar.
 An empty-sequence path origin followed by an admitted location step remains an
 empty node sequence; selected `empty(()/step)` expressions compile to a typed
 form and perform no node visits. Statically atomic path operands report

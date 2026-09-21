@@ -9,6 +9,8 @@ use crate::xpath::constant_integer_experiment;
 use crate::xpath::constant_numeric_experiment;
 use crate::xpath::language_experiment;
 
+const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+
 #[path = "path_boolean_predicate.rs"]
 mod path_boolean_predicate;
 use path_boolean_predicate::PathBooleanPredicate;
@@ -284,6 +286,10 @@ impl PathStep {
             return match name_test {
                 "*" | "node()" => Some(Self::AttributeAny),
                 "text()" => None,
+                "xml:lang" => Some(Self::AttributeExpandedName(ExpandedName {
+                    namespace: Some(XML_NAMESPACE.to_owned()),
+                    local: "lang".to_owned(),
+                })),
                 _ => Some(Self::AttributeNamed(name_test.to_owned())),
             };
         }
@@ -579,6 +585,7 @@ enum PredicateAxis {
     Child,
     ChildText,
     Attribute,
+    XmlAttribute,
     MissingAttribute,
     Ancestor,
     AncestorOrSelf,
@@ -1083,10 +1090,13 @@ fn has_unadmitted_name_test(step: &str) -> bool {
         && processing_instruction_target(name_test).is_some();
     let admitted_local_wildcard = (!step.contains("::") || step.starts_with("child::"))
         && name_test.strip_prefix("*:").is_some_and(is_ncname);
+    let admitted_xml_attribute =
+        (step.starts_with('@') || step.starts_with("attribute::")) && name_test == "xml:lang";
     !matches!(name_test, "*" | "node()" | "text()")
         && !admitted_axis_kind
         && !admitted_named_processing_instruction
         && !admitted_local_wildcard
+        && !admitted_xml_attribute
         && !is_ncname(name_test)
 }
 
@@ -1361,7 +1371,9 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
     }
     let (predicate, value) = parse_attribute_value_predicate(predicate)
         .map_or((predicate, None), |(name, value)| (name, Some(value)));
-    let (axis, name) = if value.is_some() {
+    let (axis, name) = if matches!(predicate, "@xml:lang" | "attribute::xml:lang") {
+        (PredicateAxis::XmlAttribute, "lang")
+    } else if value.is_some() {
         (PredicateAxis::Attribute, predicate)
     } else if let Some(name) = predicate
         .strip_prefix("not(@")
@@ -1395,6 +1407,7 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
     let wildcard_allowed = matches!(
         axis,
         PredicateAxis::Attribute
+            | PredicateAxis::XmlAttribute
             | PredicateAxis::MissingAttribute
             | PredicateAxis::FollowingSibling
     );
@@ -1955,6 +1968,14 @@ fn evaluate_axis_predicate(
             predicate.value.as_deref(),
             control,
         ),
+        PredicateAxis::XmlAttribute => has_expanded_attribute(
+            document,
+            node,
+            XML_NAMESPACE,
+            &predicate.name,
+            predicate.value.as_deref(),
+            control,
+        ),
         PredicateAxis::MissingAttribute => {
             has_named_attribute(document, node, &predicate.name, None, control).map(|found| !found)
         }
@@ -2325,6 +2346,28 @@ fn has_named_attribute(
                 || document
                     .name(attribute)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required))
+            && required_value.is_none_or(|required| document.value(attribute) == Some(required))
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn has_expanded_attribute(
+    document: &Document,
+    node: NodeId,
+    namespace: &str,
+    local: &str,
+    required_value: Option<&str>,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for attribute in document.attributes(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(attribute) == NodeKind::Attribute
+            && document.name(attribute).is_some_and(|name| {
+                name.namespace.as_deref() == Some(namespace) && name.local == local
+            })
             && required_value.is_none_or(|required| document.value(attribute) == Some(required))
         {
             return Ok(true);

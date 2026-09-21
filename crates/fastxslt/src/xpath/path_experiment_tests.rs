@@ -2385,6 +2385,37 @@ fn unicode_ncname_steps_match_unqualified_elements() {
 }
 
 #[test]
+fn xml_lang_attribute_steps_preserve_expanded_name_and_document_order() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<doc xml:lang="en"><group><item xml:lang="en-us"/></group></doc>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("xml:lang source should parse");
+    let document = Document::from_parsed(parsed).expect("xml:lang source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let group = document.children(doc)[0];
+    let item = document.children(group)[0];
+    let path = parse_location_path("ancestor-or-self::*[@xml:lang]/@xml:lang", location())
+        .expect("predeclared XML attribute path should parse");
+
+    let selected = evaluate_location_path(&document, item, &path);
+
+    assert_eq!(selected.len(), 2);
+    assert_eq!(document.string_value(selected[0]), "en");
+    assert_eq!(document.string_value(selected[1]), "en-us");
+    assert!(selected.iter().all(|node| {
+        document.name(*node).is_some_and(|name| {
+            name.namespace.as_deref() == Some("http://www.w3.org/XML/1998/namespace")
+                && name.local == "lang"
+        })
+    }));
+}
+
+#[test]
 fn each_path_step_normalizes_convergent_nodes_in_document_order() {
     let parsed = parse_document(
         "memory:source.xml",

@@ -2626,3 +2626,12 @@ maintained redistributable legacy suite becomes available.
   failures and mismatches remain unchanged, while generic `FXXP1001`
   initialization failures fall to 27.
   [Evidence](../Evidence/oasis-xslt10-grouped-reverse-axis-position-2026-09-20.md)
+- 2026-09-20 -- The shared path owner now admits the standard predeclared
+  `xml:lang` name as an expanded attribute in presence predicates and attribute
+  steps. Runtime retains charged ancestor/attribute traversal and document
+  order; prefix spelling never becomes semantic identity. Unchanged Lotus
+  `expression06` becomes exact. Initialization reaches 2,120, successful
+  execution 2,031, and the strict lower bound 1,900 (59.88%); execution
+  failures and mismatches remain unchanged, while generic `FXXP1001`
+  initialization failures fall to 26.
+  [Evidence](../Evidence/oasis-xslt10-xml-lang-expanded-attribute-path-2026-09-20.md)
