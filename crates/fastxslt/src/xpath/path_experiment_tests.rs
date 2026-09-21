@@ -1769,6 +1769,40 @@ fn path_boolean_predicate_compares_following_sibling_node_set_with_integer() {
 }
 
 #[test]
+fn path_boolean_predicate_compares_named_and_wildcard_children_with_integer() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a s='named'><div>9</div></a><a s='wildcard'><other>9</other></a><a s='miss'><div>8</div></a></doc>",
+        ParseLimits {
+            max_events: 20,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+
+    let named = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("a[div=9]", location())
+            .expect("operator-shaped child name should parse as a node test"),
+    );
+    let wildcard = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("a[*=9]", location())
+            .expect("wildcard child test should parse before multiplication"),
+    );
+
+    assert_eq!(named, [document.children(doc)[0]]);
+    assert_eq!(
+        wildcard,
+        [document.children(doc)[0], document.children(doc)[1]]
+    );
+}
+
+#[test]
 fn path_boolean_predicate_compares_dynamic_node_sets_and_positional_children() {
     let parsed = parse_document(
         "memory:source.xml",

@@ -2563,3 +2563,12 @@ maintained redistributable legacy suite becomes available.
   successful execution 2,018, and the strict lower bound 1,887 (59.47%) while
   execution failures and mismatches remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-global-number-path-and-variable-division-2026-09-20.md)
+- 2026-09-20 -- Typed location-path predicates now distinguish an unqualified
+  child node test from an operator-shaped token in the exact
+  `child[NCName=integer]` and `child[*=integer]` forms. Runtime applies charged
+  existential node-set-to-number equality without admitting general predicate
+  arithmetic. Unchanged Lotus `select31` and `select32` become exact.
+  Initialization reaches 2,107, successful execution 2,020, and the strict
+  lower bound 1,889 (59.53%); execution failures and mismatches remain
+  unchanged, while generic `FXXP1001` initialization failures fall to 39.
+  [Evidence](../Evidence/oasis-xslt10-child-node-test-numeric-predicates-2026-09-20.md)

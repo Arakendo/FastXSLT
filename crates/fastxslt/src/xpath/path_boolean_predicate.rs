@@ -28,6 +28,10 @@ pub(super) enum PathBooleanPredicate {
         name: String,
         count: usize,
     },
+    ChildElementIntegerEquals {
+        name: Option<String>,
+        value: i32,
+    },
     AttributeStringLengthEquals {
         name: String,
         length: usize,
@@ -83,7 +87,10 @@ impl PathBooleanPredicate {
             Self::Present(name)
             | Self::ChildElementCountEquals { name, .. }
             | Self::AttributeStringLengthEquals { name, .. }
-            | Self::AttributeStringLengthGreaterThan { name, .. } => name.capacity(),
+            | Self::AttributeStringLengthGreaterThan { name, .. }
+            | Self::ChildElementIntegerEquals {
+                name: Some(name), ..
+            } => name.capacity(),
             Self::Equals { name, value }
             | Self::NotEquals { name, value }
             | Self::PositionalChildStringEquals { name, value, .. } => {
@@ -111,6 +118,7 @@ impl PathBooleanPredicate {
             | Self::ContextNameStartsWith(value)
             | Self::DescendantElementComparison { value, .. } => value.capacity(),
             Self::ContextNameLengthEquals(_)
+            | Self::ChildElementIntegerEquals { name: None, .. }
             | Self::FollowingSiblingElementNumberComparison { .. }
             | Self::FollowingSiblingDescendantStringEquals => 0,
             Self::Not(operand) => operand.known_owned_capacity_bytes(),
@@ -184,6 +192,9 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     if let Some((name, count)) = parse_child_element_count_equality(predicate) {
         return Some(PathBooleanPredicate::ChildElementCountEquals { name, count });
     }
+    if let Some((name, value)) = parse_child_element_integer_equality(predicate) {
+        return Some(PathBooleanPredicate::ChildElementIntegerEquals { name, value });
+    }
     if let Some((name, length)) = parse_attribute_string_length_equality(predicate) {
         return Some(PathBooleanPredicate::AttributeStringLengthEquals { name, length });
     }
@@ -225,6 +236,10 @@ pub(super) fn recognizes_child_path_string_comparison(predicate: &str) -> bool {
         || parse_child_attribute_string_comparison(predicate).is_some()
 }
 
+pub(super) fn recognizes_child_element_integer_equality(predicate: &str) -> bool {
+    parse_child_element_integer_equality(strip_outer_parentheses(predicate.trim())).is_some()
+}
+
 pub(super) fn evaluate(
     document: &Document,
     node: NodeId,
@@ -242,8 +257,7 @@ pub(super) fn evaluate(
             attribute_not_equal(document, node, name, value, control)
         }
         PathBooleanPredicate::ContextStringEquals(value) => {
-            control.charge(WorkDomain::XPathOperation, 1)?;
-            Ok(document.string_value(node) == *value)
+            context_string_equals(document, node, value, control)
         }
         PathBooleanPredicate::ContextNameComparison { value, equal } => {
             control.charge(WorkDomain::XPathOperation, 1)?;
@@ -259,6 +273,9 @@ pub(super) fn evaluate(
         }
         PathBooleanPredicate::ChildElementCountEquals { name, count } => {
             child_element_count_equals(document, node, name, *count, control)
+        }
+        PathBooleanPredicate::ChildElementIntegerEquals { name, value } => {
+            child_integer_equals(document, node, name.as_deref(), *value, control)
         }
         PathBooleanPredicate::AttributeStringLengthEquals { name, length } => {
             attribute_string_length_compare(document, node, name, *length, false, control)
@@ -340,6 +357,16 @@ fn child_path_capacity(path: &[RelativeChildStep]) -> usize {
                 RelativeChildStep::Text => 0,
             })
             .sum::<usize>()
+}
+
+fn context_string_equals(
+    document: &Document,
+    node: NodeId,
+    value: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    control.charge(WorkDomain::XPathOperation, 1)?;
+    Ok(document.string_value(node) == value)
 }
 
 fn parse_child_path_string_equality(
@@ -683,6 +710,36 @@ fn child_element_count_equals(
     Ok(actual == expected)
 }
 
+fn child_integer_equals(
+    document: &Document,
+    node: NodeId,
+    name: Option<&str>,
+    expected: i32,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for child in document.children(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(child) != NodeKind::Element
+            || name.is_some_and(|name| {
+                !document.name(child).is_some_and(|candidate| {
+                    candidate.namespace.is_none() && candidate.local == name
+                })
+            })
+        {
+            continue;
+        }
+        control.charge(WorkDomain::XPathOperation, 1)?;
+        if crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+            &document.string_value(child),
+        )
+        .is_some_and(|actual| NumberComparison::Equal.evaluate(actual, f64::from(expected)))
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 fn attribute_string_length_compare(
     document: &Document,
     node: NodeId,
@@ -772,6 +829,26 @@ fn parse_child_element_count_equality(predicate: &str) -> Option<(String, usize)
     let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
     parse_child_element_count_operand(left.trim(), right.trim())
         .or_else(|| parse_child_element_count_operand(right.trim(), left.trim()))
+}
+
+fn parse_child_element_integer_equality(predicate: &str) -> Option<(Option<String>, i32)> {
+    let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
+    parse_child_element_integer_operand(left.trim(), right.trim())
+        .or_else(|| parse_child_element_integer_operand(right.trim(), left.trim()))
+}
+
+fn parse_child_element_integer_operand(
+    child_test: &str,
+    integer: &str,
+) -> Option<(Option<String>, i32)> {
+    let name = if child_test == "*" {
+        None
+    } else if is_ascii_ncname(child_test) {
+        Some(child_test.to_owned())
+    } else {
+        return None;
+    };
+    Some((name, integer.parse().ok()?))
 }
 
 fn parse_child_element_count_operand(function: &str, integer: &str) -> Option<(String, usize)> {

@@ -545,6 +545,14 @@ the variable once through those same string rules and performs a charged scan
 of matching unqualified child elements and attributes. It does not admit
 qualified names, deeper paths, alternate comparison operators, general
 predicate composition, or modern compatibility behavior.
+An admitted location-path predicate may also compare the node-set selected by
+one direct unqualified child-element test, or `*`, with one signed integer
+literal using `=`. The parser preserves NCNames such as `div` as node tests in
+this syntactic position rather than treating their spelling as an arithmetic
+operator. Runtime applies existential node-set-to-number equality over direct
+element children and charges both child visits and numeric conversions. This
+does not admit arithmetic `div` or `*`, qualified child tests, deeper relative
+paths, alternate comparison operators, or general numeric predicates.
 The exact XSLT 1.0 comparison `. = $variable` requires the variable to hold a
 source-node sequence and applies XPath 1.0 node-set equality: the result is
 true when the controlled string value of the current source node equals that

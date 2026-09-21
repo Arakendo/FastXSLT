@@ -1242,6 +1242,7 @@ fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBool
             && !predicate.contains("string-length(@")
             && !predicate.contains(" = ")
             && !path_boolean_predicate::recognizes_child_path_string_comparison(predicate)
+            && !path_boolean_predicate::recognizes_child_element_integer_equality(predicate)
             && !predicate.contains('['))
     {
         return (expression, None);
