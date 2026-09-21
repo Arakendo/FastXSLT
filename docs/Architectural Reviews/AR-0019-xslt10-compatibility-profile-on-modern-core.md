@@ -2572,3 +2572,12 @@ maintained redistributable legacy suite becomes available.
   lower bound 1,889 (59.53%); execution failures and mismatches remain
   unchanged, while generic `FXXP1001` initialization failures fall to 39.
   [Evidence](../Evidence/oasis-xslt10-child-node-test-numeric-predicates-2026-09-20.md)
+- 2026-09-20 -- The shared path evaluator now admits the
+  `following-sibling::text()` kind test with charged forward-axis traversal.
+  Two unchanged preserve-space cases become exact; two strip-space cases now
+  initialize and stop at the pre-existing explicit `FXRT1014` boundary for
+  sources containing `xml:space`. Initialization reaches 2,111, successful
+  execution 2,022, execution failures 89, and the strict lower bound 1,891
+  (59.60%); mismatches remain 55 and generic `FXXP1001` initialization
+  failures fall to 35.
+  [Evidence](../Evidence/oasis-xslt10-following-sibling-text-kind-test-2026-09-20.md)

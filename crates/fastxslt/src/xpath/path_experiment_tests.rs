@@ -1769,6 +1769,31 @@ fn path_boolean_predicate_compares_following_sibling_node_set_with_integer() {
 }
 
 #[test]
+fn following_sibling_text_kind_test_selects_only_text_nodes() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><h1/>alpha<x/>beta<!--ignored--><?pi ignored?></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let selected = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("h1/following-sibling::text()", location())
+            .expect("following-sibling text kind test should parse"),
+    );
+
+    assert_eq!(selected.len(), 2);
+    assert_eq!(document.string_value(selected[0]), "alpha");
+    assert_eq!(document.string_value(selected[1]), "beta");
+}
+
+#[test]
 fn path_boolean_predicate_compares_named_and_wildcard_children_with_integer() {
     let parsed = parse_document(
         "memory:source.xml",

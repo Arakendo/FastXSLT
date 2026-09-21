@@ -227,6 +227,7 @@ pub(crate) enum PathStep {
     FollowingSiblingNamed(String),
     FollowingSiblingAnyElement,
     FollowingSiblingAnyNode,
+    FollowingSiblingText,
     PrecedingNamed(String),
     PrecedingAnyElement,
     PrecedingAnyNode,
@@ -323,7 +324,7 @@ impl PathStep {
             return match name_test {
                 "*" => Some(Self::FollowingSiblingAnyElement),
                 "node()" => Some(Self::FollowingSiblingAnyNode),
-                "text()" => None,
+                "text()" => Some(Self::FollowingSiblingText),
                 _ => Some(Self::FollowingSiblingNamed(name_test.to_owned())),
             };
         }
@@ -472,6 +473,7 @@ impl PathStep {
             Self::FollowingSiblingNamed(_)
                 | Self::FollowingSiblingAnyElement
                 | Self::FollowingSiblingAnyNode
+                | Self::FollowingSiblingText
         )
     }
 
@@ -551,9 +553,11 @@ impl PartialEq<&str> for PathStep {
             | Self::FollowingSiblingAnyNode
             | Self::PrecedingAnyNode
             | Self::PrecedingSiblingAnyNode => *other == "node()",
-            Self::ChildText | Self::SelfText | Self::FollowingText | Self::PrecedingText => {
-                *other == "text()"
-            }
+            Self::ChildText
+            | Self::SelfText
+            | Self::FollowingText
+            | Self::FollowingSiblingText
+            | Self::PrecedingText => *other == "text()",
             Self::ChildComment
             | Self::SelfComment
             | Self::FollowingComment
@@ -1976,6 +1980,7 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         PathStep::ChildText
         | PathStep::SelfText
         | PathStep::FollowingText
+        | PathStep::FollowingSiblingText
         | PathStep::PrecedingText => document.kind(child) == NodeKind::Text,
         PathStep::ChildComment
         | PathStep::SelfComment
