@@ -24,6 +24,7 @@ pub(crate) struct LocationPath {
     final_context_predicate: Option<FinalContextPredicate>,
     first_step_predicates_use_document_order: bool,
     step_axis_predicates: Vec<Option<AxisPredicate>>,
+    step_boolean_predicates: Vec<Option<Box<PathBooleanPredicate>>>,
     step_position_predicates: Vec<Vec<StepPredicate>>,
     pub(crate) location: SourceLocation,
 }
@@ -50,6 +51,7 @@ impl LocationPath {
             )
             || self.final_boolean_predicate.is_some()
             || self.final_context_predicate.is_some()
+            || self.step_boolean_predicates.iter().any(Option::is_some)
         {
             return false;
         }
@@ -163,6 +165,14 @@ impl LocationPath {
                 .iter()
                 .flatten()
                 .map(AxisPredicate::known_owned_capacity_bytes)
+                .sum::<usize>()
+            + self.step_boolean_predicates.capacity()
+                * std::mem::size_of::<Option<Box<PathBooleanPredicate>>>()
+            + self
+                .step_boolean_predicates
+                .iter()
+                .flatten()
+                .map(|predicate| predicate.known_owned_capacity_bytes())
                 .sum::<usize>()
             + self.location.resource.capacity()
     }
@@ -647,6 +657,7 @@ struct ParsedPathSteps {
     steps: Vec<String>,
     position_predicates: Vec<Vec<StepPredicate>>,
     axis_predicates: Vec<Option<AxisPredicate>>,
+    boolean_predicates: Vec<Option<Box<PathBooleanPredicate>>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -704,6 +715,7 @@ pub(crate) fn parse_location_path(
             steps: expression.split('/').map(str::to_owned).collect(),
             position_predicates: vec![Vec::new(); expression.split('/').count()],
             axis_predicates: vec![None; expression.split('/').count()],
+            boolean_predicates: vec![None; expression.split('/').count()],
         })
     };
     if expression.ends_with('/') {
@@ -728,6 +740,7 @@ pub(crate) fn parse_location_path(
         mut steps,
         position_predicates: step_position_predicates,
         axis_predicates: step_axis_predicates,
+        boolean_predicates: step_boolean_predicates,
     } = parsed_steps.expect("checked above");
     for step in &mut steps {
         normalize_axis_separator_whitespace(step);
@@ -761,6 +774,7 @@ pub(crate) fn parse_location_path(
         final_context_predicate,
         first_step_predicates_use_document_order,
         step_axis_predicates,
+        step_boolean_predicates,
         step_position_predicates,
         location,
     })
@@ -1051,6 +1065,7 @@ pub(crate) fn parse_qualified_child_path(
         final_context_predicate: None,
         first_step_predicates_use_document_order: false,
         step_axis_predicates: vec![None; step_count],
+        step_boolean_predicates: vec![None; step_count],
         step_position_predicates: vec![Vec::new(); step_count],
         location,
     })
@@ -1233,6 +1248,7 @@ fn origin_only_path(origin: PathOrigin, location: SourceLocation) -> LocationPat
         final_context_predicate: None,
         first_step_predicates_use_document_order: false,
         step_axis_predicates: Vec::new(),
+        step_boolean_predicates: Vec::new(),
         step_position_predicates: Vec::new(),
         location,
     }
@@ -1496,6 +1512,7 @@ fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
     let mut steps = Vec::with_capacity(raw_steps.len());
     let mut position_predicates = Vec::with_capacity(raw_steps.len());
     let mut axis_predicates = Vec::with_capacity(raw_steps.len());
+    let mut boolean_predicates = Vec::with_capacity(raw_steps.len());
     for (index, raw_step) in raw_steps.iter().copied().enumerate() {
         if raw_step.is_empty() {
             let is_isolated_internal_separator = index > 0
@@ -1508,16 +1525,22 @@ fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
             steps.push("descendant-or-self::node()".to_owned());
             position_predicates.push(Vec::new());
             axis_predicates.push(None);
+            boolean_predicates.push(None);
             continue;
         }
         let (name, predicate_texts) = split_step_predicates(raw_step)?;
         let mut axis_predicate = None;
+        let mut boolean_predicate = None;
         let mut position_predicate = Vec::new();
         for (predicate_index, predicate) in predicate_texts.into_iter().enumerate() {
             if let Some(position) = parse_position_predicate(predicate) {
                 position_predicate.push(StepPredicate::Position(position));
             } else if predicate_index == 0 {
-                axis_predicate = Some(parse_axis_predicate(predicate)?);
+                if let Some(predicate) = parse_axis_predicate(predicate) {
+                    axis_predicate = Some(predicate);
+                } else {
+                    boolean_predicate = Some(Box::new(path_boolean_predicate::parse(predicate)?));
+                }
             } else if !position_predicate.is_empty()
                 && !position_predicate
                     .iter()
@@ -1533,11 +1556,13 @@ fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
         steps.push(name.to_owned());
         position_predicates.push(position_predicate);
         axis_predicates.push(axis_predicate);
+        boolean_predicates.push(boolean_predicate);
     }
     Some(ParsedPathSteps {
         steps,
         position_predicates,
         axis_predicates,
+        boolean_predicates,
     })
 }
 
@@ -1779,7 +1804,7 @@ pub(crate) fn evaluate_location_path_controlled(
             let mut predicate_candidates = Vec::with_capacity(named_candidates.len());
             let named_count = named_candidates.len();
             for (offset, child) in named_candidates.into_iter().enumerate() {
-                let matches = evaluate_optional_axis_predicate(
+                let axis_matches = evaluate_optional_axis_predicate(
                     document,
                     child,
                     path.step_axis_predicates[step_index].as_ref(),
@@ -1787,7 +1812,17 @@ pub(crate) fn evaluate_location_path_controlled(
                     named_count,
                     control,
                 )?;
-                if matches {
+                let boolean_matches = if axis_matches {
+                    path.step_boolean_predicates[step_index].as_deref().map_or(
+                        Ok(true),
+                        |predicate| {
+                            path_boolean_predicate::evaluate(document, child, predicate, control)
+                        },
+                    )?
+                } else {
+                    false
+                };
+                if boolean_matches {
                     predicate_candidates.push(child);
                 }
             }

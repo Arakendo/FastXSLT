@@ -2107,6 +2107,37 @@ fn path_boolean_predicates_compare_relative_element_path_counts() {
 }
 
 #[test]
+fn path_boolean_predicates_compare_ancestor_element_counts() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<far-north><north><near-north><center><near-south><south><far-south/></south></near-south></center></near-north></north></far-north>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 12,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let path = parse_location_path("//*[count(ancestor::*) >= 2]/../parent::*", location())
+        .expect("ancestor element count predicate should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected =
+        evaluate_location_path_controlled(&document, document.document_node(), &path, &mut control)
+            .expect("ancestor element count evaluation should succeed");
+    let selected_names = selected
+        .iter()
+        .map(|node| document.name(*node).expect("element name").local.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        selected_names,
+        ["far-north", "north", "near-north", "center", "near-south"]
+    );
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+}
+
+#[test]
 fn constant_integer_arithmetic_selects_the_matching_node_position() {
     let parsed = parse_document(
         "memory:source.xml",

@@ -33,6 +33,10 @@ pub(super) enum PathBooleanPredicate {
         value: usize,
         operator: NumberComparison,
     },
+    AncestorElementCountComparison {
+        value: usize,
+        operator: NumberComparison,
+    },
     ChildElementIntegerEquals {
         name: Option<String>,
         value: i32,
@@ -132,6 +136,7 @@ impl PathBooleanPredicate {
             | Self::DescendantElementComparison { value, .. } => value.capacity(),
             Self::ContextNameLengthEquals(_)
             | Self::ChildElementIntegerEquals { name: None, .. }
+            | Self::AncestorElementCountComparison { .. }
             | Self::FollowingSiblingElementNumberComparison { .. }
             | Self::FollowingSiblingDescendantStringEquals => 0,
             Self::RelativeElementCountComparison { steps, .. } => {
@@ -206,6 +211,9 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
             value,
             operator,
         });
+    }
+    if let Some((value, operator)) = parse_ancestor_element_count_comparison(predicate) {
+        return Some(PathBooleanPredicate::AncestorElementCountComparison { value, operator });
     }
     if let Some((name, value)) = parse_child_element_integer_equality(predicate) {
         return Some(PathBooleanPredicate::ChildElementIntegerEquals { name, value });
@@ -324,6 +332,9 @@ pub(super) fn evaluate(
             value,
             operator,
         } => relative_element_count_compare(document, node, steps, *value, *operator, control),
+        PathBooleanPredicate::AncestorElementCountComparison { value, operator } => {
+            ancestor_element_count_compare(document, node, *value, *operator, control)
+        }
         PathBooleanPredicate::ChildElementIntegerEquals { name, value } => {
             child_integer_equals(document, node, name.as_deref(), *value, control)
         }
@@ -872,6 +883,26 @@ fn relative_element_count_compare(
     Ok(operator.evaluate_usize(current.len(), expected))
 }
 
+fn ancestor_element_count_compare(
+    document: &Document,
+    node: NodeId,
+    expected: usize,
+    operator: NumberComparison,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let mut actual = 0usize;
+    let mut current = document.parent(node);
+    while let Some(ancestor) = current {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(ancestor) == NodeKind::Element {
+            actual += 1;
+        }
+        current = document.parent(ancestor);
+    }
+    control.charge(WorkDomain::XPathOperation, 1)?;
+    Ok(operator.evaluate_usize(actual, expected))
+}
+
 fn child_integer_equals(
     document: &Document,
     node: NodeId,
@@ -1018,6 +1049,30 @@ fn parse_relative_element_count_comparison(
             parse_relative_element_count_operand(right.trim(), left.trim(), operator.reversed())
         {
             return Some(parsed);
+        }
+    }
+    None
+}
+
+fn parse_ancestor_element_count_comparison(predicate: &str) -> Option<(usize, NumberComparison)> {
+    const OPERATORS: [(&str, NumberComparison); 6] = [
+        ("!=", NumberComparison::NotEqual),
+        ("<=", NumberComparison::LessThanOrEqual),
+        (">=", NumberComparison::GreaterThanOrEqual),
+        ("=", NumberComparison::Equal),
+        ("<", NumberComparison::LessThan),
+        (">", NumberComparison::GreaterThan),
+    ];
+
+    for (token, operator) in OPERATORS {
+        let Some((left, right)) = split_top_level_predicate_operator(predicate, token) else {
+            continue;
+        };
+        if left.trim() == "count(ancestor::*)" {
+            return Some((right.trim().parse().ok()?, operator));
+        }
+        if right.trim() == "count(ancestor::*)" {
+            return Some((left.trim().parse().ok()?, operator.reversed()));
         }
     }
     None

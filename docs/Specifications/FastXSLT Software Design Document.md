@@ -581,6 +581,11 @@ starts with `./`, and admits `=`, `!=`, `<`, `<=`, `>`, or `>=`. Runtime
 charges every inspected child and the final exact integer comparison. This
 does not admit axes, attributes, qualified names, nested predicates, dynamic
 operands, arithmetic, or a general aggregate-function grammar.
+The shared path representation may retain that private typed boolean-predicate
+family on an intermediate step, applying it before positional filtering and
+subsequent path navigation. The exact `count(ancestor::*)` operand counts
+element ancestors through charged parent traversal. It does not admit named
+ancestor tests, alternate axes, dynamic operands, or a public predicate AST.
 A final path predicate may compare one immediate-parent unqualified attribute
 with one string literal using `=` or `!=`. Runtime charges the parent visit and
 attribute scan, preserves XPath node-set comparison behavior when the parent or

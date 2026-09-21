@@ -2644,3 +2644,11 @@ maintained redistributable legacy suite becomes available.
   execution failures and mismatches remain unchanged, while generic
   `FXXP1001` initialization failures fall to 25.
   [Evidence](../Evidence/oasis-xslt10-relative-element-count-predicate-2026-09-20.md)
+- 2026-09-20 -- The shared path representation now retains an optional typed
+  boolean predicate on an intermediate step, evaluated before later path
+  navigation. Exact `count(ancestor::*)` comparisons use charged parent
+  traversal and exact integer comparison. Unchanged Lotus `axes84` becomes
+  exact. Initialization reaches 2,122, successful execution 2,033, and the
+  strict lower bound 1,902 (59.94%); execution failures and mismatches remain
+  unchanged, while generic `FXXP1001` initialization failures fall to 24.
+  [Evidence](../Evidence/oasis-xslt10-intermediate-ancestor-count-predicate-2026-09-20.md)
