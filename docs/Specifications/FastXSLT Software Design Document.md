@@ -574,6 +574,13 @@ operator. Runtime applies existential node-set-to-number equality over direct
 element children and charges both child visits and numeric conversions. This
 does not admit arithmetic `div` or `*`, qualified child tests, deeper relative
 paths, alternate comparison operators, or general numeric predicates.
+An admitted location-path predicate may compare the count of a bounded
+relative child-element path with one nonnegative integer literal. The typed
+path contains at most eight wildcard or unqualified NCName steps, optionally
+starts with `./`, and admits `=`, `!=`, `<`, `<=`, `>`, or `>=`. Runtime
+charges every inspected child and the final exact integer comparison. This
+does not admit axes, attributes, qualified names, nested predicates, dynamic
+operands, arithmetic, or a general aggregate-function grammar.
 A final path predicate may compare one immediate-parent unqualified attribute
 with one string literal using `=` or `!=`. Runtime charges the parent visit and
 attribute scan, preserves XPath node-set comparison behavior when the parent or

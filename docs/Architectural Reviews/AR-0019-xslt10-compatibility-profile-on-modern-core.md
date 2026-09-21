@@ -2635,3 +2635,12 @@ maintained redistributable legacy suite becomes available.
   failures and mismatches remain unchanged, while generic `FXXP1001`
   initialization failures fall to 26.
   [Evidence](../Evidence/oasis-xslt10-xml-lang-expanded-attribute-path-2026-09-20.md)
+- 2026-09-20 -- Typed location-path predicates now admit a bounded
+  child-element-only relative path inside `count()`, compared with one
+  nonnegative integer literal. Runtime performs exact integer comparison,
+  charges every inspected child, and preserves cancellation observation.
+  Unchanged Lotus `axes85` becomes exact. Initialization reaches 2,121,
+  successful execution 2,032, and the strict lower bound 1,901 (59.91%);
+  execution failures and mismatches remain unchanged, while generic
+  `FXXP1001` initialization failures fall to 25.
+  [Evidence](../Evidence/oasis-xslt10-relative-element-count-predicate-2026-09-20.md)

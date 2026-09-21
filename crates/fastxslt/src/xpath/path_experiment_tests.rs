@@ -2078,6 +2078,35 @@ fn path_boolean_predicates_count_children_and_measure_attributes() {
 }
 
 #[test]
+fn path_boolean_predicates_compare_relative_element_path_counts() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><empty/><nested><child><leaf/></child></nested><one><child/></one></doc>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let path = parse_location_path("*[count(./*/*) > 0]", location())
+        .expect("relative element count predicate should parse");
+    let reversed = parse_location_path("*[0 < count(./*/*)]", location())
+        .expect("reversed relative element count predicate should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, doc, &path, &mut control)
+        .expect("relative element count evaluation should succeed");
+    let reversed_selected = evaluate_location_path(&document, doc, &reversed);
+
+    assert_eq!(selected, [document.children(doc)[1]]);
+    assert_eq!(reversed_selected, selected);
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+    assert_eq!(control.consumed(WorkDomain::XPathOperation), 3);
+}
+
+#[test]
 fn constant_integer_arithmetic_selects_the_matching_node_position() {
     let parsed = parse_document(
         "memory:source.xml",

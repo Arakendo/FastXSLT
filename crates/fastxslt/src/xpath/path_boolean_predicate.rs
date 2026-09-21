@@ -28,6 +28,11 @@ pub(super) enum PathBooleanPredicate {
         name: String,
         count: usize,
     },
+    RelativeElementCountComparison {
+        steps: Vec<Option<String>>,
+        value: usize,
+        operator: NumberComparison,
+    },
     ChildElementIntegerEquals {
         name: Option<String>,
         value: i32,
@@ -129,6 +134,14 @@ impl PathBooleanPredicate {
             | Self::ChildElementIntegerEquals { name: None, .. }
             | Self::FollowingSiblingElementNumberComparison { .. }
             | Self::FollowingSiblingDescendantStringEquals => 0,
+            Self::RelativeElementCountComparison { steps, .. } => {
+                std::mem::size_of_val(steps.as_slice())
+                    + steps
+                        .iter()
+                        .filter_map(Option::as_ref)
+                        .map(String::capacity)
+                        .sum::<usize>()
+            }
             Self::Not(operand) => operand.known_owned_capacity_bytes(),
             Self::And(left, right) | Self::Or(left, right) => {
                 left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
@@ -186,6 +199,13 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     }
     if let Some((name, count)) = parse_child_element_count_equality(predicate) {
         return Some(PathBooleanPredicate::ChildElementCountEquals { name, count });
+    }
+    if let Some((steps, value, operator)) = parse_relative_element_count_comparison(predicate) {
+        return Some(PathBooleanPredicate::RelativeElementCountComparison {
+            steps,
+            value,
+            operator,
+        });
     }
     if let Some((name, value)) = parse_child_element_integer_equality(predicate) {
         return Some(PathBooleanPredicate::ChildElementIntegerEquals { name, value });
@@ -299,6 +319,11 @@ pub(super) fn evaluate(
         PathBooleanPredicate::ChildElementCountEquals { name, count } => {
             child_element_count_equals(document, node, name, *count, control)
         }
+        PathBooleanPredicate::RelativeElementCountComparison {
+            steps,
+            value,
+            operator,
+        } => relative_element_count_compare(document, node, steps, *value, *operator, control),
         PathBooleanPredicate::ChildElementIntegerEquals { name, value } => {
             child_integer_equals(document, node, name.as_deref(), *value, control)
         }
@@ -312,18 +337,7 @@ pub(super) fn evaluate(
             descendant_element_comparison(document, node, value, *equal, control)
         }
         PathBooleanPredicate::FollowingSiblingElementNumberComparison { value, operator } => {
-            for sibling in following_siblings(document, node) {
-                control.charge(WorkDomain::XPathNodeVisit, 1)?;
-                if document.kind(sibling) == NodeKind::Element
-                    && crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
-                        &document.string_value(sibling),
-                    )
-                    .is_some_and(|actual| operator.evaluate(actual, f64::from(*value)))
-                {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
+            following_sibling_element_number_compare(document, node, *value, *operator, control)
         }
         PathBooleanPredicate::FollowingSiblingDescendantStringEquals => {
             sibling_descendant_string_equals(document, node, control)
@@ -369,6 +383,27 @@ pub(super) fn evaluate(
             evaluate(document, node, right, control)
         }
     }
+}
+
+fn following_sibling_element_number_compare(
+    document: &Document,
+    node: NodeId,
+    expected: i32,
+    operator: NumberComparison,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for sibling in following_siblings(document, node) {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(sibling) == NodeKind::Element
+            && crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                &document.string_value(sibling),
+            )
+            .is_some_and(|actual| operator.evaluate(actual, f64::from(expected)))
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn child_path_capacity(path: &[RelativeChildStep]) -> usize {
@@ -732,6 +767,17 @@ impl NumberComparison {
             Self::GreaterThanOrEqual => Self::LessThanOrEqual,
         }
     }
+
+    fn evaluate_usize(self, left: usize, right: usize) -> bool {
+        match self {
+            Self::Equal => left == right,
+            Self::NotEqual => left != right,
+            Self::LessThan => left < right,
+            Self::LessThanOrEqual => left <= right,
+            Self::GreaterThan => left > right,
+            Self::GreaterThanOrEqual => left >= right,
+        }
+    }
 }
 
 fn attribute_not_equal(
@@ -790,6 +836,40 @@ fn child_element_count_equals(
         }
     }
     Ok(actual == expected)
+}
+
+fn relative_element_count_compare(
+    document: &Document,
+    node: NodeId,
+    steps: &[Option<String>],
+    expected: usize,
+    operator: NumberComparison,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let mut current = vec![node];
+    for required_name in steps {
+        let mut next = Vec::new();
+        for parent in current {
+            for child in document.children(parent).iter().copied() {
+                control.charge(WorkDomain::XPathNodeVisit, 1)?;
+                if document.kind(child) == NodeKind::Element
+                    && required_name.as_ref().is_none_or(|required_name| {
+                        document.name(child).is_some_and(|candidate| {
+                            candidate.namespace.is_none() && candidate.local == *required_name
+                        })
+                    })
+                {
+                    next.push(child);
+                }
+            }
+        }
+        current = next;
+        if current.is_empty() {
+            break;
+        }
+    }
+    control.charge(WorkDomain::XPathOperation, 1)?;
+    Ok(operator.evaluate_usize(current.len(), expected))
 }
 
 fn child_integer_equals(
@@ -911,6 +991,57 @@ fn parse_child_element_count_equality(predicate: &str) -> Option<(String, usize)
     let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
     parse_child_element_count_operand(left.trim(), right.trim())
         .or_else(|| parse_child_element_count_operand(right.trim(), left.trim()))
+}
+
+fn parse_relative_element_count_comparison(
+    predicate: &str,
+) -> Option<(Vec<Option<String>>, usize, NumberComparison)> {
+    const OPERATORS: [(&str, NumberComparison); 6] = [
+        ("!=", NumberComparison::NotEqual),
+        ("<=", NumberComparison::LessThanOrEqual),
+        (">=", NumberComparison::GreaterThanOrEqual),
+        ("=", NumberComparison::Equal),
+        ("<", NumberComparison::LessThan),
+        (">", NumberComparison::GreaterThan),
+    ];
+
+    for (token, operator) in OPERATORS {
+        let Some((left, right)) = split_top_level_predicate_operator(predicate, token) else {
+            continue;
+        };
+        if let Some(parsed) =
+            parse_relative_element_count_operand(left.trim(), right.trim(), operator)
+        {
+            return Some(parsed);
+        }
+        if let Some(parsed) =
+            parse_relative_element_count_operand(right.trim(), left.trim(), operator.reversed())
+        {
+            return Some(parsed);
+        }
+    }
+    None
+}
+
+fn parse_relative_element_count_operand(
+    function: &str,
+    integer: &str,
+    operator: NumberComparison,
+) -> Option<(Vec<Option<String>>, usize, NumberComparison)> {
+    let path = function.strip_prefix("count(")?.strip_suffix(')')?.trim();
+    let path = path.strip_prefix("./").unwrap_or(path);
+    let steps = path
+        .split('/')
+        .map(|step| match step.trim() {
+            "*" => Some(None),
+            name if is_ncname(name) => Some(Some(name.to_owned())),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?;
+    if steps.is_empty() || steps.len() > 8 {
+        return None;
+    }
+    Some((steps, integer.parse().ok()?, operator))
 }
 
 fn parse_child_element_integer_equality(predicate: &str) -> Option<(Option<String>, i32)> {
