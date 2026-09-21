@@ -156,6 +156,23 @@ fn compile_selected_argument_value(
     {
         return Ok(TemplateArgumentValue::SourceVariablePath { variable, path });
     }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(variable) = select
+            .trim()
+            .strip_prefix("string(")
+            .and_then(|argument| argument.strip_suffix(')'))
+            .map(str::trim)
+            .and_then(|argument| argument.strip_prefix('$'))
+    {
+        let variable = normalize_variable_qname(document, element, variable).map_err(|_| {
+            invalid(
+                "FXXP0002",
+                format!("invalid variable reference: {select}"),
+                document.location(element),
+            )
+        })?;
+        return Ok(TemplateArgumentValue::Xslt10VariableString(variable));
+    }
     if let Some(variable) = select.strip_prefix('$') {
         let variable = if uses_xslt10_compatibility(document, element) {
             normalize_variable_qname(document, element, variable).map_err(|_| {

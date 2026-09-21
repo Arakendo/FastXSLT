@@ -2505,3 +2505,10 @@ maintained redistributable legacy suite becomes available.
   reaches 2,097, successful execution 2,010, and the strict lower bound 1,879
   (59.22%); execution failures and mismatches remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-global-source-path-text-parts-2026-09-20.md)
+- 2026-09-20 -- XSLT 1.0 `string($variable)` template arguments now reuse the
+  shared controlled variable-string conversion instead of introducing a
+  template-call-only coercion path. Both unchanged Lotus `variable65` cases
+  become exact, raising initialization to 2,099, successful execution to
+  2,012, and the strict lower bound to 1,881 (59.28%); execution failures and
+  mismatches remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-variable-string-template-arguments-2026-09-20.md)

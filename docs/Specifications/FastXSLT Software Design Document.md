@@ -790,6 +790,14 @@ source-node sequence, empty sequence, or temporary tree. Temporary-tree aliases
 retain the originating invocation-local semantic identity; this does not admit
 cross-invocation sharing or a second legacy value model.
 
+Under XSLT 1.0 compatibility, a template argument whose complete selected
+expression is `string($variable)` uses the shared controlled variable-string
+conversion. Atomic values, atomic sequences, source-node sequences, empty
+sequences, and temporary trees therefore follow the same first-item or
+string-value rules as other admitted XSLT 1.0 expressions. The resulting
+argument is an invocation-owned atomic string; the conversion does not alter
+the referenced value or create a template-argument-specific value model.
+
 The private temporary selection path also admits an exact child-element path
 whose origin is one temporary-tree variable and whose steps are lexical QNames
 resolved to expanded names during stylesheet compilation. Execution starts at

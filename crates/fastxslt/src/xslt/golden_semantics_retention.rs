@@ -1409,9 +1409,9 @@ fn choose_branch_owned(value: &ChooseBranch) -> usize {
 fn template_argument_owned(value: &TemplateArgument) -> usize {
     value.name.capacity()
         + match &value.value {
-            TemplateArgumentValue::Text(text) | TemplateArgumentValue::Variable(text) => {
-                text.capacity()
-            }
+            TemplateArgumentValue::Text(text)
+            | TemplateArgumentValue::Variable(text)
+            | TemplateArgumentValue::Xslt10VariableString(text) => text.capacity(),
             TemplateArgumentValue::SourceVariablePath { variable, path } => {
                 variable.capacity() + path.known_owned_capacity_bytes()
             }

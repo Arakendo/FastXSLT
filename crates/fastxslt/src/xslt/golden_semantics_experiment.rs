@@ -1421,6 +1421,7 @@ pub(crate) enum TemplateArgumentValue {
     ContextNodeName,
     CurrentSourceNode,
     Variable(String),
+    Xslt10VariableString(String),
     SourceVariablePath {
         variable: String,
         path: LocationPath,

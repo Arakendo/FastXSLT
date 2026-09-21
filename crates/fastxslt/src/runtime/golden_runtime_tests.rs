@@ -9543,6 +9543,41 @@ fn xslt10_global_text_parts_compose_source_paths_and_literal_text() {
 }
 
 #[test]
+fn xslt10_template_argument_converts_a_temporary_tree_variable_to_string() {
+    const SOURCE: &str = "urn:fastxslt:template-argument-variable-string:source";
+    const STYLESHEET: &str = "urn:fastxslt:template-argument-variable-string:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="value"><xsl:value-of select="//Test/@a"/>x</xsl:variable><xsl:template match="/"><xsl:call-template name="emit"><xsl:with-param name="argument" select="string($value)"/></xsl:call-template></xsl:template><xsl:template name="emit"><xsl:param name="argument"/><out><xsl:value-of select="$argument"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, br#"<doc><Test a="A"/></doc>"#.to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile variable string template argument");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request(
+            "template-argument-variable-string",
+            "result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute variable string template argument");
+
+    assert_eq!(
+        results.by_request["template-argument-variable-string"].serialized,
+        "<out>Ax</out>"
+    );
+}
+
+#[test]
 fn xslt10_numeric_sort_uses_xpath_number_lexicals_and_equal_zero_keys() {
     const SOURCE: &str = "urn:fastxslt:xslt10-numeric-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-numeric-sort:stylesheet";

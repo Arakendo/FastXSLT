@@ -21,7 +21,9 @@ use crate::xslt::golden_semantics_experiment::{
 use super::dynamic_document::DynamicDocument;
 use super::result_tree::ResultNode;
 use super::template_selector::DocumentRootedMatchCache;
-use super::value_evaluator::{evaluate_binary_numeric_value, evaluate_xslt10_sum_path};
+use super::value_evaluator::{
+    evaluate_binary_numeric_value, evaluate_xslt10_sum_path, xslt10_variable_string_value,
+};
 use super::{
     ExecutionFailure, FailureCategory, MultipleMatchPolicy, control_failure,
     evaluate_xslt10_template_parameter_text_choice, failure, failure_at,
@@ -162,21 +164,12 @@ fn evaluate_template_argument(
             InvocationParameterValue::SourceNodes(vec![context])
         }
         TemplateArgumentValue::Variable(name) => {
-            if let Some(value) = variables.atomics.get(name) {
-                InvocationParameterValue::Atomic(value.clone())
-            } else if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
-                InvocationParameterValue::SourceNodes(nodes.clone())
-            } else if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
-                InvocationParameterValue::TemporaryTree(tree.clone())
-            } else {
-                return Err(failure_at(
-                    "FXRT0002",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    argument.location.clone(),
-                    format!("unbound template argument variable: ${name}"),
-                ));
-            }
+            evaluate_variable_template_argument(inputs, variables, name, &argument.location)?
+        }
+        TemplateArgumentValue::Xslt10VariableString(name) => {
+            InvocationParameterValue::Atomic(AtomicValue::string(xslt10_variable_string_value(
+                inputs, name, variables, control,
+            )?))
         }
         TemplateArgumentValue::SourceVariablePath { variable, path } => {
             evaluate_source_variable_path_argument(inputs, variable, path, variables, control)?
@@ -235,6 +228,30 @@ fn evaluate_template_argument(
             ))
         }
     })
+}
+
+fn evaluate_variable_template_argument(
+    inputs: &SequenceInputs<'_>,
+    variables: &RuntimeVariables,
+    name: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    if let Some(value) = variables.atomics.get(name) {
+        return Ok(InvocationParameterValue::Atomic(value.clone()));
+    }
+    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+        return Ok(InvocationParameterValue::SourceNodes(nodes.clone()));
+    }
+    if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
+        return Ok(InvocationParameterValue::TemporaryTree(tree.clone()));
+    }
+    Err(failure_at(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(inputs.request_id),
+        location.clone(),
+        format!("unbound template argument variable: ${name}"),
+    ))
 }
 
 fn evaluate_xslt10_for_each_path_string_content(
