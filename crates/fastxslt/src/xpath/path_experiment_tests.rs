@@ -2181,6 +2181,20 @@ fn chained_axis_then_position_predicates_preserve_lexical_filter_order() {
     assert_eq!(filtered.len(), 1);
     assert_eq!(document.string_value(filtered[0]), "outer");
     assert!(filtered_path.first_step_predicates_use_document_order);
+
+    let enclosed_step = parse_location_path("(((ancestor::doc[1]))/@att1)", location())
+        .expect("parenthesized reverse-axis step should preserve proximity order");
+    let enclosed = evaluate_location_path(&document, leaf, &enclosed_step);
+    assert_eq!(enclosed.len(), 1);
+    assert_eq!(document.string_value(enclosed[0]), "inner");
+    assert!(!enclosed_step.first_step_predicates_use_document_order);
+
+    let grouped_axis = parse_location_path("((ancestor::doc))[1]/@att1", location())
+        .expect("predicate outside a grouped reverse axis should use document order");
+    let grouped = evaluate_location_path(&document, leaf, &grouped_axis);
+    assert_eq!(grouped.len(), 1);
+    assert_eq!(document.string_value(grouped[0]), "outer");
+    assert!(grouped_axis.first_step_predicates_use_document_order);
 }
 
 #[test]

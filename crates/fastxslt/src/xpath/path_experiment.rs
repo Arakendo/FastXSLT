@@ -669,8 +669,15 @@ pub(crate) fn parse_location_path(
     if expression == "()" {
         return Ok(origin_only_path(PathOrigin::EmptySequence, location));
     }
+    let normalized_position = normalize_grouped_reverse_axis_position(expression);
+    let expression = normalized_position
+        .as_ref()
+        .map_or(expression, |(expression, _)| expression.as_str());
     let normalized_filter = unwrap_parenthesized_reverse_axis_filter(expression);
-    let first_step_predicates_use_document_order = normalized_filter.is_some();
+    let first_step_predicates_use_document_order = normalized_filter.is_some()
+        || normalized_position
+            .as_ref()
+            .is_some_and(|(_, document_order)| *document_order);
     let expression = normalized_filter.as_deref().unwrap_or(expression);
     let (expression, final_context_predicate) = parse_final_context_predicate(expression);
     let (expression, final_boolean_predicate) = parse_final_boolean_predicate(expression);
@@ -855,6 +862,81 @@ fn unwrap_parenthesized_reverse_axis_filter(expression: &str) -> Option<String> 
         return None;
     }
     Some(format!("{inner}{suffix}"))
+}
+
+fn normalize_grouped_reverse_axis_position(expression: &str) -> Option<(String, bool)> {
+    let expression = strip_enclosing_path_parentheses(expression.trim());
+    let slash = first_top_level_path_slash(expression)?;
+    let group = expression[..slash].trim();
+    let suffix = &expression[slash..];
+    if suffix.starts_with("//") {
+        return None;
+    }
+    let group = strip_enclosing_path_parentheses(group);
+    let (base, predicate) = group.rsplit_once('[')?;
+    let position = predicate.strip_suffix(']')?.trim().parse::<usize>().ok()?;
+    let base = base.trim();
+    let step = strip_enclosing_path_parentheses(base);
+    let predicate_uses_document_order = step != base;
+    let supported_reverse_axis = step.starts_with("ancestor::")
+        || step.starts_with("ancestor-or-self::")
+        || step.starts_with("preceding::")
+        || step.starts_with("preceding-sibling::");
+    if position == 0 || !supported_reverse_axis || step.contains(['/', '[', ']', '(', ')']) {
+        return None;
+    }
+    Some((
+        format!("{step}[{position}]{suffix}"),
+        predicate_uses_document_order,
+    ))
+}
+
+fn strip_enclosing_path_parentheses(mut expression: &str) -> &str {
+    loop {
+        let Some(inner) = expression
+            .strip_prefix('(')
+            .and_then(|expression| expression.strip_suffix(')'))
+        else {
+            return expression;
+        };
+        if matching_path_parenthesis(expression, 0) != Some(expression.len() - 1) {
+            return expression;
+        }
+        expression = inner.trim();
+    }
+}
+
+fn first_top_level_path_slash(expression: &str) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, character) in expression.char_indices() {
+        match character {
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            '/' if depth == 0 => return Some(index),
+            _ => {}
+        }
+    }
+    None
+}
+
+fn matching_path_parenthesis(expression: &str, opening: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, character) in expression
+        .char_indices()
+        .skip_while(|(index, _)| *index < opening)
+    {
+        match character {
+            '(' => depth += 1,
+            ')' => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn is_xpath_whitespace(character: char) -> bool {

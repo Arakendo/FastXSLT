@@ -2617,3 +2617,12 @@ maintained redistributable legacy suite becomes available.
   execution failures and mismatches remain unchanged, while generic
   `FXXP1001` initialization failures fall to 28.
   [Evidence](../Evidence/oasis-xslt10-chained-relational-predicates-2026-09-20.md)
+- 2026-09-20 -- Grouped reverse-axis position paths now retain whether the
+  predicate is inside the axis step or outside its grouped node-set. The former
+  uses reverse proximity; the latter uses document order. Redundant enclosing
+  parentheses normalize only after that fact is recorded. Unchanged Lotus
+  `position85` becomes exact. Initialization reaches 2,119, successful
+  execution 2,030, and the strict lower bound 1,899 (59.85%); execution
+  failures and mismatches remain unchanged, while generic `FXXP1001`
+  initialization failures fall to 27.
+  [Evidence](../Evidence/oasis-xslt10-grouped-reverse-axis-position-2026-09-20.md)

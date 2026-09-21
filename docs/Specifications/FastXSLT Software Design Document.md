@@ -535,6 +535,13 @@ and reverse-axis positional behavior. `following-sibling` additionally admits
 `text()` and preserves its forward-axis order. Comment and
 processing-instruction kind tests remain unsupported on sibling axes, and
 non-node principal kinds remain unsupported on `preceding-sibling`.
+A supported reverse-axis named step followed by one positive integer predicate
+and a path suffix may retain redundant grouping parentheses. A predicate inside
+the reverse-axis step uses reverse-axis proximity order; a predicate outside a
+grouped reverse-axis result uses document order. Compilation records that
+distinction before normalizing the typed path, so grouping is not erased into a
+different result. This does not admit arbitrary grouped filters, dynamic
+positions, or a general parenthesized XPath grammar.
 The exact `string-length(.) = nonnegative-integer` conditional form counts
 Unicode codepoints in the controlled context string value and charges the scan
 to XPath work. It does not admit general string functions, alternate operands,
