@@ -70,6 +70,11 @@ pub(super) enum PathBooleanPredicate {
         value: String,
         equal: bool,
     },
+    ParentAttributeStringComparison {
+        attribute: String,
+        value: String,
+        equal: bool,
+    },
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
@@ -113,6 +118,9 @@ impl PathBooleanPredicate {
                 value,
                 ..
             } => child_path_capacity(children) + attribute.capacity() + value.capacity(),
+            Self::ParentAttributeStringComparison {
+                attribute, value, ..
+            } => attribute.capacity() + value.capacity(),
             Self::ContextStringEquals(value)
             | Self::ContextNameComparison { value, .. }
             | Self::ContextNameStartsWith(value)
@@ -155,21 +163,8 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
             value,
         });
     }
-    if let Some((left, right)) = parse_child_path_string_equality(predicate) {
-        return Some(PathBooleanPredicate::ChildPathStringEquals { left, right });
-    }
-    if let Some((path, value, equal)) = parse_child_path_string_comparison(predicate) {
-        return Some(PathBooleanPredicate::ChildPathStringComparison { path, value, equal });
-    }
-    if let Some((children, attribute, value, equal)) =
-        parse_child_attribute_string_comparison(predicate)
-    {
-        return Some(PathBooleanPredicate::ChildAttributeStringComparison {
-            children,
-            attribute,
-            value,
-            equal,
-        });
+    if let Some(comparison) = parse_relative_path_comparison(predicate) {
+        return Some(comparison);
     }
     if let Some((name, value)) = parse_attribute_inequality(predicate) {
         return Some(PathBooleanPredicate::NotEquals {
@@ -240,6 +235,36 @@ pub(super) fn recognizes_child_element_integer_equality(predicate: &str) -> bool
     parse_child_element_integer_equality(strip_outer_parentheses(predicate.trim())).is_some()
 }
 
+pub(super) fn recognizes_parent_attribute_string_comparison(predicate: &str) -> bool {
+    parse_parent_attribute_string_comparison(strip_outer_parentheses(predicate.trim())).is_some()
+}
+
+fn parse_relative_path_comparison(predicate: &str) -> Option<PathBooleanPredicate> {
+    if let Some((left, right)) = parse_child_path_string_equality(predicate) {
+        return Some(PathBooleanPredicate::ChildPathStringEquals { left, right });
+    }
+    if let Some((path, value, equal)) = parse_child_path_string_comparison(predicate) {
+        return Some(PathBooleanPredicate::ChildPathStringComparison { path, value, equal });
+    }
+    if let Some((children, attribute, value, equal)) =
+        parse_child_attribute_string_comparison(predicate)
+    {
+        return Some(PathBooleanPredicate::ChildAttributeStringComparison {
+            children,
+            attribute,
+            value,
+            equal,
+        });
+    }
+    parse_parent_attribute_string_comparison(predicate).map(|(attribute, value, equal)| {
+        PathBooleanPredicate::ParentAttributeStringComparison {
+            attribute,
+            value,
+            equal,
+        }
+    })
+}
+
 pub(super) fn evaluate(
     document: &Document,
     node: NodeId,
@@ -284,14 +309,7 @@ pub(super) fn evaluate(
             attribute_string_length_compare(document, node, name, *length, true, control)
         }
         PathBooleanPredicate::DescendantElementComparison { value, equal } => {
-            for descendant in descendant_nodes(document, node, control)? {
-                if document.kind(descendant) == NodeKind::Element
-                    && (document.string_value(descendant) == *value) == *equal
-                {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
+            descendant_element_comparison(document, node, value, *equal, control)
         }
         PathBooleanPredicate::FollowingSiblingElementNumberComparison { value, operator } => {
             for sibling in following_siblings(document, node) {
@@ -332,6 +350,11 @@ pub(super) fn evaluate(
         } => child_attribute_string_comparison(
             document, node, children, attribute, value, *equal, control,
         ),
+        PathBooleanPredicate::ParentAttributeStringComparison {
+            attribute,
+            value,
+            equal,
+        } => parent_attribute_string_comparison(document, node, attribute, value, *equal, control),
         PathBooleanPredicate::Not(operand) => Ok(!evaluate(document, node, operand, control)?),
         PathBooleanPredicate::And(left, right) => {
             if !evaluate(document, node, left, control)? {
@@ -367,6 +390,23 @@ fn context_string_equals(
 ) -> Result<bool, ControlFailure> {
     control.charge(WorkDomain::XPathOperation, 1)?;
     Ok(document.string_value(node) == value)
+}
+
+fn descendant_element_comparison(
+    document: &Document,
+    node: NodeId,
+    value: &str,
+    equal: bool,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for descendant in descendant_nodes(document, node, control)? {
+        if document.kind(descendant) == NodeKind::Element
+            && (document.string_value(descendant) == value) == equal
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn parse_child_path_string_equality(
@@ -429,6 +469,29 @@ fn parse_child_attribute_string_operand(
     let (children, attribute) = path.rsplit_once("/@")?;
     Some((
         parse_relative_child_path(children)?,
+        is_ascii_ncname(attribute).then(|| attribute.to_owned())?,
+        xpath_string_literal(literal)?.to_owned(),
+    ))
+}
+
+fn parse_parent_attribute_string_comparison(predicate: &str) -> Option<(String, String, bool)> {
+    for (operator, equal) in [("!=", false), ("=", true)] {
+        let Some((left, right)) = split_top_level_predicate_operator(predicate, operator) else {
+            continue;
+        };
+        if let Some((attribute, value)) =
+            parse_parent_attribute_string_operand(left.trim(), right.trim())
+                .or_else(|| parse_parent_attribute_string_operand(right.trim(), left.trim()))
+        {
+            return Some((attribute, value, equal));
+        }
+    }
+    None
+}
+
+fn parse_parent_attribute_string_operand(path: &str, literal: &str) -> Option<(String, String)> {
+    let attribute = path.strip_prefix("../@")?;
+    Some((
         is_ascii_ncname(attribute).then(|| attribute.to_owned())?,
         xpath_string_literal(literal)?.to_owned(),
     ))
@@ -687,6 +750,25 @@ fn attribute_not_equal(
         }
     }
     Ok(false)
+}
+
+fn parent_attribute_string_comparison(
+    document: &Document,
+    node: NodeId,
+    attribute: &str,
+    value: &str,
+    equal: bool,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    control.charge(WorkDomain::XPathNodeVisit, 1)?;
+    let Some(parent) = document.parent(node) else {
+        return Ok(false);
+    };
+    if equal {
+        has_named_attribute(document, parent, attribute, Some(value), control)
+    } else {
+        attribute_not_equal(document, parent, attribute, value, control)
+    }
 }
 
 fn child_element_count_equals(

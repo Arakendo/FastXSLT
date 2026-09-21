@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Parent-Attribute Predicate](oasis-xslt10-parent-attribute-predicate-2026-09-20.md)
 - [OASIS XSLT 1.0 Following-Sibling Text Kind Test](oasis-xslt10-following-sibling-text-kind-test-2026-09-20.md)
 - [OASIS XSLT 1.0 Child Node-Test Numeric Predicates](oasis-xslt10-child-node-test-numeric-predicates-2026-09-20.md)
 - [OASIS XSLT 1.0 Global Number Path and Variable Division](oasis-xslt10-global-number-path-and-variable-division-2026-09-20.md)

@@ -1828,6 +1828,29 @@ fn path_boolean_predicate_compares_named_and_wildcard_children_with_integer() {
 }
 
 #[test]
+fn path_boolean_predicate_compares_parent_attributes_with_string_literals() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><group pick='yes'><item>kept</item></group><group pick='no'><item>missed</item></group></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let selected = evaluate_location_path(
+        &document,
+        document.document_node(),
+        &parse_location_path("doc//item[../@pick='yes']", location())
+            .expect("parent attribute comparison should parse"),
+    );
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "kept");
+}
+
+#[test]
 fn path_boolean_predicate_compares_dynamic_node_sets_and_positional_children() {
     let parsed = parse_document(
         "memory:source.xml",

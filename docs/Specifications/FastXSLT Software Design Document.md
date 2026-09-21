@@ -555,6 +555,12 @@ operator. Runtime applies existential node-set-to-number equality over direct
 element children and charges both child visits and numeric conversions. This
 does not admit arithmetic `div` or `*`, qualified child tests, deeper relative
 paths, alternate comparison operators, or general numeric predicates.
+A final path predicate may compare one immediate-parent unqualified attribute
+with one string literal using `=` or `!=`. Runtime charges the parent visit and
+attribute scan, preserves XPath node-set comparison behavior when the parent or
+attribute is absent, and retains candidate focus at the selected child. This
+does not admit general parent-relative paths, qualified attributes, dynamic
+operands, or composed parent predicates.
 The exact XSLT 1.0 comparison `. = $variable` requires the variable to hold a
 source-node sequence and applies XPath 1.0 node-set equality: the result is
 true when the controlled string value of the current source node equals that

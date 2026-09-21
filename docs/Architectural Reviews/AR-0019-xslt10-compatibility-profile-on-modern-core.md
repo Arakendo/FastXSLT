@@ -2581,3 +2581,11 @@ maintained redistributable legacy suite becomes available.
   (59.60%); mismatches remain 55 and generic `FXXP1001` initialization
   failures fall to 35.
   [Evidence](../Evidence/oasis-xslt10-following-sibling-text-kind-test-2026-09-20.md)
+- 2026-09-20 -- Final path predicates now admit exact immediate-parent
+  unqualified-attribute comparison with a string literal. Parent and attribute
+  traversal remain invocation-owned and charged, and the parser does not admit
+  general parent-relative expressions. Unchanged Lotus `copy42` becomes exact.
+  Initialization reaches 2,112, successful execution 2,023, and the strict
+  lower bound 1,892 (59.63%); execution failures and mismatches remain
+  unchanged, while generic `FXXP1001` initialization failures fall to 34.
+  [Evidence](../Evidence/oasis-xslt10-parent-attribute-predicate-2026-09-20.md)
