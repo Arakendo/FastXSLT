@@ -781,6 +781,16 @@ temporary-tree string semantics. The result is one charged temporary text
 node. This is not a general global instruction executor, and source or other
 dynamic values do not enter compiled state.
 
+The same compatibility boundary admits one conditional global-text shape:
+`xsl:choose` containing one `xsl:when` that compares a direct variable to a
+string literal, followed by `xsl:otherwise`, with each branch containing one
+static `xsl:text`. The referenced expanded-name key participates in global
+dependency ordering. Dependency ordering is repeated after stylesheet modules
+are merged so included bindings are visible, and cross-module cycles remain a
+reported error. Evaluation selects one branch during invocation-owned global
+materialization and constructs one charged temporary text node. This does not
+admit general global conditionals or instruction execution.
+
 A direct local-variable alias preserves the resolved binding's value kind.
 Resolution first considers earlier lexical local bindings and falls back to a
 global only while that expanded name has not yet been shadowed locally. The

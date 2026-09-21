@@ -202,6 +202,7 @@ fn merge_included_program(
         }
         program.global_bindings.push(binding);
     }
+    super::order_merged_global_dependencies(&mut program.global_bindings, location)?;
     Ok(())
 }
 

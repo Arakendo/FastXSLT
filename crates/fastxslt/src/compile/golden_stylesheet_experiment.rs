@@ -669,6 +669,41 @@ fn order_global_dependencies(
     Ok(())
 }
 
+pub(super) fn order_merged_global_dependencies(
+    bindings: &mut Vec<GlobalBinding>,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    let mut pending = std::mem::take(bindings);
+    let mut ordered = Vec::with_capacity(pending.len());
+    while !pending.is_empty() {
+        let ready = pending.iter().position(|binding| {
+            global_dependencies(&binding.default)
+                .all(|dependency| !pending.iter().any(|candidate| candidate.name == dependency))
+        });
+        let Some(ready) = ready else {
+            let binding = &pending[0];
+            let dependency = global_dependencies(&binding.default)
+                .find(|dependency| {
+                    pending
+                        .iter()
+                        .any(|candidate| candidate.name == **dependency)
+                })
+                .expect("an unresolved merged cycle retains one pending dependency");
+            return Err(invalid(
+                "XTDE0640",
+                format!(
+                    "circular merged global dependency includes ${} -> ${dependency}",
+                    binding.name
+                ),
+                location,
+            ));
+        };
+        ordered.push(pending.remove(ready));
+    }
+    *bindings = ordered;
+    Ok(())
+}
+
 fn global_dependencies(default: &GlobalBindingDefault) -> impl Iterator<Item = &str> {
     use crate::xslt::golden_semantics_experiment::Xslt10TemporaryTextPart;
 
@@ -680,6 +715,9 @@ fn global_dependencies(default: &GlobalBindingDefault) -> impl Iterator<Item = &
                 Xslt10TemporaryTextPart::Variable(name) => Some(name.as_str()),
                 Xslt10TemporaryTextPart::Text(_) | Xslt10TemporaryTextPart::SourcePath(_) => None,
             }));
+        }
+        GlobalBindingDefault::Xslt10ConditionalText { variable, .. } => {
+            dependencies.push(variable.as_str());
         }
         _ => {}
     }
@@ -1003,6 +1041,9 @@ fn compile_content_global_default(
     if let Some(parts) = compile_xslt10_temporary_text_parts(document, element, declared_type)? {
         return Ok(parts);
     }
+    if let Some(conditional) = compile_xslt10_conditional_text(document, element, declared_type)? {
+        return Ok(conditional);
+    }
     if let Some(temporary) = compile_parentless_temporary_node(document, element, declared_type)? {
         return Ok(temporary);
     }
@@ -1087,6 +1128,86 @@ fn compile_xslt10_temporary_text_parts(
         }
     }
     Ok(Some(GlobalBindingDefault::Xslt10TemporaryTextParts(parts)))
+}
+
+fn compile_xslt10_conditional_text(
+    document: &Document,
+    element: NodeId,
+    declared_type: Option<&str>,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    if declared_type.is_some() {
+        return Ok(None);
+    }
+    let children = meaningful_children(document, element);
+    let [choose] = children.as_slice() else {
+        return Ok(None);
+    };
+    if !is_xslt_element(document, *choose, "choose") {
+        return Ok(None);
+    }
+    ensure_only_attributes(document, *choose, &[], "xsl:choose")?;
+    let branches = meaningful_children(document, *choose);
+    let [when, otherwise] = branches.as_slice() else {
+        return Ok(None);
+    };
+    if !is_xslt_element(document, *when, "when")
+        || !is_xslt_element(document, *otherwise, "otherwise")
+    {
+        return Ok(None);
+    }
+    ensure_only_attributes(document, *when, &["test"], "xsl:when")?;
+    ensure_only_attributes(document, *otherwise, &[], "xsl:otherwise")?;
+    let test = required_attribute(document, *when, None, "test")?;
+    let Some((left, right)) = test.split_once('=') else {
+        return Ok(None);
+    };
+    let Some(variable) = left.trim().strip_prefix('$') else {
+        return Ok(None);
+    };
+    let Some(expected) = xpath_string_literal(right.trim()) else {
+        return Ok(None);
+    };
+    let variable = normalize_variable_qname(document, *when, variable).map_err(|_| {
+        invalid(
+            "FXXP0002",
+            format!("invalid variable reference in global conditional: {test}"),
+            document.location(*when),
+        )
+    })?;
+    let Some(when_true) = static_xsl_text_child(document, *when)? else {
+        return Ok(None);
+    };
+    let Some(when_false) = static_xsl_text_child(document, *otherwise)? else {
+        return Ok(None);
+    };
+    Ok(Some(GlobalBindingDefault::Xslt10ConditionalText {
+        variable,
+        expected: expected.to_owned(),
+        when_true,
+        when_false,
+    }))
+}
+
+fn static_xsl_text_child(
+    document: &Document,
+    parent: NodeId,
+) -> Result<Option<String>, CompileFailure> {
+    let children = meaningful_children(document, parent);
+    let [text] = children.as_slice() else {
+        return Ok(None);
+    };
+    if !is_xslt_element(document, *text, "text") {
+        return Ok(None);
+    }
+    ensure_only_attributes(document, *text, &[], "xsl:text")?;
+    if document
+        .children(*text)
+        .iter()
+        .any(|child| document.kind(*child) != NodeKind::Text)
+    {
+        return Ok(None);
+    }
+    Ok(Some(document.string_value(*text)))
 }
 
 fn compile_variable_global(

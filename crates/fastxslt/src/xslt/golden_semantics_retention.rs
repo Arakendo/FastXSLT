@@ -189,6 +189,17 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
                     Xslt10TemporaryTextPart::SourcePath(path) => path.known_owned_capacity_bytes(),
                 })
             }
+            GlobalBindingDefault::Xslt10ConditionalText {
+                variable,
+                expected,
+                when_true,
+                when_false,
+            } => {
+                variable.capacity()
+                    + expected.capacity()
+                    + when_true.capacity()
+                    + when_false.capacity()
+            }
             GlobalBindingDefault::TemporaryAttribute { name, value } => {
                 name_owned(name) + value.capacity()
             }

@@ -2512,3 +2512,11 @@ maintained redistributable legacy suite becomes available.
   2,012, and the strict lower bound to 1,881 (59.28%); execution failures and
   mismatches remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-variable-string-template-arguments-2026-09-20.md)
+- 2026-09-20 -- A bounded global conditional-text plan now represents one
+  direct-variable string comparison with static text branches. Global
+  dependency ordering is repeated after included modules merge, preserving
+  cross-module cycle rejection and making included dependencies visible before
+  materialization. Unchanged Lotus `variable70` becomes exact, raising
+  initialization to 2,100, successful execution to 2,013, and the strict lower
+  bound to 1,882 (59.31%); execution failures and mismatches remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-included-global-conditional-text-2026-09-20.md)

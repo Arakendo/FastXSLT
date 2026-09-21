@@ -159,6 +159,12 @@ pub(crate) enum GlobalBindingDefault {
     Xslt10TemporarySourceString(LocationPath),
     Xslt10TemporarySourceCopy(LocationPath),
     Xslt10TemporaryTextParts(Vec<Xslt10TemporaryTextPart>),
+    Xslt10ConditionalText {
+        variable: String,
+        expected: String,
+        when_true: String,
+        when_false: String,
+    },
     Xslt10ForEachText(LocationPath),
     TemporaryAttribute {
         name: ExpandedName,

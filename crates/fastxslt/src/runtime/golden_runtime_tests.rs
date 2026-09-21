@@ -9578,6 +9578,37 @@ fn xslt10_template_argument_converts_a_temporary_tree_variable_to_string() {
 }
 
 #[test]
+fn xslt10_global_conditional_text_uses_an_ordered_global_dependency() {
+    const SOURCE: &str = "urn:fastxslt:global-conditional-text:source";
+    const STYLESHEET: &str = "urn:fastxslt:global-conditional-text:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="result"><xsl:choose><xsl:when test="$input='bar'"><xsl:text>matched</xsl:text></xsl:when><xsl:otherwise><xsl:text>not matched</xsl:text></xsl:otherwise></xsl:choose></xsl:variable><xsl:variable name="input"><xsl:value-of select="/doc/value"/></xsl:variable><xsl:template match="/"><out><xsl:value-of select="$result"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<doc><value>bar</value></doc>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile conditional global");
+    assert_eq!(program.global_bindings[0].name, "input");
+    assert_eq!(program.global_bindings[1].name, "result");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("global-conditional-text", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute conditional global");
+
+    assert_eq!(
+        results.by_request["global-conditional-text"].serialized,
+        "<out>matched</out>"
+    );
+}
+
+#[test]
 fn xslt10_numeric_sort_uses_xpath_number_lexicals_and_equal_zero_keys() {
     const SOURCE: &str = "urn:fastxslt:xslt10-numeric-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-numeric-sort:stylesheet";

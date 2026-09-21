@@ -700,6 +700,25 @@ fn materialize_global_default(
             )?;
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
+        GlobalBindingDefault::Xslt10ConditionalText {
+            variable,
+            expected,
+            when_true,
+            when_false,
+        } => {
+            let actual = global_string_value(globals, variable, source, request_id, control)?;
+            let value = if actual == *expected {
+                when_true
+            } else {
+                when_false
+            };
+            let tree = materialize_parentless_temporary_node(
+                TemporaryNodeKind::Text(value.clone()),
+                request_id,
+                control,
+            )?;
+            globals.temporary_trees.insert(binding.name.clone(), tree);
+        }
         GlobalBindingDefault::Xslt10ForEachText(path) => {
             materialize_global_xslt10_for_each_text(
                 globals, binding, path, source, request_id, control,
