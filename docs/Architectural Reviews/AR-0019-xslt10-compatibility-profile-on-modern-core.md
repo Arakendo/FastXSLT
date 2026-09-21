@@ -2520,3 +2520,12 @@ maintained redistributable legacy suite becomes available.
   initialization to 2,100, successful execution to 2,013, and the strict lower
   bound to 1,882 (59.31%); execution failures and mismatches remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-included-global-conditional-text-2026-09-20.md)
+- 2026-09-20 -- A global XSLT 1.0 temporary-text constructor containing one
+  parameter-free call to a same-module named template may now lower to the
+  existing typed plan when that template contains exactly one direct-global
+  variable `xsl:value-of`. This compile-time specialization neither executes a
+  template from compiled state nor admits general global instruction
+  execution. Unchanged Lotus `variable31` becomes exact, raising initialization
+  to 2,101, successful execution to 2,014, and the strict lower bound to 1,883
+  (59.34%); execution failures and mismatches remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-named-template-global-text-2026-09-20.md)

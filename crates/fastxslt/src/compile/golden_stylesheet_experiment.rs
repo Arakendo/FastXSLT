@@ -1038,6 +1038,11 @@ fn compile_content_global_default(
     if let Some(text) = compile_xslt10_static_text_global(document, element, declared_type)? {
         return Ok(text);
     }
+    if let Some(parts) =
+        compile_xslt10_named_template_text_global(document, element, declared_type)?
+    {
+        return Ok(parts);
+    }
     if let Some(parts) = compile_xslt10_temporary_text_parts(document, element, declared_type)? {
         return Ok(parts);
     }
@@ -1071,6 +1076,76 @@ fn compile_xslt10_static_text_global(
     }
     instruction_compiler::compile_xslt10_static_text_tree(document, element)
         .map(|value| value.map(GlobalBindingDefault::TemporaryText))
+}
+
+fn compile_xslt10_named_template_text_global(
+    document: &Document,
+    element: NodeId,
+    declared_type: Option<&str>,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    use crate::xslt::golden_semantics_experiment::Xslt10TemporaryTextPart;
+
+    let Some(stylesheet) = document.parent(element) else {
+        return Ok(None);
+    };
+    if declared_type.is_some()
+        || optional_attribute(document, stylesheet, None, "version") != Some("1.0")
+    {
+        return Ok(None);
+    }
+    let children = meaningful_children(document, element);
+    let [call] = children.as_slice() else {
+        return Ok(None);
+    };
+    if !is_xslt_element(document, *call, "call-template") {
+        return Ok(None);
+    }
+    ensure_only_attributes(document, *call, &["name"], "xsl:call-template")?;
+    ensure_no_meaningful_children(document, *call, "xsl:call-template")?;
+    let called_name = normalize_named_template_name(
+        document,
+        *call,
+        required_attribute(document, *call, None, "name")?,
+    )?;
+    let mut called_template = None;
+    for candidate in document.children(stylesheet) {
+        if !is_xslt_element(document, *candidate, "template") {
+            continue;
+        }
+        let Some(name) = optional_attribute(document, *candidate, None, "name") else {
+            continue;
+        };
+        if normalize_named_template_name(document, *candidate, name)? == called_name {
+            called_template = Some(*candidate);
+            break;
+        }
+    }
+    let Some(called_template) = called_template else {
+        return Ok(None);
+    };
+    let template_children = meaningful_children(document, called_template);
+    let [value_of] = template_children.as_slice() else {
+        return Ok(None);
+    };
+    if !is_xslt_element(document, *value_of, "value-of") {
+        return Ok(None);
+    }
+    ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+    ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
+    let select = required_attribute(document, *value_of, None, "select")?.trim();
+    let Some(variable) = select.strip_prefix('$') else {
+        return Ok(None);
+    };
+    let variable = normalize_variable_qname(document, *value_of, variable).map_err(|_| {
+        invalid(
+            "FXXP0002",
+            format!("invalid variable reference: {select}"),
+            document.location(*value_of),
+        )
+    })?;
+    Ok(Some(GlobalBindingDefault::Xslt10TemporaryTextParts(vec![
+        Xslt10TemporaryTextPart::Variable(variable),
+    ])))
 }
 
 fn compile_xslt10_temporary_text_parts(

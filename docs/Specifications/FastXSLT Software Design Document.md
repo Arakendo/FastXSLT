@@ -791,6 +791,18 @@ reported error. Evaluation selects one branch during invocation-owned global
 materialization and constructs one charged temporary text node. This does not
 admit general global conditionals or instruction execution.
 
+The XSLT 1.0 compatibility compiler may also lower one deliberately bounded
+named-template global constructor into that same typed temporary-text plan. The
+global content must be exactly one parameter-free `xsl:call-template`; the
+resolved same-module named template must contain exactly one `xsl:value-of`
+selecting a direct global variable. The referenced expanded name participates
+in ordinary global dependency ordering, and invocation materialization retains
+the same value conversion and charge points as a directly written global
+`xsl:value-of`. This is compile-time semantic specialization, not execution of
+a template from compiled global state. Template parameters, mixed or dynamic
+bodies, imported/included named-template resolution, source focus, and general
+global template execution remain outside this boundary.
+
 A direct local-variable alias preserves the resolved binding's value kind.
 Resolution first considers earlier lexical local bindings and falls back to a
 global only while that expanded name has not yet been shadowed locally. The
