@@ -1712,23 +1712,33 @@ fn compile_constructed_nodes(
 ) -> Result<Vec<ConstructedNode>, CompileFailure> {
     meaningful_children(document, parent)
         .into_iter()
-        .map(|child| match document.kind(child) {
-            NodeKind::Text => Ok(ConstructedNode::Text(
-                document.value(child).unwrap_or_default().to_owned(),
-            )),
-            NodeKind::Element => {
-                compile_constructed_element(document, child).map(ConstructedNode::Element)
-            }
-            NodeKind::Comment | NodeKind::ProcessingInstruction => {
-                unreachable!("meaningful_children excludes comments and processing instructions")
-            }
-            NodeKind::Document | NodeKind::Attribute => Err(invalid(
-                "FXST0006",
-                "unexpected node kind in a temporary-tree constructor",
-                document.location(child),
-            )),
-        })
+        .map(|child| compile_constructed_node(document, child))
         .collect()
+}
+
+fn compile_constructed_node(
+    document: &Document,
+    node: NodeId,
+) -> Result<ConstructedNode, CompileFailure> {
+    match document.kind(node) {
+        NodeKind::Text => Ok(ConstructedNode::Text(
+            document.value(node).unwrap_or_default().to_owned(),
+        )),
+        NodeKind::Element if is_xslt_element(document, node, "text") => {
+            instruction_compiler::compile_text_value(document, node).map(ConstructedNode::Text)
+        }
+        NodeKind::Element => {
+            compile_constructed_element(document, node).map(ConstructedNode::Element)
+        }
+        NodeKind::Comment | NodeKind::ProcessingInstruction => {
+            unreachable!("meaningful_children excludes comments and processing instructions")
+        }
+        NodeKind::Document | NodeKind::Attribute => Err(invalid(
+            "FXST0006",
+            "unexpected node kind in a temporary-tree constructor",
+            document.location(node),
+        )),
+    }
 }
 
 fn compile_constructed_element(
@@ -1771,22 +1781,7 @@ pub(super) fn compile_constructed_children(
 ) -> Result<Vec<ConstructedNode>, CompileFailure> {
     meaningful_children(document, parent)
         .into_iter()
-        .map(|child| match document.kind(child) {
-            NodeKind::Text => Ok(ConstructedNode::Text(
-                document.value(child).unwrap_or_default().to_owned(),
-            )),
-            NodeKind::Element => {
-                compile_constructed_element(document, child).map(ConstructedNode::Element)
-            }
-            NodeKind::Comment | NodeKind::ProcessingInstruction => {
-                unreachable!("meaningful_children excludes comments and processing instructions")
-            }
-            NodeKind::Document | NodeKind::Attribute => Err(invalid(
-                "FXST0006",
-                "unexpected node kind in a temporary-tree constructor",
-                document.location(child),
-            )),
-        })
+        .map(|child| compile_constructed_node(document, child))
         .collect()
 }
 

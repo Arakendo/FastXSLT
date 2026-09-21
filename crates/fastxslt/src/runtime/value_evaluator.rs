@@ -562,6 +562,15 @@ pub(super) fn execute_value_of(
                 control,
             )?;
         }
+        ValueExpression::Xslt10GroupedVariablePositionPath {
+            selection,
+            variable,
+            suffix,
+        } => {
+            xslt10_compatibility::append_grouped_variable_position_path(
+                inputs, context, selection, variable, suffix, variables, result, control,
+            )?;
+        }
         ValueExpression::Xslt10VariablePath { variable, path } => {
             xslt10_compatibility::append_variable_path(
                 inputs, variable, path, variables, result, control,

@@ -319,6 +319,16 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         return Ok(ValueExpression::Xslt10VariableNumber(variable.to_owned()));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((selection, variable, suffix)) =
+            compile_xslt10_grouped_variable_position_path(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10GroupedVariablePositionPath {
+            selection,
+            variable,
+            suffix,
+        });
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some((path, variable, explicit_position_comparison)) =
             compile_xslt10_variable_position_path(document, element, expression, location)?
     {
@@ -1118,6 +1128,81 @@ pub(super) fn compile_xslt10_variable_position_path(
         variable.to_owned(),
         explicit_position_comparison,
     )))
+}
+
+fn compile_xslt10_grouped_variable_position_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<(LocationPath, String, LocationPath)>, CompileFailure> {
+    let expression = expression.trim();
+    let Some(selection_end) = matching_outer_parenthesis(expression) else {
+        return Ok(None);
+    };
+    let selection = expression[1..selection_end].trim();
+    let remainder = expression[selection_end + 1..].trim();
+    let Some((predicate, suffix)) = remainder
+        .strip_prefix('[')
+        .and_then(|value| value.split_once("]/"))
+    else {
+        return Ok(None);
+    };
+    let Some(variable) = predicate.trim().strip_prefix('$') else {
+        return Ok(None);
+    };
+    if selection.is_empty() || suffix.trim().is_empty() {
+        return Ok(None);
+    }
+    let variable = normalize_variable_qname(document, element, variable)?;
+    let mut selection =
+        parse_location_path(selection, location.clone()).map_err(map_path_failure)?;
+    let mut suffix =
+        parse_location_path(suffix.trim(), location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        apply_default_namespace(&mut selection, namespace);
+        apply_default_namespace(&mut suffix, namespace);
+    }
+    Ok(Some((selection, variable, suffix)))
+}
+
+fn matching_outer_parenthesis(expression: &str) -> Option<usize> {
+    if !expression.starts_with('(') {
+        return None;
+    }
+    let mut quote = None;
+    let mut depth = 0_usize;
+    for (offset, character) in expression.char_indices() {
+        if matches!(character, '\'' | '"') {
+            if quote == Some(character) {
+                quote = None;
+            } else if quote.is_none() {
+                quote = Some(character);
+            }
+            continue;
+        }
+        if quote.is_some() {
+            continue;
+        }
+        match character {
+            '(' => depth += 1,
+            ')' if depth == 1 => return Some(offset),
+            ')' => depth = depth.checked_sub(1)?,
+            _ => {}
+        }
+    }
+    None
+}
+
+fn apply_default_namespace(path: &mut LocationPath, namespace: &str) {
+    for step in &mut path.steps {
+        if let PathStep::ChildNamed(local) = step {
+            *step = PathStep::ChildExpandedName(ExpandedName {
+                namespace: Some(namespace.to_owned()),
+                local: local.clone(),
+            });
+        }
+    }
 }
 
 fn parse_variable_position_predicate(predicate: &str) -> Option<(&str, bool)> {

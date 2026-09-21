@@ -763,8 +763,11 @@ other source-copy paths or mixed global constructors.
 
 A static global temporary tree retains an ordered list of typed constructed
 nodes at its temporary-document root, not merely element roots. This permits
-literal elements and non-whitespace literal text to remain interleaved without
-turning static content into executable instructions. Materialization,
+literal elements, non-whitespace literal text, and explicit static `xsl:text`
+nodes to remain interleaved without turning static content into executable
+instructions. Explicit text uses the ordinary text-instruction validator, so
+invalid content and `disable-output-escaping="yes"` remain visible rather than
+being approximated. Materialization,
 namespace-alias rewriting, ownership accounting, and XDM-node charging cover
 every root. A declared `element()` type still requires exactly one element
 root. This shared representation does not admit dynamic global instruction
@@ -896,6 +899,15 @@ value parts. The recursion guard `$pos < count($series)` is a separate typed
 boolean plan over the same runtime bindings. These plans share conversion,
 work charging, and typed-failure behavior; they do not admit unrestricted
 variable predicates or establish a second XSLT 1.0 value model.
+
+A separate value-production plan preserves the filter boundary in the bounded
+`(path)[$position]/suffix` form. Execution first evaluates the grouped path in
+document order, applies XSLT 1.0 numeric-variable conversion to that completed
+node-set, and only then evaluates the suffix from the selected node. The final
+value uses ordinary first-node XSLT 1.0 string conversion, and both path phases
+retain the existing work charging and cancellation checks. This does not
+flatten the filter into the final path step or admit general parenthesized
+filters, arbitrary predicates, or sequence expressions.
 
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource

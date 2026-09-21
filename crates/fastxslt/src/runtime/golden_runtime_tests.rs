@@ -9603,6 +9603,68 @@ fn xslt10_global_tree_can_use_prior_static_local_bindings() {
 }
 
 #[test]
+fn xslt10_static_global_tree_preserves_explicit_text_in_document_order() {
+    const SOURCE: &str = "urn:fastxslt:global-explicit-text:source";
+    const STYLESHEET: &str = "urn:fastxslt:global-explicit-text:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="tree"><root><xsl:text> before </xsl:text><item/><xsl:text> after </xsl:text></root></xsl:variable><xsl:template match="/"><xsl:copy-of select="$tree"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<unused/>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile explicit global text");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("global-explicit-text", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute explicit global text");
+
+    assert_eq!(
+        results.by_request["global-explicit-text"].serialized,
+        "<root> before <item></item> after </root>"
+    );
+}
+
+#[test]
+fn xslt10_grouped_path_filters_by_variable_before_navigating_suffix() {
+    const SOURCE: &str = "urn:fastxslt:grouped-variable-position:source";
+    const STYLESHEET: &str = "urn:fastxslt:grouped-variable-position:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:param name="position" select="2"/><xsl:template match="/"><out><xsl:value-of select="(catalog/item)[$position]/name"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            SOURCE,
+            b"<catalog><item><name>first</name></item><item><name>second</name></item></catalog>"
+                .to_vec(),
+        )
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile grouped position path");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("grouped-variable-position", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute grouped position path");
+
+    assert_eq!(
+        results.by_request["grouped-variable-position"].serialized,
+        "<out>second</out>"
+    );
+}
+
+#[test]
 fn xslt10_template_argument_converts_a_temporary_tree_variable_to_string() {
     const SOURCE: &str = "urn:fastxslt:template-argument-variable-string:source";
     const STYLESHEET: &str = "urn:fastxslt:template-argument-variable-string:stylesheet";

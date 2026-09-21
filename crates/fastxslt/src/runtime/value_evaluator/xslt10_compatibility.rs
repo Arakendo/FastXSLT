@@ -315,6 +315,49 @@ pub(super) fn append_variable_position_path(
     append_text(result, &value, inputs.request_id, control)
 }
 
+#[allow(clippy::too_many_arguments)]
+pub(super) fn append_grouped_variable_position_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    selection: &LocationPath,
+    variable: &str,
+    suffix: &LocationPath,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, selection, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let position = variable_string_value(inputs, variable, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(position) =
+        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
+    else {
+        return Ok(());
+    };
+    if !position.is_finite() || position < 1.0 || position.fract() != 0.0 {
+        return Ok(());
+    }
+    let Ok(position) = position.to_string().parse::<usize>() else {
+        return Ok(());
+    };
+    let Some(node) = selected.get(position.saturating_sub(1)).copied() else {
+        return Ok(());
+    };
+    let selected = evaluate_location_path_controlled(source, node, suffix, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(node) = selected.first().copied() else {
+        return Ok(());
+    };
+    let value = source
+        .string_value_controlled(node, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
 fn f64_lexical(value: f64) -> String {
     if value.is_nan() {
         "NaN".to_owned()

@@ -986,6 +986,11 @@ pub(crate) enum ValueExpression {
         variable: String,
         explicit_position_comparison: bool,
     },
+    Xslt10GroupedVariablePositionPath {
+        selection: LocationPath,
+        variable: String,
+        suffix: LocationPath,
+    },
     Xslt10VariablePath {
         variable: String,
         path: LocationPath,

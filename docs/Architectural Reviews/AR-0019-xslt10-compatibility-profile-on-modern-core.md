@@ -2540,3 +2540,17 @@ maintained redistributable legacy suite becomes available.
   initialization to 2,102, successful execution to 2,015, and the strict lower
   bound to 1,884 (59.38%); execution failures and mismatches remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-static-locals-global-tree-2026-09-20.md)
+- 2026-09-20 -- Static global temporary trees now admit explicit `xsl:text`
+  through the ordinary text validator while preserving constructed-node order.
+  The focused regression passes; the full OASIS counters remain unchanged at
+  1,884 exact matches because no previously blocked unchanged case depends only
+  on this shape. Escaping requests remain explicit rather than being silently
+  folded.
+  [Evidence](../Evidence/oasis-xslt10-static-global-explicit-text-2026-09-20.md)
+- 2026-09-20 -- A typed XSLT 1.0 value plan now preserves the filter boundary
+  in `(path)[$position]/suffix`: it evaluates the grouped node-set, applies the
+  numeric-variable position, then navigates the suffix. Both unchanged
+  Microsoft variable/parameter cases become exact. Initialization reaches
+  2,104, successful execution 2,017, and the strict lower bound 1,886 (59.44%)
+  while execution failures and mismatches remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-grouped-variable-position-path-2026-09-20.md)
