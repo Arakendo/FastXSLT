@@ -2350,6 +2350,27 @@ fn evaluation_preserves_document_order_and_requires_no_namespace() {
 }
 
 #[test]
+fn unicode_ncname_steps_match_unqualified_elements() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        "<文書><日本>selected</日本><別名>other</別名></文書>".as_bytes(),
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("Unicode source should parse");
+    let document = Document::from_parsed(parsed).expect("Unicode source XDM should build");
+    let path = parse_location_path("文書/日本", location())
+        .expect("XML NCName location steps should parse");
+
+    let selected = evaluate_location_path(&document, document.document_node(), &path);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "selected");
+}
+
+#[test]
 fn each_path_step_normalizes_convergent_nodes_in_document_order() {
     let parsed = parse_document(
         "memory:source.xml",

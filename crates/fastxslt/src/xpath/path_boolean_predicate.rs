@@ -2,7 +2,7 @@
 
 use super::{
     ControlFailure, Document, InvocationControl, NodeId, NodeKind, WorkDomain, descendant_nodes,
-    following_siblings, has_named_attribute, is_ascii_ncname, parse_attribute_value_predicate,
+    following_siblings, has_named_attribute, is_ncname, parse_attribute_value_predicate,
     split_top_level_predicate_operator,
 };
 
@@ -221,7 +221,7 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     }
     predicate
         .strip_prefix('@')
-        .filter(|name| is_ascii_ncname(name))
+        .filter(|name| is_ncname(name))
         .map(|name| PathBooleanPredicate::Present(name.to_owned()))
 }
 
@@ -469,7 +469,7 @@ fn parse_child_attribute_string_operand(
     let (children, attribute) = path.rsplit_once("/@")?;
     Some((
         parse_relative_child_path(children)?,
-        is_ascii_ncname(attribute).then(|| attribute.to_owned())?,
+        is_ncname(attribute).then(|| attribute.to_owned())?,
         xpath_string_literal(literal)?.to_owned(),
     ))
 }
@@ -492,7 +492,7 @@ fn parse_parent_attribute_string_comparison(predicate: &str) -> Option<(String, 
 fn parse_parent_attribute_string_operand(path: &str, literal: &str) -> Option<(String, String)> {
     let attribute = path.strip_prefix("../@")?;
     Some((
-        is_ascii_ncname(attribute).then(|| attribute.to_owned())?,
+        is_ncname(attribute).then(|| attribute.to_owned())?,
         xpath_string_literal(literal)?.to_owned(),
     ))
 }
@@ -510,7 +510,7 @@ fn parse_relative_child_path(path: &str) -> Option<Vec<RelativeChildStep>> {
             if *step == "text()" && index + 1 == steps.len() {
                 Some(RelativeChildStep::Text)
             } else {
-                is_ascii_ncname(step).then(|| RelativeChildStep::Element((*step).to_owned()))
+                is_ncname(step).then(|| RelativeChildStep::Element((*step).to_owned()))
             }
         })
         .collect()
@@ -925,7 +925,7 @@ fn parse_child_element_integer_operand(
 ) -> Option<(Option<String>, i32)> {
     let name = if child_test == "*" {
         None
-    } else if is_ascii_ncname(child_test) {
+    } else if is_ncname(child_test) {
         Some(child_test.to_owned())
     } else {
         return None;
@@ -937,7 +937,7 @@ fn parse_child_element_count_operand(function: &str, integer: &str) -> Option<(S
     let path = function.strip_prefix("count(")?.strip_suffix(')')?.trim();
     let name = path.strip_prefix("./")?;
     let count = integer.parse().ok()?;
-    is_ascii_ncname(name).then(|| (name.to_owned(), count))
+    is_ncname(name).then(|| (name.to_owned(), count))
 }
 
 fn parse_attribute_string_length_equality(predicate: &str) -> Option<(String, usize)> {
@@ -958,7 +958,7 @@ fn parse_attribute_string_length_operand(function: &str, integer: &str) -> Optio
         .trim();
     let name = argument.strip_prefix('@')?;
     let length = integer.parse().ok()?;
-    is_ascii_ncname(name).then(|| (name.to_owned(), length))
+    is_ncname(name).then(|| (name.to_owned(), length))
 }
 
 fn parse_context_string_equality(predicate: &str) -> Option<String> {
@@ -977,7 +977,7 @@ fn parse_context_string_equality(predicate: &str) -> Option<String> {
 fn parse_attribute_inequality(predicate: &str) -> Option<(&str, String)> {
     let (name, value) = split_top_level_predicate_operator(predicate, "!=")?;
     let name = name.trim().strip_prefix('@')?;
-    if !is_ascii_ncname(name) {
+    if !is_ncname(name) {
         return None;
     }
     xpath_string_literal(value.trim()).map(|value| (name, value.to_owned()))
@@ -1037,7 +1037,7 @@ fn parse_nested_positional_child_string_equality(
 ) -> Option<NestedPositionComparison> {
     let predicate = strip_outer_parentheses(predicate);
     let (outer_name, remainder) = predicate.split_once('[')?;
-    if !is_ascii_ncname(outer_name) {
+    if !is_ncname(outer_name) {
         return None;
     }
     let (outer_position, nested) = if remainder.as_bytes().first().is_some_and(u8::is_ascii_digit) {
@@ -1068,7 +1068,7 @@ fn parse_positional_child_string_operand(
     let path = strip_outer_parentheses(path);
     let (name, position) = path.split_once('[')?;
     let position = position.strip_suffix(']')?.parse().ok()?;
-    if position == 0 || !is_ascii_ncname(name) {
+    if position == 0 || !is_ncname(name) {
         return None;
     }
     Some((

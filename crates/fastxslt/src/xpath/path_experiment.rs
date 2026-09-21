@@ -359,7 +359,7 @@ impl PathStep {
             "text()" => Self::ChildText,
             "comment()" => Self::ChildComment,
             "processing-instruction()" => Self::ChildProcessingInstruction,
-            _ if name_test.strip_prefix("*:").is_some_and(is_ascii_ncname) => {
+            _ if name_test.strip_prefix("*:").is_some_and(is_ncname) => {
                 Self::ChildLocalName(name_test[2..].to_owned())
             }
             _ => Self::ChildNamed(name_test.to_owned()),
@@ -710,15 +710,6 @@ pub(crate) fn parse_location_path(
         });
     }
 
-    if !expression.is_ascii() {
-        return Err(PathFailure::Unsupported {
-            detail: format!(
-                "the private slice does not yet classify or evaluate non-ASCII name tests: {expression}"
-            ),
-            location,
-        });
-    }
-
     let ParsedPathSteps {
         mut steps,
         position_predicates: step_position_predicates,
@@ -912,7 +903,7 @@ pub(crate) fn parse_qualified_child_path(
             .strip_prefix('@')
             .map_or((false, step), |name| (true, name));
         let Some((prefix, local)) = name_test.split_once(':') else {
-            if !is_ascii_ncname(name_test) {
+            if !is_ncname(name_test) {
                 return Err(invalid_syntax(
                     format!("the qualified path contains an invalid name test: {expression}"),
                     &location,
@@ -925,10 +916,7 @@ pub(crate) fn parse_qualified_child_path(
             });
             continue;
         };
-        if !is_ascii_ncname(prefix)
-            || (local != "*" && !is_ascii_ncname(local))
-            || local.contains(':')
-        {
+        if !is_ncname(prefix) || (local != "*" && !is_ncname(local)) || local.contains(':') {
             return Err(invalid_syntax(
                 format!("the qualified path contains an invalid QName: {step}"),
                 &location,
@@ -1009,12 +997,12 @@ fn has_unadmitted_name_test(step: &str) -> bool {
         || step.starts_with("child::"))
         && processing_instruction_target(name_test).is_some();
     let admitted_local_wildcard = (!step.contains("::") || step.starts_with("child::"))
-        && name_test.strip_prefix("*:").is_some_and(is_ascii_ncname);
+        && name_test.strip_prefix("*:").is_some_and(is_ncname);
     !matches!(name_test, "*" | "node()" | "text()")
         && !admitted_axis_kind
         && !admitted_named_processing_instruction
         && !admitted_local_wildcard
-        && !is_ascii_ncname(name_test)
+        && !is_ncname(name_test)
 }
 
 fn processing_instruction_target(name_test: &str) -> Option<&str> {
@@ -1025,7 +1013,7 @@ fn processing_instruction_target(name_test: &str) -> Option<&str> {
         let target = argument
             .strip_prefix(delimiter)
             .and_then(|value| value.strip_suffix(delimiter));
-        if let Some(target) = target.filter(|value| *value == "*" || is_ascii_ncname(value)) {
+        if let Some(target) = target.filter(|value| *value == "*" || is_ncname(value)) {
             return Some(target);
         }
     }
@@ -1314,7 +1302,7 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
         (PredicateAxis::FollowingSibling, name)
     } else if let Some(name) = predicate.strip_prefix("parent::") {
         (PredicateAxis::Parent, name)
-    } else if is_ascii_ncname(predicate) {
+    } else if is_ncname(predicate) {
         (PredicateAxis::Child, predicate)
     } else {
         return None;
@@ -1325,10 +1313,7 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
             | PredicateAxis::MissingAttribute
             | PredicateAxis::FollowingSibling
     );
-    if axis != PredicateAxis::ChildText
-        && (name != "*" || !wildcard_allowed)
-        && !is_ascii_ncname(name)
-    {
+    if axis != PredicateAxis::ChildText && (name != "*" || !wildcard_allowed) && !is_ncname(name) {
         return None;
     }
     Some(AxisPredicate {
@@ -1392,7 +1377,7 @@ fn parse_attribute_value_predicate(predicate: &str) -> Option<(&str, String)> {
     let name = name
         .strip_prefix("attribute::")
         .or_else(|| name.strip_prefix('@'))?;
-    if !is_ascii_ncname(name) {
+    if !is_ncname(name) {
         return None;
     }
     let value = value.trim();
@@ -1606,15 +1591,37 @@ fn split_path_steps(expression: &str) -> Option<Vec<&str>> {
     Some(steps)
 }
 
-fn is_ascii_ncname(value: &str) -> bool {
+fn is_ncname(value: &str) -> bool {
     let mut chars = value.chars();
     let Some(first) = chars.next() else {
         return false;
     };
-    (first.is_ascii_alphabetic() || first == '_')
-        && chars.all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
-        })
+    is_ncname_start(first) && chars.all(is_ncname_char)
+}
+
+fn is_ncname_start(character: char) -> bool {
+    matches!(character, 'A'..='Z' | '_' | 'a'..='z')
+        || matches!(
+            character as u32,
+            0x00C0..=0x00D6
+                | 0x00D8..=0x00F6
+                | 0x00F8..=0x02FF
+                | 0x0370..=0x037D
+                | 0x037F..=0x1FFF
+                | 0x200C..=0x200D
+                | 0x2070..=0x218F
+                | 0x2C00..=0x2FEF
+                | 0x3001..=0xD7FF
+                | 0xF900..=0xFDCF
+                | 0xFDF0..=0xFFFD
+                | 0x10000..=0xEFFFF
+        )
+}
+
+fn is_ncname_char(character: char) -> bool {
+    is_ncname_start(character)
+        || matches!(character, '-' | '.' | '0'..='9' | '\u{00B7}')
+        || matches!(character as u32, 0x0300..=0x036F | 0x203F..=0x2040)
 }
 
 #[cfg(test)]

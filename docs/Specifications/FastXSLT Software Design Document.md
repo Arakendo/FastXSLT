@@ -371,6 +371,12 @@ name tests remain outside default element namespace application. Counting
 reuses controlled path traversal and does not admit general aggregate
 functions, arbitrary default-namespace expressions, or namespace-sensitive
 condition operands.
+The shared location-path owner validates unqualified name tests and qualified
+path components against the XML 1.0 Fifth Edition NCName character repertoire,
+including non-ASCII names. It performs no Unicode normalization: lexical names
+continue into the existing namespace resolution and exact expanded-name
+matching rules. Unicode name admission does not broaden the supported path
+grammar or create a separate XSLT 1.0 evaluator.
 An empty-sequence path origin followed by an admitted location step remains an
 empty node sequence; selected `empty(()/step)` expressions compile to a typed
 form and perform no node visits. Statically atomic path operands report

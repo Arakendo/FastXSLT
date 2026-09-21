@@ -2599,3 +2599,11 @@ maintained redistributable legacy suite becomes available.
   failures and mismatches remain unchanged, while generic `FXXP1001`
   initialization failures fall to 33.
   [Evidence](../Evidence/oasis-xslt10-descendant-child-variable-position-2026-09-20.md)
+- 2026-09-20 -- The shared location-path owner now validates name tests against
+  the XML 1.0 Fifth Edition NCName character repertoire instead of imposing an
+  ASCII-only restriction. Namespace and expanded-name behavior remain
+  unchanged. Unchanged Microsoft `Sorting__77530` and `Sorting__77982` become
+  exact. Initialization reaches 2,115, successful execution 2,026, and the
+  strict lower bound 1,895 (59.72%); execution failures and mismatches remain
+  unchanged, while generic `FXXP1001` initialization failures fall to 31.
+  [Evidence](../Evidence/oasis-xslt10-unicode-name-tests-2026-09-20.md)

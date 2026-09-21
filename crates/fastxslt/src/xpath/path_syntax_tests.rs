@@ -99,15 +99,14 @@ fn classifies_malformed_namespace_wildcards_and_axis_node_tests() {
 }
 
 #[test]
-fn accepts_supported_ncname_punctuation_without_claiming_unicode_names() {
+fn accepts_xml_ncname_punctuation_and_unicode_names() {
     let path = parse_location_path("catalog/item.name/item-2/_value", location())
-        .expect("ASCII NCName punctuation belongs to the private grammar");
+        .expect("NCName punctuation belongs to the private grammar");
     assert_eq!(path.steps, ["catalog", "item.name", "item-2", "_value"]);
 
-    assert!(matches!(
-        parse_location_path("café/name", location()),
-        Err(PathFailure::Unsupported { .. })
-    ));
+    let unicode = parse_location_path("café/日本", location())
+        .expect("XML NCName Unicode ranges belong to the private grammar");
+    assert_eq!(unicode.steps, ["café", "日本"]);
     let ancestor_node = parse_location_path("catalog/ancestor::node()", location())
         .expect("the admitted ancestor node test should parse");
     assert_eq!(ancestor_node.steps[1], "node()");
