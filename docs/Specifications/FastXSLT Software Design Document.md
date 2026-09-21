@@ -567,6 +567,13 @@ attribute scan, preserves XPath node-set comparison behavior when the parent or
 attribute is absent, and retains candidate focus at the selected child. This
 does not admit general parent-relative paths, qualified attributes, dynamic
 operands, or composed parent predicates.
+Under XSLT 1.0 static context, a path predicate containing exactly two chained
+ordered comparisons over three source-free literal operands may fold during
+compilation. The first comparison's boolean result converts to XPath 1.0 number
+`1` or `0` before the second comparison, preserving the edition's
+left-associative grammar. The modern parser does not admit this grammar, and
+dynamic operands, node sets, or longer chains remain unsupported rather than
+acquiring a runtime compatibility branch.
 The exact XSLT 1.0 comparison `. = $variable` requires the variable to hold a
 source-node sequence and applies XPath 1.0 node-set equality: the result is
 true when the controlled string value of the current source node equals that

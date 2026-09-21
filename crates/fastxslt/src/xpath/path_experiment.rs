@@ -775,8 +775,11 @@ fn xslt10_static_comparison_predicate(expression: &str) -> Option<(&str, bool)> 
     if path.is_empty() || path.contains(['[', ']']) {
         return None;
     }
-    let matches =
-        constant_boolean_experiment::fold_xpath10_mixed_equality(predicate).or_else(|| {
+    let matches = constant_boolean_experiment::fold_xpath10_mixed_equality(predicate)
+        .or_else(|| {
+            constant_boolean_experiment::fold_xpath10_chained_ordered_literal_comparison(predicate)
+        })
+        .or_else(|| {
             constant_boolean_experiment::fold_xpath10_ordered_literal_comparison(predicate)
         })?;
     Some((path, matches))

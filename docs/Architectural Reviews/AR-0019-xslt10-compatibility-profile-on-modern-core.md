@@ -2607,3 +2607,13 @@ maintained redistributable legacy suite becomes available.
   strict lower bound 1,895 (59.72%); execution failures and mismatches remain
   unchanged, while generic `FXXP1001` initialization failures fall to 31.
   [Evidence](../Evidence/oasis-xslt10-unicode-name-tests-2026-09-20.md)
+- 2026-09-20 -- Exactly two chained ordered comparisons over source-free
+  literals may now fold only through the XSLT 1.0 path compiler. The first
+  boolean result converts to `1` or `0` before the second comparison, preserving
+  legacy left association without changing the modern grammar or runtime hot
+  path. Unchanged Lotus `predicate10`, Lotus `predicate36`, and Microsoft
+  `Miscellaneous_Bug74174` become exact. Initialization reaches 2,118,
+  successful execution 2,029, and the strict lower bound 1,898 (59.82%);
+  execution failures and mismatches remain unchanged, while generic
+  `FXXP1001` initialization failures fall to 28.
+  [Evidence](../Evidence/oasis-xslt10-chained-relational-predicates-2026-09-20.md)

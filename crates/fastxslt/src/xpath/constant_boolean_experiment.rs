@@ -231,6 +231,58 @@ pub(crate) fn fold_xpath10_ordered_literal_comparison(expression: &str) -> Optio
     None
 }
 
+pub(crate) fn fold_xpath10_chained_ordered_literal_comparison(expression: &str) -> Option<bool> {
+    let expression = strip_balanced_parentheses(expression.trim());
+    let (left, first_operator, remainder) = split_first_ordered_operator(expression)?;
+    let (middle, second_operator, right) = split_first_ordered_operator(remainder)?;
+    if split_first_ordered_operator(right).is_some() {
+        return None;
+    }
+    let (left, _) = xpath10_ordered_literal_operand(left)?;
+    let (middle, _) = xpath10_ordered_literal_operand(middle)?;
+    let (right, _) = xpath10_ordered_literal_operand(right)?;
+    let first = compare_numbers(left, first_operator, middle);
+    Some(compare_numbers(
+        if first { 1.0 } else { 0.0 },
+        second_operator,
+        right,
+    ))
+}
+
+fn split_first_ordered_operator(expression: &str) -> Option<(&str, BooleanComparison, &str)> {
+    let bytes = expression.as_bytes();
+    let mut depth = 0usize;
+    let mut quote = None;
+    let mut index = 0usize;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'\'' | b'"' if quote == Some(bytes[index]) => quote = None,
+            b'\'' | b'"' if quote.is_none() => quote = Some(bytes[index]),
+            b'(' if quote.is_none() => depth += 1,
+            b')' if quote.is_none() => depth = depth.checked_sub(1)?,
+            b'<' | b'>' if quote.is_none() && depth == 0 => {
+                let operator_start = index;
+                let (operator, width) = match (bytes[index], bytes.get(index + 1)) {
+                    (b'<', Some(b'=')) => (BooleanComparison::LessThanOrEqual, 2),
+                    (b'>', Some(b'=')) => (BooleanComparison::GreaterThanOrEqual, 2),
+                    (b'<', _) => (BooleanComparison::LessThan, 1),
+                    (b'>', _) => (BooleanComparison::GreaterThan, 1),
+                    _ => unreachable!("matched an ordered comparison byte"),
+                };
+                let right_start = operator_start + width;
+                return Some((
+                    expression[..operator_start].trim(),
+                    operator,
+                    expression[right_start..].trim(),
+                ));
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    None
+}
+
 fn xpath10_ordered_literal_operand(source: &str) -> Option<(f64, bool)> {
     if let Some(value) = parse_string_literal(source) {
         Some((parse_xpath_number_literal(value).unwrap_or(f64::NAN), true))
@@ -583,8 +635,9 @@ fn split_top_level<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, 
 mod tests {
     use super::{
         BooleanExpression, BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar,
-        fold_exact_short_circuit, fold_xpath10_mixed_equality,
-        fold_xpath10_ordered_literal_comparison, parse, parse_literal_comparison, parse_scalar,
+        fold_exact_short_circuit, fold_xpath10_chained_ordered_literal_comparison,
+        fold_xpath10_mixed_equality, fold_xpath10_ordered_literal_comparison, parse,
+        parse_literal_comparison, parse_scalar,
     };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 
@@ -646,6 +699,31 @@ mod tests {
         assert_eq!(
             fold_xpath10_ordered_literal_comparison("false() >= 1"),
             Some(false)
+        );
+    }
+
+    #[test]
+    fn folds_xpath10_chained_ordered_literals_left_associatively() {
+        for (source, expected) in [
+            ("1 < 2 < 3", true),
+            ("1 < 3 < 2", true),
+            ("3 < 2 < 1", true),
+            ("1 < 2 < 1", false),
+            ("1 <= 1 > 0", true),
+        ] {
+            assert_eq!(
+                fold_xpath10_chained_ordered_literal_comparison(source),
+                Some(expected),
+                "{source}"
+            );
+        }
+        assert_eq!(
+            fold_xpath10_chained_ordered_literal_comparison("1 < 2 < 3 < 4"),
+            None
+        );
+        assert_eq!(
+            fold_xpath10_chained_ordered_literal_comparison("left < 2 < 3"),
+            None
         );
     }
 
