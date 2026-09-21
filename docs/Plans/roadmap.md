@@ -3510,6 +3510,16 @@ failed, and harness-error cases without an unqualified conformance claim.
     Microsoft's linear XSLT 1.0 challenger. Report throughput, first/final
     observation latency, wire/retention scope, and ambiguity radius without
     selecting a public batch size.
+  - [x] Rerun the exact-call and exploratory deployment comparisons on stable
+    .NET 10.0.12 after the broad XSLT 1.0 campaign. The exact-call FastXSLT
+    distributions remained stable but were generally below the preview-runtime
+    record, with a 15.9% native 50-item 4x decline as the largest exact-call
+    signal. Managed comparison lanes often improved, the selected Saxon tiny
+    warm-up did not converge in every process, and the shorter deployment family
+    retained duration/occupancy limitations. Preserve the earlier publication-
+    eligible record and require an idle-host or same-runtime checkpoint A/B
+    before attributing the movement to engine code.
+    [Evidence](../Evidence/aspnet-net10-stable-performance-drift-2026-09-20.md)
   - [x] Add queued independent transforms as an explicit axis rather than
     inferring queue length from source-item tiers. A three-process 500-versus-
     5,000-job matrix across concurrency 1/4/8 found no queue-length throughput
