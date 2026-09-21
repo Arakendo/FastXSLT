@@ -938,6 +938,16 @@ retain the existing work charging and cancellation checks. This does not
 flatten the filter into the final path step or admit general parenthesized
 filters, arbitrary predicates, or sequence expressions.
 
+The exact XSLT 1.0 `.//NCName[$position]` value form has a separate typed plan
+because the descendant abbreviation expands to a descendant-or-self step
+followed by a child step. Execution therefore counts the numeric predicate
+position independently among matching children of each immediate parent; it
+must not apply the predicate once to the flattened descendant result. The
+invocation-owned per-parent counters are bounded by selected source nodes and
+retain ordinary path work charging, cancellation observation, and first-node
+document-order string conversion. This does not admit arbitrary multi-step
+variable predicates or retain source-derived state in the compiled program.
+
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource
 bytes are acquired under the fragmentless identity before fragment semantics

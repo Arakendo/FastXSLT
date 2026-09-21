@@ -1,6 +1,7 @@
 //! Private `XPath` 1.0 value-conversion compatibility operations.
 
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
@@ -313,6 +314,54 @@ pub(super) fn append_variable_position_path(
         .string_value_controlled(node, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     append_text(result, &value, inputs.request_id, control)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn append_descendant_child_variable_position_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &LocationPath,
+    variable: &str,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let position = variable_string_value(inputs, variable, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(position) =
+        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
+    else {
+        return Ok(());
+    };
+    if !position.is_finite() || position < 1.0 || position.fract() != 0.0 {
+        return Ok(());
+    }
+    let Ok(position) = position.to_string().parse::<usize>() else {
+        return Ok(());
+    };
+    let mut parent_positions = HashMap::<NodeId, usize>::new();
+    for node in selected {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        let Some(parent) = source.parent(node) else {
+            continue;
+        };
+        let current = parent_positions.entry(parent).or_default();
+        *current += 1;
+        if *current == position {
+            let value = source
+                .string_value_controlled(node, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            return append_text(result, &value, inputs.request_id, control);
+        }
+    }
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]

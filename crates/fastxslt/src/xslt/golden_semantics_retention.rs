@@ -1099,7 +1099,8 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Xslt10VariableStringLengthTimes { variable, .. }
         | ValueExpression::Xslt10VariableBooleanComparison { variable, .. }
         | ValueExpression::Xslt10VariableNumberComparison { variable, .. } => variable.capacity(),
-        ValueExpression::Xslt10VariablePositionPath { path, variable, .. } => {
+        ValueExpression::Xslt10VariablePositionPath { path, variable, .. }
+        | ValueExpression::Xslt10DescendantChildVariablePositionPath { path, variable } => {
             path.known_owned_capacity_bytes() + variable.capacity()
         }
         ValueExpression::Xslt10GroupedVariablePositionPath {

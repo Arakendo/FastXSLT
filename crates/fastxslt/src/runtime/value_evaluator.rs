@@ -562,6 +562,11 @@ pub(super) fn execute_value_of(
                 control,
             )?;
         }
+        ValueExpression::Xslt10DescendantChildVariablePositionPath { path, variable } => {
+            xslt10_compatibility::append_descendant_child_variable_position_path(
+                inputs, context, path, variable, variables, result, control,
+            )?;
+        }
         ValueExpression::Xslt10GroupedVariablePositionPath {
             selection,
             variable,

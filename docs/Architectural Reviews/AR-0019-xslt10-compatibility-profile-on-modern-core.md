@@ -2589,3 +2589,13 @@ maintained redistributable legacy suite becomes available.
   lower bound 1,892 (59.63%); execution failures and mismatches remain
   unchanged, while generic `FXXP1001` initialization failures fall to 34.
   [Evidence](../Evidence/oasis-xslt10-parent-attribute-predicate-2026-09-20.md)
+- 2026-09-20 -- The exact `.//NCName[$variable]` XSLT 1.0 value form now
+  preserves the descendant abbreviation's per-parent child-step focus rather
+  than filtering one flattened descendant result. Runtime uses bounded
+  invocation-owned parent counters, shared variable conversion, charged path
+  traversal, and first-node document-order string conversion. Unchanged Lotus
+  `position97` becomes exact. Initialization reaches 2,113, successful
+  execution 2,024, and the strict lower bound 1,893 (59.66%); execution
+  failures and mismatches remain unchanged, while generic `FXXP1001`
+  initialization failures fall to 33.
+  [Evidence](../Evidence/oasis-xslt10-descendant-child-variable-position-2026-09-20.md)

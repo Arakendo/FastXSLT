@@ -337,6 +337,13 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((path, variable)) = compile_xslt10_descendant_child_variable_position_path(
+            document, element, expression, location,
+        )?
+    {
+        return Ok(ValueExpression::Xslt10DescendantChildVariablePositionPath { path, variable });
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some((path, variable, explicit_position_comparison)) =
             compile_xslt10_variable_position_path(document, element, expression, location)?
     {
@@ -1129,6 +1136,35 @@ pub(super) fn compile_xslt10_variable_position_path(
         variable.to_owned(),
         explicit_position_comparison,
     )))
+}
+
+fn compile_xslt10_descendant_child_variable_position_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<(LocationPath, String)>, CompileFailure> {
+    let expression = expression.trim();
+    let Some(body) = expression.strip_suffix(']') else {
+        return Ok(None);
+    };
+    let Some((path, predicate)) = body.rsplit_once('[') else {
+        return Ok(None);
+    };
+    let Some(child_name) = path.trim().strip_prefix(".//") else {
+        return Ok(None);
+    };
+    let Some(variable) = predicate.trim().strip_prefix('$') else {
+        return Ok(None);
+    };
+    if !is_ascii_ncname(child_name) || !is_ascii_ncname(variable) {
+        return Ok(None);
+    }
+    let mut path = parse_location_path(path.trim(), location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        apply_default_namespace(&mut path, namespace);
+    }
+    Ok(Some((path, variable.to_owned())))
 }
 
 fn compile_xslt10_grouped_variable_position_path(

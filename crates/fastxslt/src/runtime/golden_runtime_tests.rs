@@ -5640,6 +5640,40 @@ fn xslt10_numeric_variables_select_path_positions() {
 }
 
 #[test]
+fn xslt10_descendant_child_variable_positions_preserve_per_parent_focus() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-descendant-position:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-descendant-position:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="text"/>
+        <xsl:template match="/"><xsl:apply-templates select="doc/group"/></xsl:template>
+        <xsl:template match="group"><xsl:variable name="pos" select="2"/><xsl:value-of select=".//item[$pos]"/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><group><item>A</item><nested><item>B</item><item>C</item></nested></group></doc>"
+                .to_vec(),
+        )
+        .expect("admit descendant-position source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit descendant-position stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile descendant-position stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("descendant-position", "result", SOURCE))
+        .expect("admit descendant-position request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute descendant-position transform");
+    assert_eq!(results.by_request["descendant-position"].serialized, "C");
+}
+
+#[test]
 fn xslt10_numeric_variable_predicates_use_reverse_axis_proximity_positions() {
     const SOURCE: &str = "urn:fastxslt:xslt10-reverse-variable-position:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-reverse-variable-position:stylesheet";

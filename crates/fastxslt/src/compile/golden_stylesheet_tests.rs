@@ -2226,11 +2226,11 @@ fn classifies_xpath_outside_the_private_location_path_slice_as_unsupported() {
 fn xslt10_variable_position_predicates_do_not_approximate_multi_step_focus() {
     let stylesheet = parse_stylesheet(
         "memory:variable-position-focus.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="third" select="3"/><xsl:template match="/"><xsl:value-of select=".//a[$third]"/></xsl:template></xsl:stylesheet>"#,
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="third" select="3"/><xsl:template match="/"><xsl:value-of select="a/b[$third]"/></xsl:template></xsl:stylesheet>"#,
     );
 
     let failure = compile_stylesheet(&stylesheet)
-        .expect_err("multi-step variable position requires per-step predicate focus");
+        .expect_err("general multi-step variable position requires per-step predicate focus");
 
     assert_eq!(failure.category, CompileCategory::Unsupported);
     assert_eq!(failure.code, "FXXP1001");
