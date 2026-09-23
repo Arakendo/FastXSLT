@@ -421,7 +421,7 @@ fn f64_lexical(value: f64) -> String {
     }
 }
 
-fn first_path_string(
+pub(super) fn first_path_string(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     path: &LocationPath,
@@ -803,4 +803,63 @@ pub(super) fn variable_position_source_node(
             .and_then(|position| position.to_string().parse::<usize>().ok())
             .and_then(|position| nodes.get(position.saturating_sub(1)).copied()),
     )
+}
+
+pub(super) fn variable_node_position_source_node(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    position: crate::xslt::golden_semantics_experiment::Xslt10NodePosition,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Option<NodeId>, ExecutionFailure> {
+    let nodes = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("positional variable selection requires source nodes: ${variable}"),
+            )
+        })?;
+    control
+        .charge(WorkDomain::XPathOperation, nodes.len().saturating_add(1))
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let index = match position {
+        crate::xslt::golden_semantics_experiment::Xslt10NodePosition::Index(position) => {
+            position.saturating_sub(1)
+        }
+        crate::xslt::golden_semantics_experiment::Xslt10NodePosition::Last => {
+            return Ok(nodes.last().copied());
+        }
+        crate::xslt::golden_semantics_experiment::Xslt10NodePosition::LastMinus(offset) => {
+            let Some(index) = nodes.len().checked_sub(offset.saturating_add(1)) else {
+                return Ok(None);
+            };
+            index
+        }
+    };
+    Ok(nodes.get(index).copied())
+}
+
+pub(super) fn append_variable_node_position(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    position: crate::xslt::golden_semantics_experiment::Xslt10NodePosition,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let Some(node) =
+        variable_node_position_source_node(inputs, variable, position, variables, control)?
+    else {
+        return Ok(());
+    };
+    let source = inputs
+        .source
+        .expect("source-node variable requires a source");
+    let value = source
+        .string_value_controlled(node, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    append_text(result, &value, inputs.request_id, control)
 }

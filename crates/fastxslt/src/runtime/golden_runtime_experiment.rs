@@ -28,7 +28,7 @@ use crate::xslt::golden_semantics_experiment::{
 
 #[path = "atomic_template_executor.rs"]
 mod atomic_template_executor;
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 #[path = "golden_runtime_experiment/byte_encoding.rs"]
 mod byte_encoding;
 #[path = "dynamic_attribute_name.rs"]
@@ -77,7 +77,7 @@ mod variable_filtered_path;
 #[path = "xslt10_current_name.rs"]
 mod xslt10_current_name;
 
-use dynamic_element_name::resolve_dynamic_element_name;
+use dynamic_element_name::{DynamicElementNameRequest, resolve_dynamic_element_name};
 use number_executor::execute as execute_number_instruction;
 #[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
@@ -94,8 +94,10 @@ use runtime_context::{
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
 pub(super) use serialization::serialize_xml;
+#[cfg(any(test, feature = "workbench"))]
+pub(super) use serialization::serialize_xml_bytes;
 #[cfg(test)]
-pub(super) use serialization::{serialize_xml_bytes, serialize_xml_complete_namespace_reference};
+pub(super) use serialization::serialize_xml_complete_namespace_reference;
 use template_selector::{
     TemplateSelectionContext, select_imported_template, select_next_template,
     select_template_with_index,
@@ -957,7 +959,14 @@ fn execute_result_instruction<'a>(
     match instruction {
         Instruction::Number { .. } => {
             let mut result = Vec::new();
-            execute_number_instruction(inputs, instruction, execution, &mut result, control)?;
+            execute_number_instruction(
+                inputs,
+                instruction,
+                execution,
+                scope,
+                &mut result,
+                control,
+            )?;
             Ok(result)
         }
         Instruction::ForEachVariable { .. }
@@ -992,6 +1001,7 @@ fn execute_result_instruction<'a>(
             let value = value_evaluator::evaluate_binary_numeric_value(
                 inputs,
                 execution.node,
+                execution.sequence_focus(),
                 select,
                 scope,
                 control,
@@ -2072,6 +2082,7 @@ fn bind_binary_numeric_variable(
     let value = value_evaluator::evaluate_binary_numeric_value(
         inputs,
         execution.node,
+        execution.sequence_focus(),
         select,
         scope,
         control,
@@ -2409,7 +2420,7 @@ fn execute_literal_element(
         attributes,
         computed_attributes,
         body,
-    } = prepare_element_execution(inputs, instruction, execution, control)?;
+    } = prepare_element_execution(inputs, instruction, execution, variables, control)?;
     control
         .charge(WorkDomain::ResultNode, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -2432,7 +2443,7 @@ fn execute_literal_element(
         inputs.request_id,
         control,
     )?;
-    attributes.extend(materialize_computed_attributes(
+    let materialized_computed_attributes = materialize_computed_attributes(
         inputs,
         computed_attributes,
         variables,
@@ -2446,7 +2457,16 @@ fn execute_literal_element(
         },
         inputs.request_id,
         control,
-    )?);
+    )?;
+    for (definition, attribute) in computed_attributes
+        .iter()
+        .zip(materialized_computed_attributes)
+    {
+        if definition.recover_duplicate {
+            attributes.retain(|existing| existing.name != attribute.name);
+        }
+        attributes.push(attribute);
+    }
     let body = execute_sequence(inputs, body, execution, variables, control)?;
     let children = result_tree::assemble_element_content(&mut attributes, body, inputs.request_id)?;
     let result_namespaces = namespaces;
@@ -2476,6 +2496,7 @@ fn prepare_element_execution<'a>(
     inputs: &SequenceInputs<'_>,
     instruction: &'a Instruction,
     execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<ElementExecutionParts<'a>, ExecutionFailure> {
     match instruction {
@@ -2527,10 +2548,13 @@ fn prepare_element_execution<'a>(
             let (name, namespaces) = resolve_dynamic_element_name(
                 inputs,
                 execution,
-                name,
-                namespace_override.as_deref(),
-                static_namespaces,
-                location,
+                DynamicElementNameRequest {
+                    name,
+                    variables,
+                    namespace_override: namespace_override.as_deref(),
+                    static_namespaces,
+                    location,
+                },
                 control,
             )?;
             Ok(ElementExecutionParts {
@@ -4610,6 +4634,17 @@ fn select_apply_nodes(
         ApplySelection::PathUnion(alternatives) => {
             evaluate_source_path_union(inputs, source, context, alternatives, control)
         }
+        ApplySelection::Xslt10PathUnionPosition {
+            alternatives,
+            position,
+        } => select_xslt10_path_union_position(
+            inputs,
+            source,
+            context,
+            alternatives,
+            *position,
+            control,
+        ),
         ApplySelection::VariablePathUnion {
             variable,
             alternatives,
@@ -4625,35 +4660,24 @@ fn select_apply_nodes(
         ApplySelection::SourceVariablePath { variable, path } => {
             evaluate_source_variable_path(inputs, source, variable, path, variables, control)
         }
+        ApplySelection::Xslt10VariableNodeSetComparisonPath {
+            selection,
+            variable,
+            comparison,
+        } => select_xslt10_variable_node_set_comparison(
+            inputs, context, selection, variable, comparison, variables, control,
+        ),
         ApplySelection::ChildElement(name) => {
             select_child_elements(source, context, name, inputs.request_id, control)
         }
         ApplySelection::DescendantElement(name) => {
-            let mut selected = Vec::new();
-            select_descendant_elements(
-                source,
-                context,
-                name,
-                inputs.request_id,
-                control,
-                &mut selected,
-            )?;
-            Ok(selected)
+            select_descendant_apply_nodes(inputs, source, context, name, control)
         }
         ApplySelection::ChildNodes(node_test) => {
             select_child_nodes(source, context, *node_test, inputs.request_id, control)
         }
         ApplySelection::Attribute(name) => {
-            let mut selected = Vec::new();
-            for attribute in source.attributes(context).iter().copied() {
-                control
-                    .charge(WorkDomain::XPathNodeVisit, 1)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                if source.name(attribute) == Some(name) {
-                    selected.push(attribute);
-                }
-            }
-            Ok(selected)
+            select_attribute(source, context, name, inputs.request_id, control)
         }
         ApplySelection::VariableFilteredElementPath(path) => variable_filtered_path::select(
             source,
@@ -4672,17 +4696,111 @@ fn select_apply_nodes(
             )
         }
         ApplySelection::VariableSequence(name) => source_variable_nodes(inputs, name, variables),
-        ApplySelection::Xslt10VariablePosition {
-            variable,
-            position_variable,
-        } => {
-            select_xslt10_variable_position(inputs, variable, position_variable, variables, control)
+        selection @ (ApplySelection::Xslt10VariablePosition { .. }
+        | ApplySelection::Xslt10VariableNodePosition { .. }
+        | ApplySelection::Xslt10VariableUnionPosition { .. }) => {
+            select_xslt10_variable_position_nodes(inputs, source, selection, variables, control)
         }
         ApplySelection::GlobalTemporaryChildren(_)
         | ApplySelection::TemporaryPath { .. }
         | ApplySelection::AtomicIntegerRange { .. } => {
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
+    }
+}
+
+fn select_descendant_apply_nodes(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    context: NodeId,
+    name: &ExpandedName,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let mut selected = Vec::new();
+    select_descendant_elements(
+        source,
+        context,
+        name,
+        inputs.request_id,
+        control,
+        &mut selected,
+    )?;
+    Ok(selected)
+}
+
+fn select_xslt10_path_union_position(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    context: NodeId,
+    alternatives: &[crate::xpath::path_experiment::LocationPath],
+    position: crate::xslt::golden_semantics_experiment::Xslt10NodePosition,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let selected = evaluate_source_path_union(inputs, source, context, alternatives, control)?;
+    Ok(select_xslt10_node_position(&selected, position)
+        .into_iter()
+        .collect())
+}
+
+fn select_xslt10_node_position(
+    nodes: &[NodeId],
+    position: crate::xslt::golden_semantics_experiment::Xslt10NodePosition,
+) -> Option<NodeId> {
+    match position {
+        crate::xslt::golden_semantics_experiment::Xslt10NodePosition::Index(position) => {
+            nodes.get(position.saturating_sub(1)).copied()
+        }
+        crate::xslt::golden_semantics_experiment::Xslt10NodePosition::Last => nodes.last().copied(),
+        crate::xslt::golden_semantics_experiment::Xslt10NodePosition::LastMinus(offset) => nodes
+            .len()
+            .checked_sub(offset.saturating_add(1))
+            .and_then(|index| nodes.get(index).copied()),
+    }
+}
+
+fn select_attribute(
+    source: &Document,
+    context: NodeId,
+    name: &ExpandedName,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let mut selected = Vec::new();
+    for attribute in source.attributes(context).iter().copied() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.name(attribute) == Some(name) {
+            selected.push(attribute);
+        }
+    }
+    Ok(selected)
+}
+
+fn select_xslt10_variable_position_nodes(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    selection: &ApplySelection,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    match selection {
+        ApplySelection::Xslt10VariablePosition {
+            variable,
+            position_variable,
+        } => {
+            select_xslt10_variable_position(inputs, variable, position_variable, variables, control)
+        }
+        ApplySelection::Xslt10VariableNodePosition { variable, position } => {
+            select_xslt10_variable_node_position(inputs, variable, *position, variables, control)
+        }
+        ApplySelection::Xslt10VariableUnionPosition {
+            variables: names,
+            position,
+        } => select_xslt10_variable_union_position(
+            inputs, source, names, *position, variables, control,
+        ),
+        _ => unreachable!("variable-position dispatch receives only typed position selections"),
     }
 }
 
@@ -4702,6 +4820,41 @@ fn select_xslt10_variable_position(
     )?
     .into_iter()
     .collect())
+}
+
+fn select_xslt10_variable_node_position(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    position: crate::xslt::golden_semantics_experiment::Xslt10NodePosition,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    Ok(value_evaluator::xslt10_variable_node_position_source_node(
+        inputs, variable, position, variables, control,
+    )?
+    .into_iter()
+    .collect())
+}
+
+fn select_xslt10_variable_union_position(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    names: &[String],
+    position: crate::xslt::golden_semantics_experiment::Xslt10NodePosition,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let mut selected = Vec::new();
+    for name in names {
+        selected.extend(source_variable_nodes(inputs, name, variables)?);
+    }
+    control
+        .charge(WorkDomain::XPathOperation, selected.len().saturating_add(1))
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+    let selected = select_xslt10_node_position(&selected, position);
+    Ok(selected.into_iter().collect())
 }
 
 fn select_child_nodes(
@@ -4852,6 +5005,73 @@ fn evaluate_source_variable_path(
     selected.sort_unstable_by_key(|node| source.document_order(*node));
     selected.dedup();
     Ok(selected)
+}
+
+fn select_xslt10_variable_node_set_comparison(
+    inputs: &SequenceInputs<'_>,
+    context: NodeId,
+    selection: &crate::xpath::path_experiment::LocationPath,
+    variable: &str,
+    comparison: &crate::xpath::path_experiment::LocationPath,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let source = inputs
+        .source
+        .expect("node-set comparison selection requires a source");
+    let candidates = evaluate_location_path_controlled(source, context, selection, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let variable_nodes = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("node-set comparison requires source nodes: ${variable}"),
+            )
+        })?;
+    let mut selected = Vec::new();
+    for candidate in candidates {
+        let compared = evaluate_location_path_controlled(source, candidate, comparison, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if source_node_sets_have_equal_string_value(
+            source,
+            variable_nodes,
+            &compared,
+            inputs.request_id,
+            control,
+        )? {
+            selected.push(candidate);
+        }
+    }
+    Ok(selected)
+}
+
+fn source_node_sets_have_equal_string_value(
+    source: &Document,
+    left: &[NodeId],
+    right: &[NodeId],
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    for left_node in left {
+        let left_value = source
+            .string_value_controlled(*left_node, control)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        for right_node in right {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            let right_value = source
+                .string_value_controlled(*right_node, control)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            if left_value == right_value {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 fn evaluate_variable_path_union(

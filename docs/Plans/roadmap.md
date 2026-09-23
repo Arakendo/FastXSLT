@@ -2030,7 +2030,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,904 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. General HTML result admission also moved all 119 formerly blocked HTML executions into visible later dispositions; subsequent URI-attribute, computed-name, static key-declaration, bounded key-lookup and key-EBV, zero-argument node identity, Unicode NCName and `xml:lang` expanded-name tests, bounded relative and ancestor element-count predicates including intermediate-step retention, nested relative-path existence, focus-aware boolean position predicates, sequential and grouped reverse-axis filters, following-sibling text tests, parent-attribute predicates, descendant-child per-parent position predicates, XSLT 1.0 chained literal relations, outer-current name predicates and relative paths, variable-position sort and grouped-path position filtering, sequence filtering, value composition and count guards, child-node-test numeric predicates, global/local/parameter/argument QName identity, content-built apply and nested-template arguments including variable-string conversion, qualified variable-rooted paths and direct sequence selection, shared variable-conversion and value-kind-preserving local aliases, source-node variable comparison, finite and non-finite numeric compatibility including source-number globals, namespace-alias composition/name repair, merged-module global dependency ordering, source-path, conditional, bounded named-template global text, and static local global-tree construction, module decimal-format composition, local sequence temporary-tree construction, static mixed-root temporary trees, invocation-owned global document copying, computed-attribute, processing-instruction, and comment sequence recovery, shallow-copy body attribute assembly and path values, result-attribute recovery, nested context translation/prefix testing, variable/focus string composition, child-attribute variable predicates, static number/string round-trip conversion, and suite-declared indentation-neutral comparison work converted mismatches/frontiers into exact matches without changing the denominator. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,967 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. General HTML result admission also moved all 119 formerly blocked HTML executions into visible later dispositions; subsequent URI-attribute, computed-name including focus-position and variable name AVTs, static key-declaration, bounded key-lookup and key-EBV, zero-argument node identity, Unicode NCName and `xml:lang` expanded-name tests, bounded relative and ancestor element-count predicates including intermediate-step retention, nested relative-path existence, focus-aware and sequential typed predicates, variable-node positional filters, multiple-variable apply unions, parenthesized path/union selection, sequential and grouped reverse-axis filters, following-sibling text tests, parent-attribute predicates, descendant-child per-parent position predicates, XSLT 1.0 chained literal relations, outer-current name predicates, relative paths, and typed outer-current attribute comparisons, variable-position sort and grouped-path position filtering, sequence filtering, value composition and count guards, child-node-test numeric predicates, global/local/parameter/argument QName identity, content-built apply and nested-template arguments including variable-string conversion, qualified variable-rooted paths and direct sequence selection, shared variable-conversion and value-kind-preserving local aliases, source-node variable comparison, finite and non-finite numeric compatibility including source-number globals, namespace-alias composition/name repair, merged-module global dependency ordering, linear mixed include/import chains and homogeneous nested dependency branches, source-path, conditional, bounded named-template global text, and static local global-tree construction, module decimal-format composition, local sequence temporary-tree construction, static mixed-root temporary trees, invocation-owned global document copying, static document-function introspection, normalized and transitively sealed supplemental resource identities, computed-attribute, processing-instruction, and comment sequence recovery, unavailable-extension fallback, fallback control-attribute scope, principal-root `xsl:apply-imports` context, shallow-copy body attribute assembly and path values, result-attribute recovery, nested context translation/prefix testing, variable/focus string composition, child-attribute variable predicates, static number/string round-trip conversion, bounded physical output comparison including full ISO-8859-1 byte encoding and BOM-marked UTF-16 comparison, legacy HTML output-version selection, `format-number()` path operands and alternate digit-family fallback, and suite-declared indentation-neutral comparison work converted mismatches/frontiers into exact matches without changing the denominator. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -5381,6 +5381,222 @@ host lifecycle.
     lower bound to 1,904 (60.01%) while execution failures and mismatches
     remain unchanged. Generic `FXXP1001` initialization failures fall to 22.
     [Evidence](../Evidence/oasis-xslt10-boolean-predicate-focus-position-2026-09-20.md)
+  - [x] Apply typed boolean predicates after positional step predicates in
+    lexical order, with the later predicate observing the reduced focus.
+    Focused evaluator and complete-transform regressions pass; the motivating
+    unchanged corpus case now reaches the deliberately separate template-match
+    boundary, so this tranche does not change the conserved denominator.
+    [Evidence](../Evidence/oasis-xslt10-sequential-step-predicates-2026-09-21.md)
+  - [x] Reuse the bounded mixed apply-union runtime for multiple XSLT 1.0
+    source-node variables while restoring document order and removing duplicate
+    node identities. Unchanged Lotus `select_select66` becomes exact, raising
+    initialization to 2,125, successful execution to 2,036, and the exact lower
+    bound to 1,905 (60.04%) while execution failures and mismatches remain
+    unchanged. Generic `FXXP1001` initialization failures fall to 19.
+    [Evidence](../Evidence/oasis-xslt10-multiple-variable-apply-union-2026-09-21.md)
+  - [x] Filter invocation-owned source-node variables by a positive literal
+    position or exact `last()` through both value and sequence-selection
+    consumers. Unchanged Lotus `position_position92` becomes exact, raising
+    initialization to 2,126, successful execution to 2,037, and the exact
+    lower bound to 1,906 (60.07%) while execution failures and mismatches
+    remain unchanged.
+    [Evidence](../Evidence/oasis-xslt10-variable-node-position-2026-09-21.md)
+  - [x] Derive one global source-node variable from an earlier global through
+    the shared typed relative-path evaluator and dependency ordering. The
+    focused lifecycle passes, and unchanged Microsoft `BVTs_bvt092` advances
+    from invalid variable syntax to its next explicit unsupported node-set
+    comparison predicate. This foundational tranche does not change the
+    conserved denominator.
+    [Evidence](../Evidence/oasis-xslt10-global-source-variable-path-2026-09-21.md)
+  - [x] Preserve typed XPath 1.0 existential node-set equality inside a source
+    path predicate, bounded variable-only union ordering/deduplication before
+    positional selection, checked `last() - N`, and short-circuit boolean
+    conjunction over variable effective boolean values. Unchanged Microsoft
+    `BVTs_bvt092` clears those operations and reaches a later parenthesized
+    local source-path boundary.
+  - [x] Treat one redundant outer parenthesis pair around a local variable
+    location path as grouping before the existing typed path/cast distinction.
+    Unchanged Microsoft `BVTs_bvt092` becomes exact, raising initialization to
+    2,127, successful execution to 2,038, and the exact lower bound to 1,907
+    (60.10%) while execution failures and mismatches remain unchanged.
+    [Evidence](../Evidence/oasis-xslt10-variable-node-set-and-union-2026-09-21.md)
+  - [x] Compile mixed qualified/unqualified absolute element match paths with
+    document-node origin while keeping the literal-result default namespace
+    separate from unprefixed XPath 1.0 names. Unchanged Microsoft
+    `BVTs_bvt075` advances to its independent namespace-node pattern boundary;
+    this tranche does not change the conserved denominator.
+    [Evidence](../Evidence/oasis-xslt10-qualified-absolute-match-path-2026-09-21.md)
+  - [x] Count bounded typed path unions and apply literal/last-relative
+    positions after shared document-order normalization and identity
+    deduplication. Unchanged Lotus `position_position80` becomes exact, raising
+    initialization to 2,128, successful execution to 2,039, and the exact
+    lower bound to 1,908 (60.13%) while execution failures and mismatches remain
+    unchanged.
+    [Evidence](../Evidence/oasis-xslt10-path-union-count-position-2026-09-21.md)
+  - [x] Apply a bounded outer positional predicate to one parenthesized typed
+    location path as well as to a path union. Unchanged Lotus
+    `position_position88` and `position_position91` become exact, raising
+    initialization to 2,130, successful execution to 2,041, and the exact
+    lower bound to 1,910 (60.20%) while execution failures and mismatches remain
+    unchanged.
+    [Evidence](../Evidence/oasis-xslt10-grouped-path-position-2026-09-21.md)
+  - [x] Preserve a normalized bounded path-union count as a typed atomic
+    template argument, reusing the ordinary charged location-path evaluator
+    and document-order/identity normalization. The focused lifecycle passes,
+    and unchanged Lotus `idkey_idkey30` advances from `FXXP1011` to its later
+    recursive string/identity conditional boundary. This foundational tranche
+    does not change the conserved denominator.
+    [Evidence](../Evidence/oasis-xslt10-template-argument-path-union-count-2026-09-21.md)
+  - [x] Evaluate `position()` and `last()` as explicit leaves in the shared
+    checked numeric-expression plan, threading real sequence focus through
+    value, variable, argument, copy, and computed-attribute consumers while
+    retaining `XPDY0002` for focusless evaluation. Two additional unchanged
+    cases initialize and execute, including Microsoft `Variables__84636`,
+    which now reaches a separate HTML comparison boundary. Initialization rises
+    to 2,132 and successful execution to 2,043; exact matches remain 1,910
+    (60.20%), execution failures remain 89, and mismatches remain 55.
+    [Evidence](../Evidence/oasis-xslt10-focus-aware-numeric-arithmetic-2026-09-21.md)
+  - [x] Reuse the focus-aware checked arithmetic plan for
+    `xsl:number/@value`, including exact `floor()` composition, rather than
+    introducing number-specific expression semantics. Unchanged Lotus
+    `numbering_numbering17` becomes exact, raising initialization to 2,133,
+    successful execution to 2,044, and the exact lower bound to 1,911 (60.23%)
+    while execution failures and mismatches remain unchanged.
+    [Evidence](../Evidence/oasis-xslt10-focus-aware-numeric-arithmetic-2026-09-21.md)
+  - [x] Add exact XPath `round()` as another checked arithmetic-plan operand,
+    preserving negative-half rounding toward positive infinity and existing
+    modulo/operator precedence. Unchanged Lotus `math_math101` becomes exact,
+    raising initialization to 2,134, successful execution to 2,045, and the
+    exact lower bound to 1,912 (60.26%) while execution failures and mismatches
+    remain unchanged.
+    [Evidence](../Evidence/oasis-xslt10-focus-aware-numeric-arithmetic-2026-09-21.md)
+  - [x] Resolve variable-valued `format-number()` decimal-format names against
+    the instruction's compiled static namespace context and immutable compiled
+    declarations. Literal-only `concat()` format names, arbitrary-length
+    lexical decimal formatting, and apostrophe-quoted picture literals share
+    the same formatter. The `FXXP1009` initialization frontier falls from ten
+    cases to two and five more cases initialize; later runtime formatting,
+    source-decoding, and bounded ISO-8859-1 non-ASCII boundaries remain
+    visible. The corpus now uses the workbench's bounded physical byte lane,
+    moving 15 otherwise admitted cases through serialization and into honest
+    comparison without widening that serializer. Initialization reaches 2,139,
+    successful execution 2,060, exact matches 1,917 (60.42%), execution
+    failures 79, and mismatches 56.
+    [Evidence](../Evidence/oasis-xslt10-dynamic-decimal-format-selection-2026-09-21.md)
+  - [x] Route XSLT 1.0 `format-number()` child-path operands through the shared
+    charged location-path evaluator and first-node string conversion, while
+    keeping empty-picture/non-finite compatibility out of the modern path.
+    Accept both XPath string delimiters during argument splitting. The
+    `FXXP1009` initialization frontier is eliminated; initialization reaches
+    2,140, successful execution 2,061, and exact matches 1,918 (60.45%) while
+    execution failures remain 79 and mismatches remain 56.
+    [Evidence](../Evidence/oasis-xslt10-format-number-path-operands-2026-09-21.md)
+  - [x] Apply the declared alternate digit family to ASCII-zero-only pictures
+    as a bounded XSLT 1.0 fallback, but preserve ASCII zero as literal when the
+    picture already uses its declared placeholders. Three unchanged Microsoft
+    cases become exact without regressing the doubt-annotated Lotus mixed
+    picture. Successful execution reaches 2,064 and exact matches 1,921
+    (60.54%); execution failures fall to 76 while mismatches remain 56.
+    [Evidence](../Evidence/oasis-xslt10-alternate-digit-family-fallback-2026-09-22.md)
+  - [x] Extend the bounded physical byte lane from the ASCII subset to full
+    ISO-8859-1, using XML numeric references only in contexts where they retain
+    character semantics and decoding declaration-less corpus outputs from the
+    compiled encoding selection. All nine `FXSR1006` execution failures move
+    into visible later dispositions and three unchanged Lotus cases become
+    exact. Successful execution reaches 2,073 and exact matches 1,924 (60.64%);
+    execution failures fall to 67 and newly visible mismatches reach 61.
+    [Evidence](../Evidence/oasis-xslt10-iso-8859-1-byte-serialization-2026-09-22.md)
+  - [x] Admit explicit legacy HTML 1/1.0, 4/4.0, and 4.01 selections through
+    the existing legacy serializer while retaining `SESU0013` for empty and
+    unknown versions and conserving the modern XSLT30 version-0.0 failure.
+    Seven OASIS cases execute and five become exact. Successful execution
+    reaches 2,080 and exact matches 1,929 (60.79%); execution failures fall to
+    60 while mismatches remain 61.
+    [Evidence](../Evidence/oasis-xslt10-legacy-html-output-versions-2026-09-22.md)
+  - [x] Lower the bounded XSLT 1.0 candidate-attribute comparison
+    `@candidate = current()/@outer` into a typed path predicate whose outer
+    context remains invocation-owned. XSLT 1.0 sort and copy paths share the
+    charged evaluator while modern XPath continues to reject `current()`.
+    Three unchanged OASIS cases initialize, execute, and compare exactly.
+    Initialization reaches 2,143, successful execution reaches 2,083, and
+    exact matches reach 1,932 (60.89%); execution failures remain 60 and
+    mismatches remain 61.
+    [Evidence](../Evidence/oasis-xslt10-outer-current-attribute-predicate-2026-09-22.md)
+  - [x] Compile only standard `xsl:fallback` bodies for unavailable extension
+    elements, leaving extension execution, host callbacks, and extension
+    authority unsupported. Eight cases leave `FXST1059`; six become exact and
+    two expose later static boundaries. Initialization reaches 2,149,
+    successful execution reaches 2,089, and exact matches reach 1,938 (61.08%);
+    execution failures remain 60 and mismatches remain 61.
+    [Evidence](../Evidence/oasis-xslt10-extension-fallback-2026-09-22.md)
+  - [x] Ignore XSLT 1.0 namespace-exclusion controls on extension elements and
+    `xsl:fallback`, while retaining their standard scope on stylesheet roots
+    and literal result elements. Preserve matched-rule identity for principal
+    root templates that execute `xsl:apply-imports`, without widening the
+    ordinary root representation. Five additional executions complete, four
+    compare exactly, and one reaches a visible indentation mismatch.
+    Initialization reaches 2,150, successful execution reaches 2,094, and
+    exact matches reach 1,942 (61.20%); execution failures fall to 56 and
+    mismatches reach 62.
+    [Evidence](../Evidence/oasis-xslt10-fallback-control-and-root-apply-imports-2026-09-22.md)
+  - [x] Normalize balanced outer parentheses only on XSLT 1.0 paths and
+    apply/for-each unions, and compile `position()` in computed-attribute name
+    AVTs as a typed focus part. Dynamic duplicate names use compile-selected
+    XSLT 1.0 last-wins recovery while the modern path remains strict. Two
+    unchanged cases become exact. Initialization reaches 2,152, successful
+    execution reaches 2,096, and exact matches reach 1,944 (61.27%);
+    execution failures remain 56 and mismatches remain 62.
+    [Evidence](../Evidence/oasis-xslt10-parenthesized-selection-and-position-name-avt-2026-09-22.md)
+  - [x] Align compile-time `function-available('document')` introspection with
+    the existing sealed-snapshot document capability without adding ambient
+    resource authority. One unchanged Lotus case moves from mismatch to exact;
+    exact matches reach 1,945 (61.30%) and mismatches fall to 61 while all
+    initialization and execution totals remain unchanged.
+    [Evidence](../Evidence/oasis-xslt10-document-function-introspection-2026-09-22.md)
+  - [x] Resolve supplemental archive filenames as path data against each case's
+    logical base identity, including dot-segment normalization and escaped URI
+    delimiter characters. One Lotus include case leaves a false missing-resource
+    initialization failure and reaches visible semantic comparison. The sweep
+    now initializes 2,153 cases, executes 2,097 successfully, and records 1,946
+    exact matches (61.33%), 61 mismatches, and 56 execution failures.
+    [Evidence](../Evidence/oasis-xslt10-catalog-resource-identity-normalization-2026-09-22.md)
+  - [x] Decode BOM-marked UTF-16BE and UTF-16LE result bytes in the local OASIS
+    comparator. All nine formerly opaque successful executions now have visible
+    dispositions: seven exact matches, one mismatch, and one expected-error
+    case that unexpectedly succeeds. Exact matches reach 1,953 (61.55%), with
+    62 mismatches and seven unexpected successes; engine serialization and the
+    conserved 3,173-case denominator are unchanged.
+    [Evidence](../Evidence/oasis-xslt10-utf16-comparator-admission-2026-09-22.md)
+  - [x] Compose literal text with atomic or temporary-tree variables in bounded
+    XSLT 1.0 computed-element name AVTs, reusing the computed-attribute
+    variable-to-string path and dynamic QName validation. One unchanged Lotus
+    case becomes exact and one Microsoft case reaches its next qualified-
+    variable-path boundary; path-valued variable expressions remain explicit.
+    Initialization reaches 2,154, successful execution reaches 2,098, and exact
+    matches reach 1,954 (61.58%).
+    [Evidence](../Evidence/oasis-xslt10-variable-computed-element-name-avt-2026-09-22.md)
+  - [x] Let the local OASIS acquisition adapter discover bounded relative
+    include/import closure from already authorized case stylesheets before
+    sealing the snapshot. Nineteen cases leave false missing-resource failures;
+    fifteen reach later explicit compiler/parser/limit boundaries, three become
+    exact, and one reaches a visible mismatch. Initialization reaches 2,158,
+    successful execution reaches 2,102, and exact matches reach 1,957 (61.68%).
+    [Evidence](../Evidence/oasis-xslt10-transitive-stylesheet-resource-admission-2026-09-22.md)
+  - [x] Reuse the established include/import program-composition machinery for
+    nested linear dependency chains in which each module has at most one child.
+    Six additional cases initialize and execute, five compare exactly, and one
+    reaches a visible mismatch; initialization reaches 2,164, successful
+    execution reaches 2,108, and exact matches reach 1,962 (61.83%). General
+    branching graphs and XSLT 1.0 namespace-alias conflict recovery remain
+    explicit boundaries.
+    [Evidence](../Evidence/oasis-xslt10-linear-mixed-stylesheet-dependency-chain-2026-09-22.md)
+  - [x] Recursively compose bounded nested module branches when both sibling
+    edges are includes or both are imports, reusing the established two-program
+    composition paths. Six more cases initialize and execute, five compare
+    exactly, and one reaches a visible mismatch; initialization reaches 2,170,
+    successful execution reaches 2,114, and exact matches reach 1,967 (61.99%).
+    Mixed sibling-edge precedence remains explicit rather than being inferred.
+    [Evidence](../Evidence/oasis-xslt10-homogeneous-stylesheet-dependency-branches-2026-09-22.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

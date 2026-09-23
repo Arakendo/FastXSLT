@@ -8,18 +8,19 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::{
-    ExecutionFailure, ResultNode, SequenceContext, SequenceInputs, append_text, control_failure,
-    execution_context_string_value, required_source_context,
+    ExecutionFailure, ResultNode, RuntimeVariables, SequenceContext, SequenceInputs, append_text,
+    control_failure, execution_context_string_value, required_source_context,
 };
 
 pub(super) fn execute(
     inputs: &SequenceInputs<'_>,
     instruction: &Instruction,
     execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    if let Some(value) = evaluate(inputs, instruction, execution, control)? {
+    if let Some(value) = evaluate(inputs, instruction, execution, variables, control)? {
         append_text(result, &value, inputs.request_id, control)?;
     }
     Ok(())
@@ -29,6 +30,7 @@ pub(super) fn evaluate(
     inputs: &SequenceInputs<'_>,
     instruction: &Instruction,
     execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Option<String>, ExecutionFailure> {
     let Instruction::Number {
@@ -47,7 +49,7 @@ pub(super) fn evaluate(
             .charge(WorkDomain::XPathOperation, 1)
             .map_err(|failure| control_failure(failure, inputs.request_id))?;
         Some(apply_format(
-            &evaluate_value(inputs, value, execution, control)?,
+            &evaluate_value(inputs, value, execution, variables, control)?,
             format,
         ))
     } else {
@@ -245,6 +247,7 @@ fn evaluate_value(
     inputs: &SequenceInputs<'_>,
     value: &NumberValue,
     execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
     let value = match value {
@@ -258,6 +261,18 @@ fn evaluate_value(
             .map_or(f64::NAN, |value| {
                 value.trim().parse::<f64>().unwrap_or(f64::NAN)
             }),
+        NumberValue::BinaryNumeric(expression) => {
+            super::value_evaluator::evaluate_binary_numeric_value(
+                inputs,
+                execution.node,
+                execution.sequence_focus(),
+                expression,
+                variables,
+                control,
+            )?
+            .parse::<f64>()
+            .expect("the checked numeric evaluator returns an XPath number")
+        }
     };
     if value.is_nan() {
         return Ok("NaN".to_owned());

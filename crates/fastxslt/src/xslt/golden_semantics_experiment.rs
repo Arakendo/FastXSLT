@@ -155,6 +155,10 @@ pub(crate) enum GlobalBindingDefault {
     Xslt10NumberLocationPath(LocationPath),
     SourceNodeIdentity(LocationPath),
     Variable(String),
+    SourceVariablePath {
+        variable: String,
+        path: LocationPath,
+    },
     TemporaryTree(Vec<ConstructedNode>),
     TemporaryText(String),
     Xslt10TemporarySourceString(LocationPath),
@@ -457,6 +461,10 @@ pub(crate) enum ApplySelection {
     Xslt10KeyUnion(Vec<Xslt10KeyLookup>),
     Xslt10MixedUnion(Vec<Xslt10ApplyUnionPart>),
     PathUnion(Vec<LocationPath>),
+    Xslt10PathUnionPosition {
+        alternatives: Vec<LocationPath>,
+        position: Xslt10NodePosition,
+    },
     VariablePathUnion {
         variable: String,
         alternatives: Vec<LocationPath>,
@@ -464,6 +472,11 @@ pub(crate) enum ApplySelection {
     SourceVariablePath {
         variable: String,
         path: LocationPath,
+    },
+    Xslt10VariableNodeSetComparisonPath {
+        selection: LocationPath,
+        variable: String,
+        comparison: LocationPath,
     },
     ChildElement(ExpandedName),
     DescendantElement(ExpandedName),
@@ -474,6 +487,14 @@ pub(crate) enum ApplySelection {
     Xslt10VariablePosition {
         variable: String,
         position_variable: String,
+    },
+    Xslt10VariableNodePosition {
+        variable: String,
+        position: Xslt10NodePosition,
+    },
+    Xslt10VariableUnionPosition {
+        variables: Vec<String>,
+        position: Xslt10NodePosition,
     },
     TemporaryPath {
         variable: String,
@@ -488,6 +509,13 @@ pub(crate) enum Xslt10ApplyUnionPart {
     Path(LocationPath),
     Key(Box<Xslt10KeyLookup>),
     Variable(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Xslt10NodePosition {
+    Index(usize),
+    Last,
+    LastMinus(usize),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -808,6 +836,7 @@ pub(crate) enum Instruction {
 pub(crate) enum DynamicElementName {
     Path(LocationPath),
     FocusPosition { prefix: String, suffix: String },
+    VariableAvt(Vec<DynamicAttributeNamePart>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -815,6 +844,7 @@ pub(crate) enum NumberValue {
     Literal(String),
     ContextPosition,
     ContextItem,
+    BinaryNumeric(Box<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -911,6 +941,7 @@ pub(crate) enum ValueExpression {
     Xslt10CountCurrentNode,
     Xslt10CountDescendantsSameNameAsCurrent,
     CountLocationPath(LocationPath),
+    Xslt10CountPathUnion(Vec<LocationPath>),
     CountSourceNodeVariable(String),
     RootPath(LocationPath),
     RootVariable(String),
@@ -971,6 +1002,10 @@ pub(crate) enum ValueExpression {
     SequenceCardinality(Box<SequenceCardinalityExpression>),
     EmptyLocationPath(LocationPath),
     VariableEffectiveBooleanValue(String),
+    Xslt10VariableBooleanAnd {
+        left: String,
+        right: String,
+    },
     Xslt10VariableString(String),
     Xslt10VariableStringLength(String),
     Xslt10VariableStringLengthTimes {
@@ -981,6 +1016,10 @@ pub(crate) enum ValueExpression {
     Xslt10VariableDivisionString {
         numerator: String,
         denominator: String,
+    },
+    Xslt10VariableNodePosition {
+        variable: String,
+        position: Xslt10NodePosition,
     },
     Xslt10VariablePositionPath {
         path: LocationPath,
@@ -1444,6 +1483,7 @@ pub(crate) enum TemplateArgumentValue {
     },
     Xslt10BinaryNumeric(Box<BinaryNumericExpression>),
     SourcePath(LocationPath),
+    Xslt10CountPathUnion(Vec<LocationPath>),
     Xslt10SumPath(LocationPath),
     Xslt10Content(Box<Xslt10ContentArgument>),
     Xslt10ForEachPathStringContent(LocationPath),
@@ -1468,6 +1508,7 @@ pub(crate) struct ComputedAttribute {
     pub(crate) name: ExpandedName,
     pub(crate) dynamic_name: Option<DynamicAttributeName>,
     pub(crate) value: LiteralAttributeValue,
+    pub(crate) recover_duplicate: bool,
     pub(crate) location: SourceLocation,
 }
 
@@ -1498,6 +1539,7 @@ pub(crate) enum DynamicAttributeName {
 pub(crate) enum DynamicAttributeNamePart {
     Text(String),
     Variable(String),
+    Position,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

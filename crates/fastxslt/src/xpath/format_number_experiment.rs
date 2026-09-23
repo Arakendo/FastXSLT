@@ -4,16 +4,21 @@ use std::collections::BTreeMap;
 
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::SourceLocation;
-use crate::xml::quick_xml_experiment::ExpandedName;
+use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::binary_numeric_experiment::ExactRational;
+use crate::xpath::path_experiment::{LocationPath, parse_xslt10_location_path};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FormatNumberExpression {
     number: Operand,
     picture: Operand,
     requested_format_lexical: Option<String>,
+    requested_format_variable: Option<String>,
     requested_format: Option<ExpandedName>,
+    static_namespaces: Vec<NamespaceBinding>,
+    dynamic_formats: Vec<(ExpandedName, DecimalFormat)>,
     decimal_format: DecimalFormat,
+    xslt10_compatibility: bool,
     location: SourceLocation,
 }
 
@@ -52,6 +57,7 @@ impl Default for DecimalFormat {
 enum Operand {
     Literal(String),
     Variable(String),
+    Path(LocationPath),
 }
 
 impl FormatNumberExpression {
@@ -60,8 +66,23 @@ impl FormatNumberExpression {
             .into_iter()
             .filter_map(|operand| match operand {
                 Operand::Variable(name) => Some(name.as_str()),
-                Operand::Literal(_) => None,
+                Operand::Literal(_) | Operand::Path(_) => None,
             })
+            .chain(self.requested_format_variable.as_deref())
+    }
+
+    pub(crate) fn number_path(&self) -> Option<&LocationPath> {
+        match &self.number {
+            Operand::Path(path) => Some(path),
+            Operand::Literal(_) | Operand::Variable(_) => None,
+        }
+    }
+
+    pub(crate) fn picture_path(&self) -> Option<&LocationPath> {
+        match &self.picture {
+            Operand::Path(path) => Some(path),
+            Operand::Literal(_) | Operand::Variable(_) => None,
+        }
     }
 
     pub(crate) fn set_default_decimal_format(&mut self, format: &DecimalFormat) {
@@ -70,6 +91,22 @@ impl FormatNumberExpression {
 
     pub(crate) fn requested_format_lexical(&self) -> Option<&str> {
         self.requested_format_lexical.as_deref()
+    }
+
+    pub(crate) fn requested_format_variable(&self) -> Option<&str> {
+        self.requested_format_variable.as_deref()
+    }
+
+    pub(crate) fn set_requested_format_variable(&mut self, name: String) {
+        self.requested_format_variable = Some(name);
+    }
+
+    pub(crate) fn set_static_namespaces(&mut self, namespaces: Vec<NamespaceBinding>) {
+        self.static_namespaces = namespaces;
+    }
+
+    pub(crate) fn set_dynamic_formats(&mut self, formats: Vec<(ExpandedName, DecimalFormat)>) {
+        self.dynamic_formats = formats;
     }
 
     pub(crate) fn set_requested_format(&mut self, name: ExpandedName) {
@@ -96,9 +133,31 @@ impl FormatNumberExpression {
                 .requested_format_lexical
                 .as_ref()
                 .map_or(0, String::capacity)
+            + self
+                .requested_format_variable
+                .as_ref()
+                .map_or(0, String::capacity)
             + self.requested_format.as_ref().map_or(0, |name| {
                 name.local.capacity() + name.namespace.as_ref().map_or(0, String::capacity)
             })
+            + self
+                .static_namespaces
+                .iter()
+                .map(|binding| {
+                    binding.prefix.as_ref().map_or(0, String::capacity)
+                        + binding.namespace.capacity()
+                })
+                .sum::<usize>()
+            + self
+                .dynamic_formats
+                .iter()
+                .map(|(name, format)| {
+                    name.local.capacity()
+                        + name.namespace.as_ref().map_or(0, String::capacity)
+                        + format.infinity.capacity()
+                        + format.nan.capacity()
+                })
+                .sum::<usize>()
             + self.location.resource.capacity()
     }
 }
@@ -107,6 +166,7 @@ impl FormatNumberExpression {
 fn operand_capacity(value: &Operand) -> usize {
     match value {
         Operand::Literal(value) | Operand::Variable(value) => value.capacity(),
+        Operand::Path(path) => path.known_owned_capacity_bytes(),
     }
 }
 
@@ -126,12 +186,40 @@ pub(crate) enum FormatNumberFailureKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FormatNumberEvaluationFailure {
     UnboundVariable(String),
-    Unsupported,
+    Unsupported(FormatNumberUnsupported),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FormatNumberUnsupported {
+    DecimalFormatName,
+    Number,
+    Picture,
+    FiniteFormatting,
+}
+
+impl FormatNumberUnsupported {
+    pub(crate) fn detail(self) -> &'static str {
+        match self {
+            Self::DecimalFormatName => "decimal-format name resolution",
+            Self::Number => "numeric conversion",
+            Self::Picture => "picture grammar",
+            Self::FiniteFormatting => "finite decimal formatting",
+        }
+    }
+}
+
+#[cfg(test)]
 pub(crate) fn parse(
     expression: &str,
     location: &SourceLocation,
+) -> Result<FormatNumberExpression, FormatNumberFailure> {
+    parse_with_path_operands(expression, location, false)
+}
+
+pub(crate) fn parse_with_path_operands(
+    expression: &str,
+    location: &SourceLocation,
+    admit_xslt10_paths: bool,
 ) -> Result<FormatNumberExpression, FormatNumberFailure> {
     let arguments = expression
         .trim()
@@ -149,46 +237,136 @@ pub(crate) fn parse(
     }
     let (number, remainder) =
         split_top_level_comma(arguments).ok_or_else(|| unsupported(expression, location))?;
-    let (picture, requested_format_lexical) = match split_top_level_comma(remainder) {
-        Some((picture, format)) => (
-            picture,
-            Some(
-                quoted(format.trim())
-                    .filter(|name| !name.is_empty())
-                    .ok_or_else(|| unsupported(expression, location))?
-                    .to_owned(),
-            ),
-        ),
-        None => (remainder, None),
-    };
-    let number = parse_number(number.trim()).ok_or_else(|| unsupported(expression, location))?;
-    let picture = parse_picture(picture.trim()).ok_or_else(|| unsupported(expression, location))?;
+    let (picture, requested_format_lexical, requested_format_variable) =
+        match split_top_level_comma(remainder) {
+            Some((picture, format)) => {
+                let format = format.trim();
+                if let Some(name) = parse_static_string(format).filter(|name| !name.is_empty()) {
+                    (picture, Some(name), None)
+                } else if let Some(name) = variable(format) {
+                    (picture, None, Some(name.to_owned()))
+                } else {
+                    return Err(unsupported(expression, location));
+                }
+            }
+            None => (remainder, None, None),
+        };
+    let number = parse_number(number.trim(), location, admit_xslt10_paths)
+        .ok_or_else(|| unsupported(expression, location))?;
+    let picture = parse_picture(picture.trim(), location, admit_xslt10_paths)
+        .ok_or_else(|| unsupported(expression, location))?;
     Ok(FormatNumberExpression {
         number,
         picture,
         requested_format_lexical,
+        requested_format_variable,
         requested_format: None,
+        static_namespaces: Vec::new(),
+        dynamic_formats: Vec::new(),
         decimal_format: DecimalFormat::default(),
+        xslt10_compatibility: admit_xslt10_paths,
         location: location.clone(),
     })
 }
 
+#[cfg(test)]
 pub(crate) fn evaluate(
     expression: &FormatNumberExpression,
     variables: &BTreeMap<String, AtomicValue>,
 ) -> Result<String, FormatNumberEvaluationFailure> {
+    evaluate_with_path_values(expression, variables, None, None)
+}
+
+pub(crate) fn evaluate_with_path_values(
+    expression: &FormatNumberExpression,
+    variables: &BTreeMap<String, AtomicValue>,
+    number_path_value: Option<&str>,
+    picture_path_value: Option<&str>,
+) -> Result<String, FormatNumberEvaluationFailure> {
     if expression.requested_format_lexical.is_some() && expression.requested_format.is_none() {
-        return Err(FormatNumberEvaluationFailure::Unsupported);
+        return Err(FormatNumberEvaluationFailure::Unsupported(
+            FormatNumberUnsupported::DecimalFormatName,
+        ));
     }
-    let number = resolve(&expression.number, variables)?;
-    let picture = resolve(&expression.picture, variables)?;
-    format_decimal(number, picture, &expression.decimal_format)
-        .ok_or(FormatNumberEvaluationFailure::Unsupported)
+    let number = resolve(&expression.number, variables, number_path_value)?;
+    let number_is_expression = matches!(expression.number, Operand::Literal(_));
+    let picture = resolve(&expression.picture, variables, picture_path_value)?;
+    let dynamic_format = expression
+        .requested_format_variable
+        .as_deref()
+        .map(|variable| {
+            let lexical = variables
+                .get(variable)
+                .map(AtomicValue::lexical)
+                .ok_or_else(|| {
+                    FormatNumberEvaluationFailure::UnboundVariable(variable.to_owned())
+                })?;
+            let name = resolve_qname(lexical, &expression.static_namespaces).ok_or(
+                FormatNumberEvaluationFailure::Unsupported(
+                    FormatNumberUnsupported::DecimalFormatName,
+                ),
+            )?;
+            expression
+                .dynamic_formats
+                .iter()
+                .find(|(candidate, _)| candidate == &name)
+                .map(|(_, format)| format)
+                .ok_or(FormatNumberEvaluationFailure::Unsupported(
+                    FormatNumberUnsupported::DecimalFormatName,
+                ))
+        })
+        .transpose()?;
+    format_decimal(
+        number,
+        number_is_expression,
+        picture,
+        dynamic_format.unwrap_or(&expression.decimal_format),
+        expression.xslt10_compatibility,
+    )
+}
+
+fn resolve_qname(lexical: &str, namespaces: &[NamespaceBinding]) -> Option<ExpandedName> {
+    let lexical = lexical.trim();
+    let (prefix, local) = lexical
+        .split_once(':')
+        .map_or((None, lexical), |(prefix, local)| (Some(prefix), local));
+    if !is_ascii_ncname(local)
+        || prefix.is_some_and(|prefix| !is_ascii_ncname(prefix))
+        || local.contains(':')
+    {
+        return None;
+    }
+    let namespace = if let Some(prefix) = prefix {
+        Some(
+            namespaces
+                .iter()
+                .find(|binding| binding.prefix.as_deref() == Some(prefix))?
+                .namespace
+                .clone(),
+        )
+    } else {
+        None
+    };
+    Some(ExpandedName {
+        namespace,
+        local: local.to_owned(),
+    })
+}
+
+fn is_ascii_ncname(value: &str) -> bool {
+    let mut characters = value.chars();
+    characters.next().is_some_and(|first| {
+        (first.is_ascii_alphabetic() || first == '_')
+            && characters.all(|character| {
+                character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
+            })
+    })
 }
 
 fn resolve<'a>(
     operand: &'a Operand,
     variables: &'a BTreeMap<String, AtomicValue>,
+    path_value: Option<&'a str>,
 ) -> Result<&'a str, FormatNumberEvaluationFailure> {
     match operand {
         Operand::Literal(value) => Ok(value),
@@ -196,10 +374,17 @@ fn resolve<'a>(
             .get(name)
             .map(AtomicValue::lexical)
             .ok_or_else(|| FormatNumberEvaluationFailure::UnboundVariable(name.clone())),
+        Operand::Path(_) => path_value.ok_or(FormatNumberEvaluationFailure::Unsupported(
+            FormatNumberUnsupported::Number,
+        )),
     }
 }
 
-fn parse_number(expression: &str) -> Option<Operand> {
+fn parse_number(
+    expression: &str,
+    location: &SourceLocation,
+    admit_xslt10_paths: bool,
+) -> Option<Operand> {
     if let Some(variable) = variable(expression) {
         return Some(Operand::Variable(variable.to_owned()));
     }
@@ -208,17 +393,30 @@ fn parse_number(expression: &str) -> Option<Operand> {
         .and_then(|value| value.strip_suffix(')'))
     {
         quoted(inner.trim()).map(|value| Operand::Literal(value.to_owned()))
+    } else if admit_xslt10_paths && is_ascii_ncname(expression) {
+        parse_xslt10_location_path(expression, location.clone())
+            .ok()
+            .map(Operand::Path)
     } else {
         Some(Operand::Literal(expression.to_owned()))
     }
 }
 
-fn parse_picture(expression: &str) -> Option<Operand> {
+fn parse_picture(
+    expression: &str,
+    location: &SourceLocation,
+    admit_xslt10_paths: bool,
+) -> Option<Operand> {
     if let Some(variable) = variable(expression) {
         return Some(Operand::Variable(variable.to_owned()));
     }
     if let Some(value) = quoted(expression) {
         return Some(Operand::Literal(value.to_owned()));
+    }
+    if admit_xslt10_paths && is_ascii_ncname(expression) {
+        return parse_xslt10_location_path(expression, location.clone())
+            .ok()
+            .map(Operand::Path);
     }
     let arguments = expression
         .strip_prefix("substring-after(")?
@@ -244,16 +442,54 @@ fn variable(value: &str) -> Option<&str> {
         .then_some(name)
 }
 
-fn format_decimal(value: &str, picture: &str, format: &DecimalFormat) -> Option<String> {
-    let number = evaluate_source_free_number(value)?;
-    let (positive, negative) = split_subpictures(picture, format.pattern_separator)?;
+fn format_decimal(
+    value: &str,
+    value_is_expression: bool,
+    picture: &str,
+    format: &DecimalFormat,
+    xslt10_compatibility: bool,
+) -> Result<String, FormatNumberEvaluationFailure> {
+    let number = if value_is_expression {
+        evaluate_source_free_number(value).ok_or(FormatNumberEvaluationFailure::Unsupported(
+            FormatNumberUnsupported::Number,
+        ))?
+    } else {
+        value.trim().parse().unwrap_or(f64::NAN)
+    };
+    if xslt10_compatibility && picture.is_empty() && !number.is_finite() {
+        return Ok(if number.is_nan() {
+            format.nan.clone()
+        } else {
+            let mut result = String::new();
+            if number.is_sign_negative() {
+                result.push(format.minus_sign);
+            }
+            result.push_str(&format.infinity);
+            result
+        });
+    }
+    let normalized_picture;
+    let picture = if xslt10_compatibility
+        && format.zero_digit != '0'
+        && needs_xslt10_ascii_zero_fallback(picture, format)
+    {
+        normalized_picture = normalize_xslt10_zero_placeholders(picture, format.zero_digit);
+        normalized_picture.as_str()
+    } else {
+        picture
+    };
+    let (positive, negative) = split_subpictures(picture, format.pattern_separator).ok_or(
+        FormatNumberEvaluationFailure::Unsupported(FormatNumberUnsupported::Picture),
+    )?;
     let negative_value = number.is_sign_negative();
     let selected = if negative_value {
         negative.unwrap_or(positive)
     } else {
         positive
     };
-    let parsed = parse_subpicture(selected, format)?;
+    let parsed = parse_subpicture(selected, format).ok_or(
+        FormatNumberEvaluationFailure::Unsupported(FormatNumberUnsupported::Picture),
+    )?;
     let implicit_minus = negative_value
         && negative.is_none_or(|negative| {
             let positive = parse_subpicture(positive, format);
@@ -266,73 +502,151 @@ fn format_decimal(value: &str, picture: &str, format: &DecimalFormat) -> Option<
     if implicit_minus {
         output.push(format.minus_sign);
     }
-    output.push_str(parsed.prefix);
+    output.push_str(&parsed.prefix);
     if number.is_nan() {
         output.push_str(&format.nan);
     } else if number.is_infinite() {
         output.push_str(&format.infinity);
     } else {
-        let exact = evaluate_source_free_exact(value).or_else(|| {
-            ExactRational::parse_decimal(&evaluate_source_free_number(value)?.to_string())
-        })?;
-        output.push_str(&format_finite_exact(
-            &exact.format_decimal().ok()?,
-            parsed,
-            format,
+        let exact = (value_is_expression)
+            .then(|| evaluate_source_free_exact(value))
+            .flatten()
+            .and_then(|value| value.format_decimal().ok())
+            .or_else(|| simple_decimal_lexical(value))
+            .or_else(|| {
+                ExactRational::parse_decimal(&number.to_string())?
+                    .format_decimal()
+                    .ok()
+            })
+            .ok_or(FormatNumberEvaluationFailure::Unsupported(
+                FormatNumberUnsupported::Number,
+            ))?;
+        output.push_str(&format_finite_exact(&exact, &parsed, format).ok_or(
+            FormatNumberEvaluationFailure::Unsupported(FormatNumberUnsupported::FiniteFormatting),
         )?);
     }
-    output.push_str(parsed.suffix);
-    Some(output)
+    output.push_str(&parsed.suffix);
+    Ok(output)
 }
 
-#[derive(Clone, Copy)]
-struct ParsedSubpicture<'a> {
-    prefix: &'a str,
-    suffix: &'a str,
-    integer: &'a str,
-    fraction: &'a str,
+fn needs_xslt10_ascii_zero_fallback(picture: &str, format: &DecimalFormat) -> bool {
+    picture_tokens(picture).is_some_and(|tokens| {
+        let mut has_ascii_zero = false;
+        let mut has_declared_placeholder = false;
+        for (character, active) in tokens {
+            if !active {
+                continue;
+            }
+            has_ascii_zero |= character == '0';
+            has_declared_placeholder |= character == format.digit || character == format.zero_digit;
+        }
+        has_ascii_zero && !has_declared_placeholder
+    })
+}
+
+fn normalize_xslt10_zero_placeholders(picture: &str, zero_digit: char) -> String {
+    let mut normalized = String::with_capacity(picture.len());
+    let mut quoted = false;
+    let mut characters = picture.chars().peekable();
+    while let Some(character) = characters.next() {
+        if character == '\'' {
+            normalized.push(character);
+            if characters.peek().is_some_and(|next| *next == '\'') {
+                normalized.push(characters.next().expect("peeked apostrophe remains"));
+            } else {
+                quoted = !quoted;
+            }
+        } else if character == '0' && !quoted {
+            normalized.push(zero_digit);
+        } else {
+            normalized.push(character);
+        }
+    }
+    normalized
+}
+
+#[derive(Clone)]
+struct ParsedSubpicture {
+    prefix: String,
+    suffix: String,
+    integer: String,
+    fraction: String,
     scale: i128,
 }
 
 fn split_subpictures(picture: &str, separator: char) -> Option<(&str, Option<&str>)> {
-    let mut parts = picture.split(separator);
-    let positive = parts.next()?;
-    let negative = parts.next();
-    (parts.next().is_none() && !positive.is_empty() && negative != Some(""))
-        .then_some((positive, negative))
+    let mut quote = false;
+    let mut separator_offset = None;
+    let mut characters = picture.char_indices().peekable();
+    while let Some((offset, character)) = characters.next() {
+        if character == '\'' {
+            if characters.peek().is_some_and(|(_, next)| *next == '\'') {
+                characters.next();
+            } else {
+                quote = !quote;
+            }
+        } else if !quote && character == separator && separator_offset.replace(offset).is_some() {
+            return None;
+        }
+    }
+    if quote || picture.is_empty() {
+        return None;
+    }
+    separator_offset.map_or(Some((picture, None)), |offset| {
+        let negative = &picture[offset + separator.len_utf8()..];
+        (!negative.is_empty()).then_some((&picture[..offset], Some(negative)))
+    })
 }
 
-fn parse_subpicture<'a>(picture: &'a str, format: &DecimalFormat) -> Option<ParsedSubpicture<'a>> {
-    let first_digit = picture.find([format.digit, format.zero_digit])?;
-    let decimal_before_first = picture[..first_digit]
-        .char_indices()
-        .next_back()
-        .filter(|(_, character)| *character == format.decimal_separator)
-        .map(|(offset, _)| offset);
-    let first = decimal_before_first.unwrap_or(first_digit);
-    let last = picture.rfind([format.digit, format.zero_digit])?;
-    let prefix = &picture[..first];
-    let suffix = &picture[last + 1..];
-    let numeric = &picture[first..=last];
-    let active = [
-        format.digit,
-        format.zero_digit,
-        format.decimal_separator,
-        format.grouping_separator,
-        format.pattern_separator,
-    ];
-    if prefix.chars().any(|character| active.contains(&character))
-        || suffix.chars().any(|character| active.contains(&character))
-        || numeric
-            .chars()
-            .any(|character| !matches_active_numeric(character, format))
-        || numeric.matches(format.decimal_separator).count() > 1
+fn parse_subpicture(picture: &str, format: &DecimalFormat) -> Option<ParsedSubpicture> {
+    let tokens = picture_tokens(picture)?;
+    let first_digit = tokens.iter().position(|(character, active)| {
+        *active && (*character == format.digit || *character == format.zero_digit)
+    })?;
+    let first = first_digit
+        .checked_sub(1)
+        .filter(|index| {
+            let (character, active) = tokens[*index];
+            active && character == format.decimal_separator
+        })
+        .unwrap_or(first_digit);
+    let last = tokens.iter().rposition(|(character, active)| {
+        *active && (*character == format.digit || *character == format.zero_digit)
+    })?;
+    let prefix = tokens[..first]
+        .iter()
+        .map(|(character, _)| character)
+        .collect::<String>();
+    let suffix = tokens[last + 1..]
+        .iter()
+        .map(|(character, _)| character)
+        .collect::<String>();
+    if tokens[..first]
+        .iter()
+        .chain(tokens[last + 1..].iter())
+        .any(|(character, active)| *active && matches_active_numeric(*character, format))
     {
         return None;
     }
+    let numeric_tokens = &tokens[first..=last];
+    if numeric_tokens
+        .iter()
+        .any(|(character, active)| !*active || !matches_active_numeric(*character, format))
+        || numeric_tokens
+            .iter()
+            .filter(|(character, active)| *active && *character == format.decimal_separator)
+            .count()
+            > 1
+    {
+        return None;
+    }
+    let numeric = numeric_tokens
+        .iter()
+        .map(|(character, _)| character)
+        .collect::<String>();
     let (integer, fraction) = numeric
         .split_once(format.decimal_separator)
-        .unwrap_or((numeric, ""));
+        .unwrap_or((&numeric, ""));
     let integer_digits = integer
         .chars()
         .filter(|character| *character != format.grouping_separator);
@@ -348,8 +662,14 @@ fn parse_subpicture<'a>(picture: &'a str, format: &DecimalFormat) -> Option<Pars
     {
         return None;
     }
-    let percent = picture.matches(format.percent).count();
-    let per_mille = picture.matches(format.per_mille).count();
+    let percent = tokens
+        .iter()
+        .filter(|(character, active)| *active && *character == format.percent)
+        .count();
+    let per_mille = tokens
+        .iter()
+        .filter(|(character, active)| *active && *character == format.per_mille)
+        .count();
     if percent + per_mille > 1 {
         return None;
     }
@@ -363,10 +683,29 @@ fn parse_subpicture<'a>(picture: &'a str, format: &DecimalFormat) -> Option<Pars
     Some(ParsedSubpicture {
         prefix,
         suffix,
-        integer,
-        fraction,
+        integer: integer.to_owned(),
+        fraction: fraction.to_owned(),
         scale,
     })
+}
+
+fn picture_tokens(picture: &str) -> Option<Vec<(char, bool)>> {
+    let mut tokens = Vec::with_capacity(picture.len());
+    let mut quote = false;
+    let mut characters = picture.chars().peekable();
+    while let Some(character) = characters.next() {
+        if character == '\'' {
+            if characters.peek().is_some_and(|next| *next == '\'') {
+                characters.next();
+                tokens.push(('\'', false));
+            } else {
+                quote = !quote;
+            }
+        } else {
+            tokens.push((character, !quote));
+        }
+    }
+    (!quote).then_some(tokens)
 }
 
 fn matches_active_numeric(character: char, format: &DecimalFormat) -> bool {
@@ -458,9 +797,27 @@ fn evaluate_source_free_exact(value: &str) -> Option<ExactRational> {
     ExactRational::parse_decimal(value)
 }
 
+fn simple_decimal_lexical(value: &str) -> Option<String> {
+    let value = value.trim();
+    let unsigned = value.strip_prefix(['+', '-']).unwrap_or(value);
+    let mut parts = unsigned.split('.');
+    let whole = parts.next()?;
+    let fraction = parts.next();
+    if parts.next().is_some()
+        || (whole.is_empty() && fraction.is_none_or(str::is_empty))
+        || !whole.chars().all(|character| character.is_ascii_digit())
+        || fraction.is_some_and(|fraction| {
+            fraction.is_empty() || !fraction.chars().all(|character| character.is_ascii_digit())
+        })
+    {
+        return None;
+    }
+    Some(value.to_owned())
+}
+
 fn format_finite_exact(
     value: &str,
-    picture: ParsedSubpicture<'_>,
+    picture: &ParsedSubpicture,
     format: &DecimalFormat,
 ) -> Option<String> {
     let maximum_fraction = picture.fraction.chars().count();
@@ -474,36 +831,45 @@ fn format_finite_exact(
         .chars()
         .filter(|digit| *digit == format.zero_digit)
         .count();
-    let (_negative, value) = value
-        .strip_prefix('-')
-        .map_or((false, value), |value| (true, value));
+    let value = value.strip_prefix(['+', '-']).unwrap_or(value);
     let (whole, fraction) = value.split_once('.').unwrap_or((value, ""));
-    let magnitude = whole
-        .bytes()
-        .chain(fraction.bytes())
-        .try_fold(0_i128, |value, digit| {
-            value
-                .checked_mul(10)?
-                .checked_add(i128::from(digit.checked_sub(b'0')?))
-        })?
-        .checked_mul(picture.scale)?;
-    let source_scale = fraction.len();
-    let rounded = if source_scale <= maximum_fraction {
-        magnitude
-            .checked_mul(10_i128.checked_pow((maximum_fraction - source_scale).try_into().ok()?)?)?
-    } else {
-        let divisor = 10_i128.checked_pow((source_scale - maximum_fraction).try_into().ok()?)?;
-        let quotient = magnitude / divisor;
-        let remainder = magnitude % divisor;
-        quotient.checked_add(i128::from(remainder.checked_mul(2)? >= divisor))?
+    if !whole.chars().all(|character| character.is_ascii_digit())
+        || !fraction.chars().all(|character| character.is_ascii_digit())
+    {
+        return None;
+    }
+    let scale_digits = match picture.scale {
+        1 => 0,
+        100 => 2,
+        1000 => 3,
+        _ => return None,
     };
-    let power = 10_i128.checked_pow(maximum_fraction.try_into().ok()?)?;
-    let whole = rounded / power;
-    let fractional = rounded % power;
-    let mut fixed = if maximum_fraction == 0 {
-        whole.to_string()
+    let mut digits = format!("{whole}{fraction}");
+    if digits.is_empty() {
+        digits.push('0');
+    }
+    let decimal_position = whole.len().checked_add(scale_digits)?;
+    if decimal_position > digits.len() {
+        digits.push_str(&"0".repeat(decimal_position - digits.len()));
+    }
+    let retained_length = decimal_position.checked_add(maximum_fraction)?;
+    let round_up = digits
+        .as_bytes()
+        .get(retained_length)
+        .is_some_and(|digit| *digit >= b'5');
+    if digits.len() < retained_length {
+        digits.push_str(&"0".repeat(retained_length - digits.len()));
     } else {
-        format!("{whole}.{fractional:0maximum_fraction$}")
+        digits.truncate(retained_length);
+    }
+    if round_up {
+        increment_decimal_digits(&mut digits);
+    }
+    let split = digits.len().saturating_sub(maximum_fraction);
+    let mut fixed = if maximum_fraction == 0 {
+        digits
+    } else {
+        format!("{}.{}", &digits[..split], &digits[split..])
     };
     if maximum_fraction > minimum_fraction {
         while fixed.ends_with('0')
@@ -516,10 +882,12 @@ fn format_finite_exact(
         }
     }
     let (whole, fraction) = fixed.split_once('.').unwrap_or((&fixed, ""));
-    let mut whole = whole.to_owned();
-    if whole == "0" && picture.integer.is_empty() {
-        whole.clear();
-    }
+    let significant_whole = whole.trim_start_matches('0');
+    let mut whole = if significant_whole.is_empty() && !picture.integer.is_empty() {
+        "0".to_owned()
+    } else {
+        significant_whole.to_owned()
+    };
     if whole.len() < minimum_integer {
         whole.insert_str(0, &"0".repeat(minimum_integer - whole.len()));
     }
@@ -547,6 +915,20 @@ fn format_finite_exact(
     substitute_digit_family(&formatted, format.zero_digit)
 }
 
+fn increment_decimal_digits(digits: &mut String) {
+    let mut bytes = digits.as_bytes().to_vec();
+    for digit in bytes.iter_mut().rev() {
+        if *digit < b'9' {
+            *digit += 1;
+            *digits = String::from_utf8(bytes).expect("decimal digits remain UTF-8");
+            return;
+        }
+        *digit = b'0';
+    }
+    bytes.insert(0, b'1');
+    *digits = String::from_utf8(bytes).expect("decimal digits remain UTF-8");
+}
+
 fn substitute_digit_family(value: &str, zero_digit: char) -> Option<String> {
     if zero_digit == '0' {
         return Some(value.to_owned());
@@ -563,18 +945,52 @@ fn substitute_digit_family(value: &str, zero_digit: char) -> Option<String> {
 }
 
 fn quoted(value: &str) -> Option<&str> {
-    value.strip_prefix('\'')?.strip_suffix('\'')
+    value
+        .strip_prefix('\'')
+        .and_then(|value| value.strip_suffix('\''))
+        .or_else(|| {
+            value
+                .strip_prefix('"')
+                .and_then(|value| value.strip_suffix('"'))
+        })
+}
+
+fn parse_static_string(value: &str) -> Option<String> {
+    if let Some(value) = quoted(value) {
+        return Some(value.to_owned());
+    }
+    let arguments = value.strip_prefix("concat(")?.strip_suffix(')')?;
+    let mut result = String::new();
+    let mut remainder = arguments;
+    loop {
+        let (argument, next) = split_top_level_comma(remainder)
+            .map_or((remainder, None), |(argument, remainder)| {
+                (argument, Some(remainder))
+            });
+        result.push_str(quoted(argument.trim())?);
+        let Some(next) = next else {
+            break;
+        };
+        remainder = next;
+    }
+    Some(result)
 }
 
 fn split_top_level_comma(value: &str) -> Option<(&str, &str)> {
     let mut depth = 0_usize;
-    let mut quote = false;
+    let mut quote = None;
     for (offset, character) in value.char_indices() {
+        if let Some(delimiter) = quote {
+            if character == delimiter {
+                quote = None;
+            }
+            continue;
+        }
         match character {
-            '\'' => quote = !quote,
-            '(' if !quote => depth += 1,
-            ')' if !quote => depth = depth.checked_sub(1)?,
-            ',' if !quote && depth == 0 => return Some((&value[..offset], &value[offset + 1..])),
+            '\'' | '"' => quote = Some(character),
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            ',' if depth == 0 => return Some((&value[..offset], &value[offset + 1..])),
             _ => {}
         }
     }
@@ -623,9 +1039,12 @@ mod tests {
     use crate::xdm::atomic_value_experiment::AtomicValue;
     use crate::xdm::owned_tree_experiment::SourceLocation;
     use crate::xml::quick_xml_experiment::ExpandedName;
+    use crate::xml::quick_xml_experiment::NamespaceBinding;
 
     use super::{
-        DecimalFormat, FormatNumberEvaluationFailure, FormatNumberFailureKind, evaluate, parse,
+        DecimalFormat, FormatNumberEvaluationFailure, FormatNumberFailureKind,
+        FormatNumberUnsupported, evaluate, evaluate_with_path_values, parse,
+        parse_with_path_operands,
     };
 
     fn location() -> SourceLocation {
@@ -674,6 +1093,63 @@ mod tests {
     }
 
     #[test]
+    fn admits_double_quoted_pictures_with_commas_and_apostrophe_literals() {
+        let expression = parse(
+            r#"format-number(4321.1234, "special '#0.,;' number: #,###.###")"#,
+            &location(),
+        )
+        .expect("double-quoted picture should parse as one argument");
+
+        assert_eq!(
+            evaluate(&expression, &BTreeMap::new()),
+            Ok("special #0.,; number: 4,321.123".to_owned())
+        );
+    }
+
+    #[test]
+    fn xslt10_empty_path_operands_format_nan_without_a_picture() {
+        let expression = parse_with_path_operands("format-number(x,x)", &location(), true)
+            .expect("XSLT 1.0 child-path operands should compile");
+
+        assert_eq!(
+            evaluate_with_path_values(&expression, &BTreeMap::new(), Some(""), Some("")),
+            Ok("NaN".to_owned())
+        );
+    }
+
+    #[test]
+    fn xslt10_ascii_zero_picture_selects_the_declared_digit_family() {
+        let mut expression =
+            parse_with_path_operands("format-number(123, '0000')", &location(), true)
+                .expect("XSLT 1.0 alternate digit-family expression should compile");
+        expression.set_default_decimal_format(&DecimalFormat {
+            zero_digit: 'a',
+            ..DecimalFormat::default()
+        });
+
+        assert_eq!(
+            evaluate_with_path_values(&expression, &BTreeMap::new(), None, None),
+            Ok("abcd".to_owned())
+        );
+
+        let mut mixed = parse_with_path_operands(
+            "format-number(4030201.0506, '#!!!,!!!,aaa.aaaaaa0')",
+            &location(),
+            true,
+        )
+        .expect("mixed declared placeholders and ASCII zero should compile");
+        mixed.set_default_decimal_format(&DecimalFormat {
+            digit: '!',
+            zero_digit: 'a',
+            ..DecimalFormat::default()
+        });
+        assert_eq!(
+            evaluate_with_path_values(&mixed, &BTreeMap::new(), None, None),
+            Ok("#e,ada,cab.afagaa0".to_owned())
+        );
+    }
+
+    #[test]
     fn resolves_invocation_local_variable_operands() {
         let expression = parse("format-number($value,$picture)", &location())
             .expect("variable operands should parse");
@@ -681,6 +1157,18 @@ mod tests {
         variables.insert("value".to_owned(), AtomicValue::string("1234.78"));
         variables.insert("picture".to_owned(), AtomicValue::string("#,###.00"));
         assert_eq!(evaluate(&expression, &variables), Ok("1,234.78".to_owned()));
+        variables.insert("value".to_owned(), AtomicValue::string("-1234.5"));
+        variables.insert(
+            "picture".to_owned(),
+            AtomicValue::string("'#'#,##0.00'#';('#'#,##0.00'#') "),
+        );
+        assert_eq!(
+            evaluate(&expression, &variables),
+            Ok("(#1,234.50#) ".to_owned())
+        );
+        variables.insert("value".to_owned(), AtomicValue::string("not-a-number"));
+        variables.insert("picture".to_owned(), AtomicValue::string("#"));
+        assert_eq!(evaluate(&expression, &variables), Ok("NaN".to_owned()));
         variables.remove("picture");
         assert_eq!(
             evaluate(&expression, &variables),
@@ -688,6 +1176,43 @@ mod tests {
                 "picture".to_owned()
             ))
         );
+    }
+
+    #[test]
+    fn folds_a_literal_concat_decimal_format_name() {
+        let expression = parse(
+            "format-number(12.34, '---.--', concat('xsl:', 'format'))",
+            &location(),
+        )
+        .expect("literal concat decimal-format name should parse");
+        assert_eq!(expression.requested_format_lexical(), Some("xsl:format"));
+    }
+
+    #[test]
+    fn resolves_a_variable_decimal_format_name_against_static_namespaces() {
+        let mut expression = parse("format-number($value, $picture, $format)", &location())
+            .expect("variable decimal-format name should parse");
+        expression.set_static_namespaces(vec![NamespaceBinding {
+            prefix: Some("f".to_owned()),
+            namespace: "urn:format".to_owned(),
+        }]);
+        expression.set_dynamic_formats(vec![(
+            ExpandedName {
+                namespace: Some("urn:format".to_owned()),
+                local: "european".to_owned(),
+            },
+            DecimalFormat {
+                decimal_separator: ',',
+                grouping_separator: '.',
+                ..DecimalFormat::default()
+            },
+        )]);
+        let variables = BTreeMap::from([
+            ("value".to_owned(), AtomicValue::string("1234.5")),
+            ("picture".to_owned(), AtomicValue::string("#.##0,0")),
+            ("format".to_owned(), AtomicValue::string("f:european")),
+        ]);
+        assert_eq!(evaluate(&expression, &variables), Ok("1.234,5".to_owned()));
     }
 
     #[test]
@@ -773,7 +1298,9 @@ mod tests {
             let expression = parse(source, &location()).expect("expression shape should parse");
             assert_eq!(
                 evaluate(&expression, &variables),
-                Err(FormatNumberEvaluationFailure::Unsupported)
+                Err(FormatNumberEvaluationFailure::Unsupported(
+                    FormatNumberUnsupported::Picture
+                ))
             );
         }
     }
@@ -799,6 +1326,10 @@ mod tests {
             (
                 "format-number(987654321, '###,##0,00.00')",
                 "9,87,65,43,21.00",
+            ),
+            (
+                "format-number(9999999999999999999999999999999999999999999999999999999999999999, '0')",
+                "9999999999999999999999999999999999999999999999999999999999999999",
             ),
             ("format-number('foo', '#############')", "NaN"),
         ] {

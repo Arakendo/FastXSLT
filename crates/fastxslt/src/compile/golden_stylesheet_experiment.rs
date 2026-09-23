@@ -712,14 +712,15 @@ fn global_dependencies(default: &GlobalBindingDefault) -> impl Iterator<Item = &
     let mut dependencies = Vec::new();
     match default {
         GlobalBindingDefault::Variable(name) => dependencies.push(name.as_str()),
+        GlobalBindingDefault::SourceVariablePath { variable, .. }
+        | GlobalBindingDefault::Xslt10ConditionalText { variable, .. } => {
+            dependencies.push(variable.as_str());
+        }
         GlobalBindingDefault::Xslt10TemporaryTextParts(parts) => {
             dependencies.extend(parts.iter().filter_map(|part| match part {
                 Xslt10TemporaryTextPart::Variable(name) => Some(name.as_str()),
                 Xslt10TemporaryTextPart::Text(_) | Xslt10TemporaryTextPart::SourcePath(_) => None,
             }));
-        }
-        GlobalBindingDefault::Xslt10ConditionalText { variable, .. } => {
-            dependencies.push(variable.as_str());
         }
         _ => {}
     }
@@ -961,6 +962,10 @@ fn compile_global_default(
             Ok(division)
         } else if let Some(atomic) = compile_atomic_constructor_global(document, element, select)? {
             Ok(atomic)
+        } else if let Some((variable, path)) =
+            compile_xslt10_source_variable_path_global(document, element, select)?
+        {
+            Ok(GlobalBindingDefault::SourceVariablePath { variable, path })
         } else if let Some(variable) = compile_variable_global(select, document.location(element))?
         {
             Ok(variable)
@@ -1026,6 +1031,25 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::TemporaryText(value))
         }
     }
+}
+
+fn compile_xslt10_source_variable_path_global(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<(String, crate::xpath::path_experiment::LocationPath)>, CompileFailure> {
+    let is_xslt10 = document.parent(element).is_some_and(|stylesheet| {
+        optional_attribute(document, stylesheet, None, "version") == Some("1.0")
+    });
+    if !is_xslt10 {
+        return Ok(None);
+    }
+    instruction_compiler::compile_xslt10_global_variable_path(
+        document,
+        element,
+        expression,
+        document.location(element),
+    )
 }
 
 fn compile_xslt10_number_path_global(

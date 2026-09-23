@@ -43,7 +43,7 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
         }
     };
     let value = optional_attribute(document, element, None, "value")
-        .map(|value| compile_value(value, document.location(element)))
+        .map(|value| compile_value(document, element, value))
         .transpose()?;
     let count = optional_attribute(document, element, None, "count")
         .map(|pattern| compile_pattern(document, element, pattern, "count"))
@@ -406,8 +406,9 @@ fn unsupported_format(format: &str, location: &SourceLocation) -> CompileFailure
 }
 
 fn compile_value(
+    document: &Document,
+    element: NodeId,
     expression: &str,
-    location: &SourceLocation,
 ) -> Result<NumberValue, CompileFailure> {
     let expression = expression.trim();
     if expression == "position()" {
@@ -420,9 +421,17 @@ fn compile_value(
     if lexical.parse::<f64>().is_ok() || xpath_string_literal(expression).is_some() {
         return Ok(NumberValue::Literal(lexical.to_owned()));
     }
+    if let Some(expression) = super::value_expression_compiler::compile_xslt10_binary_numeric(
+        document,
+        element,
+        expression,
+        document.location(element),
+    ) {
+        return Ok(NumberValue::BinaryNumeric(Box::new(expression)));
+    }
     Err(unsupported(
         "FXXP1022",
         format!("unsupported xsl:number value expression: {expression}"),
-        location,
+        document.location(element),
     ))
 }

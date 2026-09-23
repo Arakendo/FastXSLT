@@ -1640,6 +1640,53 @@ fn xslt10_boolean_following_sibling_comparison_uses_axis_existence() {
 }
 
 #[test]
+fn xslt10_path_predicate_compares_candidate_and_outer_context_attributes() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc refid='b'><collection><part id='a' type='wrong'/><part id='b' type='right'/></collection></doc>",
+        ParseLimits {
+            max_events: 24,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let expression = "collection/part[@id = current()/@refid]/@type";
+    let path = parse_xslt10_location_path(expression, location())
+        .expect("XSLT current() attribute comparison should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, doc, &path, &mut control)
+        .expect("unbounded evaluation should succeed");
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "right");
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+
+    let descendant = parse_xslt10_location_path("//part[@id=current()/@refid]/@type", location())
+        .expect("XSLT current() comparison should compose with a descendant origin");
+    let selected = evaluate_location_path_controlled(&document, doc, &descendant, &mut control)
+        .expect("unbounded descendant evaluation should succeed");
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "right");
+
+    let absolute = parse_xslt10_location_path(
+        "/doc/collection/part[@id=current()/@refid]/@type",
+        location(),
+    )
+    .expect("XSLT current() comparison should compose with an absolute origin");
+    let selected = evaluate_location_path_controlled(&document, doc, &absolute, &mut control)
+        .expect("unbounded absolute evaluation should succeed");
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "right");
+    assert!(
+        parse_location_path(expression, location()).is_err(),
+        "XPath without XSLT static context must not acquire current()"
+    );
+}
+
+#[test]
 fn attribute_wildcard_predicates_test_attribute_presence() {
     let parsed = parse_document(
         "memory:source.xml",
@@ -2282,10 +2329,10 @@ fn chained_axis_then_position_predicates_preserve_lexical_filter_order() {
         path.step_position_predicates[0],
         [StepPredicate::Position(PositionPredicate::Select(1))]
     );
-    assert!(matches!(
-        parse_location_path("ancestor-or-self::*[1][@att1]/@att1", location()),
-        Err(PathFailure::Unsupported { .. })
-    ));
+    let position_then_axis = parse_location_path("ancestor-or-self::*[1][@att1]/@att1", location())
+        .expect("position followed by an attribute predicate should preserve lexical order");
+    let selected = evaluate_location_path(&document, leaf, &position_then_axis);
+    assert!(selected.is_empty());
 
     let filtered_path = parse_location_path("(ancestor-or-self::*)[@att1][1]/@att1", location())
         .expect("parenthesized reverse-axis filter should parse");
@@ -2418,6 +2465,37 @@ fn trailing_name_predicate_observes_the_position_filtered_focus() {
             .iter()
             .all(|node| { document.name(*node).is_some_and(|name| name.local == "z") })
     );
+}
+
+#[test]
+fn trailing_boolean_predicate_observes_the_position_filtered_focus() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<bookstore specialty='novel'><book><title>Book 1</title></book><book><title>Book 2</title></book><book><title>Book 3</title></book><book><title>Book 4</title></book></bookstore>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let path = parse_location_path(
+        "bookstore[@specialty='novel'][1]/book[position() < 4][title != 'Book 1']",
+        location(),
+    )
+    .expect("position followed by a child-value predicate should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected =
+        evaluate_location_path_controlled(&document, document.document_node(), &path, &mut control)
+            .expect("sequential predicate evaluation should succeed");
+    let values = selected
+        .into_iter()
+        .map(|node| document.string_value(node))
+        .collect::<Vec<_>>();
+
+    assert_eq!(values, ["Book 2", "Book 3"]);
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
 }
 
 #[test]

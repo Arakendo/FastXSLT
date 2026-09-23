@@ -8,32 +8,48 @@ use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::DynamicElementName;
 
-use super::runtime_context::SequenceInputs;
+use super::runtime_context::{RuntimeVariables, SequenceInputs};
 use super::{
     ExecutionFailure, FailureCategory, SequenceContext, control_failure, failure_at,
     required_source_context,
 };
 
+#[derive(Clone, Copy)]
+pub(super) struct DynamicElementNameRequest<'a> {
+    pub(super) name: &'a DynamicElementName,
+    pub(super) variables: &'a RuntimeVariables,
+    pub(super) namespace_override: Option<&'a str>,
+    pub(super) static_namespaces: &'a [NamespaceBinding],
+    pub(super) location: &'a SourceLocation,
+}
+
 pub(super) fn resolve_dynamic_element_name(
     inputs: &SequenceInputs<'_>,
     execution: SequenceContext<'_>,
-    name: &DynamicElementName,
-    namespace_override: Option<&str>,
-    static_namespaces: &[NamespaceBinding],
-    location: &SourceLocation,
+    request: DynamicElementNameRequest<'_>,
     control: &mut InvocationControl,
 ) -> Result<(ExpandedName, Arc<[NamespaceBinding]>), ExecutionFailure> {
-    let lexical = match name {
+    let lexical = match request.name {
         DynamicElementName::Path(path) => path_name_value(inputs, execution, path, control)?,
         DynamicElementName::FocusPosition { prefix, suffix } => {
             format!("{prefix}{}{suffix}", execution.focus_position)
         }
+        DynamicElementName::VariableAvt(parts) => {
+            super::dynamic_attribute_name::variable_avt_value(
+                inputs,
+                request.variables,
+                parts,
+                execution.focus_position,
+                request.location,
+                control,
+            )?
+        }
     };
     resolve_lexical_element_name(
         &lexical,
-        namespace_override,
-        static_namespaces,
-        location,
+        request.namespace_override,
+        request.static_namespaces,
+        request.location,
         inputs.request_id,
     )
 }

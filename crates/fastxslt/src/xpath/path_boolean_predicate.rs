@@ -86,6 +86,10 @@ pub(super) enum PathBooleanPredicate {
         value: String,
         equal: bool,
     },
+    AttributeEqualsOuterAttribute {
+        attribute: String,
+        outer_attribute: String,
+    },
     NestedChildPathExists {
         outer: Vec<RelativeChildStep>,
         inner: Vec<RelativeChildStep>,
@@ -99,6 +103,25 @@ pub(super) enum PathBooleanPredicate {
 pub(super) enum RelativeChildStep {
     Element(String),
     Text,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct EvaluationFocus {
+    pub(super) node: NodeId,
+    pub(super) outer_context: NodeId,
+    pub(super) position: usize,
+    pub(super) size: usize,
+}
+
+impl EvaluationFocus {
+    pub(super) fn new(node: NodeId, outer_context: NodeId, position: usize, size: usize) -> Self {
+        Self {
+            node,
+            outer_context,
+            position,
+            size,
+        }
+    }
 }
 
 impl PathBooleanPredicate {
@@ -136,6 +159,10 @@ impl PathBooleanPredicate {
             Self::ParentAttributeStringComparison {
                 attribute, value, ..
             } => attribute.capacity() + value.capacity(),
+            Self::AttributeEqualsOuterAttribute {
+                attribute,
+                outer_attribute,
+            } => attribute.capacity() + outer_attribute.capacity(),
             Self::NestedChildPathExists { outer, inner } => {
                 child_path_capacity(outer) + child_path_capacity(inner)
             }
@@ -162,6 +189,27 @@ impl PathBooleanPredicate {
                 left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
             }
         }
+    }
+}
+
+pub(super) fn promote_outer_attribute_marker(predicate: &mut PathBooleanPredicate, marker: char) {
+    if let PathBooleanPredicate::Equals { name, value } = predicate
+        && let Some(outer_attribute) = value.strip_prefix(marker)
+    {
+        let attribute = std::mem::take(name);
+        *predicate = PathBooleanPredicate::AttributeEqualsOuterAttribute {
+            attribute,
+            outer_attribute: outer_attribute.to_owned(),
+        };
+        return;
+    }
+    match predicate {
+        PathBooleanPredicate::Not(operand) => promote_outer_attribute_marker(operand, marker),
+        PathBooleanPredicate::And(left, right) | PathBooleanPredicate::Or(left, right) => {
+            promote_outer_attribute_marker(left, marker);
+            promote_outer_attribute_marker(right, marker);
+        }
+        _ => {}
     }
 }
 
@@ -315,68 +363,31 @@ fn parse_relative_path_comparison(predicate: &str) -> Option<PathBooleanPredicat
 
 pub(super) fn evaluate(
     document: &Document,
-    node: NodeId,
     predicate: &PathBooleanPredicate,
-    context_position: usize,
-    context_size: usize,
+    focus: EvaluationFocus,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
     match predicate {
-        PathBooleanPredicate::Not(operand) => evaluate_not(
-            document,
-            node,
-            operand,
-            context_position,
-            context_size,
-            control,
-        ),
-        PathBooleanPredicate::And(left, right) => evaluate_and(
-            document,
-            node,
-            left,
-            right,
-            context_position,
-            context_size,
-            control,
-        ),
-        PathBooleanPredicate::Or(left, right) => evaluate_or(
-            document,
-            node,
-            left,
-            right,
-            context_position,
-            context_size,
-            control,
-        ),
-        _ => evaluate_atomic(
-            document,
-            node,
-            predicate,
-            context_position,
-            context_size,
-            control,
-        ),
+        PathBooleanPredicate::Not(operand) => evaluate_not(document, operand, focus, control),
+        PathBooleanPredicate::And(left, right) => {
+            evaluate_and(document, left, right, focus, control)
+        }
+        PathBooleanPredicate::Or(left, right) => evaluate_or(document, left, right, focus, control),
+        _ => evaluate_atomic(document, predicate, focus, control),
     }
 }
 
 fn evaluate_atomic(
     document: &Document,
-    node: NodeId,
     predicate: &PathBooleanPredicate,
-    context_position: usize,
-    context_size: usize,
+    focus: EvaluationFocus,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
+    let node = focus.node;
+    if let Some(result) = evaluate_attribute_predicate(document, predicate, focus, control) {
+        return result;
+    }
     match predicate {
-        PathBooleanPredicate::Present(name) => {
-            has_named_attribute(document, node, name, None, control)
-        }
-        PathBooleanPredicate::Equals { name, value } => {
-            has_named_attribute(document, node, name, Some(value), control)
-        }
-        PathBooleanPredicate::NotEquals { name, value } => {
-            attribute_not_equal(document, node, name, value, control)
-        }
         PathBooleanPredicate::ContextStringEquals(value) => {
             context_string_equals(document, node, value, control)
         }
@@ -405,8 +416,8 @@ fn evaluate_atomic(
         }
         PathBooleanPredicate::ContextPosition(predicate) => Ok(position_predicate_matches(
             Some(predicate),
-            context_position,
-            context_size,
+            focus.position,
+            focus.size,
         )),
         PathBooleanPredicate::ChildElementIntegerEquals { name, value } => {
             child_integer_equals(document, node, name.as_deref(), *value, control)
@@ -456,88 +467,88 @@ fn evaluate_atomic(
         PathBooleanPredicate::NestedChildPathExists { outer, inner } => {
             nested_child_path_exists(document, node, outer, inner, control)
         }
-        PathBooleanPredicate::Not(_)
+        PathBooleanPredicate::Present(_)
+        | PathBooleanPredicate::Equals { .. }
+        | PathBooleanPredicate::NotEquals { .. }
+        | PathBooleanPredicate::AttributeEqualsOuterAttribute { .. }
+        | PathBooleanPredicate::Not(_)
         | PathBooleanPredicate::And(_, _)
         | PathBooleanPredicate::Or(_, _) => {
-            unreachable!("boolean composition is dispatched by evaluate")
+            unreachable!(
+                "attribute and boolean composition are dispatched before atomic evaluation"
+            )
         }
+    }
+}
+
+fn evaluate_attribute_predicate(
+    document: &Document,
+    predicate: &PathBooleanPredicate,
+    focus: EvaluationFocus,
+    control: &mut InvocationControl,
+) -> Option<Result<bool, ControlFailure>> {
+    match predicate {
+        PathBooleanPredicate::Present(name) => Some(has_named_attribute(
+            document, focus.node, name, None, control,
+        )),
+        PathBooleanPredicate::Equals { name, value } => Some(has_named_attribute(
+            document,
+            focus.node,
+            name,
+            Some(value),
+            control,
+        )),
+        PathBooleanPredicate::NotEquals { name, value } => Some(attribute_not_equal(
+            document, focus.node, name, value, control,
+        )),
+        PathBooleanPredicate::AttributeEqualsOuterAttribute {
+            attribute,
+            outer_attribute,
+        } => Some(attribute_equals_outer_attribute(
+            document,
+            focus.node,
+            attribute,
+            focus.outer_context,
+            outer_attribute,
+            control,
+        )),
+        _ => None,
     }
 }
 
 fn evaluate_not(
     document: &Document,
-    node: NodeId,
     operand: &PathBooleanPredicate,
-    context_position: usize,
-    context_size: usize,
+    focus: EvaluationFocus,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
-    Ok(!evaluate(
-        document,
-        node,
-        operand,
-        context_position,
-        context_size,
-        control,
-    )?)
+    Ok(!evaluate(document, operand, focus, control)?)
 }
 
 fn evaluate_and(
     document: &Document,
-    node: NodeId,
     left: &PathBooleanPredicate,
     right: &PathBooleanPredicate,
-    context_position: usize,
-    context_size: usize,
+    focus: EvaluationFocus,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
-    if !evaluate(
-        document,
-        node,
-        left,
-        context_position,
-        context_size,
-        control,
-    )? {
+    if !evaluate(document, left, focus, control)? {
         return Ok(false);
     }
-    evaluate(
-        document,
-        node,
-        right,
-        context_position,
-        context_size,
-        control,
-    )
+    evaluate(document, right, focus, control)
 }
 
 fn evaluate_or(
     document: &Document,
-    node: NodeId,
     left: &PathBooleanPredicate,
     right: &PathBooleanPredicate,
-    context_position: usize,
-    context_size: usize,
+    focus: EvaluationFocus,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
-    if evaluate(
-        document,
-        node,
-        left,
-        context_position,
-        context_size,
-        control,
-    )? {
+    if evaluate(document, left, focus, control)? {
         return Ok(true);
     }
-    evaluate(
-        document,
-        node,
-        right,
-        context_position,
-        context_size,
-        control,
-    )
+    evaluate(document, right, focus, control)
 }
 
 fn following_sibling_element_number_compare(
@@ -978,6 +989,28 @@ fn attribute_not_equal(
         }
     }
     Ok(false)
+}
+
+fn attribute_equals_outer_attribute(
+    document: &Document,
+    node: NodeId,
+    attribute: &str,
+    outer_context: NodeId,
+    outer_attribute: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let mut required = None;
+    for candidate in document.attributes(outer_context).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if unnamespaced_attribute_named(document, candidate, outer_attribute) {
+            required = document.value(candidate);
+            break;
+        }
+    }
+    let Some(required) = required else {
+        return Ok(false);
+    };
+    has_named_attribute(document, node, attribute, Some(required), control)
 }
 
 fn parent_attribute_string_comparison(

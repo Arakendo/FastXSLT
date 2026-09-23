@@ -500,27 +500,34 @@ fn rejects_forbidden_mode_and_malformed_extension_prefixes_on_stylesheet_root() 
 }
 
 #[test]
-fn declared_extension_elements_fail_explicitly_instead_of_becoming_literal_results() {
-    for (label, stylesheet) in [
-        (
-            "prefixed",
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:extension" extension-element-prefixes="e"><xsl:template match="/"><e:invoke><xsl:fallback><out/></xsl:fallback></e:invoke></xsl:template></xsl:stylesheet>"#.as_slice(),
-        ),
-        (
-            "default",
-            br##"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns="urn:extension" extension-element-prefixes="#default"><xsl:template match="/"><invoke/></xsl:template></xsl:stylesheet>"##.as_slice(),
-        ),
-    ] {
-        let document = parse_stylesheet(&format!("memory:extension-{label}.xsl"), stylesheet);
-        let failure =
-            compile_stylesheet(&document).expect_err("extension execution is unsupported");
-        assert_eq!(failure.code, "FXST1059", "{label}");
-        assert_eq!(
-            failure.category,
-            CompileCategory::Unsupported,
-            "{label}"
-        );
-    }
+fn declared_extension_elements_compile_only_standard_fallback_content() {
+    let prefixed = parse_stylesheet(
+        "memory:extension-prefixed.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:extension" extension-element-prefixes="e"><xsl:template match="/"><e:invoke xmlns:n="urn:fallback-scope" xsl:exclude-result-prefixes="n"><ignored/><xsl:fallback xsl:exclude-result-prefixes="n"><out/></xsl:fallback></e:invoke></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&prefixed).expect("standard fallback should compile");
+    let root_template = program.root_template.expect("root template");
+    let [
+        Instruction::LiteralElement {
+            name, namespaces, ..
+        },
+    ] = root_template.body.as_slice()
+    else {
+        panic!("only the fallback result element should be retained");
+    };
+    assert_eq!(name.local, "out");
+    assert!(namespaces.iter().any(|binding| {
+        binding.prefix.as_deref() == Some("n") && binding.namespace == "urn:fallback-scope"
+    }));
+
+    let without_fallback = parse_stylesheet(
+        "memory:extension-default.xsl",
+        br##"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns="urn:extension" extension-element-prefixes="#default"><xsl:template match="/"><invoke/></xsl:template></xsl:stylesheet>"##,
+    );
+    let failure = compile_stylesheet(&without_fallback)
+        .expect_err("extension execution without fallback is unsupported");
+    assert_eq!(failure.code, "FXST1059");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
 
     let declaration_only = parse_stylesheet(
         "memory:extension-declaration-only.xsl",

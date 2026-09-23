@@ -11,7 +11,9 @@ use crate::resources::ResourceSnapshot;
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
-use crate::xpath::path_experiment::evaluate_location_path_controlled;
+use crate::xpath::path_experiment::{
+    evaluate_location_path_controlled, evaluate_location_path_union_controlled,
+};
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, ConstructedNode, GlobalBinding, GlobalBindingDefault, StylesheetProgram,
     Template, TemplateArgument, TemplateArgumentValue, TemplateParameterDefault,
@@ -175,13 +177,20 @@ fn evaluate_template_argument(
             evaluate_source_variable_path_argument(inputs, variable, path, variables, control)?
         }
         TemplateArgumentValue::Xslt10BinaryNumeric(expression) => {
-            evaluate_numeric_template_argument(inputs, context, expression, variables, control)?
+            evaluate_numeric_template_argument(inputs, execution, expression, variables, control)?
         }
         TemplateArgumentValue::SourcePath(path) => {
             let (source, context) = required_source_context(inputs, context)?;
             let nodes = evaluate_location_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             InvocationParameterValue::SourceNodes(nodes)
+        }
+        TemplateArgumentValue::Xslt10CountPathUnion(alternatives) => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let nodes =
+                evaluate_location_path_union_controlled(source, context, alternatives, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            integer_parameter(nodes.len())
         }
         TemplateArgumentValue::Xslt10SumPath(path) => {
             let value = evaluate_xslt10_sum_path(inputs, context, path, control)?;
@@ -345,12 +354,19 @@ fn evaluate_context_name_argument(
 
 fn evaluate_numeric_template_argument(
     inputs: &SequenceInputs<'_>,
-    context: Option<NodeId>,
+    execution: super::SequenceContext<'_>,
     expression: &crate::xpath::binary_numeric_experiment::BinaryNumericExpression,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<InvocationParameterValue, ExecutionFailure> {
-    let value = evaluate_binary_numeric_value(inputs, context, expression, variables, control)?;
+    let value = evaluate_binary_numeric_value(
+        inputs,
+        execution.node,
+        execution.sequence_focus(),
+        expression,
+        variables,
+        control,
+    )?;
     Ok(InvocationParameterValue::Atomic(
         AtomicValue::from_validated_lexical(BuiltinAtomicType::Double, value),
     ))
@@ -656,18 +672,7 @@ fn materialize_global_default(
             materialize_global_count(globals, binding, path, source, request_id, control)?;
         }
         GlobalBindingDefault::LocationPath(path) => {
-            let source = source.ok_or_else(|| {
-                failure(
-                    "FXRT1004",
-                    FailureCategory::Unsupported,
-                    Some(request_id),
-                    "a source-dependent global binding requires a principal source",
-                )
-            })?;
-            let nodes =
-                evaluate_location_path_controlled(source, source.document_node(), path, control)
-                    .map_err(|failure| control_failure(failure, request_id))?;
-            globals.nodes.insert(binding.name.clone(), nodes);
+            materialize_global_location_path(globals, binding, path, source, request_id, control)?;
         }
         GlobalBindingDefault::Xslt10NumberLocationPath(path) => {
             materialize_global_number(globals, binding, path, source, request_id, control)?;
@@ -677,6 +682,11 @@ fn materialize_global_default(
         }
         GlobalBindingDefault::Variable(name) => {
             materialize_global_alias(globals, binding, name, request_id)?;
+        }
+        GlobalBindingDefault::SourceVariablePath { variable, path } => {
+            materialize_global_source_variable_path(
+                globals, binding, variable, path, source, request_id, control,
+            )?;
         }
         GlobalBindingDefault::TemporaryTree(nodes) => {
             let tree = materialize_temporary_nodes(nodes, request_id, control)?;
@@ -730,6 +740,66 @@ fn materialize_global_default(
             materialize_parentless_global(globals, binding, request_id, control)?;
         }
     }
+    Ok(())
+}
+
+fn materialize_global_location_path(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    path: &crate::xpath::path_experiment::LocationPath,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "a source-dependent global binding requires a principal source",
+        )
+    })?;
+    let nodes = evaluate_location_path_controlled(source, source.document_node(), path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    globals.nodes.insert(binding.name.clone(), nodes);
+    Ok(())
+}
+
+fn materialize_global_source_variable_path(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    variable: &str,
+    path: &crate::xpath::path_experiment::LocationPath,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "a variable-rooted global binding requires a principal source",
+        )
+    })?;
+    let roots = globals.nodes.get(variable).ok_or_else(|| {
+        failure(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(request_id),
+            format!("variable-rooted global binding requires source nodes: ${variable}"),
+        )
+    })?;
+    let mut selected = Vec::new();
+    for root in roots {
+        selected.extend(
+            evaluate_location_path_controlled(source, *root, path, control)
+                .map_err(|failure| control_failure(failure, request_id))?,
+        );
+    }
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+    globals.nodes.insert(binding.name.clone(), selected);
     Ok(())
 }
 
@@ -1732,7 +1802,8 @@ fn bind_template_parameter_default(
             copy_parameter_default_variable(frame, parameter, variable, inputs)?;
         }
         TemplateParameterDefault::Xslt10BinaryNumeric(expression) => {
-            let value = evaluate_binary_numeric_value(inputs, context, expression, frame, control)?;
+            let value =
+                evaluate_binary_numeric_value(inputs, context, None, expression, frame, control)?;
             frame.bind_atomic(
                 parameter.name.clone(),
                 AtomicValue::from_validated_lexical(BuiltinAtomicType::Double, value),

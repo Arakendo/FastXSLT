@@ -60,10 +60,7 @@ pub(super) fn assemble_element_content(
     let mut children = Vec::new();
     for item in items {
         match item {
-            ResultNode::PendingAttribute(attribute)
-            | ResultNode::Xslt10RecoverableAttribute(attribute)
-                if children.is_empty() =>
-            {
+            ResultNode::PendingAttribute(attribute) if children.is_empty() => {
                 if attributes
                     .iter()
                     .any(|existing| existing.name == attribute.name)
@@ -76,6 +73,16 @@ pub(super) fn assemble_element_content(
                     ));
                 }
                 attributes.push(attribute);
+            }
+            ResultNode::Xslt10RecoverableAttribute(attribute) if children.is_empty() => {
+                if let Some(existing) = attributes
+                    .iter_mut()
+                    .find(|existing| existing.name == attribute.name)
+                {
+                    *existing = attribute;
+                } else {
+                    attributes.push(attribute);
+                }
             }
             ResultNode::PendingAttribute(_) => {
                 return Err(super::failure(
@@ -183,6 +190,7 @@ pub(super) fn materialize_computed_attributes(
             result.name = super::dynamic_attribute_name::resolve(
                 inputs,
                 focus.source.map(|(_, node)| node),
+                focus.position,
                 name,
                 variables,
                 &attribute.location,
@@ -207,6 +215,7 @@ fn materialize_computed_attribute_value(
             attribute,
             instruction,
             focus,
+            context.variables,
             context.request_id,
             control,
         ),
@@ -393,6 +402,7 @@ fn materialize_number_attribute(
     attribute: &ComputedAttribute,
     instruction: &crate::xslt::golden_semantics_experiment::Instruction,
     focus: LiteralAttributeFocus<'_>,
+    variables: &RuntimeVariables,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<ResultAttribute, ExecutionFailure> {
@@ -407,8 +417,14 @@ fn materialize_number_attribute(
     };
     Ok(ResultAttribute {
         name: attribute.name.clone(),
-        value: super::number_executor::evaluate(inputs, instruction, execution, control)?
-            .unwrap_or_default(),
+        value: super::number_executor::evaluate(
+            inputs,
+            instruction,
+            execution,
+            variables,
+            control,
+        )?
+        .unwrap_or_default(),
     })
 }
 
@@ -751,6 +767,10 @@ fn multi_path_avt(
                 value.push_str(&evaluate_binary_numeric_value(
                     context.inputs,
                     node,
+                    Some(super::SequenceFocus {
+                        position: context.focus_position,
+                        size: context.focus_size,
+                    }),
                     expression,
                     context.variables,
                     control,

@@ -27,9 +27,10 @@ use super::{
 use crate::xpath::binary_numeric_experiment::{BinaryNumericNode, BinaryNumericOperator};
 use crate::xslt::golden_semantics_experiment::{
     Xslt10ComposedPathTranslate, Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup,
-    Xslt10KeyName, Xslt10KeyNodePredicate, Xslt10KeyValue, Xslt10NormalizedVariableTranslate,
-    Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
-    Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand, Xslt10VariableStringFunction,
+    Xslt10KeyName, Xslt10KeyNodePredicate, Xslt10KeyValue, Xslt10NodePosition,
+    Xslt10NormalizedVariableTranslate, Xslt10PathStringFunction, Xslt10PathStringFunctionKind,
+    Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand,
+    Xslt10VariableStringFunction,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -313,7 +314,7 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         && inner.trim_start().starts_with("format-number(")
     {
         return Ok(ValueExpression::Xslt10NumberOfFormatNumber(
-            compile_format_number(document, element, inner.trim(), location)?,
+            compile_format_number(document, element, inner.trim(), location, true)?,
         ));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
@@ -325,6 +326,14 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         && let Some(variable) = parse_xslt10_variable_conversion(expression, "number")
     {
         return Ok(ValueExpression::Xslt10VariableNumber(variable.to_owned()));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((variable, position)) = parse_xslt10_variable_node_position(expression)
+    {
+        return Ok(ValueExpression::Xslt10VariableNodePosition {
+            variable: normalize_variable_qname(document, element, variable)?,
+            position,
+        });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some((selection, variable, suffix)) =
@@ -601,6 +610,13 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     {
         comparison
     } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((left, right)) = parse_xslt10_variable_boolean_and(expression)
+    {
+        ValueExpression::Xslt10VariableBooleanAnd {
+            left: normalize_variable_qname(document, element, left)?,
+            right: normalize_variable_qname(document, element, right)?,
+        }
+    } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(path) = compile_xslt10_current_path(expression, location)?
     {
         ValueExpression::Xslt10CurrentPredicatePath(path)
@@ -640,7 +656,11 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         ))
     } else if expression.trim_start().starts_with("format-number(") {
         ValueExpression::FormatNumber(compile_format_number(
-            document, element, expression, location,
+            document,
+            element,
+            expression,
+            location,
+            static_context.compatibility == ValueCompatibilityMode::Xslt10,
         )?)
     } else if expression.trim_start().starts_with("sum(for $") {
         ValueExpression::FocusSumFor(Box::new(
@@ -722,19 +742,21 @@ fn compile_format_number(
     element: NodeId,
     expression: &str,
     location: &SourceLocation,
+    admit_xslt10_paths: bool,
 ) -> Result<Box<crate::xpath::format_number_experiment::FormatNumberExpression>, CompileFailure> {
-    let mut format = parse_format_number(expression, location).map_err(|failure| {
-        let (code, category) = match failure.kind {
-            FormatNumberFailureKind::InvalidArity => ("XPST0017", CompileCategory::Invalid),
-            FormatNumberFailureKind::Unsupported => ("FXXP1009", CompileCategory::Unsupported),
-        };
-        CompileFailure {
-            code,
-            category,
-            detail: failure.detail,
-            location: failure.location,
-        }
-    })?;
+    let mut format =
+        parse_format_number(expression, location, admit_xslt10_paths).map_err(|failure| {
+            let (code, category) = match failure.kind {
+                FormatNumberFailureKind::InvalidArity => ("XPST0017", CompileCategory::Invalid),
+                FormatNumberFailureKind::Unsupported => ("FXXP1009", CompileCategory::Unsupported),
+            };
+            CompileFailure {
+                code,
+                category,
+                detail: failure.detail,
+                location: failure.location,
+            }
+        })?;
     if let Some(lexical) = format.requested_format_lexical().map(str::to_owned) {
         let name = super::super::compile_expanded_qname(
             document,
@@ -743,6 +765,11 @@ fn compile_format_number(
             "format-number decimal-format name",
         )?;
         format.set_requested_format(name);
+    }
+    if let Some(variable) = format.requested_format_variable().map(str::to_owned) {
+        format
+            .set_requested_format_variable(normalize_variable_qname(document, element, &variable)?);
+        format.set_static_namespaces(document.in_scope_namespaces(element));
     }
     Ok(Box::new(format))
 }
@@ -1697,6 +1724,40 @@ pub(super) fn parse_xslt10_variable_position_selection(expression: &str) -> Opti
         .then_some((variable, position_variable))
 }
 
+pub(super) fn parse_xslt10_variable_node_position(
+    expression: &str,
+) -> Option<(&str, Xslt10NodePosition)> {
+    let (variable, predicate) = expression.trim().strip_prefix('$')?.split_once('[')?;
+    let predicate = predicate.strip_suffix(']')?.trim();
+    if !is_ascii_ncname(variable) {
+        return None;
+    }
+    let position = parse_xslt10_node_position(predicate)?;
+    Some((variable, position))
+}
+
+pub(super) fn parse_xslt10_node_position(predicate: &str) -> Option<Xslt10NodePosition> {
+    let predicate = predicate.trim();
+    if predicate == "last()" {
+        return Some(Xslt10NodePosition::Last);
+    }
+    if let Some(offset) = predicate.strip_prefix("last()").map(str::trim)
+        && let Some(offset) = offset.strip_prefix('-').map(str::trim)
+    {
+        let offset = offset.parse::<usize>().ok()?;
+        return (offset > 0).then_some(Xslt10NodePosition::LastMinus(offset));
+    }
+    let index = predicate.parse::<usize>().ok()?;
+    (index > 0).then_some(Xslt10NodePosition::Index(index))
+}
+
+fn parse_xslt10_variable_boolean_and(expression: &str) -> Option<(&str, &str)> {
+    let (left, right) = expression.trim().split_once(" and ")?;
+    let left = left.trim().strip_prefix('$')?;
+    let right = right.trim().strip_prefix('$')?;
+    (is_ascii_ncname(left) && is_ascii_ncname(right)).then_some((left, right))
+}
+
 fn parse_xslt10_variable_boolean_comparison(expression: &str) -> Option<(&str, bool, bool)> {
     let mut expression = expression.trim();
     let mut invert = false;
@@ -1950,6 +2011,28 @@ fn compile_binary_numeric_node(
         crate::xpath::binary_numeric_experiment::ExactRational::parse_decimal(operand)
     {
         return Some(BinaryNumericNode::Literal(value));
+    }
+    if operand == "position()" {
+        return Some(BinaryNumericNode::ContextPosition);
+    }
+    if operand == "last()" {
+        return Some(BinaryNumericNode::ContextSize);
+    }
+    if let Some(operand) = operand
+        .strip_prefix("floor(")
+        .and_then(|operand| operand.strip_suffix(')'))
+    {
+        return Some(BinaryNumericNode::Floor(Box::new(
+            compile_binary_numeric_node(operand, location, allow_xslt10_variables)?,
+        )));
+    }
+    if let Some(operand) = operand
+        .strip_prefix("round(")
+        .and_then(|operand| operand.strip_suffix(')'))
+    {
+        return Some(BinaryNumericNode::Round(Box::new(
+            compile_binary_numeric_node(operand, location, allow_xslt10_variables)?,
+        )));
     }
     if let Some(alternatives) = split_top_level_union(operand) {
         let alternatives = alternatives
@@ -2432,6 +2515,25 @@ fn compile_count_value(
         return Ok(Some(ValueExpression::Xslt10CountKeyLookup(Box::new(
             lookup,
         ))));
+    }
+    if compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(alternatives) = split_top_level_union(argument)
+    {
+        if alternatives.len() > 8 {
+            return Err(unsupported(
+                "FXXP1001",
+                "the admitted count() path union is limited to eight alternatives",
+                location,
+            ));
+        }
+        let alternatives = alternatives
+            .into_iter()
+            .map(str::trim)
+            .map(|path| {
+                parse_xslt10_location_path(path, location.clone()).map_err(map_path_failure)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        return Ok(Some(ValueExpression::Xslt10CountPathUnion(alternatives)));
     }
     let mut path =
         parse_location_path(argument.trim(), location.clone()).map_err(map_path_failure)?;

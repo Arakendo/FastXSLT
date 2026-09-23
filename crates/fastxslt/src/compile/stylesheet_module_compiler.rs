@@ -1,7 +1,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xslt::golden_semantics_experiment::{
-    MatchPattern, MatchedTemplate, SourceWhitespacePolicy, StylesheetProgram, Template,
-    TemplatePriority,
+    Instruction, MatchPattern, MatchedTemplate, SourceWhitespacePolicy, StylesheetProgram,
+    Template, TemplatePriority,
 };
 
 use super::instruction_compiler::compile_literal_element;
@@ -278,6 +278,7 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
         &imported_program,
         principal.location(*import),
     )?;
+    materialize_principal_root_template(&mut program);
     imported_program
         .matched_templates
         .append(&mut program.matched_templates);
@@ -363,6 +364,7 @@ pub(crate) fn compile_stylesheet_with_imports(
         }
     }
 
+    materialize_principal_root_template(&mut principal_program);
     let mut matched_templates = Vec::new();
     for program in &mut imported_programs {
         matched_templates.append(&mut program.matched_templates);
@@ -419,6 +421,7 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
         )?;
     }
 
+    materialize_principal_root_template(&mut principal_program);
     let mut matched_templates = Vec::new();
     for program in &mut imported_programs {
         matched_templates.append(&mut program.matched_templates);
@@ -472,6 +475,7 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
         principal.location(principal_root),
     )?;
 
+    materialize_principal_root_template(&mut principal_program);
     let mut matched_templates = imported_program.matched_templates;
     matched_templates.append(&mut principal_program.matched_templates);
     principal_program.matched_templates = matched_templates;
@@ -484,6 +488,53 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
     finalize_decimal_formats(&mut principal_program)?;
     validate_named_template_references(&principal_program)?;
     Ok(principal_program)
+}
+
+fn materialize_principal_root_template(program: &mut StylesheetProgram) {
+    if program
+        .root_template
+        .as_ref()
+        .is_none_or(|template| !contains_apply_imports(&template.body))
+    {
+        return;
+    }
+    let Some(template) = program.root_template.take() else {
+        return;
+    };
+    program.matched_templates.push(MatchedTemplate {
+        pattern: MatchPattern::Document,
+        import_precedence: 0,
+        priority: TemplatePriority::ROOT_DEFAULT,
+        modes: std::mem::take(&mut program.root_template_modes),
+        template,
+    });
+}
+
+fn contains_apply_imports(instructions: &[Instruction]) -> bool {
+    instructions.iter().any(|instruction| match instruction {
+        Instruction::ApplyImports { .. } => true,
+        Instruction::LiteralElement { body, .. }
+        | Instruction::ContextNameElement { body, .. }
+        | Instruction::DynamicNameElement { body, .. }
+        | Instruction::ForEachVariable { body, .. }
+        | Instruction::ForEachStaticIntegerRange { body, .. }
+        | Instruction::ForEachNodes { body, .. }
+        | Instruction::Xslt10SequenceTreeVariable { body, .. }
+        | Instruction::If { body, .. } => contains_apply_imports(body),
+        Instruction::Xslt10ProcessingInstructionNode { body, .. }
+        | Instruction::Xslt10CommentNode { body, .. } => contains_apply_imports(body.as_ref()),
+        Instruction::Choose {
+            branches,
+            otherwise,
+            ..
+        } => {
+            branches
+                .iter()
+                .any(|branch| contains_apply_imports(&branch.body))
+                || contains_apply_imports(otherwise)
+        }
+        _ => false,
+    })
 }
 
 fn rebase_imported_program(

@@ -141,6 +141,7 @@ fn function_available(document: &Document, element: NodeId, lexical_name: &str) 
             | "contains"
             | "count"
             | "current"
+            | "document"
             | "element-available"
             | "false"
             | "floor"
@@ -246,6 +247,10 @@ mod tests {
         );
         assert_eq!(
             fold(&document, element, "function-available('format-number')"),
+            Some(StaticIntrospectionValue::Boolean(true))
+        );
+        assert_eq!(
+            fold(&document, element, "function-available('document')"),
             Some(StaticIntrospectionValue::Boolean(true))
         );
         assert_eq!(

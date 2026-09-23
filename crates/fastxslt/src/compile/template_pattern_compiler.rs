@@ -1,7 +1,7 @@
 //! Private template match-pattern normalization and priority compilation.
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
-use crate::xpath::path_experiment::{PathStep, parse_location_path};
+use crate::xpath::path_experiment::{PathStep, parse_location_path, parse_qualified_child_path};
 use crate::xslt::golden_semantics_experiment::{
     ChildPresenceTest, MatchNodeTest, MatchPattern, MatchStringPredicate, NamedSiblingBoundary,
     TemplatePriority,
@@ -323,8 +323,15 @@ pub(super) fn compile_match_pattern(
             )
         }
         path if path.contains('/') && !path.starts_with("//") => {
-            let path = parse_location_path(path, document.location(element).clone())
-                .map_err(map_path_failure)?;
+            let path = if path.contains(':') && !path.contains("::") {
+                parse_qualified_child_path(path, document.location(element).clone(), |prefix| {
+                    namespace_for_prefix(document, element, prefix).map(str::to_owned)
+                })
+                .map_err(map_path_failure)?
+            } else {
+                parse_location_path(path, document.location(element).clone())
+                    .map_err(map_path_failure)?
+            };
             if path.has_non_simple_position_predicate() {
                 return Err(unsupported(
                     "FXST1005",

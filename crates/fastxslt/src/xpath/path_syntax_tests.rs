@@ -44,6 +44,16 @@ fn xslt10_exact_current_function_reuses_the_context_item_path() {
 }
 
 #[test]
+fn xslt10_outer_parentheses_reuse_the_typed_location_path() {
+    let parenthesized = parse_xslt10_location_path(" ((.//last-name)) ", location())
+        .expect("XSLT 1.0 parenthesized path");
+    let direct = parse_location_path(".//last-name", location()).expect("direct path");
+
+    assert_eq!(parenthesized, direct);
+    assert!(parse_location_path("(.//last-name)", location()).is_err());
+}
+
+#[test]
 fn explicit_context_child_path_is_the_same_relative_navigation() {
     let implicit = parse_location_path("greeting/name", location()).expect("implicit path");
     let explicit = parse_location_path("./greeting/name", location()).expect("explicit path");

@@ -10,10 +10,11 @@ use crate::xpath::constant_numeric_experiment;
 use crate::xpath::language_experiment;
 
 const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+const XSLT10_OUTER_ATTRIBUTE_MARKER: char = '\0';
 
 #[path = "path_boolean_predicate.rs"]
 mod path_boolean_predicate;
-use path_boolean_predicate::PathBooleanPredicate;
+use path_boolean_predicate::{EvaluationFocus, PathBooleanPredicate};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct LocationPath {
@@ -30,6 +31,35 @@ pub(crate) struct LocationPath {
 }
 
 impl LocationPath {
+    fn promote_xslt10_outer_attribute_markers(&mut self) {
+        if let Some(predicate) = self.final_boolean_predicate.as_deref_mut() {
+            path_boolean_predicate::promote_outer_attribute_marker(
+                predicate,
+                XSLT10_OUTER_ATTRIBUTE_MARKER,
+            );
+        }
+        for predicate in self.step_boolean_predicates.iter_mut().flatten() {
+            path_boolean_predicate::promote_outer_attribute_marker(
+                predicate,
+                XSLT10_OUTER_ATTRIBUTE_MARKER,
+            );
+        }
+        for predicate in self
+            .step_position_predicates
+            .iter_mut()
+            .flatten()
+            .filter_map(|predicate| match predicate {
+                StepPredicate::Boolean(predicate) => Some(predicate.as_mut()),
+                StepPredicate::ContextName(_) | StepPredicate::Position(_) => None,
+            })
+        {
+            path_boolean_predicate::promote_outer_attribute_marker(
+                predicate,
+                XSLT10_OUTER_ATTRIBUTE_MARKER,
+            );
+        }
+    }
+
     pub(crate) fn starts_at_document_node(&self) -> bool {
         matches!(
             self.origin,
@@ -89,6 +119,7 @@ impl LocationPath {
                         StepPredicate::Position(
                             PositionPredicate::Compare { .. } | PositionPredicate::LastMinus(_)
                         ) | StepPredicate::ContextName(_)
+                            | StepPredicate::Boolean(_)
                     )
                 })
         })
@@ -155,6 +186,9 @@ impl LocationPath {
                             .map(|predicate| match predicate {
                                 StepPredicate::ContextName(name) => name.len(),
                                 StepPredicate::Position(_) => 0,
+                                StepPredicate::Boolean(predicate) => {
+                                    predicate.known_owned_capacity_bytes()
+                                }
                             })
                             .sum::<usize>()
                 })
@@ -642,6 +676,7 @@ enum PositionPredicate {
 enum StepPredicate {
     Position(PositionPredicate),
     ContextName(Box<str>),
+    Boolean(Box<PathBooleanPredicate>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -784,6 +819,7 @@ pub(crate) fn parse_xslt10_location_path(
     expression: &str,
     location: SourceLocation,
 ) -> Result<LocationPath, PathFailure> {
+    let expression = strip_enclosing_path_parentheses(expression.trim());
     if expression.trim() == "current()" {
         return parse_location_path(".", location);
     }
@@ -792,7 +828,33 @@ pub(crate) fn parse_xslt10_location_path(
     if let Some((path, matches)) = xslt10_static_comparison_predicate(expression) {
         return parse_location_path(if matches { path } else { "()" }, location);
     }
+    if let Some(normalized) = normalize_xslt10_outer_attribute_comparison(expression) {
+        let mut path = parse_location_path(&normalized, location)?;
+        path.promote_xslt10_outer_attribute_markers();
+        return Ok(path);
+    }
     parse_location_path(expression, location)
+}
+
+fn normalize_xslt10_outer_attribute_comparison(expression: &str) -> Option<String> {
+    let marker = "current()/@";
+    let start = expression.find(marker)?;
+    let name_start = start + marker.len();
+    let outer_attribute = expression[name_start..]
+        .chars()
+        .take_while(|character| is_ncname_char(*character))
+        .collect::<String>();
+    if !is_ncname(&outer_attribute) {
+        return None;
+    }
+    let mut normalized = String::with_capacity(expression.len() + 3);
+    normalized.push_str(&expression[..start]);
+    normalized.push('\'');
+    normalized.push(XSLT10_OUTER_ATTRIBUTE_MARKER);
+    normalized.push_str(&outer_attribute);
+    normalized.push('\'');
+    normalized.push_str(&expression[name_start + outer_attribute.len()..]);
+    Some(normalized)
 }
 
 fn xslt10_static_comparison_predicate(expression: &str) -> Option<(&str, bool)> {
@@ -912,7 +974,7 @@ fn normalize_grouped_reverse_axis_position(expression: &str) -> Option<(String, 
     ))
 }
 
-fn strip_enclosing_path_parentheses(mut expression: &str) -> &str {
+pub(crate) fn strip_enclosing_path_parentheses(mut expression: &str) -> &str {
     loop {
         let Some(inner) = expression
             .strip_prefix('(')
@@ -985,7 +1047,9 @@ pub(crate) fn parse_qualified_child_path(
         (PathOrigin::ContextDescendant, path)
     } else if let Some(path) = expression.strip_prefix("//") {
         (PathOrigin::Descendant, path)
-    } else if expression.starts_with('/') || expression.contains("//") {
+    } else if let Some(path) = expression.strip_prefix('/') {
+        (PathOrigin::DocumentNode, path)
+    } else if expression.contains("//") {
         return Err(PathFailure::Unsupported {
             detail: format!(
                 "the private slice does not support this qualified location-path form: {expression}"
@@ -1309,6 +1373,9 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<AxisPredicate>)
     let Some(predicate) = predicate.strip_suffix(']') else {
         return (expression, None);
     };
+    if predicate.contains(XSLT10_OUTER_ATTRIBUTE_MARKER) {
+        return (expression, None);
+    }
     let Some(predicate) = parse_axis_predicate(predicate) else {
         return (expression, None);
     };
@@ -1536,21 +1603,24 @@ fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
             if let Some(position) = parse_position_predicate(predicate) {
                 position_predicate.push(StepPredicate::Position(position));
             } else if predicate_index == 0 {
-                if let Some(predicate) = parse_axis_predicate(predicate) {
+                if !predicate.contains(XSLT10_OUTER_ATTRIBUTE_MARKER)
+                    && let Some(predicate) = parse_axis_predicate(predicate)
+                {
                     axis_predicate = Some(predicate);
                 } else {
                     boolean_predicate = Some(Box::new(path_boolean_predicate::parse(predicate)?));
                 }
-            } else if !position_predicate.is_empty()
-                && !position_predicate
+            } else {
+                let predicate = if !position_predicate
                     .iter()
                     .any(|item| matches!(item, StepPredicate::ContextName(_)))
-            {
-                position_predicate.push(StepPredicate::ContextName(
-                    parse_context_name_predicate(predicate)?.into_boxed_str(),
-                ));
-            } else {
-                return None;
+                    && let Some(name) = parse_context_name_predicate(predicate)
+                {
+                    StepPredicate::ContextName(name.into_boxed_str())
+                } else {
+                    StepPredicate::Boolean(Box::new(path_boolean_predicate::parse(predicate)?))
+                };
+                position_predicate.push(predicate);
             }
         }
         steps.push(name.to_owned());
@@ -1818,10 +1888,8 @@ pub(crate) fn evaluate_location_path_controlled(
                         |predicate| {
                             path_boolean_predicate::evaluate(
                                 document,
-                                child,
                                 predicate,
-                                offset + 1,
-                                named_count,
+                                EvaluationFocus::new(child, context, offset + 1, named_count),
                                 control,
                             )
                         },
@@ -1833,20 +1901,20 @@ pub(crate) fn evaluate_location_path_controlled(
                     predicate_candidates.push(child);
                 }
             }
-            let predicate_candidates = apply_position_predicates(
+            let predicate_candidates = apply_sequential_predicates(
                 document,
+                context,
                 predicate_candidates,
                 &path.step_position_predicates[step_index],
-            );
+                control,
+            )?;
             let matching_count = predicate_candidates.len();
             for (offset, child) in predicate_candidates.into_iter().enumerate() {
                 if final_predicates_match(
                     document,
-                    child,
                     path,
                     step_index,
-                    offset + 1,
-                    matching_count,
+                    EvaluationFocus::new(child, context, offset + 1, matching_count),
                     control,
                 )? {
                     next.push(child);
@@ -1862,11 +1930,9 @@ pub(crate) fn evaluate_location_path_controlled(
 
 fn final_predicates_match(
     document: &Document,
-    node: NodeId,
     path: &LocationPath,
     step_index: usize,
-    context_position: usize,
-    context_size: usize,
+    focus: EvaluationFocus,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
     let is_final_step = step_index + 1 == path.steps.len();
@@ -1875,30 +1941,23 @@ fn final_predicates_match(
         .flatten();
     if !evaluate_optional_axis_predicate(
         document,
-        node,
+        focus.node,
         final_predicate,
-        context_position,
-        context_size,
+        focus.position,
+        focus.size,
         control,
     )? {
         return Ok(false);
     }
     if is_final_step
         && let Some(predicate) = path.final_boolean_predicate.as_deref()
-        && !path_boolean_predicate::evaluate(
-            document,
-            node,
-            predicate,
-            context_position,
-            context_size,
-            control,
-        )?
+        && !path_boolean_predicate::evaluate(document, predicate, focus, control)?
     {
         return Ok(false);
     }
     Ok(match path.final_context_predicate {
         Some(FinalContextPredicate::TextHasNonWhitespace) if is_final_step => {
-            document.value(node).is_some_and(|value| {
+            document.value(focus.node).is_some_and(|value| {
                 value
                     .chars()
                     .any(|character| !matches!(character, '\u{9}' | '\u{A}' | '\u{D}' | ' '))
@@ -1928,38 +1987,56 @@ pub(crate) fn evaluate_location_path_union_controlled(
     Ok(selected)
 }
 
-fn apply_position_predicates(
+fn apply_sequential_predicates(
     document: &Document,
+    outer_context: NodeId,
     mut candidates: Vec<NodeId>,
     predicates: &[StepPredicate],
-) -> Vec<NodeId> {
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
     for predicate in predicates {
-        if let StepPredicate::ContextName(required) = predicate {
-            let (required_prefix, required_local) = required
-                .split_once(':')
-                .map_or((None, required.as_ref()), |(prefix, local)| {
-                    (Some(prefix), local)
+        match predicate {
+            StepPredicate::ContextName(required) => {
+                let (required_prefix, required_local) = required
+                    .split_once(':')
+                    .map_or((None, required.as_ref()), |(prefix, local)| {
+                        (Some(prefix), local)
+                    });
+                candidates.retain(|node| {
+                    document.name(*node).is_some_and(|name| {
+                        name.local == required_local && document.prefix(*node) == required_prefix
+                    })
                 });
-            candidates.retain(|node| {
-                document.name(*node).is_some_and(|name| {
-                    name.local == required_local && document.prefix(*node) == required_prefix
-                })
-            });
-            continue;
+            }
+            StepPredicate::Position(predicate) => {
+                let size = candidates.len();
+                candidates = candidates
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(offset, node)| {
+                        position_predicate_matches(Some(predicate), offset + 1, size)
+                            .then_some(node)
+                    })
+                    .collect();
+            }
+            StepPredicate::Boolean(predicate) => {
+                let size = candidates.len();
+                let mut selected = Vec::with_capacity(size);
+                for (offset, node) in candidates.into_iter().enumerate() {
+                    if path_boolean_predicate::evaluate(
+                        document,
+                        predicate,
+                        EvaluationFocus::new(node, outer_context, offset + 1, size),
+                        control,
+                    )? {
+                        selected.push(node);
+                    }
+                }
+                candidates = selected;
+            }
         }
-        let StepPredicate::Position(predicate) = predicate else {
-            unreachable!("context-name predicate returned above")
-        };
-        let size = candidates.len();
-        candidates = candidates
-            .into_iter()
-            .enumerate()
-            .filter_map(|(offset, node)| {
-                position_predicate_matches(Some(predicate), offset + 1, size).then_some(node)
-            })
-            .collect();
     }
-    candidates
+    Ok(candidates)
 }
 
 fn initial_path_nodes(

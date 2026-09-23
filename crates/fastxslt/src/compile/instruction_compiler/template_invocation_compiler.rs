@@ -3,6 +3,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::{
     parse_location_path, parse_qualified_child_path, parse_xslt10_location_path,
+    strip_enclosing_path_parentheses,
 };
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, Instruction, NodeTest, TemplateArgument, TemplateArgumentValue,
@@ -219,6 +220,9 @@ fn compile_selected_argument_value(
     if select.trim() == "current()" {
         return Ok(TemplateArgumentValue::CurrentSourceNode);
     }
+    if let Some(value) = compile_xslt10_argument_path_union_count(document, element, select)? {
+        return Ok(value);
+    }
     if let Some(path) =
         compile_xslt10_sum_path(document, element, select, document.location(element))?
     {
@@ -236,6 +240,44 @@ fn compile_selected_argument_value(
                 document.location(element),
             )
         })
+}
+
+fn compile_xslt10_argument_path_union_count(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<TemplateArgumentValue>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let Some(argument) = expression
+        .trim()
+        .strip_prefix("count(")
+        .and_then(|argument| argument.strip_suffix(')'))
+    else {
+        return Ok(None);
+    };
+    let Some(alternatives) = split_top_level_union(argument) else {
+        return Ok(None);
+    };
+    if alternatives.len() > 8 {
+        return Err(unsupported(
+            "FXXP1011",
+            "the admitted template-argument count() union is limited to eight paths",
+            document.location(element),
+        ));
+    }
+    let alternatives = alternatives
+        .into_iter()
+        .map(str::trim)
+        .map(|path| {
+            parse_xslt10_location_path(path, document.location(element).clone())
+                .map_err(map_path_failure)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Some(TemplateArgumentValue::Xslt10CountPathUnion(
+        alternatives,
+    )))
 }
 
 fn compile_source_path_string_comparison(
@@ -273,6 +315,11 @@ pub(super) fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
+    let expression = if uses_xslt10_compatibility(document, element) {
+        strip_enclosing_path_parentheses(expression.trim())
+    } else {
+        expression
+    };
     if uses_xslt10_compatibility(document, element)
         && expression.split_whitespace().collect::<String>() == "//*[name()=name(current())]/*"
     {
@@ -285,51 +332,8 @@ pub(super) fn parse_apply_selection(
             return Ok(selection);
         }
     }
-    if let Some(alternatives) = split_top_level_union(expression) {
-        let mut variable = None;
-        let mut paths = Vec::new();
-        for alternative in alternatives.into_iter().map(str::trim) {
-            if alternative.is_empty() {
-                return Err(invalid(
-                    "XPST0003",
-                    "xsl:apply-templates path union contains an empty alternative",
-                    &location,
-                ));
-            }
-            if let Some(name) = alternative
-                .strip_prefix('$')
-                .filter(|name| is_ascii_ncname(name))
-            {
-                if let Some(existing) = variable.as_deref() {
-                    if existing != name {
-                        return Err(unsupported(
-                            "FXXP1001",
-                            "xsl:apply-templates union supports at most one distinct source-node variable",
-                            &location,
-                        ));
-                    }
-                } else {
-                    variable = Some(name.to_owned());
-                }
-            } else {
-                paths.push(parse_selection_path(
-                    document,
-                    element,
-                    alternative,
-                    location.clone(),
-                )?);
-            }
-        }
-        if let Some(variable) = variable {
-            if paths.is_empty() {
-                return Ok(ApplySelection::VariableSequence(variable));
-            }
-            return Ok(ApplySelection::VariablePathUnion {
-                variable,
-                alternatives: paths,
-            });
-        }
-        return Ok(ApplySelection::PathUnion(paths));
+    if let Some(selection) = parse_apply_union(document, element, expression, &location)? {
+        return Ok(selection);
     }
     if let Some((start, end)) = expression.split_once(" to ").and_then(|(start, end)| {
         Some((
@@ -339,14 +343,20 @@ pub(super) fn parse_apply_selection(
     }) {
         return Ok(ApplySelection::AtomicIntegerRange { start, end });
     }
-    if uses_xslt10_compatibility(document, element)
-        && let Some((variable, position_variable)) =
-            parse_xslt10_variable_position_selection(expression)
+    if let Some(selection) =
+        parse_xslt10_path_union_position(document, element, expression, &location)?
     {
-        return Ok(ApplySelection::Xslt10VariablePosition {
-            variable: variable.to_owned(),
-            position_variable: position_variable.to_owned(),
-        });
+        return Ok(selection);
+    }
+    if let Some(selection) =
+        parse_xslt10_variable_positional_selection(document, element, expression)?
+    {
+        return Ok(selection);
+    }
+    if let Some(selection) =
+        parse_xslt10_variable_node_set_comparison(document, element, expression, &location)?
+    {
+        return Ok(selection);
     }
     if let Some(path) = parse_variable_filtered_path(expression) {
         return Ok(ApplySelection::VariableFilteredElementPath(path));
@@ -423,21 +433,215 @@ pub(super) fn parse_apply_selection(
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
 }
 
+fn parse_apply_union(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    let Some(alternatives) = split_top_level_union(expression) else {
+        return Ok(None);
+    };
+    let mut variable = None;
+    let mut paths = Vec::new();
+    for alternative in alternatives.into_iter().map(str::trim) {
+        if alternative.is_empty() {
+            return Err(invalid(
+                "XPST0003",
+                "xsl:apply-templates path union contains an empty alternative",
+                location,
+            ));
+        }
+        if let Some(name) = alternative
+            .strip_prefix('$')
+            .filter(|name| is_ascii_ncname(name))
+        {
+            if let Some(existing) = variable.as_deref() {
+                if existing != name {
+                    return Err(unsupported(
+                        "FXXP1001",
+                        "xsl:apply-templates union supports at most one distinct source-node variable",
+                        location,
+                    ));
+                }
+            } else {
+                variable = Some(name.to_owned());
+            }
+        } else {
+            paths.push(parse_selection_path(
+                document,
+                element,
+                alternative,
+                location.clone(),
+            )?);
+        }
+    }
+    Ok(Some(if let Some(variable) = variable {
+        if paths.is_empty() {
+            ApplySelection::VariableSequence(variable)
+        } else {
+            ApplySelection::VariablePathUnion {
+                variable,
+                alternatives: paths,
+            }
+        }
+    } else {
+        ApplySelection::PathUnion(paths)
+    }))
+}
+
+fn parse_xslt10_path_union_position(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let Some(expression) = expression.trim().strip_prefix('(') else {
+        return Ok(None);
+    };
+    let Some((union, predicate)) = expression.split_once(")[") else {
+        return Ok(None);
+    };
+    let Some(predicate) = predicate.strip_suffix(']') else {
+        return Ok(None);
+    };
+    let alternatives = split_top_level_union(union).unwrap_or_else(|| vec![union]);
+    if alternatives.len() > 8 || alternatives.iter().any(|path| path.contains('$')) {
+        return Ok(None);
+    }
+    let Some(position) = super::value_expression_compiler::parse_xslt10_node_position(predicate)
+    else {
+        return Ok(None);
+    };
+    let alternatives = alternatives
+        .into_iter()
+        .map(str::trim)
+        .map(|path| parse_selection_path(document, element, path, location.clone()))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Some(ApplySelection::Xslt10PathUnionPosition {
+        alternatives,
+        position,
+    }))
+}
+
+fn parse_xslt10_variable_positional_selection(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    if let Some(selection) = parse_xslt10_variable_union_position(document, element, expression)? {
+        return Ok(Some(selection));
+    }
+    if let Some((variable, position)) =
+        super::value_expression_compiler::parse_xslt10_variable_node_position(expression)
+    {
+        return Ok(Some(ApplySelection::Xslt10VariableNodePosition {
+            variable: normalize_variable_qname(document, element, variable)?,
+            position,
+        }));
+    }
+    Ok(
+        parse_xslt10_variable_position_selection(expression).map(
+            |(variable, position_variable)| ApplySelection::Xslt10VariablePosition {
+                variable: variable.to_owned(),
+                position_variable: position_variable.to_owned(),
+            },
+        ),
+    )
+}
+
+fn parse_xslt10_variable_union_position(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    let expression = expression.trim();
+    let Some(expression) = expression.strip_prefix('(') else {
+        return Ok(None);
+    };
+    let Some((union, predicate)) = expression.split_once(")[") else {
+        return Ok(None);
+    };
+    let Some(predicate) = predicate.strip_suffix(']') else {
+        return Ok(None);
+    };
+    let Some(alternatives) = split_top_level_union(union) else {
+        return Ok(None);
+    };
+    if alternatives.len() > 8 {
+        return Ok(None);
+    }
+    let mut variables = Vec::with_capacity(alternatives.len());
+    for alternative in alternatives {
+        let Some(variable) = alternative.trim().strip_prefix('$') else {
+            return Ok(None);
+        };
+        variables.push(normalize_variable_qname(document, element, variable)?);
+    }
+    let Some(position) = super::value_expression_compiler::parse_xslt10_node_position(predicate)
+    else {
+        return Ok(None);
+    };
+    Ok(Some(ApplySelection::Xslt10VariableUnionPosition {
+        variables,
+        position,
+    }))
+}
+
+fn parse_xslt10_variable_node_set_comparison(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let Some(body) = expression.trim().strip_suffix(']') else {
+        return Ok(None);
+    };
+    let Some((selection, predicate)) = body.split_once('[') else {
+        return Ok(None);
+    };
+    let Some((left, right)) = predicate.split_once('=') else {
+        return Ok(None);
+    };
+    let (variable, comparison) = if let Some(variable) = left.trim().strip_prefix('$') {
+        (variable, right.trim())
+    } else if let Some(variable) = right.trim().strip_prefix('$') {
+        (variable, left.trim())
+    } else {
+        return Ok(None);
+    };
+    if !is_ascii_ncname(variable) || selection.trim().is_empty() || comparison.is_empty() {
+        return Ok(None);
+    }
+    let selection = parse_selection_path(document, element, selection.trim(), location.clone())?;
+    let comparison = parse_selection_path(document, element, comparison, location.clone())?;
+    Ok(Some(ApplySelection::Xslt10VariableNodeSetComparisonPath {
+        selection,
+        variable: normalize_variable_qname(document, element, variable)?,
+        comparison,
+    }))
+}
+
 fn parse_xslt10_key_selection(
     document: &Document,
     element: NodeId,
     expression: &str,
     location: &SourceLocation,
 ) -> Result<Option<ApplySelection>, CompileFailure> {
-    if let Some(alternatives) = split_top_level_union(expression)
-        && alternatives
-            .iter()
-            .any(|alternative| alternative.trim_start().starts_with("key("))
-    {
+    if let Some(alternatives) = split_top_level_union(expression) {
         if alternatives.len() > 8 {
             return Err(unsupported(
                 "FXXP1023",
-                "the admitted key() union is limited to eight alternatives",
+                "the admitted XSLT 1.0 apply-templates union is limited to eight alternatives",
                 location,
             ));
         }
@@ -460,6 +664,13 @@ fn parse_xslt10_key_selection(
         }
         let mut compiled = Vec::with_capacity(alternatives.len());
         for alternative in alternatives.into_iter().map(str::trim) {
+            if alternative.is_empty() {
+                return Err(invalid(
+                    "XPST0003",
+                    "xsl:apply-templates path union contains an empty alternative",
+                    location,
+                ));
+            }
             if alternative.starts_with("key(") {
                 compiled.push(Xslt10ApplyUnionPart::Key(Box::new(
                     super::value_expression_compiler::compile_xslt10_literal_key_lookup(

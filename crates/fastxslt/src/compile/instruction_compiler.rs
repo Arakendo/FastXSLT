@@ -47,7 +47,7 @@ use crate::xpath::for_distinct_values_experiment::{
     ForExpressionFailure, parse as parse_for_distinct_values,
 };
 use crate::xpath::format_number_experiment::{
-    FormatNumberFailureKind, parse as parse_format_number,
+    FormatNumberFailureKind, parse_with_path_operands as parse_format_number,
 };
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::iri_to_uri_expression::{
@@ -70,7 +70,9 @@ use crate::xslt::golden_semantics_experiment::{
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
 mod computed_attribute_compiler;
-use computed_attribute_compiler::{compile_computed_attribute, compile_computed_attributes};
+use computed_attribute_compiler::{
+    compile_computed_attribute, compile_computed_attributes, parse_xslt10_name_avt_parts,
+};
 #[path = "instruction_compiler/boolean_expression_compiler.rs"]
 mod boolean_expression_compiler;
 #[path = "instruction_compiler/conditional_expression_compiler.rs"]
@@ -143,9 +145,9 @@ pub(super) fn parse_mode(
 use super::{
     CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE, effective_default_mode,
     effective_xpath_default_namespace, ensure_no_meaningful_children, ensure_only_attributes,
-    invalid, is_ascii_ncname, is_xslt_element, map_path_failure, meaningful_children,
-    normalize_named_template_name, normalize_variable_qname, optional_attribute,
-    required_attribute, unsupported,
+    invalid, is_ascii_ncname, is_ignored_xslt10_extension_attribute, is_xslt_element,
+    map_path_failure, meaningful_children, normalize_named_template_name, normalize_variable_qname,
+    optional_attribute, required_attribute, unsupported,
 };
 
 pub(super) fn validate_local_attribute_set(
@@ -230,6 +232,8 @@ pub(super) fn compile_sequence_excluding_with_bindings(
                         &name.local,
                         &mut local_variables,
                     )?);
+                } else if is_declared_extension_element(document, child) {
+                    instructions.extend(compile_extension_fallbacks(document, child)?);
                 } else {
                     instructions.push(compile_literal_element(document, child)?);
                 }
@@ -244,6 +248,57 @@ pub(super) fn compile_sequence_excluding_with_bindings(
         }
     }
     Ok(instructions)
+}
+
+fn compile_extension_fallbacks(
+    document: &Document,
+    extension: NodeId,
+) -> Result<Vec<Instruction>, CompileFailure> {
+    validate_extension_element_prefixes(document, extension)?;
+    let fallbacks = meaningful_children(document, extension)
+        .into_iter()
+        .filter(|child| is_xslt_element(document, *child, "fallback"))
+        .collect::<Vec<_>>();
+    if fallbacks.is_empty() {
+        return Err(unsupported(
+            "FXST1059",
+            "unsupported extension element has no xsl:fallback",
+            document.location(extension),
+        ));
+    }
+    let mut instructions = Vec::new();
+    for fallback in fallbacks {
+        ensure_fallback_attributes(document, fallback)?;
+        instructions.extend(compile_sequence(document, fallback)?);
+    }
+    Ok(instructions)
+}
+
+fn ensure_fallback_attributes(document: &Document, fallback: NodeId) -> Result<(), CompileFailure> {
+    for attribute in document.attributes(fallback) {
+        let name = document
+            .name(*attribute)
+            .expect("attribute nodes have expanded names");
+        if uses_xslt10_compatibility(document, fallback)
+            && name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+            && name.local == "exclude-result-prefixes"
+        {
+            continue;
+        }
+        if is_ignored_xslt10_extension_attribute(document, fallback, *attribute) {
+            continue;
+        }
+        return Err(unsupported(
+            "FXST1009",
+            format!(
+                "unsupported attribute on xsl:fallback: {{{}}}{}",
+                name.namespace.as_deref().unwrap_or(""),
+                name.local
+            ),
+            document.location(*attribute),
+        ));
+    }
+    Ok(())
 }
 
 fn compile_xslt_instruction(
@@ -404,6 +459,7 @@ fn compile_attribute(document: &Document, element: NodeId) -> Result<Instruction
             },
             dynamic_name: None,
             value,
+            recover_duplicate: uses_xslt10_compatibility(document, element),
             location: document.location(element).clone(),
         },
         recover_unattached: uses_xslt10_compatibility(document, element),
@@ -611,6 +667,9 @@ fn compile_dynamic_element_name(
             prefix: prefix.to_owned(),
             suffix: suffix.to_owned(),
         });
+    }
+    if let Some(parts) = parse_xslt10_name_avt_parts(lexical) {
+        return Some(DynamicElementName::VariableAvt(parts));
     }
     let expression = lexical.strip_prefix('{')?.strip_suffix('}')?.trim();
     (!expression.contains(['{', '}']))
@@ -937,7 +996,12 @@ fn parse_copy_of_path(
     expression: &str,
 ) -> Result<LocationPath, CompileFailure> {
     let location = document.location(element).clone();
-    let path = match parse_location_path(expression, location.clone()) {
+    let parsed = if uses_xslt10_compatibility(document, element) {
+        parse_xslt10_location_path(expression, location.clone())
+    } else {
+        parse_location_path(expression, location.clone())
+    };
+    let path = match parsed {
         Ok(path) => Ok(path),
         Err(PathFailure::Unsupported { .. }) if expression.contains(':') => {
             parse_qualified_child_path(expression, location, |prefix| {
@@ -1294,7 +1358,12 @@ fn compile_sort_path(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<LocationPath, CompileFailure> {
-    match parse_location_path(expression, location.clone()) {
+    let parsed = if uses_xslt10_compatibility(document, element) {
+        parse_xslt10_location_path(expression, location.clone())
+    } else {
+        parse_location_path(expression, location.clone())
+    };
+    match parsed {
         Ok(path) => Ok(path),
         Err(PathFailure::Unsupported { .. }) if expression.contains(':') => {
             parse_qualified_child_path(expression, location.clone(), |prefix| {
@@ -1806,16 +1875,27 @@ pub(super) fn literal_result_namespaces(
     let mut exclude_all = false;
     let mut current = Some(element);
     while let Some(node) = current {
-        if let Some(exclusions) =
-            optional_attribute(document, node, None, "exclude-result-prefixes").or_else(|| {
-                optional_attribute(
-                    document,
-                    node,
-                    Some(XSLT_NAMESPACE),
-                    "exclude-result-prefixes",
-                )
-            })
-        {
+        let is_stylesheet_root = document.name(node).is_some_and(|name| {
+            name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                && matches!(name.local.as_str(), "stylesheet" | "transform")
+        });
+        let is_literal_result = document.name(node).is_some_and(|name| {
+            name.namespace.as_deref() != Some(XSLT_NAMESPACE)
+                && !is_declared_extension_element(document, node)
+        });
+        let exclusions = if is_stylesheet_root {
+            optional_attribute(document, node, None, "exclude-result-prefixes")
+        } else if is_literal_result {
+            optional_attribute(
+                document,
+                node,
+                Some(XSLT_NAMESPACE),
+                "exclude-result-prefixes",
+            )
+        } else {
+            None
+        };
+        if let Some(exclusions) = exclusions {
             for prefix in exclusions.split_whitespace() {
                 if prefix == "#all" {
                     exclude_all = true;
@@ -1824,16 +1904,19 @@ pub(super) fn literal_result_namespaces(
                 }
             }
         }
-        if let Some(extensions) =
-            optional_attribute(document, node, None, "extension-element-prefixes").or_else(|| {
-                optional_attribute(
-                    document,
-                    node,
-                    Some(XSLT_NAMESPACE),
-                    "extension-element-prefixes",
-                )
-            })
-        {
+        let extensions = if is_stylesheet_root {
+            optional_attribute(document, node, None, "extension-element-prefixes")
+        } else if is_literal_result {
+            optional_attribute(
+                document,
+                node,
+                Some(XSLT_NAMESPACE),
+                "extension-element-prefixes",
+            )
+        } else {
+            None
+        };
+        if let Some(extensions) = extensions {
             for prefix in extensions.split_whitespace() {
                 if !excluded_prefixes.contains(&prefix) {
                     excluded_prefixes.push(prefix);
@@ -2052,10 +2135,17 @@ fn compile_local_node_or_cast_variable(
     expression: &str,
     location: SourceLocation,
 ) -> Result<Instruction, CompileFailure> {
-    let node_path = match parse_location_path(expression, location.clone()) {
+    let path_expression = expression
+        .trim()
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(expression);
+    let node_path = match parse_location_path(path_expression, location.clone()) {
         Ok(path) => Some(path),
-        Err(PathFailure::Unsupported { .. }) if expression.contains(':') => Some(
-            parse_qualified_child_path(expression, location.clone(), |prefix| {
+        Err(PathFailure::Unsupported { .. }) if path_expression.contains(':') => Some(
+            parse_qualified_child_path(path_expression, location.clone(), |prefix| {
                 namespace_for_prefix(document, element, prefix).map(str::to_owned)
             })
             .map_err(map_path_failure)?,
@@ -2101,6 +2191,15 @@ fn compile_local_variable_path_variable(
         select,
         location: location.clone(),
     }))
+}
+
+pub(super) fn compile_xslt10_global_variable_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<(String, LocationPath)>, CompileFailure> {
+    value_expression_compiler::compile_xslt10_variable_path(document, element, expression, location)
 }
 
 fn compile_local_binary_numeric_variable(

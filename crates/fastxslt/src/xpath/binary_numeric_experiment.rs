@@ -38,6 +38,10 @@ pub(crate) enum BinaryNumericNode {
     PathUnion(Vec<LocationPath>),
     Literal(ExactRational),
     Variable(String),
+    ContextPosition,
+    ContextSize,
+    Floor(Box<Self>),
+    Round(Box<Self>),
     Negate(Box<Self>),
     Operation {
         left: Box<Self>,
@@ -53,6 +57,8 @@ pub(crate) fn fold_source_free(root: &BinaryNumericNode) -> Option<String> {
             BinaryNumericNode::Negate(value) => {
                 evaluate(value).and_then(|value| value.checked_negate().ok())
             }
+            BinaryNumericNode::Floor(value) => evaluate(value).map(ExactRational::floor),
+            BinaryNumericNode::Round(value) => evaluate(value)?.checked_round().ok(),
             BinaryNumericNode::Operation {
                 left,
                 operator,
@@ -60,7 +66,9 @@ pub(crate) fn fold_source_free(root: &BinaryNumericNode) -> Option<String> {
             } => apply_operator(evaluate(left)?, *operator, evaluate(right)?).ok(),
             BinaryNumericNode::Path { .. }
             | BinaryNumericNode::PathUnion(_)
-            | BinaryNumericNode::Variable(_) => None,
+            | BinaryNumericNode::Variable(_)
+            | BinaryNumericNode::ContextPosition
+            | BinaryNumericNode::ContextSize => None,
         }
     }
 
@@ -87,8 +95,10 @@ impl BinaryNumericNode {
                         .sum::<usize>()
             }
             Self::Variable(name) => name.capacity(),
-            Self::Literal(_) => 0,
-            Self::Negate(operand) => operand.known_owned_capacity_bytes(),
+            Self::Literal(_) | Self::ContextPosition | Self::ContextSize => 0,
+            Self::Floor(operand) | Self::Round(operand) | Self::Negate(operand) => {
+                operand.known_owned_capacity_bytes()
+            }
             Self::Operation { left, right, .. } => {
                 left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
             }
@@ -105,6 +115,7 @@ pub(crate) enum BinaryNumericEvaluationFailure<VariableFailure = ()> {
     ZeroDivisor,
     NonIntegral,
     Overflow,
+    MissingFocus,
     Variable(VariableFailure),
 }
 
@@ -134,8 +145,7 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                         && bytes[index + 1..].first().is_some_and(|byte| {
                             byte.is_ascii_alphanumeric() || matches!(byte, b'$' | b'_')
                         }))
-                    && !(expression[..index].ends_with([')', ']'])
-                        && expression[index + 1..].starts_with(['(', '[']))
+                    && !expression[..index].ends_with([')', ']'])
                 {
                     continue;
                 }
@@ -210,6 +220,7 @@ pub(crate) fn evaluate_with_variables<VariableFailure>(
     expression: &BinaryNumericExpression,
     document: &Document,
     context: NodeId,
+    focus: Option<(usize, usize)>,
     control: &mut InvocationControl,
     mut resolve_variable: impl FnMut(&str, &mut InvocationControl) -> Result<String, VariableFailure>,
 ) -> Result<String, BinaryNumericEvaluationFailure<VariableFailure>> {
@@ -217,6 +228,7 @@ pub(crate) fn evaluate_with_variables<VariableFailure>(
         &expression.root,
         document,
         context,
+        focus,
         expression.selection,
         control,
         &mut resolve_variable,
@@ -241,6 +253,9 @@ fn lift_failure<VariableFailure>(
         BinaryNumericEvaluationFailure::ZeroDivisor => BinaryNumericEvaluationFailure::ZeroDivisor,
         BinaryNumericEvaluationFailure::NonIntegral => BinaryNumericEvaluationFailure::NonIntegral,
         BinaryNumericEvaluationFailure::Overflow => BinaryNumericEvaluationFailure::Overflow,
+        BinaryNumericEvaluationFailure::MissingFocus => {
+            BinaryNumericEvaluationFailure::MissingFocus
+        }
         BinaryNumericEvaluationFailure::Variable(()) => {
             unreachable!("a variable-free numeric operation cannot report variable failure")
         }
@@ -251,6 +266,7 @@ fn evaluate_node<VariableFailure>(
     node: &BinaryNumericNode,
     document: &Document,
     context: NodeId,
+    focus: Option<(usize, usize)>,
     selection: NumericOperandSelection,
     control: &mut InvocationControl,
     resolve_variable: &mut impl FnMut(&str, &mut InvocationControl) -> Result<String, VariableFailure>,
@@ -268,6 +284,10 @@ fn evaluate_node<VariableFailure>(
                 .map_err(lift_failure)
         }
         BinaryNumericNode::Literal(value) => Ok(*value),
+        BinaryNumericNode::ContextPosition => {
+            focus_numeric_value(focus.map(|focus| focus.0), control)
+        }
+        BinaryNumericNode::ContextSize => focus_numeric_value(focus.map(|focus| focus.1), control),
         BinaryNumericNode::Variable(name) => {
             let lexical = resolve_variable(name, control)
                 .map_err(BinaryNumericEvaluationFailure::Variable)?;
@@ -277,10 +297,41 @@ fn evaluate_node<VariableFailure>(
             ExactRational::parse_decimal(&lexical)
                 .ok_or(BinaryNumericEvaluationFailure::UnsupportedLexical)
         }
+        BinaryNumericNode::Floor(operand) => {
+            let value = evaluate_node(
+                operand,
+                document,
+                context,
+                focus,
+                selection,
+                control,
+                resolve_variable,
+            )?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(BinaryNumericEvaluationFailure::Control)?;
+            Ok(value.floor())
+        }
+        BinaryNumericNode::Round(operand) => {
+            let value = evaluate_node(
+                operand,
+                document,
+                context,
+                focus,
+                selection,
+                control,
+                resolve_variable,
+            )?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(BinaryNumericEvaluationFailure::Control)?;
+            value.checked_round().map_err(lift_failure)
+        }
         BinaryNumericNode::Negate(operand) => evaluate_node(
             operand,
             document,
             context,
+            focus,
             selection,
             control,
             resolve_variable,
@@ -296,6 +347,7 @@ fn evaluate_node<VariableFailure>(
                 left,
                 document,
                 context,
+                focus,
                 selection,
                 control,
                 resolve_variable,
@@ -304,6 +356,7 @@ fn evaluate_node<VariableFailure>(
                 right,
                 document,
                 context,
+                focus,
                 selection,
                 control,
                 resolve_variable,
@@ -314,6 +367,17 @@ fn evaluate_node<VariableFailure>(
             apply_operator(left, *operator, right).map_err(lift_failure)
         }
     }
+}
+
+fn focus_numeric_value<VariableFailure>(
+    value: Option<usize>,
+    control: &mut InvocationControl,
+) -> Result<ExactRational, BinaryNumericEvaluationFailure<VariableFailure>> {
+    let value = value.ok_or(BinaryNumericEvaluationFailure::MissingFocus)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(BinaryNumericEvaluationFailure::Control)?;
+    ExactRational::parse_decimal(&value.to_string()).ok_or(BinaryNumericEvaluationFailure::Overflow)
 }
 
 fn apply_operator(
@@ -395,6 +459,25 @@ impl ExactRational {
             numerator: value,
             denominator: 1,
         }
+    }
+
+    fn floor(self) -> Self {
+        Self::integer(self.numerator.div_euclid(self.denominator))
+    }
+
+    fn checked_round(self) -> Result<Self, BinaryNumericEvaluationFailure> {
+        let doubled = self
+            .numerator
+            .checked_mul(2)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        let shifted = doubled
+            .checked_add(self.denominator)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        let divisor = self
+            .denominator
+            .checked_mul(2)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        Ok(Self::integer(shifted.div_euclid(divisor)))
     }
 
     pub(crate) fn parse_decimal(value: &str) -> Option<Self> {

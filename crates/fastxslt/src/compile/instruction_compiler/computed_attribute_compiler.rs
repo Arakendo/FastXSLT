@@ -151,6 +151,7 @@ pub(super) fn compile_computed_attribute(
         name,
         dynamic_name,
         value,
+        recover_duplicate: uses_xslt10_compatibility(document, element),
         location: document.location(element).clone(),
     })
 }
@@ -185,7 +186,7 @@ fn compile_computed_attribute_name(
     }
     let namespace_override = namespace.map(str::to_owned);
     let static_namespaces = || document.in_scope_namespaces(element).into();
-    let dynamic_name = if let Some(parts) = parse_variable_name_avt(lexical) {
+    let dynamic_name = if let Some(parts) = parse_xslt10_name_avt_parts(lexical) {
         DynamicAttributeName::VariableAvt {
             parts,
             namespace_override,
@@ -239,10 +240,10 @@ fn compile_computed_attribute_name(
     ))
 }
 
-fn parse_variable_name_avt(lexical: &str) -> Option<Vec<DynamicAttributeNamePart>> {
+pub(super) fn parse_xslt10_name_avt_parts(lexical: &str) -> Option<Vec<DynamicAttributeNamePart>> {
     let mut parts = Vec::new();
     let mut remaining = lexical;
-    let mut found_variable = false;
+    let mut found_dynamic_part = false;
     while let Some(open) = remaining.find('{') {
         let (text, after_text) = remaining.split_at(open);
         if !text.is_empty() {
@@ -250,18 +251,22 @@ fn parse_variable_name_avt(lexical: &str) -> Option<Vec<DynamicAttributeNamePart
         }
         let close = after_text.find('}')?;
         let expression = &after_text[1..close];
-        let variable = expression.strip_prefix('$')?;
-        if !is_ascii_ncname(variable) {
-            return None;
+        if expression.trim() == "position()" {
+            parts.push(DynamicAttributeNamePart::Position);
+        } else {
+            let variable = expression.strip_prefix('$')?;
+            if !is_ascii_ncname(variable) {
+                return None;
+            }
+            parts.push(DynamicAttributeNamePart::Variable(variable.to_owned()));
         }
-        parts.push(DynamicAttributeNamePart::Variable(variable.to_owned()));
-        found_variable = true;
+        found_dynamic_part = true;
         remaining = &after_text[close + 1..];
     }
     if !remaining.is_empty() {
         parts.push(DynamicAttributeNamePart::Text(remaining.to_owned()));
     }
-    found_variable.then_some(parts)
+    found_dynamic_part.then_some(parts)
 }
 
 fn compile_xslt10_local_source_path_count(

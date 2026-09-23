@@ -1,6 +1,6 @@
 //! Local-only compatibility measurement over the archival OASIS XSLT 1.0 suite.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
 
 use crate::runtime::workbench_experiment::{
@@ -147,6 +147,7 @@ fn measures_local_oasis_xslt10_compatibility() {
                 .push(format!("missing-supplemental-stylesheet/{}", case.identity));
             continue;
         }
+        resources = admit_transitive_case_stylesheets(&case, &stylesheet, resources);
 
         let engine = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             ExperimentalEngine::new_with_stylesheet_resources(
@@ -188,7 +189,7 @@ fn measures_local_oasis_xslt10_compatibility() {
         };
 
         let execution = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            engine.transform(&case.identity)
+            engine.transform_bytes(&case.identity)
         }));
         let actual = match execution {
             Ok(Ok(actual)) => {
@@ -197,7 +198,21 @@ fn measures_local_oasis_xslt10_compatibility() {
                     .category_executed
                     .entry(case.category.clone())
                     .or_default() += 1;
-                actual
+                match decode_serialized_xml(&actual, engine.selected_output_encoding()) {
+                    Ok(actual) => actual,
+                    Err(frontier) => {
+                        measurement.increment("actual-output-decode-failure");
+                        *measurement
+                            .comparison_frontiers
+                            .entry(frontier.clone())
+                            .or_default() += 1;
+                        measurement
+                            .comparison_examples
+                            .entry(frontier)
+                            .or_insert(case.identity.clone());
+                        continue;
+                    }
+                }
             }
             Ok(Err(failure)) => {
                 trace_case_failure(&case.identity, "execution", &failure);
@@ -238,7 +253,12 @@ fn measures_local_oasis_xslt10_compatibility() {
             continue;
         };
         let preserve_whitespace_only_text = case.id.to_ascii_lowercase().contains("whitespace");
-        match xml_equivalent(&actual, &expected, preserve_whitespace_only_text) {
+        match xml_equivalent(
+            &actual,
+            &expected,
+            preserve_whitespace_only_text,
+            engine.selected_output_encoding(),
+        ) {
             Ok(true) => {
                 trace_case_comparison(&case.identity, &actual, &expected);
                 measurement.increment("xml-comparison-pass");
@@ -321,7 +341,8 @@ fn trace_case_comparison(identity: &str, actual: &str, expected: &[u8]) {
     if !identity.contains(requested.to_string_lossy().as_ref()) {
         return;
     }
-    let expected = decode_expected_xml(expected).unwrap_or_else(|failure| format!("<{failure}>"));
+    let expected =
+        decode_expected_xml(expected, None).unwrap_or_else(|failure| format!("<{failure}>"));
     println!(
         "comparison-trace\t{identity}\tactual={}\texpected={}",
         escaped_detail(actual),
@@ -486,11 +507,134 @@ fn logical_case_base(case: &LegacyCase) -> String {
 }
 
 fn logical_identity(case: &LegacyCase, file: &str) -> String {
-    format!("{}{file}", logical_case_base(case))
+    // Catalog fields are archive-relative file names, not URI references. Keep
+    // URI delimiter characters as path data before resolving dot segments.
+    let path_reference = file.replace('#', "%23").replace('?', "%3F");
+    crate::resources::resolve_reference(&logical_case_base(case), &path_reference).map_or_else(
+        |_| format!("{}{path_reference}", logical_case_base(case)),
+        |(identity, fragment)| {
+            debug_assert!(fragment.is_none());
+            identity
+        },
+    )
 }
 
 fn read_case_file(directory: &Path, relative: &str) -> Option<Vec<u8>> {
     std::fs::read(directory.join(relative.replace('/', std::path::MAIN_SEPARATOR_STR))).ok()
+}
+
+fn admit_transitive_case_stylesheets(
+    case: &LegacyCase,
+    principal_bytes: &[u8],
+    explicit: Vec<WorkbenchResource>,
+) -> Vec<WorkbenchResource> {
+    const MAX_DISCOVERED_MODULES: usize = 64;
+    const MAX_DISCOVERED_BYTES: usize = 8 * 1_048_576;
+
+    let principal_identity = logical_identity(case, &case.principal_stylesheet);
+    let mut admitted = explicit
+        .into_iter()
+        .map(|resource| (resource.identity, resource.bytes))
+        .collect::<BTreeMap<_, _>>();
+    let mut pending = VecDeque::from([(
+        case.principal_stylesheet.clone(),
+        principal_identity.clone(),
+        principal_bytes.to_vec(),
+    )]);
+    for dependency in &case.supplemental_stylesheets {
+        let identity = logical_identity(case, dependency);
+        if let Some(bytes) = admitted.get(&identity) {
+            pending.push_back((dependency.clone(), identity, bytes.clone()));
+        }
+    }
+    let mut scanned = BTreeSet::new();
+    let mut discovered_bytes = admitted.values().map(Vec::len).sum::<usize>();
+    while let Some((physical_name, identity, bytes)) = pending.pop_front() {
+        if !scanned.insert(identity.clone()) {
+            continue;
+        }
+        for reference in stylesheet_dependency_references(&identity, &bytes) {
+            let Ok((resolved_identity, fragment)) =
+                crate::resources::resolve_reference(&identity, &reference)
+            else {
+                continue;
+            };
+            if fragment.is_some()
+                || admitted.contains_key(&resolved_identity)
+                || resolved_identity == principal_identity
+                || admitted.len() >= MAX_DISCOVERED_MODULES
+            {
+                continue;
+            }
+            let Some(resolved_name) =
+                resolve_case_relative_file(&case.directory, &physical_name, &reference)
+            else {
+                continue;
+            };
+            let Some(resolved_bytes) = read_case_file(&case.directory, &resolved_name) else {
+                continue;
+            };
+            let Some(next_bytes) = discovered_bytes.checked_add(resolved_bytes.len()) else {
+                continue;
+            };
+            if next_bytes > MAX_DISCOVERED_BYTES {
+                continue;
+            }
+            discovered_bytes = next_bytes;
+            admitted.insert(resolved_identity.clone(), resolved_bytes.clone());
+            pending.push_back((resolved_name, resolved_identity, resolved_bytes));
+        }
+    }
+    admitted
+        .into_iter()
+        .map(|(identity, bytes)| WorkbenchResource { identity, bytes })
+        .collect()
+}
+
+fn stylesheet_dependency_references(identity: &str, bytes: &[u8]) -> Vec<String> {
+    let Ok(parsed) = parse_document(
+        identity,
+        bytes,
+        ParseLimits {
+            max_events: 100_000,
+            max_depth: 64,
+        },
+    ) else {
+        return Vec::new();
+    };
+    let Ok(document) = Document::from_parsed(parsed) else {
+        return Vec::new();
+    };
+    let Some(root) = element_children(&document, document.document_node())
+        .first()
+        .copied()
+    else {
+        return Vec::new();
+    };
+    element_children(&document, root)
+        .into_iter()
+        .filter(|node| {
+            document.name(*node).is_some_and(|name| {
+                name.namespace.as_deref() == Some("http://www.w3.org/1999/XSL/Transform")
+                    && matches!(name.local.as_str(), "include" | "import")
+            })
+        })
+        .filter_map(|node| attribute(&document, node, "href").map(str::to_owned))
+        .collect()
+}
+
+fn resolve_case_relative_file(directory: &Path, current: &str, reference: &str) -> Option<String> {
+    if reference.contains(['#', '?']) || reference.split('/').next()?.contains(':') {
+        return None;
+    }
+    let relative = Path::new(current.replace('/', std::path::MAIN_SEPARATOR_STR).as_str())
+        .parent()
+        .unwrap_or_else(|| Path::new(""))
+        .join(reference.replace('/', std::path::MAIN_SEPARATOR_STR));
+    let root = directory.canonicalize().ok()?;
+    let resolved = directory.join(&relative).canonicalize().ok()?;
+    let relative = resolved.strip_prefix(root).ok()?;
+    Some(relative.to_string_lossy().replace('\\', "/"))
 }
 
 fn failure_frontier(failure: &WorkbenchFailure) -> String {
@@ -604,8 +748,9 @@ fn xml_equivalent(
     actual: &str,
     expected: &[u8],
     preserve_whitespace_only_text: bool,
+    selected_encoding: Option<&str>,
 ) -> Result<bool, String> {
-    let expected = decode_expected_xml(expected)?;
+    let expected = decode_expected_xml(expected, selected_encoding)?;
     let actual = normalize_xml_source_line_endings(actual);
     let expected = normalize_xml_source_line_endings(&expected);
     if actual.trim().is_empty() || expected.trim().is_empty() {
@@ -641,22 +786,22 @@ fn oasis_xml_comparator_ignores_serialization_only_empty_element_and_prolog_spac
     let actual = r#"<?xml version="1.0" encoding="UTF-8"?><out test="hello"></out>"#;
     let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out test=\"hello\"/>\r\n";
 
-    assert_eq!(xml_equivalent(actual, expected, false), Ok(true));
+    assert_eq!(xml_equivalent(actual, expected, false, None), Ok(true));
 }
 
 #[test]
 fn oasis_xml_comparator_normalizes_literal_xml_line_endings_before_parsing() {
     assert_eq!(
-        xml_equivalent("<out>a\nb</out>", b"<out>a\r\nb</out>", false),
+        xml_equivalent("<out>a\nb</out>", b"<out>a\r\nb</out>", false, None),
         Ok(true)
     );
     assert_eq!(
-        xml_equivalent("<out>&#13;</out>", b"<out>\r</out>", false),
+        xml_equivalent("<out>&#13;</out>", b"<out>\r</out>", false, None),
         Ok(false)
     );
     let actual = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>far-north north near-north far-west west near-west center\nnear-south south near-south-west near-east east far-east </out>";
     let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out>far-north north near-north far-west west near-west center\r\nnear-south south near-south-west near-east east far-east </out>";
-    assert_eq!(xml_equivalent(actual, expected, false), Ok(true));
+    assert_eq!(xml_equivalent(actual, expected, false, None), Ok(true));
 }
 
 #[test]
@@ -664,11 +809,50 @@ fn oasis_xml_comparator_switches_indentation_whitespace_for_whitespace_groups() 
     let actual = "<outer>\n  <inner></inner>\n</outer>";
     let expected = b"<outer>\r\n<inner/>\r\n</outer>";
 
-    assert_eq!(xml_equivalent(actual, expected, false), Ok(true));
-    assert_eq!(xml_equivalent(actual, expected, true), Ok(false));
+    assert_eq!(xml_equivalent(actual, expected, false, None), Ok(true));
+    assert_eq!(xml_equivalent(actual, expected, true, None), Ok(false));
     assert_eq!(
-        xml_equivalent("<out> </out>", b"<out>meaningful</out>", false),
+        xml_equivalent("<out> </out>", b"<out>meaningful</out>", false, None,),
         Ok(false)
+    );
+}
+
+#[test]
+fn oasis_actual_decoder_admits_selected_iso_8859_1_bytes() {
+    let actual = b"<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><out>\xE9</out>";
+    assert_eq!(
+        decode_serialized_xml(actual, None),
+        Ok("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><out>é</out>".to_owned())
+    );
+    assert_eq!(
+        decode_serialized_xml(b"\xACtwo\xAC", Some("ISO-8859-1")),
+        Ok("¬two¬".to_owned())
+    );
+    assert_eq!(
+        decode_expected_xml(b"\xFFtwo\xFF", Some("ISO-8859-1")),
+        Ok("ÿtwoÿ".to_owned())
+    );
+}
+
+#[test]
+fn oasis_actual_decoder_admits_bom_marked_utf16_bytes() {
+    let expected = "<?xml version=\"1.0\" encoding=\"UTF-16\"?><out>é</out>";
+    let mut big_endian = vec![0xfe, 0xff];
+    big_endian.extend(expected.encode_utf16().flat_map(u16::to_be_bytes));
+    let mut little_endian = vec![0xff, 0xfe];
+    little_endian.extend(expected.encode_utf16().flat_map(u16::to_le_bytes));
+
+    assert_eq!(
+        decode_serialized_xml(&big_endian, None),
+        Ok(expected.to_owned())
+    );
+    assert_eq!(
+        decode_serialized_xml(&little_endian, None),
+        Ok(expected.to_owned())
+    );
+    assert_eq!(
+        decode_serialized_xml(&[0xfe, 0xff, 0], None),
+        Err("actual-output-invalid-utf16be".to_owned())
     );
 }
 
@@ -688,30 +872,66 @@ fn normalize_xml_source_line_endings(value: &str) -> String {
     )
 }
 
-fn decode_expected_xml(expected: &[u8]) -> Result<String, String> {
-    if let Some(payload) = expected.strip_prefix(&[0xFF, 0xFE]) {
-        if payload.len() % 2 != 0 {
-            return Err("expected-invalid-utf16le".to_owned());
-        }
-        let code_units = payload
-            .chunks_exact(2)
-            .map(|bytes| u16::from_le_bytes([bytes[0], bytes[1]]))
-            .collect::<Vec<_>>();
-        return String::from_utf16(&code_units).map_err(|_| "expected-invalid-utf16le".to_owned());
+fn decode_expected_xml(expected: &[u8], selected_encoding: Option<&str>) -> Result<String, String> {
+    if let Some(decoded) = decode_bom_utf16(expected) {
+        return decoded.map_err(|endian| format!("expected-invalid-utf16{endian}"));
     }
-    if let Some(payload) = expected.strip_prefix(&[0xFE, 0xFF]) {
-        if payload.len() % 2 != 0 {
-            return Err("expected-invalid-utf16be".to_owned());
-        }
-        let code_units = payload
-            .chunks_exact(2)
-            .map(|bytes| u16::from_be_bytes([bytes[0], bytes[1]]))
-            .collect::<Vec<_>>();
-        return String::from_utf16(&code_units).map_err(|_| "expected-invalid-utf16be".to_owned());
+    if selected_encoding.is_some_and(|encoding| encoding.eq_ignore_ascii_case("ISO-8859-1")) {
+        return Ok(expected.iter().map(|byte| char::from(*byte)).collect());
     }
     std::str::from_utf8(expected)
         .map(|text| text.strip_prefix('\u{feff}').unwrap_or(text).to_owned())
         .map_err(|_| "expected-not-utf8-or-utf16".to_owned())
+}
+
+fn decode_serialized_xml(actual: &[u8], selected_encoding: Option<&str>) -> Result<String, String> {
+    if let Some(decoded) = decode_bom_utf16(actual) {
+        return decoded.map_err(|endian| format!("actual-output-invalid-utf16{endian}"));
+    }
+    if let Ok(actual) = std::str::from_utf8(actual) {
+        return Ok(actual.strip_prefix('\u{feff}').unwrap_or(actual).to_owned());
+    }
+    let declaration_end = actual
+        .windows(2)
+        .position(|bytes| bytes == b"?>")
+        .map_or(actual.len().min(160), |position| position + 2);
+    let declaration = actual
+        .get(..declaration_end)
+        .and_then(|declaration| std::str::from_utf8(declaration).ok())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if declaration.contains("encoding=\"iso-8859-1\"")
+        || declaration.contains("encoding='iso-8859-1'")
+        || selected_encoding.is_some_and(|encoding| encoding.eq_ignore_ascii_case("ISO-8859-1"))
+    {
+        return Ok(actual.iter().map(|byte| char::from(*byte)).collect());
+    }
+    Err("actual-output-encoding-not-decodable".to_owned())
+}
+
+fn decode_bom_utf16(bytes: &[u8]) -> Option<Result<String, &'static str>> {
+    let (payload, endian, little_endian) = if let Some(payload) = bytes.strip_prefix(&[0xff, 0xfe])
+    {
+        (payload, "le", true)
+    } else if let Some(payload) = bytes.strip_prefix(&[0xfe, 0xff]) {
+        (payload, "be", false)
+    } else {
+        return None;
+    };
+    if payload.len() % 2 != 0 {
+        return Some(Err(endian));
+    }
+    let code_units = payload
+        .chunks_exact(2)
+        .map(|bytes| {
+            if little_endian {
+                u16::from_le_bytes([bytes[0], bytes[1]])
+            } else {
+                u16::from_be_bytes([bytes[0], bytes[1]])
+            }
+        })
+        .collect::<Vec<_>>();
+    Some(String::from_utf16(&code_units).map_err(|_| endian))
 }
 
 fn parse_comparison_document(label: &str, xml: &str) -> Result<Document, ()> {
@@ -878,4 +1098,46 @@ fn splits_unsupported_xslt_attributes_by_instruction_and_expanded_name() {
         failure_frontier(&failure),
         "unsupported/FXST1009/unsupported attribute on xsl:copy: {}use-attribute-sets"
     );
+}
+
+#[test]
+fn oasis_supplemental_stylesheet_identity_normalizes_parent_segments() {
+    let case = LegacyCase {
+        identity: "Lotus/impincl_impincl04#1".to_owned(),
+        id: "impincl_impincl04".to_owned(),
+        category: "XSLT-Result-Tree".to_owned(),
+        operation: "standard".to_owned(),
+        directory: PathBuf::new(),
+        reference_directory: PathBuf::new(),
+        principal_source: "impincl04.xml".to_owned(),
+        principal_stylesheet: "impincl04.xsl".to_owned(),
+        supplemental_stylesheets: Vec::new(),
+        supplemental_data: Vec::new(),
+        output_file: None,
+        output_compare: None,
+    };
+
+    assert_eq!(
+        logical_identity(&case, "../impincl-test/impincl04.xsl"),
+        "https://oasis.invalid/impincl-test/impincl04.xsl"
+    );
+    assert_eq!(
+        logical_identity(&case, "output_#_sign.xsl"),
+        "https://oasis.invalid/Lotus_impincl_impincl04_1/output_%23_sign.xsl"
+    );
+}
+
+#[test]
+fn oasis_stylesheet_dependency_discovery_reads_only_top_level_xslt_references() {
+    let references = stylesheet_dependency_references(
+        "https://oasis.invalid/root.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:import href="imports/base.xsl"/>
+          <xsl:include href="parts/body.xsl"/>
+          <xsl:template match="/"><xsl:include href="not-top-level.xsl"/></xsl:template>
+          <other:include xmlns:other="urn:other" href="not-xslt.xsl"/>
+        </xsl:stylesheet>"#,
+    );
+
+    assert_eq!(references, ["imports/base.xsl", "parts/body.xsl"]);
 }

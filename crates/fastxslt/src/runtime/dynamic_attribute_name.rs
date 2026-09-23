@@ -14,6 +14,7 @@ use super::{
 pub(super) fn resolve(
     inputs: &SequenceInputs<'_>,
     context: Option<crate::xdm::owned_tree_experiment::NodeId>,
+    focus_position: usize,
     name: &DynamicAttributeName,
     variables: &RuntimeVariables,
     location: &SourceLocation,
@@ -47,7 +48,7 @@ pub(super) fn resolve(
             namespace_override,
             static_namespaces,
         } => (
-            variable_avt_value(inputs, variables, parts, location, control)?,
+            variable_avt_value(inputs, variables, parts, focus_position, location, control)?,
             namespace_override,
             static_namespaces,
         ),
@@ -61,10 +62,11 @@ pub(super) fn resolve(
     )
 }
 
-fn variable_avt_value(
+pub(super) fn variable_avt_value(
     inputs: &SequenceInputs<'_>,
     variables: &RuntimeVariables,
     parts: &[DynamicAttributeNamePart],
+    focus_position: usize,
     location: &SourceLocation,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
@@ -95,6 +97,15 @@ fn variable_avt_value(
                         format!("unbound variable in computed-attribute name: ${name}"),
                     ));
                 }
+            }
+            DynamicAttributeNamePart::Position => {
+                control
+                    .charge(
+                        crate::execution_control_experiment::WorkDomain::XPathOperation,
+                        1,
+                    )
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                value.push_str(&focus_position.to_string());
             }
         }
     }

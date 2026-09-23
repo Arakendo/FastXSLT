@@ -165,6 +165,9 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             GlobalBindingDefault::Text(text) | GlobalBindingDefault::Variable(text) => {
                 text.capacity()
             }
+            GlobalBindingDefault::SourceVariablePath { variable, path } => {
+                variable.capacity() + path.known_owned_capacity_bytes()
+            }
             GlobalBindingDefault::Atomic(value) => value.known_owned_capacity_bytes(),
             GlobalBindingDefault::EmptySequence | GlobalBindingDefault::Integer(_) => 0,
             GlobalBindingDefault::DoubleDivision {
@@ -381,7 +384,8 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
                 Xslt10ApplyUnionPart::Variable(name) => name.capacity(),
             })
         }
-        ApplySelection::PathUnion(alternatives) => vec_owned(
+        ApplySelection::PathUnion(alternatives)
+        | ApplySelection::Xslt10PathUnionPosition { alternatives, .. } => vec_owned(
             alternatives,
             crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
         ),
@@ -398,6 +402,15 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         ApplySelection::SourceVariablePath { variable, path } => {
             variable.capacity() + path.known_owned_capacity_bytes()
         }
+        ApplySelection::Xslt10VariableNodeSetComparisonPath {
+            selection,
+            variable,
+            comparison,
+        } => {
+            selection.known_owned_capacity_bytes()
+                + variable.capacity()
+                + comparison.known_owned_capacity_bytes()
+        }
         ApplySelection::ChildElement(name)
         | ApplySelection::DescendantElement(name)
         | ApplySelection::Attribute(name) => name_owned(name),
@@ -411,6 +424,10 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
             variable,
             position_variable,
         } => variable.capacity() + position_variable.capacity(),
+        ApplySelection::Xslt10VariableNodePosition { variable, .. } => variable.capacity(),
+        ApplySelection::Xslt10VariableUnionPosition { variables, .. } => {
+            vec_owned(variables, String::capacity)
+        }
         ApplySelection::TemporaryPath { variable, steps } => {
             variable.capacity() + vec_owned(steps, name_owned)
         }
@@ -631,6 +648,13 @@ fn dynamic_element_name_owned(
         DynamicElementName::FocusPosition { prefix, suffix } => {
             prefix.capacity() + suffix.capacity()
         }
+        DynamicElementName::VariableAvt(parts) => vec_owned(parts, |part| match part {
+            crate::xslt::golden_semantics_experiment::DynamicAttributeNamePart::Text(value)
+            | crate::xslt::golden_semantics_experiment::DynamicAttributeNamePart::Variable(value) => {
+                value.capacity()
+            }
+            crate::xslt::golden_semantics_experiment::DynamicAttributeNamePart::Position => 0,
+        }),
     }
 }
 
@@ -781,6 +805,7 @@ fn number_value_owned(value: Option<&super::NumberValue>) -> usize {
     value.map_or(0, |value| match value {
         super::NumberValue::Literal(value) => value.capacity(),
         super::NumberValue::ContextPosition | super::NumberValue::ContextItem => 0,
+        super::NumberValue::BinaryNumeric(expression) => expression.known_owned_capacity_bytes(),
     })
 }
 
@@ -1061,7 +1086,8 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::NumberPath(path)
         | ValueExpression::Xslt10SumPath(path)
         | ValueExpression::IntegralFunctionPath { path, .. } => path.known_owned_capacity_bytes(),
-        ValueExpression::Xslt10NodeNamePathUnionLast(alternatives) => {
+        ValueExpression::Xslt10NodeNamePathUnionLast(alternatives)
+        | ValueExpression::Xslt10CountPathUnion(alternatives) => {
             vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
         }
         ValueExpression::BinaryNumeric(expression) => {
@@ -1098,7 +1124,8 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         } => numerator.capacity() + denominator.capacity(),
         ValueExpression::Xslt10VariableStringLengthTimes { variable, .. }
         | ValueExpression::Xslt10VariableBooleanComparison { variable, .. }
-        | ValueExpression::Xslt10VariableNumberComparison { variable, .. } => variable.capacity(),
+        | ValueExpression::Xslt10VariableNumberComparison { variable, .. }
+        | ValueExpression::Xslt10VariableNodePosition { variable, .. } => variable.capacity(),
         ValueExpression::Xslt10VariablePositionPath { path, variable, .. }
         | ValueExpression::Xslt10DescendantChildVariablePositionPath { path, variable } => {
             path.known_owned_capacity_bytes() + variable.capacity()
@@ -1121,7 +1148,8 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Xslt10NumberPathComparison { path, value, .. } => {
             path.known_owned_capacity_bytes() + value.capacity()
         }
-        ValueExpression::Xslt10VariableStringVariablesComparison { left, right, .. } => {
+        ValueExpression::Xslt10VariableBooleanAnd { left, right }
+        | ValueExpression::Xslt10VariableStringVariablesComparison { left, right, .. } => {
             left.capacity() + right.capacity()
         }
         ValueExpression::Xslt10VariableContains { haystack, needle } => {
@@ -1452,6 +1480,10 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             | TemplateArgumentValue::Xslt10ForEachPathStringContent(path) => {
                 path.known_owned_capacity_bytes()
             }
+            TemplateArgumentValue::Xslt10CountPathUnion(alternatives) => vec_owned(
+                alternatives,
+                crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+            ),
             TemplateArgumentValue::Xslt10Content(content) => {
                 size_of_val(content.as_ref())
                     + vec_owned(&content.bindings, |binding| {
@@ -1521,6 +1553,7 @@ fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
                 | crate::xslt::golden_semantics_experiment::DynamicAttributeNamePart::Variable(
                     value,
                 ) => value.capacity(),
+                crate::xslt::golden_semantics_experiment::DynamicAttributeNamePart::Position => 0,
             }
                     })
                     .sum::<usize>()

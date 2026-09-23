@@ -296,6 +296,39 @@ fn xslt10_variable_parts_compose_one_computed_attribute_name() {
 }
 
 #[test]
+fn xslt10_focus_position_composes_one_computed_attribute_name() {
+    let stylesheet = document(
+        "memory:position-dynamic-attribute-name.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="same-{position()}">wrong</xsl:attribute><xsl:attribute name="same-{position()}">right</xsl:attribute><xsl:for-each select="doc/item"><xsl:attribute name="item-{position()}"><xsl:value-of select="."/></xsl:attribute></xsl:for-each></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document(
+        "memory:source.xml",
+        br"<doc><item>one</item><item>two</item></doc>",
+    );
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "position-dynamic-attribute-name-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let result = serialize_xml(
+        &result,
+        &program.output,
+        "position-dynamic-attribute-name-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("position-composed attribute should serialize");
+
+    assert_eq!(
+        result,
+        "<out same-1=\"right\" item-1=\"one\" item-2=\"two\"></out>"
+    );
+}
+
+#[test]
 fn xslt10_path_valued_attribute_name_reports_invalid_empty_qname() {
     let stylesheet = document(
         "memory:empty-dynamic-attribute-name.xsl",

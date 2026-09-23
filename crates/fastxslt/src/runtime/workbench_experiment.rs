@@ -8,6 +8,7 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::runtime::golden_runtime_experiment::serialize_xml_complete_namespace_reference;
 use crate::runtime::golden_runtime_experiment::{
     ExecutionFailure, compile_resource_with_denied, execute_program, serialize_xml,
+    serialize_xml_bytes,
 };
 use crate::runtime::prepared_input_experiment::{
     PreparationFailure, PreparedInputBuilder, PreparedInputSet,
@@ -292,6 +293,46 @@ impl ExperimentalEngine {
         self.transform_with_cancellation(request_id, WorkbenchCancellation::new())
     }
 
+    /// Executes one request and returns the bounded physical serialization.
+    ///
+    /// This private workbench lane preserves the selected output encoding and
+    /// shares compilation, preparation, execution, and resource accounting
+    /// with [`Self::transform`].
+    ///
+    /// # Errors
+    ///
+    /// Returns the same structured semantic, control, or serialization failure
+    /// as the string lane.
+    pub fn transform_bytes(&self, request_id: &str) -> Result<Vec<u8>, WorkbenchFailure> {
+        if request_id.is_empty() {
+            return Err(workbench_failure(
+                "FXWB0003",
+                "invalid",
+                "request identity must not be empty",
+            ));
+        }
+        let document = self.prepared.get(&self.source_id).ok_or_else(|| {
+            workbench_failure("FXWB0004", "internal", "prepared source is unavailable")
+        })?;
+        let mut control =
+            InvocationControl::new(WorkbenchCancellation::new().0, work_limits(self.limits));
+        let semantic = execute_program(&self.program, &document, request_id, &mut control)
+            .map_err(|failure| project_execution(&failure))?;
+        serialize_xml_bytes(
+            &semantic,
+            &self.program.output,
+            request_id,
+            self.limits.max_result_bytes,
+            &mut control,
+        )
+        .map_err(|failure| project_execution(&failure))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn selected_output_encoding(&self) -> Option<&str> {
+        self.program.output.encoding.as_deref()
+    }
+
     /// Reports a private compositional lower bound over known retained capacity.
     ///
     /// The observation is deterministic for the current private representation,
@@ -531,6 +572,25 @@ mod tests {
             WorkbenchLimits::default(),
         )
         .expect("exact for-004 engine should initialize")
+    }
+
+    #[test]
+    fn bounded_byte_transform_preserves_the_selected_ascii_compatible_encoding() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:byte-workbench:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:byte-workbench:stylesheet",
+            "<xsl:stylesheet xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" version=\"1.0\"><xsl:output encoding=\"ISO-8859-1\"/><xsl:template match=\"/\"><out>ASCII result</out></xsl:template></xsl:stylesheet>".as_bytes().to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("single-byte workbench engine should initialize");
+
+        assert_eq!(
+            engine
+                .transform_bytes("byte-workbench")
+                .expect("single-byte workbench transform should execute"),
+            b"<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><out>ASCII result</out>"
+        );
     }
 
     #[test]

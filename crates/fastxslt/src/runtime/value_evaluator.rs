@@ -48,7 +48,7 @@ use crate::xpath::focus_sum_for_experiment::{
     FocusSumEvaluationFailure, evaluate as evaluate_focus_sum_for,
 };
 use crate::xpath::format_number_experiment::{
-    FormatNumberEvaluationFailure, evaluate as evaluate_format_number,
+    FormatNumberEvaluationFailure, evaluate_with_path_values as evaluate_format_number,
 };
 use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::iri_to_uri_expression::{
@@ -122,6 +122,18 @@ pub(super) fn xslt10_variable_position_source_node(
         position_variable,
         variables,
         control,
+    )
+}
+
+pub(super) fn xslt10_variable_node_position_source_node(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    position: crate::xslt::golden_semantics_experiment::Xslt10NodePosition,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Option<NodeId>, ExecutionFailure> {
+    xslt10_compatibility::variable_node_position_source_node(
+        inputs, variable, position, variables, control,
     )
 }
 
@@ -290,6 +302,9 @@ pub(super) fn execute_value_of(
         ValueExpression::CountLocationPath(path) => {
             append_location_path_count(inputs, path, context, result, control)?;
         }
+        ValueExpression::Xslt10CountPathUnion(alternatives) => {
+            append_xslt10_count_path_union(inputs, context, alternatives, result, control)?;
+        }
         ValueExpression::CountSourceNodeVariable(variable) => {
             let count = variables
                 .source_nodes(inputs.globals, variable)
@@ -410,7 +425,7 @@ pub(super) fn execute_value_of(
             append_number_path(inputs, context, path, result, control)?;
         }
         ValueExpression::BinaryNumeric(expression) => {
-            append_binary_numeric(inputs, context, expression, variables, result, control)?;
+            append_binary_numeric(inputs, execution, expression, variables, result, control)?;
         }
         ValueExpression::ContextNodeStringLength(location) => {
             append_context_node_string_length(inputs, context, location, result, control)?;
@@ -469,10 +484,11 @@ pub(super) fn execute_value_of(
             append_text(result, &value, inputs.request_id, control)?;
         }
         ValueExpression::FormatNumber(expression) => {
-            append_format_number(inputs, expression, variables, result, control)?;
+            append_format_number(inputs, expression, context, variables, result, control)?;
         }
         ValueExpression::Xslt10NumberOfFormatNumber(expression) => {
-            let formatted = evaluate_runtime_format_number(inputs, expression, variables, control)?;
+            let formatted =
+                evaluate_runtime_format_number(inputs, expression, context, variables, control)?;
             let value = xslt10_compatibility::number_lexical(&formatted);
             append_text(result, &value, inputs.request_id, control)?;
         }
@@ -501,6 +517,16 @@ pub(super) fn execute_value_of(
             let value = super::evaluate_variable_effective_boolean_value(
                 inputs, variable, variables, control,
             )?;
+            append_boolean(inputs, value, result, control)?;
+        }
+        ValueExpression::Xslt10VariableBooleanAnd { left, right } => {
+            let left =
+                super::evaluate_variable_effective_boolean_value(inputs, left, variables, control)?;
+            let value = if left {
+                super::evaluate_variable_effective_boolean_value(inputs, right, variables, control)?
+            } else {
+                false
+            };
             append_boolean(inputs, value, result, control)?;
         }
         ValueExpression::Xslt10VariableString(variable) => {
@@ -560,6 +586,11 @@ pub(super) fn execute_value_of(
                 variables,
                 result,
                 control,
+            )?;
+        }
+        ValueExpression::Xslt10VariableNodePosition { variable, position } => {
+            xslt10_compatibility::append_variable_node_position(
+                inputs, variable, *position, variables, result, control,
             )?;
         }
         ValueExpression::Xslt10DescendantChildVariablePositionPath { path, variable } => {
@@ -723,19 +754,27 @@ pub(super) fn execute_value_of(
 
 fn append_binary_numeric(
     inputs: &SequenceInputs<'_>,
-    context: Option<NodeId>,
+    execution: SequenceContext<'_>,
     expression: &BinaryNumericExpression,
     variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let value = evaluate_binary_numeric_value(inputs, context, expression, variables, control)?;
+    let value = evaluate_binary_numeric_value(
+        inputs,
+        execution.node,
+        execution.sequence_focus(),
+        expression,
+        variables,
+        control,
+    )?;
     append_text(result, &value, inputs.request_id, control)
 }
 
 pub(super) fn evaluate_binary_numeric_value(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
+    focus: Option<SequenceFocus>,
     expression: &BinaryNumericExpression,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
@@ -745,6 +784,7 @@ pub(super) fn evaluate_binary_numeric_value(
         expression,
         source,
         context,
+        focus.map(|focus| (focus.position, focus.size)),
         control,
         |name, control| {
             xslt10_compatibility::variable_numeric_lexical_value(
@@ -798,6 +838,13 @@ pub(super) fn evaluate_binary_numeric_value(
                 Some(inputs.request_id),
                 expression.location.clone(),
                 "binary numeric operation exceeds the checked exact-rational domain",
+            ),
+            BinaryNumericEvaluationFailure::MissingFocus => failure_at(
+                "XPDY0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                expression.location.clone(),
+                "position() or last() requires a sequence focus",
             ),
             BinaryNumericEvaluationFailure::Variable(failure) => failure,
         },
@@ -1319,17 +1366,20 @@ fn append_literal_variable_concat(
 fn append_format_number(
     inputs: &SequenceInputs<'_>,
     expression: &crate::xpath::format_number_experiment::FormatNumberExpression,
+    context: Option<NodeId>,
     variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let formatted = evaluate_runtime_format_number(inputs, expression, variables, control)?;
+    let formatted =
+        evaluate_runtime_format_number(inputs, expression, context, variables, control)?;
     append_text(result, &formatted, inputs.request_id, control)
 }
 
 fn evaluate_runtime_format_number(
     inputs: &SequenceInputs<'_>,
     expression: &crate::xpath::format_number_experiment::FormatNumberExpression,
+    context: Option<NodeId>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
@@ -1341,18 +1391,35 @@ fn evaluate_runtime_format_number(
             atomic_values.insert(name.to_owned(), AtomicValue::untyped(value));
         }
     }
-    evaluate_format_number(expression, &atomic_values).map_err(|error| match error {
+    let number_path_value = expression
+        .number_path()
+        .map(|path| xslt10_compatibility::first_path_string(inputs, context, path, control))
+        .transpose()?;
+    let picture_path_value = expression
+        .picture_path()
+        .map(|path| xslt10_compatibility::first_path_string(inputs, context, path, control))
+        .transpose()?;
+    evaluate_format_number(
+        expression,
+        &atomic_values,
+        number_path_value.as_deref(),
+        picture_path_value.as_deref(),
+    )
+    .map_err(|error| match error {
         FormatNumberEvaluationFailure::UnboundVariable(name) => failure(
             "FXRT0002",
             FailureCategory::Invalid,
             Some(inputs.request_id),
             format!("unbound variable: ${name}"),
         ),
-        FormatNumberEvaluationFailure::Unsupported => failure(
+        FormatNumberEvaluationFailure::Unsupported(reason) => failure(
             "FXRT1007",
             FailureCategory::Unsupported,
             Some(inputs.request_id),
-            "dynamic value or picture exceeds the admitted format-number slice",
+            format!(
+                "dynamic format-number exceeds the admitted {} slice",
+                reason.detail()
+            ),
         ),
     })
 }
@@ -1716,6 +1783,32 @@ fn append_xslt10_node_name_path_union_last(
         return Ok(());
     };
     append_source_lexical_name(inputs, source, node, name, result, control)
+}
+
+fn append_xslt10_count_path_union(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    alternatives: &[crate::xpath::path_experiment::LocationPath],
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = crate::xpath::path_experiment::evaluate_location_path_union_controlled(
+        source,
+        context,
+        alternatives,
+        control,
+    )
+    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    append_text(
+        result,
+        &selected.len().to_string(),
+        inputs.request_id,
+        control,
+    )
 }
 
 fn append_source_lexical_name(

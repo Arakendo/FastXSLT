@@ -62,6 +62,12 @@ fn compile_loaded_graph(
                 .clone(),
         });
     }
+    if let Some(program) = compile_homogeneous_dependency_tree(graph) {
+        return program;
+    }
+    if let Some(program) = compile_linear_dependency_chain(graph) {
+        return program;
+    }
     if let Some(program) = compile_two_include_leaf_import_graph(graph) {
         return program;
     }
@@ -130,6 +136,152 @@ fn compile_loaded_graph(
                 .clone(),
         }),
     }
+}
+
+fn compile_homogeneous_dependency_tree(
+    graph: &LoadedStylesheetModule,
+) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    if !graph
+        .dependencies
+        .iter()
+        .any(|dependency| !dependency.dependencies.is_empty())
+    {
+        return None;
+    }
+    compile_homogeneous_module(graph)
+}
+
+fn compile_homogeneous_module(
+    module: &LoadedStylesheetModule,
+) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    match module.dependencies.as_slice() {
+        [] => Some(
+            crate::compile::golden_stylesheet_experiment::compile_stylesheet_at(
+                &module.document,
+                module.root,
+            ),
+        ),
+        [dependency] => {
+            let dependency_program = compile_homogeneous_module(dependency)?;
+            Some(dependency_program.and_then(|dependency_program| {
+                match dependency
+                    .dependency_kind
+                    .expect("a loaded dependency has an edge kind")
+                {
+                    StylesheetDependencyKind::Include => {
+                        compile_stylesheet_with_single_include_program_at(
+                            &module.document,
+                            module.root,
+                            dependency_program,
+                        )
+                    }
+                    StylesheetDependencyKind::Import => {
+                        compile_stylesheet_with_single_imported_program_at(
+                            &module.document,
+                            module.root,
+                            dependency_program,
+                        )
+                    }
+                }
+            }))
+        }
+        [first, second] if first.dependency_kind == second.dependency_kind => {
+            let first_program = compile_homogeneous_module(first)?;
+            let second_program = compile_homogeneous_module(second)?;
+            Some(first_program.and_then(|first_program| {
+                second_program.and_then(|second_program| {
+                    match first
+                        .dependency_kind
+                        .expect("a loaded dependency has an edge kind")
+                    {
+                        StylesheetDependencyKind::Include => {
+                            compile_stylesheet_with_two_included_programs_at(
+                                &module.document,
+                                module.root,
+                                [first_program, second_program],
+                            )
+                        }
+                        StylesheetDependencyKind::Import => {
+                            compile_stylesheet_with_two_imported_programs_at(
+                                &module.document,
+                                module.root,
+                                [first_program, second_program],
+                            )
+                        }
+                    }
+                })
+            }))
+        }
+        _ => None,
+    }
+}
+
+fn compile_linear_dependency_chain(
+    graph: &LoadedStylesheetModule,
+) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    let [dependency] = graph.dependencies.as_slice() else {
+        return None;
+    };
+    if dependency.dependencies.is_empty() {
+        return None;
+    }
+    Some((|| {
+        let dependency_program = compile_linear_module(dependency)?;
+        match dependency
+            .dependency_kind
+            .expect("a loaded dependency has an edge kind")
+        {
+            StylesheetDependencyKind::Include => compile_stylesheet_with_single_include_program_at(
+                &graph.document,
+                graph.root,
+                dependency_program,
+            ),
+            StylesheetDependencyKind::Import => compile_stylesheet_with_single_imported_program_at(
+                &graph.document,
+                graph.root,
+                dependency_program,
+            ),
+        }
+    })())
+}
+
+fn compile_linear_module(
+    module: &LoadedStylesheetModule,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let [] = module.dependencies.as_slice() else {
+        let [dependency] = module.dependencies.as_slice() else {
+            return Err(CompileFailure {
+                code: "FXST1027",
+                category: CompileCategory::Unsupported,
+                detail: "branching nested stylesheet dependencies are outside the private compiler slice"
+                    .to_owned(),
+                location: module
+                    .document
+                    .location(module.document.document_node())
+                    .clone(),
+            });
+        };
+        let dependency_program = compile_linear_module(dependency)?;
+        return match dependency
+            .dependency_kind
+            .expect("a loaded dependency has an edge kind")
+        {
+            StylesheetDependencyKind::Include => compile_stylesheet_with_single_include_program_at(
+                &module.document,
+                module.root,
+                dependency_program,
+            ),
+            StylesheetDependencyKind::Import => compile_stylesheet_with_single_imported_program_at(
+                &module.document,
+                module.root,
+                dependency_program,
+            ),
+        };
+    };
+    crate::compile::golden_stylesheet_experiment::compile_stylesheet_at(
+        &module.document,
+        module.root,
+    )
 }
 
 fn compile_nested_import_chain(

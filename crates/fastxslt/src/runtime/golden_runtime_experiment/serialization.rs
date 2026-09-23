@@ -1,7 +1,9 @@
 //! Private serialization of the golden slice's semantic result.
 
-#[cfg(test)]
-use super::byte_encoding::{encode_us_ascii_cdata, serialize_utf16_be};
+#[cfg(any(test, feature = "workbench"))]
+use super::byte_encoding::{
+    encode_iso_8859_1_text, encode_iso_8859_1_xml, encode_us_ascii_cdata, serialize_utf16_be,
+};
 use super::{
     ExecutionFailure, FailureCategory, ResultAttribute, ResultNode, SemanticResult,
     control_failure, failure,
@@ -1057,7 +1059,7 @@ fn validate_html_version(
     let Some(version) = settings.version.as_deref() else {
         return Ok(());
     };
-    if is_html_version_five(version) {
+    if is_supported_html_version(version) {
         return Ok(());
     }
     Err(failure(
@@ -1070,6 +1072,13 @@ fn validate_html_version(
 
 fn is_html_version_five(version: &str) -> bool {
     matches!(version.trim().trim_start_matches('+'), "5" | "5.0")
+}
+
+fn is_supported_html_version(version: &str) -> bool {
+    matches!(
+        version.trim().trim_start_matches('+'),
+        "1" | "1.0" | "4" | "4.0" | "4.01" | "5" | "5.0"
+    )
 }
 
 fn serialize_doctype(
@@ -1156,7 +1165,7 @@ fn serialize_external_identifier(
     output.push(delimiter)
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 pub(in crate::runtime) fn serialize_xml_bytes(
     result: &SemanticResult,
     settings: &OutputSettings,
@@ -1176,7 +1185,7 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     serialize_single_byte_bytes(result, settings, request_id, byte_limit, control, encoding)
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 fn serialize_utf8_bytes(
     result: &SemanticResult,
     settings: &OutputSettings,
@@ -1211,7 +1220,7 @@ fn serialize_utf8_bytes(
     Ok(bytes)
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 fn serialize_single_byte_bytes(
     result: &SemanticResult,
     settings: &OutputSettings,
@@ -1270,16 +1279,11 @@ fn serialize_single_byte_bytes(
     let body = serialize_xml(result, &body_settings, request_id, body_limit, control)?;
     let body_len = body.len();
     let encoded_body = if us_ascii {
-        encode_us_ascii_cdata(&body, request_id)?
-    } else if body.is_ascii() {
-        body
+        encode_us_ascii_cdata(&body, request_id)?.into_bytes()
+    } else if matches!(settings.method.as_deref(), Some("text" | "html")) {
+        encode_iso_8859_1_text(&body, request_id)?
     } else {
-        return Err(failure(
-            "FXSR1006",
-            FailureCategory::Unsupported,
-            Some(request_id),
-            "the bounded ISO-8859-1 lane currently admits only ASCII result characters",
-        ));
+        encode_iso_8859_1_xml(&body, request_id)?
     };
     let expansion_bytes = encoded_body.len().saturating_sub(body_len);
     if expansion_bytes > 0 {
@@ -1300,7 +1304,7 @@ fn serialize_single_byte_bytes(
     }
 
     let mut bytes = declaration.into_bytes();
-    bytes.extend_from_slice(encoded_body.as_bytes());
+    bytes.extend_from_slice(&encoded_body);
     Ok(bytes)
 }
 

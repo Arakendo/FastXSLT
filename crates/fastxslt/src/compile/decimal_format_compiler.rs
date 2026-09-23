@@ -368,6 +368,20 @@ fn apply_value(
     if let ValueExpression::FormatNumber(expression)
     | ValueExpression::Xslt10NumberOfFormatNumber(expression) = value
     {
+        if expression.requested_format_variable().is_some() {
+            expression.set_dynamic_formats(
+                declarations
+                    .iter()
+                    .filter_map(|declaration| {
+                        declaration
+                            .name
+                            .clone()
+                            .map(|name| (name, declaration.format.clone()))
+                    })
+                    .collect(),
+            );
+            return Ok(());
+        }
         let declaration = if let Some(name) = expression.requested_format() {
             declarations
                 .iter()
