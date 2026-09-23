@@ -5792,6 +5792,14 @@ host lifecycle.
     (63.32%) strict lower bound do not change; the unsupported frontier is now
     more honest.
     [Evidence](../Evidence/oasis-xslt10-number-level-static-classification-2026-09-23.md)
+  - [x] Separate proven-invalid resolved `format-number()` pictures from
+    genuinely unsupported formatting work. Eleven runtime cases move from
+    `FXRT1007` to invalid `XTDE1310`, reducing that unsupported frontier from
+    13 to 2 without changing the conserved counts or 2,008 / 3,173 (63.32%)
+    strict lower bound. Ten are expected-error scenarios; the archive's
+    contradictory normal-scenario `specialCharInPattern` case remains visibly
+    uncredited.
+    [Evidence](../Evidence/oasis-xslt10-format-number-invalid-picture-classification-2026-09-23.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

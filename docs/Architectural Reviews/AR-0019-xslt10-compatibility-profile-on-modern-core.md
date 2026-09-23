@@ -2767,3 +2767,10 @@ maintained redistributable legacy suite becomes available.
   so the 2,008 / 3,173 (63.32%) strict lower bound is unchanged; the frontier
   now distinguishes invalid stylesheet input from missing numbering breadth.
   [Evidence](../Evidence/oasis-xslt10-number-level-static-classification-2026-09-23.md)
+- 2026-09-23 -- Proven-invalid resolved `format-number()` pictures now report
+  dynamic `XTDE1310` rather than unsupported `FXRT1007`. Eleven cases move
+  between frontier classes, reducing `FXRT1007` from 13 to 2; ten are catalog
+  expected-error scenarios and the contradictory normal-scenario
+  `specialCharInPattern` case remains uncredited. Conserved totals and the
+  2,008 / 3,173 (63.32%) strict lower bound do not change.
+  [Evidence](../Evidence/oasis-xslt10-format-number-invalid-picture-classification-2026-09-23.md)

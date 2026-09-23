@@ -186,6 +186,7 @@ pub(crate) enum FormatNumberFailureKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FormatNumberEvaluationFailure {
     UnboundVariable(String),
+    InvalidPicture,
     Unsupported(FormatNumberUnsupported),
 }
 
@@ -193,7 +194,6 @@ pub(crate) enum FormatNumberEvaluationFailure {
 pub(crate) enum FormatNumberUnsupported {
     DecimalFormatName,
     Number,
-    Picture,
     FiniteFormatting,
 }
 
@@ -202,7 +202,6 @@ impl FormatNumberUnsupported {
         match self {
             Self::DecimalFormatName => "decimal-format name resolution",
             Self::Number => "numeric conversion",
-            Self::Picture => "picture grammar",
             Self::FiniteFormatting => "finite decimal formatting",
         }
     }
@@ -478,18 +477,16 @@ fn format_decimal(
     } else {
         picture
     };
-    let (positive, negative) = split_subpictures(picture, format.pattern_separator).ok_or(
-        FormatNumberEvaluationFailure::Unsupported(FormatNumberUnsupported::Picture),
-    )?;
+    let (positive, negative) = split_subpictures(picture, format.pattern_separator)
+        .ok_or(FormatNumberEvaluationFailure::InvalidPicture)?;
     let negative_value = number.is_sign_negative();
     let selected = if negative_value {
         negative.unwrap_or(positive)
     } else {
         positive
     };
-    let parsed = parse_subpicture(selected, format).ok_or(
-        FormatNumberEvaluationFailure::Unsupported(FormatNumberUnsupported::Picture),
-    )?;
+    let parsed =
+        parse_subpicture(selected, format).ok_or(FormatNumberEvaluationFailure::InvalidPicture)?;
     let implicit_minus = negative_value
         && negative.is_none_or(|negative| {
             let positive = parse_subpicture(positive, format);
@@ -1042,9 +1039,8 @@ mod tests {
     use crate::xml::quick_xml_experiment::NamespaceBinding;
 
     use super::{
-        DecimalFormat, FormatNumberEvaluationFailure, FormatNumberFailureKind,
-        FormatNumberUnsupported, evaluate, evaluate_with_path_values, parse,
-        parse_with_path_operands,
+        DecimalFormat, FormatNumberEvaluationFailure, FormatNumberFailureKind, evaluate,
+        evaluate_with_path_values, parse, parse_with_path_operands,
     };
 
     fn location() -> SourceLocation {
@@ -1287,7 +1283,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unadmitted_formatting() {
+    fn rejects_invalid_pictures() {
         let variables = BTreeMap::new();
         for source in [
             "format-number(1.23, '0.0.0')",
@@ -1298,9 +1294,7 @@ mod tests {
             let expression = parse(source, &location()).expect("expression shape should parse");
             assert_eq!(
                 evaluate(&expression, &variables),
-                Err(FormatNumberEvaluationFailure::Unsupported(
-                    FormatNumberUnsupported::Picture
-                ))
+                Err(FormatNumberEvaluationFailure::InvalidPicture)
             );
         }
     }

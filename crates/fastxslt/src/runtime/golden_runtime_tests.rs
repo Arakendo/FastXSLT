@@ -6057,6 +6057,33 @@ fn xslt10_format_number_converts_local_source_node_variables() {
 }
 
 #[test]
+fn format_number_reports_invalid_picture_grammar_separately_from_unsupported_work() {
+    const SOURCE: &str = "urn:fastxslt:invalid-format-number-picture:source";
+    const STYLESHEET: &str = "urn:fastxslt:invalid-format-number-picture:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="format-number(0, '#.#0')"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile invalid dynamic picture probe");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("invalid-format-number-picture", "result", SOURCE))
+        .expect("admit request");
+
+    let failure = execute_transform_set(builder.seal()).expect_err("picture must be invalid");
+    assert_eq!(failure.code, "XTDE1310");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
 fn xslt10_format_number_converts_first_nodes_selected_by_child_paths() {
     const SOURCE: &str = "urn:fastxslt:format-number-child-paths:source";
     const STYLESHEET: &str = "urn:fastxslt:format-number-child-paths:stylesheet";

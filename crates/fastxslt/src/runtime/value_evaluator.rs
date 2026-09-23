@@ -1417,6 +1417,12 @@ fn evaluate_runtime_format_number(
             Some(inputs.request_id),
             format!("unbound variable: ${name}"),
         ),
+        FormatNumberEvaluationFailure::InvalidPicture => failure(
+            "XTDE1310",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "format-number picture is invalid",
+        ),
         FormatNumberEvaluationFailure::Unsupported(reason) => failure(
             "FXRT1007",
             FailureCategory::Unsupported,
