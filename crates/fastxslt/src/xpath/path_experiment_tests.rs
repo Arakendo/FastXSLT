@@ -1687,6 +1687,36 @@ fn xslt10_path_predicate_compares_candidate_and_outer_context_attributes() {
 }
 
 #[test]
+fn xslt10_path_predicate_compares_a_parent_child_with_the_outer_context() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><selected>b</selected><product><id>a</id><name>wrong</name></product><product><id>b</id><name>right</name></product></doc>",
+        ParseLimits {
+            max_events: 24,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let selected = document.children(doc)[0];
+    let path = parse_xslt10_location_path("../product/name[../id=current()]", location())
+        .expect("outer-context equality should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let matched = evaluate_location_path_controlled(&document, selected, &path, &mut control)
+        .expect("unbounded evaluation should succeed");
+
+    assert_eq!(matched.len(), 1);
+    assert_eq!(document.string_value(matched[0]), "right");
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+    assert!(
+        parse_location_path("../product/name[../id=current()]", location()).is_err(),
+        "XPath without XSLT static context must not acquire current()"
+    );
+}
+
+#[test]
 fn attribute_wildcard_predicates_test_attribute_presence() {
     let parsed = parse_document(
         "memory:source.xml",

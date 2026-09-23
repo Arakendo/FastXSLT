@@ -2687,3 +2687,11 @@ maintained redistributable legacy suite becomes available.
   reducing mismatches from 65 to 62. A proposed adjacent empty-number
   punctuation change was rejected after it regressed two Lotus cases.
   [Evidence](../Evidence/oasis-xslt10-number-value-lexical-recovery-2026-09-23.md)
+- 2026-09-23 -- The XSLT 1.0 path entry point now selects one typed predicate
+  for `../name = current()` (and its symmetric spelling), retaining the outer
+  instruction context separately from each candidate's predicate focus.
+  Charged parent/child traversal implements the bounded node-set string-value
+  comparison; ordinary XPath and broader `current()` expressions remain
+  unsupported. Unchanged Microsoft `XSLTFunctions__84421` becomes exact,
+  raising the complete-catalog lower bound to 1,997 / 3,173 (62.94%).
+  [Evidence](../Evidence/oasis-xslt10-outer-current-parent-child-predicate-2026-09-23.md)

@@ -4766,6 +4766,40 @@ fn xslt10_outer_current_attribute_predicates_compose_with_sort_and_copy_of() {
 }
 
 #[test]
+fn xslt10_outer_current_compares_with_a_candidate_parent_child() {
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-outer-current-parent-child:stylesheet";
+    const SOURCE: &str = "urn:fastxslt:xslt10-outer-current-parent-child:source";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/selected"><xsl:value-of select="//product/name[../id=current()]"/></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><selected>b</selected><product><id>a</id><name>wrong</name></product><product><id>b</id><name>right</name></product></doc>".to_vec(),
+        )
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile XSLT 1.0 outer-current parent-child predicate");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("xslt10-outer-current-child", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute XSLT 1.0 outer-current parent-child predicate");
+
+    assert_eq!(
+        results.by_request["xslt10-outer-current-child"].serialized,
+        "<out>right</out>"
+    );
+}
+
+#[test]
 fn local_count_path_variables_reuse_controlled_axis_evaluation() {
     const SOURCE: &str = "urn:fastxslt:local-count-path:source";
     const STYLESHEET: &str = "urn:fastxslt:local-count-path:stylesheet";

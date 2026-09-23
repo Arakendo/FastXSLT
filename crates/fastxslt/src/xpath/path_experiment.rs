@@ -833,7 +833,26 @@ pub(crate) fn parse_xslt10_location_path(
         path.promote_xslt10_outer_attribute_markers();
         return Ok(path);
     }
+    if let Some(normalized) = normalize_xslt10_outer_context_comparison(expression)
+        && let Ok(path) = parse_location_path(&normalized, location.clone())
+    {
+        return Ok(path);
+    }
     parse_location_path(expression, location)
+}
+
+fn normalize_xslt10_outer_context_comparison(expression: &str) -> Option<String> {
+    let marker = "current()";
+    let start = expression.find(marker)?;
+    let mut normalized = String::with_capacity(expression.len() - marker.len() + 3);
+    normalized.push_str(&expression[..start]);
+    normalized.push('\'');
+    normalized.push(XSLT10_OUTER_ATTRIBUTE_MARKER);
+    normalized.push('\'');
+    normalized.push_str(&expression[start + marker.len()..]);
+    let predicate = normalized.rsplit_once('[')?.1.strip_suffix(']')?;
+    path_boolean_predicate::recognizes_parent_child_outer_context_equality(predicate)
+        .then_some(normalized)
 }
 
 fn normalize_xslt10_outer_attribute_comparison(expression: &str) -> Option<String> {
@@ -1414,6 +1433,7 @@ fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBool
             && !path_boolean_predicate::recognizes_child_path_string_comparison(predicate)
             && !path_boolean_predicate::recognizes_child_element_integer_equality(predicate)
             && !path_boolean_predicate::recognizes_parent_attribute_string_comparison(predicate)
+            && !path_boolean_predicate::recognizes_parent_child_outer_context_equality(predicate)
             && !predicate.contains('['))
     {
         return (expression, None);
