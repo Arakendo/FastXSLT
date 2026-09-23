@@ -35,9 +35,9 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
         Some("multiple") => NumberLevel::Multiple,
         Some("any") => NumberLevel::Any,
         Some(level) => {
-            return Err(unsupported(
-                "FXST1048",
-                format!("unsupported xsl:number level: {level}"),
+            return Err(invalid(
+                "XTSE0020",
+                format!("invalid xsl:number level: {level}"),
                 document.location(element),
             ));
         }

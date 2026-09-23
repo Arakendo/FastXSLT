@@ -2761,3 +2761,9 @@ maintained redistributable legacy suite becomes available.
   expected-error successes fall to six. Successful execution remains 2,156 and
   the strict lower bound remains 2,008 / 3,173 (63.32%).
   [Evidence](../Evidence/oasis-xslt10-variable-rooted-computed-name-paths-2026-09-23.md)
+- 2026-09-23 -- An unknown lexical `xsl:number/@level` now reports invalid
+  `XTSE0020` instead of unsupported `FXST1048`. The unchanged Microsoft
+  `Errors_err070` case already received expected-initialization-error credit,
+  so the 2,008 / 3,173 (63.32%) strict lower bound is unchanged; the frontier
+  now distinguishes invalid stylesheet input from missing numbering breadth.
+  [Evidence](../Evidence/oasis-xslt10-number-level-static-classification-2026-09-23.md)

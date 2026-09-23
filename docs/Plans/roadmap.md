@@ -5785,6 +5785,13 @@ host lifecycle.
     execution and the strict lower bound remain 2,156 and 2,008 / 3,173
     (63.32%).
     [Evidence](../Evidence/oasis-xslt10-variable-rooted-computed-name-paths-2026-09-23.md)
+  - [x] Classify an unknown lexical `xsl:number/@level` as invalid
+    `XTSE0020`, not as an unsupported engine capability. The unchanged
+    Microsoft `Errors_err070` expected-error case retains its existing
+    initialization-error credit, so the conserved counts and 2,008 / 3,173
+    (63.32%) strict lower bound do not change; the unsupported frontier is now
+    more honest.
+    [Evidence](../Evidence/oasis-xslt10-number-level-static-classification-2026-09-23.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

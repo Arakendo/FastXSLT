@@ -503,6 +503,18 @@ fn compiles_static_unprefixed_xsl_element_without_calling_it_literal() {
 }
 
 #[test]
+fn rejects_an_unknown_xsl_number_level_as_invalid() {
+    let document = parse_stylesheet(
+        "memory:invalid-number-level.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:template match="/"><xsl:number level="unknown"/></xsl:template></xsl:stylesheet>"#,
+    );
+
+    let failure = compile_stylesheet(&document).expect_err("unknown level must be invalid");
+    assert_eq!(failure.code, "XTSE0020");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
 fn rejects_non_decimal_stylesheet_versions_and_mode_on_named_only_templates() {
     for (label, stylesheet, code) in [
         (
