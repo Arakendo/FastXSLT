@@ -252,6 +252,17 @@ fn format_number_invalid_arity_is_a_static_error() {
 }
 
 #[test]
+fn format_number_missing_first_argument_is_invalid_xpath_syntax() {
+    let document = parse_stylesheet(
+        "test:format-number-missing-first-argument.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="format-number(,'#')"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&document).expect_err("missing expression must fail");
+    assert_eq!(failure.code, "XPST0003");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
 fn sort_controls_fold_exact_literal_avts() {
     let document = parse_stylesheet(
         "test:sort-static-avt.xsl",

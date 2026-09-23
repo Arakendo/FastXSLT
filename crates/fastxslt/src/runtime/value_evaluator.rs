@@ -1417,6 +1417,12 @@ fn evaluate_runtime_format_number(
             Some(inputs.request_id),
             format!("unbound variable: ${name}"),
         ),
+        FormatNumberEvaluationFailure::InvalidDecimalFormatName => failure(
+            "XTDE1280",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "format-number decimal-format name is invalid or unavailable",
+        ),
         FormatNumberEvaluationFailure::InvalidPicture => failure(
             "XTDE1310",
             FailureCategory::Invalid,

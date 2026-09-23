@@ -2774,3 +2774,10 @@ maintained redistributable legacy suite becomes available.
   `specialCharInPattern` case remains uncredited. Conserved totals and the
   2,008 / 3,173 (63.32%) strict lower bound do not change.
   [Evidence](../Evidence/oasis-xslt10-format-number-invalid-picture-classification-2026-09-23.md)
+- 2026-09-23 -- The last two `FXRT1007` runtime cases now preserve their real
+  invalidity: a missing first `format-number()` argument is static
+  `XPST0003`, while an empty variable-supplied decimal-format QName is dynamic
+  `XTDE1280`. The unsupported execution frontier is eliminated without adding
+  formatter breadth. Initialization becomes 2,209, successful execution stays
+  2,156, and the strict lower bound remains 2,008 / 3,173 (63.32%).
+  [Evidence](../Evidence/oasis-xslt10-format-number-invalid-operands-2026-09-23.md)

@@ -5800,6 +5800,13 @@ host lifecycle.
     contradictory normal-scenario `specialCharInPattern` case remains visibly
     uncredited.
     [Evidence](../Evidence/oasis-xslt10-format-number-invalid-picture-classification-2026-09-23.md)
+  - [x] Eliminate the remaining `FXRT1007` execution frontier by classifying a
+    missing first argument as invalid XPath `XPST0003` and an empty dynamic
+    decimal-format QName as invalid `XTDE1280`. One expected error moves from
+    execution to initialization: 2,209 cases initialize, 2,156 execute
+    successfully, and the 2,008 / 3,173 (63.32%) strict lower bound remains
+    unchanged. No new formatter feature is inferred.
+    [Evidence](../Evidence/oasis-xslt10-format-number-invalid-operands-2026-09-23.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

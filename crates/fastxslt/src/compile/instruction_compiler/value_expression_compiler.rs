@@ -771,6 +771,7 @@ fn compile_format_number(
         parse_format_number(expression, location, admit_xslt10_paths).map_err(|failure| {
             let (code, category) = match failure.kind {
                 FormatNumberFailureKind::InvalidArity => ("XPST0017", CompileCategory::Invalid),
+                FormatNumberFailureKind::InvalidSyntax => ("XPST0003", CompileCategory::Invalid),
                 FormatNumberFailureKind::Unsupported => ("FXXP1009", CompileCategory::Unsupported),
             };
             CompileFailure {

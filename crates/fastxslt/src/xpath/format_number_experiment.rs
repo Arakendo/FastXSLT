@@ -180,19 +180,20 @@ pub(crate) struct FormatNumberFailure {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FormatNumberFailureKind {
     InvalidArity,
+    InvalidSyntax,
     Unsupported,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FormatNumberEvaluationFailure {
     UnboundVariable(String),
+    InvalidDecimalFormatName,
     InvalidPicture,
     Unsupported(FormatNumberUnsupported),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FormatNumberUnsupported {
-    DecimalFormatName,
     Number,
     FiniteFormatting,
 }
@@ -200,7 +201,6 @@ pub(crate) enum FormatNumberUnsupported {
 impl FormatNumberUnsupported {
     pub(crate) fn detail(self) -> &'static str {
         match self {
-            Self::DecimalFormatName => "decimal-format name resolution",
             Self::Number => "numeric conversion",
             Self::FiniteFormatting => "finite decimal formatting",
         }
@@ -250,7 +250,15 @@ pub(crate) fn parse_with_path_operands(
             }
             None => (remainder, None, None),
         };
-    let number = parse_number(number.trim(), location, admit_xslt10_paths)
+    let number = number.trim();
+    if number.is_empty() {
+        return Err(FormatNumberFailure {
+            kind: FormatNumberFailureKind::InvalidSyntax,
+            detail: "format-number requires a first argument expression".to_owned(),
+            location: location.clone(),
+        });
+    }
+    let number = parse_number(number, location, admit_xslt10_paths)
         .ok_or_else(|| unsupported(expression, location))?;
     let picture = parse_picture(picture.trim(), location, admit_xslt10_paths)
         .ok_or_else(|| unsupported(expression, location))?;
@@ -283,9 +291,7 @@ pub(crate) fn evaluate_with_path_values(
     picture_path_value: Option<&str>,
 ) -> Result<String, FormatNumberEvaluationFailure> {
     if expression.requested_format_lexical.is_some() && expression.requested_format.is_none() {
-        return Err(FormatNumberEvaluationFailure::Unsupported(
-            FormatNumberUnsupported::DecimalFormatName,
-        ));
+        return Err(FormatNumberEvaluationFailure::InvalidDecimalFormatName);
     }
     let number = resolve(&expression.number, variables, number_path_value)?;
     let number_is_expression = matches!(expression.number, Operand::Literal(_));
@@ -300,19 +306,14 @@ pub(crate) fn evaluate_with_path_values(
                 .ok_or_else(|| {
                     FormatNumberEvaluationFailure::UnboundVariable(variable.to_owned())
                 })?;
-            let name = resolve_qname(lexical, &expression.static_namespaces).ok_or(
-                FormatNumberEvaluationFailure::Unsupported(
-                    FormatNumberUnsupported::DecimalFormatName,
-                ),
-            )?;
+            let name = resolve_qname(lexical, &expression.static_namespaces)
+                .ok_or(FormatNumberEvaluationFailure::InvalidDecimalFormatName)?;
             expression
                 .dynamic_formats
                 .iter()
                 .find(|(candidate, _)| candidate == &name)
                 .map(|(_, format)| format)
-                .ok_or(FormatNumberEvaluationFailure::Unsupported(
-                    FormatNumberUnsupported::DecimalFormatName,
-                ))
+                .ok_or(FormatNumberEvaluationFailure::InvalidDecimalFormatName)
         })
         .transpose()?;
     format_decimal(
@@ -1066,6 +1067,12 @@ mod tests {
             );
         }
         assert_eq!(
+            parse("format-number(,'#')", &location())
+                .expect_err("missing first expression must fail")
+                .kind,
+            FormatNumberFailureKind::InvalidSyntax
+        );
+        assert_eq!(
             parse("format-number(1, concat('0', '0'))", &location())
                 .expect_err("unsupported operand must fail")
                 .kind,
@@ -1209,6 +1216,16 @@ mod tests {
             ("format".to_owned(), AtomicValue::string("f:european")),
         ]);
         assert_eq!(evaluate(&expression, &variables), Ok("1.234,5".to_owned()));
+
+        let invalid_variables = BTreeMap::from([
+            ("value".to_owned(), AtomicValue::string("1234.5")),
+            ("picture".to_owned(), AtomicValue::string("#.##0,0")),
+            ("format".to_owned(), AtomicValue::string("")),
+        ]);
+        assert_eq!(
+            evaluate(&expression, &invalid_variables),
+            Err(FormatNumberEvaluationFailure::InvalidDecimalFormatName)
+        );
     }
 
     #[test]
