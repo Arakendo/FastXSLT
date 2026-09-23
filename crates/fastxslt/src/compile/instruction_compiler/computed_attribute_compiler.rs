@@ -228,6 +228,20 @@ fn compile_computed_attribute_name(
                 namespace_override,
                 static_namespaces: static_namespaces(),
             }
+        } else if let Some((variable, path)) =
+            super::value_expression_compiler::compile_xslt10_variable_path(
+                document,
+                element,
+                expression,
+                document.location(element),
+            )?
+        {
+            DynamicAttributeName::SourceVariablePath {
+                variable,
+                path,
+                namespace_override,
+                static_namespaces: static_namespaces(),
+            }
         } else if let Ok(path) = parse_location_path(expression, document.location(element).clone())
         {
             DynamicAttributeName::Path {

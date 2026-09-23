@@ -2160,6 +2160,73 @@ fn xslt10_variable_xsl_element_name_composes_static_text() {
 }
 
 #[test]
+fn xslt10_source_variable_paths_supply_computed_names_but_temporary_trees_do_not() {
+    let source = parse_document(
+        "memory:source-variable-name-path.xml",
+        br#"<doc><names><ElementType name="result"><AttributeType name="marker"/></ElementType></names></doc>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 6,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:source-variable-name-path.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output method="xml" omit-xml-declaration="yes"/>
+          <xsl:template match="/"><xsl:variable name="names" select="/doc/names"/><xsl:element name="{$names/ElementType/@name}"><xsl:attribute name="{$names/ElementType/AttributeType/@name}">kept</xsl:attribute></xsl:element></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("source-variable name paths should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "source-variable-name-path-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("source-variable name paths should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "source-variable-name-path-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+    assert_eq!(serialized, "<result marker=\"kept\"></result>");
+
+    let invalid = parse_document(
+        "memory:temporary-variable-name-path.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:variable name="names"><ElementType name="result"/></xsl:variable><xsl:template match="/"><xsl:element name="{$names/ElementType/@name}"/></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 24,
+            max_depth: 8,
+        },
+    )
+    .expect("invalid stylesheet should remain well-formed XML");
+    let invalid = Document::from_parsed(invalid).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&invalid)
+        .expect("the variable kind is an invocation-time distinction");
+    let failure = execute_program(
+        &program,
+        &source,
+        "temporary-variable-name-path-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("an XSLT 1.0 result-tree fragment cannot be navigated as a node-set");
+    assert_eq!(failure.code, "XPTY0019");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
 fn descendant_match_path_accepts_nonadjacent_ancestor() {
     let source = parse_document(
         "memory:descendant-match.xml",

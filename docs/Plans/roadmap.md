@@ -5774,6 +5774,17 @@ host lifecycle.
     2,209 initialized, and 2,156 executed successfully without adding a
     mismatch or execution failure. Modern XSLT retains `FXST1050`.
     [Evidence](../Evidence/oasis-xslt10-key-number-pattern-2026-09-23.md)
+  - [x] Admit one typed variable-rooted source path for computed element and
+    attribute names while preserving XSLT 1.0 result-tree-fragment behavior.
+    Source-node variables reuse charged path evaluation and first-node string
+    conversion; constructed variables report `XPTY0019` rather than gaining an
+    implicit node-set extension. Unchanged Microsoft `Variables__91490` moves
+    from unsupported initialization to its required observed execution error.
+    Initialization reaches 2,210, observed expected execution errors reach 29,
+    and unexpected expected-error successes fall from seven to six; successful
+    execution and the strict lower bound remain 2,156 and 2,008 / 3,173
+    (63.32%).
+    [Evidence](../Evidence/oasis-xslt10-variable-rooted-computed-name-paths-2026-09-23.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

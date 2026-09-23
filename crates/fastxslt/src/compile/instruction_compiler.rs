@@ -625,7 +625,7 @@ fn compile_static_computed_element(
         });
     }
     if uses_xslt10_compatibility(document, element)
-        && let Some(name) = compile_dynamic_element_name(document, element, name)
+        && let Some(name) = compile_dynamic_element_name(document, element, name)?
     {
         let (computed_attributes, body) = compile_computed_element_content(document, element)?;
         return Ok(Instruction::DynamicNameElement {
@@ -735,24 +735,45 @@ fn compile_dynamic_element_name(
     document: &Document,
     element: NodeId,
     lexical: &str,
-) -> Option<DynamicElementName> {
+) -> Result<Option<DynamicElementName>, CompileFailure> {
     if let Some((prefix, suffix)) = lexical.split_once("{position()}")
         && !prefix.contains(['{', '}'])
         && !suffix.contains(['{', '}'])
     {
-        return Some(DynamicElementName::FocusPosition {
+        return Ok(Some(DynamicElementName::FocusPosition {
             prefix: prefix.to_owned(),
             suffix: suffix.to_owned(),
-        });
+        }));
     }
     if let Some(parts) = parse_xslt10_name_avt_parts(lexical) {
-        return Some(DynamicElementName::VariableAvt(parts));
+        return Ok(Some(DynamicElementName::VariableAvt(parts)));
     }
-    let expression = lexical.strip_prefix('{')?.strip_suffix('}')?.trim();
-    (!expression.contains(['{', '}']))
-        .then(|| compile_sort_path(document, element, expression, document.location(element)).ok())
-        .flatten()
-        .map(DynamicElementName::Path)
+    let Some(expression) = lexical
+        .strip_prefix('{')
+        .and_then(|value| value.strip_suffix('}'))
+        .map(str::trim)
+    else {
+        return Ok(None);
+    };
+    if expression.contains(['{', '}']) {
+        return Ok(None);
+    }
+    if let Some((variable, path)) = value_expression_compiler::compile_xslt10_variable_path(
+        document,
+        element,
+        expression,
+        document.location(element),
+    )? {
+        return Ok(Some(DynamicElementName::SourceVariablePath {
+            variable,
+            path,
+        }));
+    }
+    Ok(
+        compile_sort_path(document, element, expression, document.location(element))
+            .ok()
+            .map(DynamicElementName::Path),
+    )
 }
 
 fn retain_computed_attribute_namespace_bindings(
@@ -765,6 +786,10 @@ fn retain_computed_attribute_namespace_bindings(
         attribute.name.namespace.as_deref().or_else(|| {
             attribute.dynamic_name.as_ref().and_then(|name| match name {
                 crate::xslt::golden_semantics_experiment::DynamicAttributeName::Path {
+                    namespace_override,
+                    ..
+                }
+                | crate::xslt::golden_semantics_experiment::DynamicAttributeName::SourceVariablePath {
                     namespace_override,
                     ..
                 }

@@ -660,6 +660,9 @@ fn dynamic_element_name_owned(
     match name {
         DynamicElementName::Literal(value) => value.capacity(),
         DynamicElementName::Path(path) => path.known_owned_capacity_bytes(),
+        DynamicElementName::SourceVariablePath { variable, path } => {
+            variable.capacity() + path.known_owned_capacity_bytes()
+        }
         DynamicElementName::FocusPosition { prefix, suffix } => {
             prefix.capacity() + suffix.capacity()
         }
@@ -1585,13 +1588,27 @@ fn literal_attribute_owned(value: &LiteralAttribute) -> usize {
 
 fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
     name_owned(&value.name)
-        + value.dynamic_name.as_ref().map_or(0, |name| match name {
+        + value.dynamic_name.as_ref().map_or(0, |name| {
+            match name {
             crate::xslt::golden_semantics_experiment::DynamicAttributeName::Path {
                 path,
                 namespace_override,
                 static_namespaces,
             } => {
                 path.known_owned_capacity_bytes()
+                    + namespace_override
+                        .as_ref()
+                        .map_or(0, dynamic_element_namespace_owned)
+                    + arc_slice_owned(static_namespaces, namespace_owned)
+            }
+            crate::xslt::golden_semantics_experiment::DynamicAttributeName::SourceVariablePath {
+                variable,
+                path,
+                namespace_override,
+                static_namespaces,
+            } => {
+                variable.capacity()
+                    + path.known_owned_capacity_bytes()
                     + namespace_override
                         .as_ref()
                         .map_or(0, dynamic_element_namespace_owned)
@@ -1639,6 +1656,7 @@ fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
                         .map_or(0, dynamic_element_namespace_owned)
                     + arc_slice_owned(static_namespaces, namespace_owned)
             }
+        }
         })
         + literal_attribute_value_owned(&value.value)
         + location_owned(&value.location)

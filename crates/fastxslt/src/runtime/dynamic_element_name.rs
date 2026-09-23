@@ -32,6 +32,16 @@ pub(super) fn resolve_dynamic_element_name(
     let lexical = match request.name {
         DynamicElementName::Literal(value) => value.clone(),
         DynamicElementName::Path(path) => path_name_value(inputs, execution, path, control)?,
+        DynamicElementName::SourceVariablePath { variable, path } => {
+            super::dynamic_attribute_name::source_variable_path_name_value(
+                inputs,
+                request.variables,
+                variable,
+                path,
+                request.location,
+                control,
+            )?
+        }
         DynamicElementName::FocusPosition { prefix, suffix } => {
             format!("{prefix}{}{suffix}", execution.focus_position)
         }

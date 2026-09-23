@@ -32,6 +32,16 @@ pub(super) fn resolve(
             namespace_override,
             static_namespaces,
         ),
+        DynamicAttributeName::SourceVariablePath {
+            variable,
+            path,
+            namespace_override,
+            static_namespaces,
+        } => (
+            source_variable_path_name_value(inputs, variables, variable, path, location, control)?,
+            namespace_override,
+            static_namespaces,
+        ),
         DynamicAttributeName::ContextName {
             namespace_override,
             static_namespaces,
@@ -64,6 +74,51 @@ pub(super) fn resolve(
         location,
         inputs.request_id,
     )
+}
+
+pub(super) fn source_variable_path_name_value(
+    inputs: &SequenceInputs<'_>,
+    variables: &RuntimeVariables,
+    variable: &str,
+    path: &LocationPath,
+    location: &SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let source = inputs.source.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "a variable-rooted name path requires a principal source",
+        )
+    })?;
+    let roots = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure_at(
+                "XPTY0019",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                location.clone(),
+                format!("variable-rooted name path requires source nodes: ${variable}"),
+            )
+        })?;
+    let mut selected = Vec::new();
+    for root in roots {
+        selected.extend(
+            evaluate_location_path_controlled(source, *root, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?,
+        );
+    }
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+    let Some(node) = selected.first() else {
+        return Ok(String::new());
+    };
+    source
+        .string_value_controlled(*node, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))
 }
 
 fn namespace_value(

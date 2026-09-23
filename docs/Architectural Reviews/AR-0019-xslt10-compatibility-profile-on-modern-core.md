@@ -2751,3 +2751,13 @@ maintained redistributable legacy suite becomes available.
   3,173 (63.32%), with 2,209 initialized and 2,156 executed successfully.
   Modern XSLT retains the prior unsupported boundary.
   [Evidence](../Evidence/oasis-xslt10-key-number-pattern-2026-09-23.md)
+- 2026-09-23 -- Computed element and attribute names now admit one typed
+  XSLT 1.0 variable-rooted source path. The runtime accepts only source-node
+  variables, uses charged path and string-value evaluation, and rejects a
+  constructed result-tree fragment with `XPTY0019`; it does not silently add a
+  node-set extension. The unchanged Microsoft `Variables__91490` case moves
+  from `FXST1047` to its required observed execution error. Initialization
+  reaches 2,210, observed expected execution errors reach 29, and unexpected
+  expected-error successes fall to six. Successful execution remains 2,156 and
+  the strict lower bound remains 2,008 / 3,173 (63.32%).
+  [Evidence](../Evidence/oasis-xslt10-variable-rooted-computed-name-paths-2026-09-23.md)

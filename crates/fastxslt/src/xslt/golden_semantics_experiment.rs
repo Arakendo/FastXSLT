@@ -849,7 +849,14 @@ pub(crate) enum Instruction {
 pub(crate) enum DynamicElementName {
     Literal(String),
     Path(LocationPath),
-    FocusPosition { prefix: String, suffix: String },
+    SourceVariablePath {
+        variable: String,
+        path: LocationPath,
+    },
+    FocusPosition {
+        prefix: String,
+        suffix: String,
+    },
     VariableAvt(Vec<DynamicAttributeNamePart>),
 }
 
@@ -1550,6 +1557,12 @@ pub(crate) struct ComputedAttribute {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DynamicAttributeName {
     Path {
+        path: LocationPath,
+        namespace_override: Option<DynamicNamespaceValue>,
+        static_namespaces: Arc<[NamespaceBinding]>,
+    },
+    SourceVariablePath {
+        variable: String,
         path: LocationPath,
         namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
