@@ -2678,3 +2678,12 @@ maintained redistributable legacy suite becomes available.
   complete-catalog lower bound to 1,993 / 3,173 (62.81%) and reducing
   execution failures from 57 to 53.
   [Evidence](../Evidence/oasis-xslt10-first-node-function-conversion-2026-09-23.md)
+- 2026-09-23 -- The compiled `xsl:number` instruction now records whether its
+  stylesheet selected XSLT 1.0 compatibility. When a literal or context-item
+  value converts to `NaN`, that path emits the original lexical string without
+  applying number-format punctuation; finite values and the modern canonical
+  `NaN` path remain unchanged. Three unchanged Microsoft cases become exact,
+  raising the complete-catalog lower bound to 1,996 / 3,173 (62.91%) and
+  reducing mismatches from 65 to 62. A proposed adjacent empty-number
+  punctuation change was rejected after it regressed two Lotus cases.
+  [Evidence](../Evidence/oasis-xslt10-number-value-lexical-recovery-2026-09-23.md)

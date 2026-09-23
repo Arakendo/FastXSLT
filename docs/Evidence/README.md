@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Number-Value Lexical Recovery](oasis-xslt10-number-value-lexical-recovery-2026-09-23.md)
 - [OASIS XSLT 1.0 Imported Namespace-Alias Precedence](oasis-xslt10-imported-namespace-alias-precedence-2026-09-23.md)
 - [OASIS XSLT 1.0 Included Output Import Precedence](oasis-xslt10-included-output-import-precedence-2026-09-23.md)
 - [OASIS XSLT 1.0 Dynamic Computed-Attribute Namespace](oasis-xslt10-dynamic-computed-attribute-namespace-2026-09-23.md)

@@ -5840,7 +5840,7 @@ fn xslt10_default_single_number_counts_matching_preceding_siblings() {
     let results = execute_transform_set(builder.seal()).expect("execute xsl:number");
     assert_eq!(
         results.by_request["xslt10-number"].serialized,
-        "<out><n>1</n><p>1</p><n>2</n><p>2</p><n>3</n><p>3</p><values>1999|2000|NaN|0.42</values></out>"
+        "<out><n>1</n><p>1</p><n>2</n><p>2</p><n>3</n><p>3</p><values>1999|2000|bad|0.42</values></out>"
     );
 }
 
@@ -5869,7 +5869,35 @@ fn xslt10_number_applies_bounded_decimal_format_tokens() {
 
     assert_eq!(
         results.by_request["number-format"].serialized,
-        "<out>01|(012) |[NaN]|(7) (NaN) </out>"
+        "<out>01|(012) |bad|(7) bad</out>"
+    );
+}
+
+#[test]
+fn modern_number_value_retains_formatted_non_number_oracle() {
+    const STYLESHEET: &str = "urn:fastxslt:modern-number-oracle";
+    const SOURCE: &str = "urn:fastxslt:modern-number-oracle-source";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:number value="'bad'" format="[1]"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile modern xsl:number oracle");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("modern-number", "result", SOURCE))
+        .expect("admit request");
+    let results = execute_transform_set(builder.seal()).expect("execute modern number oracle");
+    assert_eq!(
+        results.by_request["modern-number"].serialized,
+        "<out>[NaN]</out>"
     );
 }
 

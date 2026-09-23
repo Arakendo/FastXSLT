@@ -652,6 +652,7 @@ pub(crate) enum Instruction {
         count: Option<NumberPattern>,
         from: Option<NumberPattern>,
         format: NumberFormat,
+        xslt10_compatibility: bool,
         location: SourceLocation,
     },
     Variable {

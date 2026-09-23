@@ -841,6 +841,7 @@ fn number_instruction_owned(instruction: &Instruction) -> usize {
         count,
         from,
         format,
+        xslt10_compatibility: _,
         location,
     } = instruction
     else {

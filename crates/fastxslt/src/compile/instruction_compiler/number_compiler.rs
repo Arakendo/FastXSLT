@@ -10,7 +10,7 @@ use crate::xslt::golden_semantics_experiment::{
 use super::{
     CompileFailure, effective_xpath_default_namespace, ensure_no_meaningful_children,
     ensure_only_attributes, invalid, is_ascii_ncname, namespace_for_prefix, optional_attribute,
-    unsupported, xpath_string_literal,
+    unsupported, uses_xslt10_compatibility, xpath_string_literal,
 };
 
 pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
@@ -64,6 +64,7 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
         count,
         from,
         format,
+        xslt10_compatibility: uses_xslt10_compatibility(document, element),
         location: document.location(element).clone(),
     })
 }

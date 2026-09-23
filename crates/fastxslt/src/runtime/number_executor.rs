@@ -39,6 +39,7 @@ pub(super) fn evaluate(
         count,
         from,
         format,
+        xslt10_compatibility,
         ..
     } = instruction
     else {
@@ -48,10 +49,12 @@ pub(super) fn evaluate(
         control
             .charge(WorkDomain::XPathOperation, 1)
             .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        Some(apply_format(
-            &evaluate_value(inputs, value, execution, variables, control)?,
-            format,
-        ))
+        let value = evaluate_value(inputs, value, execution, variables, control)?;
+        Some(if *xslt10_compatibility && !value.is_formattable {
+            value.xslt10_lexical_override.unwrap_or(value.lexical)
+        } else {
+            apply_format(&value.lexical, format)
+        })
     } else {
         match level {
             NumberLevel::Single if count.is_some() || from.is_some() => execute_patterned_single(
@@ -249,20 +252,28 @@ fn evaluate_value(
     execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    let value = match value {
-        NumberValue::Literal(value) => value.trim().parse::<f64>().unwrap_or(f64::NAN),
+) -> Result<EvaluatedNumberValue, ExecutionFailure> {
+    let (value, original_lexical) = match value {
+        NumberValue::Literal(value) => (
+            value.trim().parse::<f64>().unwrap_or(f64::NAN),
+            Some(value.trim().to_owned()),
+        ),
         NumberValue::ContextPosition => execution
             .focus_position
             .to_string()
             .parse::<f64>()
+            .map(|value| (value, None))
             .expect("a decimal usize representation is an XPath number"),
-        NumberValue::ContextItem => execution_context_string_value(inputs, execution, control)?
-            .map_or(f64::NAN, |value| {
-                value.trim().parse::<f64>().unwrap_or(f64::NAN)
-            }),
+        NumberValue::ContextItem => {
+            let lexical =
+                execution_context_string_value(inputs, execution, control)?.unwrap_or_default();
+            (
+                lexical.trim().parse::<f64>().unwrap_or(f64::NAN),
+                Some(lexical),
+            )
+        }
         NumberValue::BinaryNumeric(expression) => {
-            super::value_evaluator::evaluate_binary_numeric_value(
+            let value = super::value_evaluator::evaluate_binary_numeric_value(
                 inputs,
                 execution.node,
                 execution.sequence_focus(),
@@ -271,26 +282,53 @@ fn evaluate_value(
                 control,
             )?
             .parse::<f64>()
-            .expect("the checked numeric evaluator returns an XPath number")
+            .expect("the checked numeric evaluator returns an XPath number");
+            (value, None)
         }
     };
     if value.is_nan() {
-        return Ok("NaN".to_owned());
-    }
-    if value == f64::INFINITY {
-        return Ok("Infinity".to_owned());
-    }
-    if value == f64::NEG_INFINITY {
-        return Ok("-Infinity".to_owned());
-    }
-    if value < 0.5 {
-        return Ok(if value == 0.0 {
-            "0".to_owned()
-        } else {
-            value.to_string()
+        return Ok(EvaluatedNumberValue {
+            lexical: "NaN".to_owned(),
+            xslt10_lexical_override: original_lexical,
+            is_formattable: false,
         });
     }
-    Ok((value + 0.5).floor().to_string())
+    if value == f64::INFINITY {
+        return Ok(EvaluatedNumberValue {
+            lexical: "Infinity".to_owned(),
+            xslt10_lexical_override: None,
+            is_formattable: false,
+        });
+    }
+    if value == f64::NEG_INFINITY {
+        return Ok(EvaluatedNumberValue {
+            lexical: "-Infinity".to_owned(),
+            xslt10_lexical_override: None,
+            is_formattable: false,
+        });
+    }
+    if value < 0.5 {
+        return Ok(EvaluatedNumberValue {
+            lexical: if value == 0.0 {
+                "0".to_owned()
+            } else {
+                value.to_string()
+            },
+            xslt10_lexical_override: None,
+            is_formattable: true,
+        });
+    }
+    Ok(EvaluatedNumberValue {
+        lexical: (value + 0.5).floor().to_string(),
+        xslt10_lexical_override: None,
+        is_formattable: true,
+    })
+}
+
+struct EvaluatedNumberValue {
+    lexical: String,
+    xslt10_lexical_override: Option<String>,
+    is_formattable: bool,
 }
 
 fn execute_default_single(
