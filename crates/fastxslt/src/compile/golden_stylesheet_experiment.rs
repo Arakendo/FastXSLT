@@ -886,6 +886,7 @@ fn compile_top_level_template(
                     matched_templates.push(MatchedTemplate {
                         pattern: MatchPattern::Document,
                         import_precedence: 0,
+                        apply_imports_min_precedence: 0,
                         priority: TemplatePriority::ROOT_DEFAULT,
                         modes: Vec::new(),
                         template: previous,
@@ -1866,6 +1867,7 @@ fn compile_matched_template(
     Ok(MatchedTemplate {
         pattern,
         import_precedence: 0,
+        apply_imports_min_precedence: 0,
         priority,
         modes: compile_template_modes_for_rule(document, element)?,
         template: compile_template(document, element)?,
@@ -1906,6 +1908,7 @@ fn compile_matched_templates(
                     patterns.into_iter().map(|(pattern, _)| pattern).collect(),
                 ),
                 import_precedence: 0,
+                apply_imports_min_precedence: 0,
                 priority,
                 modes: compile_template_modes_for_rule(document, element)?,
                 template: compile_template(document, element)?,
@@ -1919,6 +1922,7 @@ fn compile_matched_templates(
         .map(|(pattern, priority)| MatchedTemplate {
             pattern,
             import_precedence: 0,
+            apply_imports_min_precedence: 0,
             priority,
             modes: modes.clone(),
             template: template.clone(),

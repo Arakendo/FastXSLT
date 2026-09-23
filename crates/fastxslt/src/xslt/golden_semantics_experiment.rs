@@ -275,6 +275,7 @@ pub(crate) struct Xslt10TextChoiceBranch {
 pub(crate) struct MatchedTemplate {
     pub(crate) pattern: MatchPattern,
     pub(crate) import_precedence: i32,
+    pub(crate) apply_imports_min_precedence: i32,
     pub(crate) priority: TemplatePriority,
     pub(crate) modes: Vec<String>,
     pub(crate) template: Template,

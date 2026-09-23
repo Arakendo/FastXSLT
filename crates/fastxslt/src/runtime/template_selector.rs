@@ -166,7 +166,9 @@ pub(super) fn select_imported_template<'a>(
     current_index: usize,
     control: &mut InvocationControl,
 ) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
-    let current_precedence = program.matched_templates[current_index].import_precedence;
+    let current = &program.matched_templates[current_index];
+    let current_precedence = current.import_precedence;
+    let minimum_precedence = current.apply_imports_min_precedence;
     let mut selected_template = None;
     let mut selected_rank = None;
     for (index, template) in program.matched_templates.iter().enumerate() {
@@ -174,6 +176,7 @@ pub(super) fn select_imported_template<'a>(
             .charge_template_candidate()
             .map_err(|failure| control_failure(failure, selection.request_id))?;
         if template.import_precedence >= current_precedence
+            || template.import_precedence < minimum_precedence
             || !accepts_mode(&template.modes, selection.mode)
             || !matches_pattern(index, &template.pattern, selection, control)?
         {

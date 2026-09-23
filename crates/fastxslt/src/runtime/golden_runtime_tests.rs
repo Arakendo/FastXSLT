@@ -2909,6 +2909,79 @@ fn apply_imports_executes_a_simplified_imported_root_template() {
 }
 
 #[test]
+fn apply_imports_does_not_cross_into_a_sibling_import_branch() {
+    const SOURCE: &str = "urn:fastxslt:apply-imports-branch:source";
+    const PRINCIPAL: &str = "https://example.invalid/apply-imports-branch/main.xsl";
+    const FIRST: &str = "https://example.invalid/apply-imports-branch/first.xsl";
+    const NESTED: &str = "https://example.invalid/apply-imports-branch/nested.xsl";
+    const SECOND: &str = "https://example.invalid/apply-imports-branch/second.xsl";
+    let principal = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:import href="first.xsl"/><xsl:import href="second.xsl"/><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="foo"/></out></xsl:template><xsl:template match="foo"><A><xsl:apply-imports/></A></xsl:template><xsl:template match="bar"><top/></xsl:template></xsl:stylesheet>"#;
+    let first = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:import href="nested.xsl"/><xsl:template match="foo"><B><xsl:apply-imports/></B></xsl:template><xsl:template match="bar"><first/></xsl:template></xsl:stylesheet>"#;
+    let nested = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo"><C/></xsl:template><xsl:template match="bar"><nested/></xsl:template></xsl:stylesheet>"#;
+    let second = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo"><D><xsl:apply-imports/></D></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(5, 8_192, 40_960));
+    for (identity, bytes) in [
+        (SOURCE, b"<foo><bar/></foo>".as_slice()),
+        (PRINCIPAL, principal.as_slice()),
+        (FIRST, first.as_slice()),
+        (NESTED, nested.as_slice()),
+        (SECOND, second.as_slice()),
+    ] {
+        resources
+            .admit(identity, bytes.to_vec())
+            .expect("admit resource");
+    }
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PRINCIPAL).expect("compile nested import graph");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("branch-import", "branch-import-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute nested import graph");
+
+    assert_eq!(
+        results.by_request["branch-import"].serialized,
+        "<out><A><D><top></top></D></A></out>"
+    );
+}
+
+#[test]
+fn apply_imports_from_including_module_sees_imports_declared_by_include() {
+    const SOURCE: &str = "urn:fastxslt:included-import:source";
+    const PRINCIPAL: &str = "https://example.invalid/included-import/main.xsl";
+    const INCLUDED: &str = "https://example.invalid/included-import/included.xsl";
+    const IMPORTED: &str = "https://example.invalid/included-import/imported.xsl";
+    let principal = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:include href="included.xsl"/><xsl:template match="/"><out><xsl:apply-templates select="foo"/></out></xsl:template><xsl:template match="foo"><main><xsl:apply-imports/></main></xsl:template></xsl:stylesheet>"#;
+    let included = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:import href="imported.xsl"/><xsl:template match="foo"><included/></xsl:template></xsl:stylesheet>"#;
+    let imported = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo"><imported/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 8_192, 32_768));
+    for (identity, bytes) in [
+        (SOURCE, b"<foo/>".as_slice()),
+        (PRINCIPAL, principal.as_slice()),
+        (INCLUDED, included.as_slice()),
+        (IMPORTED, imported.as_slice()),
+    ] {
+        resources
+            .admit(identity, bytes.to_vec())
+            .expect("admit resource");
+    }
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PRINCIPAL).expect("compile included import graph");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("included-import", "included-import-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute included import graph");
+
+    assert_eq!(
+        results.by_request["included-import"].serialized,
+        "<out><main><imported></imported></main></out>"
+    );
+}
+
+#[test]
 fn principal_namespace_alias_rewrites_included_literal_results() {
     const SOURCE: &str = "urn:fastxslt:included-namespace-alias:source";
     const PRINCIPAL: &str = "https://example.invalid/alias/main.xsl";

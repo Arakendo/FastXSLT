@@ -109,6 +109,21 @@ fn merge_included_program(
         materialize_root_template_in_declaration_order(program);
         materialize_root_template_in_declaration_order(&mut included_program);
     }
+    let combined_import_floor = program
+        .matched_templates
+        .iter()
+        .chain(&included_program.matched_templates)
+        .map(|template| template.import_precedence)
+        .min()
+        .unwrap_or(0);
+    for template in program
+        .matched_templates
+        .iter_mut()
+        .chain(&mut included_program.matched_templates)
+        .filter(|template| template.import_precedence == 0)
+    {
+        template.apply_imports_min_precedence = combined_import_floor;
+    }
     if included_program.source_whitespace == SourceWhitespacePolicy::StripAllElementWhitespace {
         program.source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
     }
@@ -198,6 +213,7 @@ fn materialize_root_template_in_declaration_order(program: &mut StylesheetProgra
         MatchedTemplate {
             pattern: MatchPattern::Document,
             import_precedence: 0,
+            apply_imports_min_precedence: 0,
             priority: TemplatePriority::ROOT_DEFAULT,
             modes: std::mem::take(&mut program.root_template_modes),
             template,
@@ -453,6 +469,13 @@ fn compose_imported_and_included_programs(
         principal.location(import),
     )?;
     materialize_principal_root_template(&mut program);
+    let imported_floor = imported_program
+        .matched_templates
+        .iter()
+        .map(|template| template.import_precedence)
+        .min()
+        .unwrap_or(0);
+    set_principal_apply_imports_floor(&mut program, imported_floor);
     imported_program
         .matched_templates
         .append(&mut program.matched_templates);
@@ -574,6 +597,13 @@ pub(crate) fn compile_stylesheet_with_imports(
     }
 
     materialize_principal_root_template(&mut principal_program);
+    let imported_floor = imported_programs
+        .iter()
+        .flat_map(|program| &program.matched_templates)
+        .map(|template| template.import_precedence)
+        .min()
+        .unwrap_or(0);
+    set_principal_apply_imports_floor(&mut principal_program, imported_floor);
     let mut matched_templates = Vec::new();
     for program in &mut imported_programs {
         matched_templates.append(&mut program.matched_templates);
@@ -631,6 +661,13 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
     }
 
     materialize_principal_root_template(&mut principal_program);
+    let imported_floor = imported_programs
+        .iter()
+        .flat_map(|program| &program.matched_templates)
+        .map(|template| template.import_precedence)
+        .min()
+        .unwrap_or(0);
+    set_principal_apply_imports_floor(&mut principal_program, imported_floor);
     let mut matched_templates = Vec::new();
     for program in &mut imported_programs {
         matched_templates.append(&mut program.matched_templates);
@@ -685,6 +722,13 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
     )?;
 
     materialize_principal_root_template(&mut principal_program);
+    let imported_floor = imported_program
+        .matched_templates
+        .iter()
+        .map(|template| template.import_precedence)
+        .min()
+        .unwrap_or(0);
+    set_principal_apply_imports_floor(&mut principal_program, imported_floor);
     let mut matched_templates = imported_program.matched_templates;
     matched_templates.append(&mut principal_program.matched_templates);
     principal_program.matched_templates = matched_templates;
@@ -713,10 +757,21 @@ fn materialize_principal_root_template(program: &mut StylesheetProgram) {
     program.matched_templates.push(MatchedTemplate {
         pattern: MatchPattern::Document,
         import_precedence: 0,
+        apply_imports_min_precedence: 0,
         priority: TemplatePriority::ROOT_DEFAULT,
         modes: std::mem::take(&mut program.root_template_modes),
         template,
     });
+}
+
+fn set_principal_apply_imports_floor(program: &mut StylesheetProgram, floor: i32) {
+    for template in program
+        .matched_templates
+        .iter_mut()
+        .filter(|template| template.import_precedence == 0)
+    {
+        template.apply_imports_min_precedence = floor;
+    }
 }
 
 fn contains_apply_imports(instructions: &[Instruction]) -> bool {
@@ -762,8 +817,15 @@ fn rebase_imported_program(
             location,
         ));
     }
+    let local_import_floor = program
+        .matched_templates
+        .iter()
+        .map(|template| template.import_precedence)
+        .min()
+        .unwrap_or(0);
     for template in &mut program.matched_templates {
         template.import_precedence += shift;
+        template.apply_imports_min_precedence += shift;
     }
     if let Some(template) = program.root_template.take() {
         program.matched_templates.insert(
@@ -771,6 +833,7 @@ fn rebase_imported_program(
             MatchedTemplate {
                 pattern: MatchPattern::Document,
                 import_precedence: shift,
+                apply_imports_min_precedence: local_import_floor + shift,
                 priority: TemplatePriority::ROOT_DEFAULT,
                 modes: std::mem::take(&mut program.root_template_modes),
                 template,
@@ -797,6 +860,7 @@ fn compile_imported_program_excluding(
             MatchedTemplate {
                 pattern: MatchPattern::Document,
                 import_precedence,
+                apply_imports_min_precedence: import_precedence,
                 priority: TemplatePriority::ROOT_DEFAULT,
                 modes: std::mem::take(&mut imported_program.root_template_modes),
                 template,
@@ -805,6 +869,7 @@ fn compile_imported_program_excluding(
     }
     for template in &mut imported_program.matched_templates {
         template.import_precedence = import_precedence;
+        template.apply_imports_min_precedence = import_precedence;
     }
     Ok(imported_program)
 }
