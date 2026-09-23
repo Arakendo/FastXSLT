@@ -454,7 +454,10 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         return Ok(ValueExpression::NumberPath(path));
     }
     if let Some(path) = compile_string_path(document, element, expression, location) {
-        return Ok(ValueExpression::StringPath(path));
+        return Ok(match static_context.compatibility {
+            ValueCompatibilityMode::Modern => ValueExpression::StringPath(path),
+            ValueCompatibilityMode::Xslt10 => ValueExpression::Xslt10FirstNodeStringPath(path),
+        });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(alternatives) = compile_xslt10_name_union_last(expression, location)
@@ -462,7 +465,10 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         return Ok(ValueExpression::Xslt10NodeNamePathUnionLast(alternatives));
     }
     if let Some(path) = compile_name_path(document, element, expression, location) {
-        return Ok(ValueExpression::NodeNamePath(path));
+        return Ok(match static_context.compatibility {
+            ValueCompatibilityMode::Modern => ValueExpression::NodeNamePath(path),
+            ValueCompatibilityMode::Xslt10 => ValueExpression::Xslt10FirstNodeNamePath(path),
+        });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && expression.split_whitespace().collect::<String>()
@@ -505,12 +511,17 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             .and_then(|value| value.strip_suffix(')'))
             .filter(|variable| is_ascii_ncname(variable))
     {
-        return Ok(ValueExpression::Xslt10NormalizedSourceNodeVariable(
+        return Ok(ValueExpression::Xslt10NormalizedVariable(
             variable.to_owned(),
         ));
     }
-    if let Some(normalized) = compile_normalize_space_path(document, element, expression, location)
-    {
+    if let Some(normalized) = compile_normalize_space_path(
+        document,
+        element,
+        expression,
+        location,
+        static_context.compatibility,
+    ) {
         return Ok(normalized);
     }
     if is_zero_argument_function(expression, "string-length") {
@@ -692,21 +703,33 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     } else if matches!(expression.trim(), "name()" | "name(.)") {
         ValueExpression::ContextNodeName
     } else if expression.trim() == "name(..)" {
-        ValueExpression::NodeNamePath(
-            parse_location_path("..", location.clone()).map_err(map_path_failure)?,
-        )
+        let path = parse_location_path("..", location.clone()).map_err(map_path_failure)?;
+        match static_context.compatibility {
+            ValueCompatibilityMode::Modern => ValueExpression::NodeNamePath(path),
+            ValueCompatibilityMode::Xslt10 => ValueExpression::Xslt10FirstNodeNamePath(path),
+        }
     } else if matches!(expression.trim(), "local-name()" | "local-name(.)") {
         ValueExpression::ContextNodeLocalName
     } else if let Some(path) =
         compile_expanded_name_path(document, element, expression, "local-name", location)
     {
-        ValueExpression::NodeLocalNamePath(path?)
+        let path = path?;
+        match static_context.compatibility {
+            ValueCompatibilityMode::Modern => ValueExpression::NodeLocalNamePath(path),
+            ValueCompatibilityMode::Xslt10 => ValueExpression::Xslt10FirstNodeLocalNamePath(path),
+        }
     } else if matches!(expression.trim(), "namespace-uri()" | "namespace-uri(.)") {
         ValueExpression::ContextNodeNamespaceUri
     } else if let Some(path) =
         compile_expanded_name_path(document, element, expression, "namespace-uri", location)
     {
-        ValueExpression::NodeNamespaceUriPath(path?)
+        let path = path?;
+        match static_context.compatibility {
+            ValueCompatibilityMode::Modern => ValueExpression::NodeNamespaceUriPath(path),
+            ValueCompatibilityMode::Xslt10 => {
+                ValueExpression::Xslt10FirstNodeNamespaceUriPath(path)
+            }
+        }
     } else if matches!(expression.trim(), "string()" | "string(.)") {
         compile_location_path_or_missing_context(document, element, ".", location, static_context)?
     } else if expression.trim() == "upper-case(.)" {
@@ -2562,6 +2585,7 @@ fn compile_normalize_space_path(
     element: NodeId,
     expression: &str,
     location: &SourceLocation,
+    compatibility: ValueCompatibilityMode,
 ) -> Option<ValueExpression> {
     let expression = expression.trim();
     let argument = ["normalize-space(", "fn:normalize-space("]
@@ -2587,7 +2611,12 @@ fn compile_normalize_space_path(
             }
         }
     }
-    Some(ValueExpression::NormalizedStringPath(path))
+    Some(match compatibility {
+        ValueCompatibilityMode::Modern => ValueExpression::NormalizedStringPath(path),
+        ValueCompatibilityMode::Xslt10 => {
+            ValueExpression::Xslt10FirstNodeNormalizedStringPath(path)
+        }
+    })
 }
 
 fn compile_integral_function_path(

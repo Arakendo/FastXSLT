@@ -356,7 +356,10 @@ pub(super) fn execute_value_of(
             append_context_node_name(inputs, context, result, control)?;
         }
         ValueExpression::NodeNamePath(path) => {
-            append_node_name_path(inputs, context, path, result, control)?;
+            append_node_name_path(inputs, context, path, true, result, control)?;
+        }
+        ValueExpression::Xslt10FirstNodeNamePath(path) => {
+            append_node_name_path(inputs, context, path, false, result, control)?;
         }
         ValueExpression::Xslt10NodeNamePathUnionLast(alternatives) => {
             append_xslt10_node_name_path_union_last(
@@ -371,13 +374,27 @@ pub(super) fn execute_value_of(
             append_context_node_local_name(inputs, context, result, control)?;
         }
         ValueExpression::NodeLocalNamePath(path) => {
-            append_node_expanded_name_component(inputs, context, path, true, result, control)?;
+            append_node_expanded_name_component(
+                inputs, context, path, true, true, result, control,
+            )?;
+        }
+        ValueExpression::Xslt10FirstNodeLocalNamePath(path) => {
+            append_node_expanded_name_component(
+                inputs, context, path, true, false, result, control,
+            )?;
         }
         ValueExpression::ContextNodeNamespaceUri => {
             append_context_node_namespace_uri(inputs, context, result, control)?;
         }
         ValueExpression::NodeNamespaceUriPath(path) => {
-            append_node_expanded_name_component(inputs, context, path, false, result, control)?;
+            append_node_expanded_name_component(
+                inputs, context, path, false, true, result, control,
+            )?;
+        }
+        ValueExpression::Xslt10FirstNodeNamespaceUriPath(path) => {
+            append_node_expanded_name_component(
+                inputs, context, path, false, false, result, control,
+            )?;
         }
         ValueExpression::ContextLanguageMatches(language) => {
             let (source, context) = required_source_context(inputs, context)?;
@@ -389,34 +406,22 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeNormalizedString => {
             append_context_node_normalized_string(inputs, context, result, control)?;
         }
-        ValueExpression::Xslt10NormalizedSourceNodeVariable(variable) => {
-            let source = inputs.source.ok_or_else(|| {
-                failure(
-                    "XPDY0002",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    "source-node variable normalization requires a source document",
-                )
-            })?;
-            let nodes = variables
-                .source_nodes(inputs.globals, variable)
-                .ok_or_else(|| {
-                    failure(
-                        "XPTY0004",
-                        FailureCategory::Invalid,
-                        Some(inputs.request_id),
-                        format!("normalize-space requires a source-node sequence: ${variable}"),
-                    )
-                })?;
-            if let Some(node) = nodes.first().copied() {
-                append_normalized_node_string(inputs, source, node, result, control)?;
-            }
+        ValueExpression::Xslt10NormalizedVariable(variable) => {
+            let value = xslt10_variable_string_value(inputs, variable, variables, control)?;
+            let normalized = normalized_lexical_string(&value, inputs.request_id, control)?;
+            append_text(result, &normalized, inputs.request_id, control)?;
         }
         ValueExpression::NormalizedStringPath(path) => {
-            append_normalized_string_path(inputs, context, path, result, control)?;
+            append_normalized_string_path(inputs, context, path, true, result, control)?;
+        }
+        ValueExpression::Xslt10FirstNodeNormalizedStringPath(path) => {
+            append_normalized_string_path(inputs, context, path, false, result, control)?;
         }
         ValueExpression::StringPath(path) => {
-            append_string_path(inputs, context, path, result, control)?;
+            append_string_path(inputs, context, path, true, result, control)?;
+        }
+        ValueExpression::Xslt10FirstNodeStringPath(path) => {
+            append_string_path(inputs, context, path, false, result, control)?;
         }
         ValueExpression::IntegralFunctionPath { function, path } => {
             append_integral_function_path(inputs, context, *function, path, result, control)?;
@@ -1728,13 +1733,14 @@ fn append_node_name_path(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     path: &crate::xpath::path_experiment::LocationPath,
+    require_zero_or_one: bool,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    if selected.len() > 1 {
+    if require_zero_or_one && selected.len() > 1 {
         return Err(failure_at(
             "XPTY0004",
             FailureCategory::Invalid,
@@ -1869,13 +1875,14 @@ fn append_node_expanded_name_component(
     context: Option<NodeId>,
     path: &crate::xpath::path_experiment::LocationPath,
     local_name: bool,
+    require_zero_or_one: bool,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    if selected.len() > 1 {
+    if require_zero_or_one && selected.len() > 1 {
         return Err(failure(
             "XPTY0004",
             FailureCategory::Invalid,
@@ -1908,13 +1915,14 @@ fn append_normalized_string_path(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     path: &crate::xpath::path_experiment::LocationPath,
+    require_zero_or_one: bool,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    if selected.len() > 1 {
+    if require_zero_or_one && selected.len() > 1 {
         return Err(failure(
             "XPTY0004",
             FailureCategory::Invalid,
@@ -1932,13 +1940,14 @@ fn append_string_path(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     path: &crate::xpath::path_experiment::LocationPath,
+    require_zero_or_one: bool,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    if selected.len() > 1 {
+    if require_zero_or_one && selected.len() > 1 {
         return Err(failure_at(
             "XPTY0004",
             FailureCategory::Invalid,
@@ -2082,6 +2091,30 @@ fn append_normalized_node_string(
 ) -> Result<(), ExecutionFailure> {
     let normalized = normalized_node_string(source, node, inputs.request_id, control)?;
     append_text(result, &normalized, inputs.request_id, control)
+}
+
+fn normalized_lexical_string(
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let mut normalized = String::with_capacity(value.len());
+    let mut pending_space = false;
+    for character in value.chars() {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(character, '\u{9}' | '\u{a}' | '\u{d}' | ' ') {
+            pending_space = !normalized.is_empty();
+        } else {
+            if pending_space {
+                normalized.push(' ');
+                pending_space = false;
+            }
+            normalized.push(character);
+        }
+    }
+    Ok(normalized)
 }
 
 pub(super) fn normalized_node_string(

@@ -7217,7 +7217,7 @@ fn node_name_path_rejects_more_than_one_node() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="name(doc/item)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="name(doc/item)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -7231,6 +7231,39 @@ fn node_name_path_rejects_more_than_one_node() {
 
     assert_eq!(failure.code, "XPTY0004");
     assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
+fn xslt10_node_set_string_functions_use_the_first_node_in_document_order() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-first-node-functions:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-first-node-functions:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:example"><p:item> first </p:item><item>second</item></doc>"#
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example"><xsl:output method="text"/><xsl:variable name="temporary">This   is   a   test</xsl:variable><xsl:template match="/"><xsl:value-of select="name(doc/*)"/>|<xsl:value-of select="local-name(doc/*)"/>|<xsl:value-of select="namespace-uri(doc/*)"/>|<xsl:value-of select="string(doc/*)"/>|<xsl:value-of select="normalize-space(doc/*)"/>|<xsl:value-of select="normalize-space($temporary)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile XSLT 1.0 functions");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("xslt10-first-node", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute XSLT 1.0 functions");
+
+    assert_eq!(
+        results.by_request["xslt10-first-node"].serialized,
+        "p:item|item|urn:example| first |first|This is a test"
+    );
 }
 
 #[test]

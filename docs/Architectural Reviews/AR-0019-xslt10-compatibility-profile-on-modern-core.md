@@ -2669,3 +2669,12 @@ maintained redistributable legacy suite becomes available.
   (60.01%); execution failures and mismatches remain unchanged, while generic
   `FXXP1001` initialization failures fall to 22.
   [Evidence](../Evidence/oasis-xslt10-boolean-predicate-focus-position-2026-09-20.md)
+- 2026-09-23 -- Compilation now selects explicit XSLT 1.0 first-node plans for
+  multi-node arguments to `name()`, `local-name()`, `namespace-uri()`,
+  `string()`, and `normalize-space()`. The same modern plans retain zero-or-one
+  cardinality and `XPTY0004`; runtime never branches on stylesheet version.
+  Constructed variable content reuses the invocation-owned temporary-tree
+  string-value owner. Four unchanged Lotus cases become exact, raising the
+  complete-catalog lower bound to 1,993 / 3,173 (62.81%) and reducing
+  execution failures from 57 to 53.
+  [Evidence](../Evidence/oasis-xslt10-first-node-function-conversion-2026-09-23.md)
