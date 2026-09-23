@@ -56,6 +56,15 @@ pub(super) fn evaluate(
             apply_format(&value.lexical, format)
         })
     } else {
+        let (source, _) = required_source_context(inputs, execution.node)?;
+        let count = count
+            .as_ref()
+            .map(|pattern| evaluate_pattern(inputs, source, pattern, control))
+            .transpose()?;
+        let from = from
+            .as_ref()
+            .map(|pattern| evaluate_pattern(inputs, source, pattern, control))
+            .transpose()?;
         match level {
             NumberLevel::Single if count.is_some() || from.is_some() => execute_patterned_single(
                 inputs,
@@ -361,8 +370,8 @@ fn execute_default_single(
 fn execute_patterned_single(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
-    count: Option<&NumberPattern>,
-    from: Option<&NumberPattern>,
+    count: Option<&EvaluatedNumberPattern<'_>>,
+    from: Option<&EvaluatedNumberPattern<'_>>,
     control: &mut InvocationControl,
 ) -> Result<Option<String>, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
@@ -406,7 +415,7 @@ fn sibling_position(
     source: &Document,
     numbered: NodeId,
     context: NodeId,
-    count: Option<&NumberPattern>,
+    count: Option<&EvaluatedNumberPattern<'_>>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<usize, ExecutionFailure> {
@@ -435,8 +444,8 @@ fn sibling_position(
 fn execute_multiple(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
-    count: Option<&NumberPattern>,
-    from: Option<&NumberPattern>,
+    count: Option<&EvaluatedNumberPattern<'_>>,
+    from: Option<&EvaluatedNumberPattern<'_>>,
     format: &NumberFormat,
     control: &mut InvocationControl,
 ) -> Result<Option<String>, ExecutionFailure> {
@@ -469,30 +478,79 @@ fn execute_multiple(
     Ok(Some(format_sequence_tokens(&numbers, format)))
 }
 
+enum EvaluatedNumberPattern<'a> {
+    Direct(&'a NumberPattern),
+    KeyNodes(Vec<NodeId>),
+    ChildOf {
+        parent: Box<EvaluatedNumberPattern<'a>>,
+        child: Box<EvaluatedNumberPattern<'a>>,
+    },
+    Alternatives(Vec<EvaluatedNumberPattern<'a>>),
+}
+
+fn evaluate_pattern<'a>(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    pattern: &'a NumberPattern,
+    control: &mut InvocationControl,
+) -> Result<EvaluatedNumberPattern<'a>, ExecutionFailure> {
+    Ok(match pattern {
+        NumberPattern::Xslt10KeyLookup(lookup) => {
+            EvaluatedNumberPattern::KeyNodes(super::key_lookup::select_static_pattern(
+                inputs.program,
+                source,
+                lookup,
+                inputs.request_id,
+                &inputs.document_rooted_matches,
+                control,
+            )?)
+        }
+        NumberPattern::ChildOf { parent, child } => EvaluatedNumberPattern::ChildOf {
+            parent: Box::new(evaluate_pattern(inputs, source, parent, control)?),
+            child: Box::new(evaluate_pattern(inputs, source, child, control)?),
+        },
+        NumberPattern::Alternatives(alternatives) => EvaluatedNumberPattern::Alternatives(
+            alternatives
+                .iter()
+                .map(|alternative| evaluate_pattern(inputs, source, alternative, control))
+                .collect::<Result<Vec<_>, _>>()?,
+        ),
+        pattern => EvaluatedNumberPattern::Direct(pattern),
+    })
+}
+
 fn pattern_matches(
     source: &Document,
     node: NodeId,
-    pattern: &NumberPattern,
+    pattern: &EvaluatedNumberPattern<'_>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     Ok(match pattern {
-        NumberPattern::Document => source.kind(node) == NodeKind::Document,
-        NumberPattern::AnyNode => matches!(
+        EvaluatedNumberPattern::Direct(NumberPattern::Document) => {
+            source.kind(node) == NodeKind::Document
+        }
+        EvaluatedNumberPattern::Direct(NumberPattern::AnyNode) => matches!(
             source.kind(node),
             NodeKind::Element
                 | NodeKind::Text
                 | NodeKind::Comment
                 | NodeKind::ProcessingInstruction
         ),
-        NumberPattern::AnyElement => source.kind(node) == NodeKind::Element,
-        NumberPattern::AnyAttribute => source.kind(node) == NodeKind::Attribute,
-        NumberPattern::Element(name) => source.name(node) == Some(name),
-        NumberPattern::ElementWithAttributeValue {
+        EvaluatedNumberPattern::Direct(NumberPattern::AnyElement) => {
+            source.kind(node) == NodeKind::Element
+        }
+        EvaluatedNumberPattern::Direct(NumberPattern::AnyAttribute) => {
+            source.kind(node) == NodeKind::Attribute
+        }
+        EvaluatedNumberPattern::Direct(NumberPattern::Element(name)) => {
+            source.name(node) == Some(name)
+        }
+        EvaluatedNumberPattern::Direct(NumberPattern::ElementWithAttributeValue {
             element,
             attribute,
             value,
-        } => {
+        }) => {
             if source.name(node) == Some(element) {
                 let mut matched = false;
                 for &candidate in source.attributes(node) {
@@ -509,12 +567,16 @@ fn pattern_matches(
                 false
             }
         }
-        NumberPattern::ElementAtSiblingPosition { element, predicate } => {
+        EvaluatedNumberPattern::Direct(NumberPattern::ElementAtSiblingPosition {
+            element,
+            predicate,
+        }) => {
             source.name(node) == Some(element)
                 && sibling_element_position(source, node, element, request_id, control)?
                     .is_some_and(|position| position_predicate_matches(position, *predicate))
         }
-        NumberPattern::ChildOf { parent, child } => {
+        EvaluatedNumberPattern::KeyNodes(nodes) => nodes.contains(&node),
+        EvaluatedNumberPattern::ChildOf { parent, child } => {
             if !pattern_matches(source, node, child, request_id, control)? {
                 false
             } else if let Some(parent_node) = source.parent(node) {
@@ -524,7 +586,7 @@ fn pattern_matches(
                 false
             }
         }
-        NumberPattern::Alternatives(alternatives) => {
+        EvaluatedNumberPattern::Alternatives(alternatives) => {
             let mut matched = false;
             for alternative in alternatives {
                 if pattern_matches(source, node, alternative, request_id, control)? {
@@ -534,6 +596,11 @@ fn pattern_matches(
             }
             matched
         }
+        EvaluatedNumberPattern::Direct(
+            NumberPattern::Xslt10KeyLookup(_)
+            | NumberPattern::ChildOf { .. }
+            | NumberPattern::Alternatives(_),
+        ) => unreachable!("composed number patterns are evaluated before execution"),
     })
 }
 
@@ -571,7 +638,7 @@ fn count_matches(
     source: &Document,
     node: NodeId,
     context: NodeId,
-    count: Option<&NumberPattern>,
+    count: Option<&EvaluatedNumberPattern<'_>>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
@@ -584,8 +651,8 @@ fn count_matches(
 fn execute_any(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
-    count: Option<&NumberPattern>,
-    from: Option<&NumberPattern>,
+    count: Option<&EvaluatedNumberPattern<'_>>,
+    from: Option<&EvaluatedNumberPattern<'_>>,
     control: &mut InvocationControl,
 ) -> Result<Option<String>, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
@@ -608,8 +675,8 @@ fn execute_any(
 struct AnyTraversal<'a> {
     source: &'a Document,
     context: NodeId,
-    count: Option<&'a NumberPattern>,
-    from: Option<&'a NumberPattern>,
+    count: Option<&'a EvaluatedNumberPattern<'a>>,
+    from: Option<&'a EvaluatedNumberPattern<'a>>,
     request_id: &'a str,
     total: usize,
 }

@@ -146,6 +146,18 @@ fn compile_pattern_atom(
     pattern: &str,
     attribute: &str,
 ) -> Result<NumberPattern, CompileFailure> {
+    if uses_xslt10_compatibility(document, element) && pattern.trim_start().starts_with("key(") {
+        let lookup = super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+            document,
+            element,
+            pattern,
+            document.location(element),
+        )?;
+        if lookup.predicate.is_some() || lookup.tail.is_some() {
+            return Err(unsupported_pattern(document, element, pattern, attribute));
+        }
+        return Ok(NumberPattern::Xslt10KeyLookup(Box::new(lookup)));
+    }
     if let Some((element_pattern, predicate)) = pattern.split_once('[') {
         let predicate = predicate
             .strip_suffix(']')

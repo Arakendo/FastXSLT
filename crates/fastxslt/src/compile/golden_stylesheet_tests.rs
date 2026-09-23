@@ -382,6 +382,20 @@ fn compiles_the_golden_stylesheet_into_owned_semantics() {
 }
 
 #[test]
+fn keeps_key_number_patterns_inside_xslt10_compatibility() {
+    let modern = parse_stylesheet(
+        "memory:modern-key-number-pattern.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:key name="selected" match="note" use="@flag"/><xsl:template match="note"><xsl:number count="key('selected','yes')"/></xsl:template></xsl:stylesheet>"#,
+    );
+
+    let failure = compile_stylesheet(&modern)
+        .expect_err("the compatibility-only key number pattern must not widen modern semantics");
+
+    assert_eq!(failure.code, "FXST1050");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
 fn compiles_a_simplified_stylesheet_through_the_literal_result_element_path() {
     let document = parse_stylesheet(
         "test:simplified.xsl",

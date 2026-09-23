@@ -903,6 +903,7 @@ pub(crate) enum NumberPattern {
     AnyNode,
     AnyElement,
     AnyAttribute,
+    Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Element(ExpandedName),
     ElementWithAttributeValue {
         element: ExpandedName,

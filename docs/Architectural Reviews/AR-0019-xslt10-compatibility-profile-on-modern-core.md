@@ -2742,3 +2742,12 @@ maintained redistributable legacy suite becomes available.
   raising the sweep to 2,007 / 3,173 (63.25%), with 2,208 initialized and 2,155
   executed successfully.
   [Evidence](../Evidence/oasis-xslt10-nested-child-attribute-prefix-predicate-2026-09-23.md)
+- 2026-09-23 -- Static XSLT 1.0 `key()` membership may now serve as an
+  `xsl:number count` pattern. Compilation reuses the existing typed lookup;
+  execution evaluates charged membership once per number-instruction
+  invocation and applies ordinary charged count/from traversal. The membership
+  remains invocation-local and does not widen ADR-0013's template cache.
+  Unchanged Lotus `numbering90` becomes exact, raising the sweep to 2,008 /
+  3,173 (63.32%), with 2,209 initialized and 2,156 executed successfully.
+  Modern XSLT retains the prior unsupported boundary.
+  [Evidence](../Evidence/oasis-xslt10-key-number-pattern-2026-09-23.md)

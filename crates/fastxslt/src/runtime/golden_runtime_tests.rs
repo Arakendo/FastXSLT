@@ -6358,6 +6358,42 @@ fn xslt10_single_number_honors_static_count_and_from_patterns() {
 }
 
 #[test]
+fn xslt10_single_number_counts_static_key_membership() {
+    const STYLESHEET: &str = "urn:fastxslt:number-key-pattern";
+    const SOURCE: &str = "urn:fastxslt:number-key-pattern-source";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:key name="selected" match="note" use="@flag"/><xsl:template match="/"><out><xsl:apply-templates select="doc/chapter/note"/></out></xsl:template><xsl:template match="note"><n><xsl:number count="key('selected','yes')" from="chapter"/></n></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><chapter><note flag="yes"/><note flag="no"/><note flag="yes"/><note flag="yes"/></chapter></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile key number pattern");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request(
+            "number-key-pattern",
+            "number-key-pattern-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute key number pattern");
+
+    assert_eq!(
+        results.by_request["number-key-pattern"].serialized,
+        "<out><n>1</n><n></n><n>2</n><n>3</n></out>"
+    );
+}
+
+#[test]
 fn xslt10_single_number_requires_and_includes_the_from_boundary() {
     const STYLESHEET: &str = "urn:fastxslt:number-from-boundary";
     const SOURCE: &str = "urn:fastxslt:number-from-boundary-source";
