@@ -3,8 +3,9 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, NumberFormat, NumberFormatToken, NumberGrouping, NumberLevel, NumberPattern,
-    NumberPositionPredicate, NumberTokenStyle, NumberValue,
+    Instruction, NumberFormatPlan, NumberGrouping, NumberLevel, NumberPattern,
+    NumberPositionPredicate, NumberTokenStyle, NumberValue, default_number_format,
+    parse_admitted_number_format,
 };
 
 use super::{
@@ -52,12 +53,23 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
         .map(|pattern| compile_pattern(document, element, pattern, "from"))
         .transpose()?;
     let mut format = if let Some(format) = optional_attribute(document, element, None, "format") {
-        compile_format(format, document.location(element))?
+        compile_format_plan(document, element, format)?
     } else {
-        default_format()
+        NumberFormatPlan::Static(default_number_format())
     };
     validate_letter_value(document, element, &format)?;
-    format.grouping = compile_grouping(document, element)?;
+    let grouping = compile_grouping(document, element)?;
+    match &mut format {
+        NumberFormatPlan::Static(format) => format.grouping = grouping,
+        NumberFormatPlan::Xslt10Variable(_) if grouping.is_some() => {
+            return Err(unsupported(
+                "FXST1051",
+                "dynamic xsl:number format with grouping is outside the admitted slice",
+                document.location(element),
+            ));
+        }
+        NumberFormatPlan::Xslt10Variable(_) => {}
+    }
     Ok(Instruction::Number {
         value,
         level,
@@ -72,7 +84,7 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
 fn validate_letter_value(
     document: &Document,
     element: NodeId,
-    format: &NumberFormat,
+    format: &NumberFormatPlan,
 ) -> Result<(), CompileFailure> {
     let Some(letter_value) = optional_attribute(document, element, None, "letter-value") else {
         return Ok(());
@@ -84,6 +96,13 @@ fn validate_letter_value(
             document.location(element),
         ));
     }
+    let NumberFormatPlan::Static(format) = format else {
+        return Err(unsupported(
+            "FXST1049",
+            "dynamic xsl:number format with letter-value is outside the admitted slice",
+            document.location(element),
+        ));
+    };
     if letter_value == "traditional"
         || (letter_value == "alphabetic"
             && format.tokens.iter().all(|token| {
@@ -313,54 +332,23 @@ fn unsupported_pattern(
     )
 }
 
-fn default_format() -> NumberFormat {
-    NumberFormat {
-        prefix: String::new(),
-        tokens: vec![NumberFormatToken {
-            minimum_width: 1,
-            style: NumberTokenStyle::Decimal,
-        }],
-        separators: Vec::new(),
-        grouping: None,
-        suffix: String::new(),
+fn compile_format_plan(
+    document: &Document,
+    element: NodeId,
+    format: &str,
+) -> Result<NumberFormatPlan, CompileFailure> {
+    if uses_xslt10_compatibility(document, element)
+        && let Some(variable) = format
+            .strip_prefix("{$")
+            .and_then(|value| value.strip_suffix('}'))
+            .map(str::trim)
+            .filter(|value| is_ascii_ncname(value))
+    {
+        return Ok(NumberFormatPlan::Xslt10Variable(variable.to_owned()));
     }
-}
-
-fn compile_format(format: &str, location: &SourceLocation) -> Result<NumberFormat, CompileFailure> {
-    let mut token_ranges = Vec::new();
-    let mut token_start = None;
-    for (index, character) in format.char_indices() {
-        if character.is_ascii_alphanumeric() {
-            token_start.get_or_insert(index);
-        } else if let Some(start) = token_start.take() {
-            token_ranges.push((start, index));
-        }
-    }
-    if let Some(start) = token_start {
-        token_ranges.push((start, format.len()));
-    }
-    let Some(&(first_start, _)) = token_ranges.first() else {
-        return Err(unsupported_format(format, location));
-    };
-    let mut tokens = Vec::with_capacity(token_ranges.len());
-    let mut separators = Vec::with_capacity(token_ranges.len().saturating_sub(1));
-    for (index, &(start, end)) in token_ranges.iter().enumerate() {
-        tokens.push(compile_format_token(&format[start..end], format, location)?);
-        if let Some(&(next_start, _)) = token_ranges.get(index + 1) {
-            separators.push(format[end..next_start].to_owned());
-        }
-    }
-    let suffix_start = token_ranges
-        .last()
-        .map(|&(_, end)| end)
-        .expect("a first token implies a last token");
-    Ok(NumberFormat {
-        prefix: format[..first_start].to_owned(),
-        tokens,
-        separators,
-        grouping: None,
-        suffix: format[suffix_start..].to_owned(),
-    })
+    parse_admitted_number_format(format)
+        .map(NumberFormatPlan::Static)
+        .ok_or_else(|| unsupported_format(format, document.location(element)))
 }
 
 fn compile_grouping(
@@ -390,31 +378,6 @@ fn compile_grouping(
             document.location(element),
         )),
     }
-}
-
-fn compile_format_token(
-    token: &str,
-    complete_format: &str,
-    location: &SourceLocation,
-) -> Result<NumberFormatToken, CompileFailure> {
-    let (style, minimum_width) = match token {
-        "A" => (NumberTokenStyle::AlphabeticUpper, 1),
-        "a" => (NumberTokenStyle::AlphabeticLower, 1),
-        "I" => (NumberTokenStyle::RomanUpper, 1),
-        "i" => (NumberTokenStyle::RomanLower, 1),
-        _ if token.ends_with('1')
-            && token[..token.len() - 1]
-                .chars()
-                .all(|character| character == '0') =>
-        {
-            (NumberTokenStyle::Decimal, token.len())
-        }
-        _ => return Err(unsupported_format(complete_format, location)),
-    };
-    Ok(NumberFormatToken {
-        minimum_width,
-        style,
-    })
 }
 
 fn unsupported_format(format: &str, location: &SourceLocation) -> CompileFailure {

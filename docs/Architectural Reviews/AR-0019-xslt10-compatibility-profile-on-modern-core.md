@@ -2787,3 +2787,11 @@ maintained redistributable legacy suite becomes available.
   its expected-error credit, the `FXST1049` frontier falls from five cases to
   four, and the conserved counts remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-number-letter-value-static-classification-2026-09-23.md)
+- 2026-09-23 -- The exact XSLT 1.0 `xsl:number format="{$name}"` shape now
+  compiles as a typed invocation-time plan. It reuses the existing charged
+  variable string conversion and the same pure admitted-format parser as
+  static formats; no invocation value enters the compiled program and modern
+  profiles remain static. Unchanged Lotus `namedtemplate12` raises the strict
+  sweep to 2,009 / 3,173 exact matches with no new mismatch or execution
+  failure.
+  [Evidence](../Evidence/oasis-xslt10-dynamic-number-format-parameter-2026-09-23.md)

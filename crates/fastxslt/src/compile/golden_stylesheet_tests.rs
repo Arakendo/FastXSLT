@@ -2952,6 +2952,15 @@ fn number_admits_static_letter_values_only_when_existing_tokens_are_equivalent()
         compile_stylesheet(&invalid).expect_err("unknown letter-value must be rejected as invalid");
     assert_eq!(failure.code, "XTSE0020");
     assert_eq!(failure.category, CompileCategory::Invalid);
+
+    let modern_dynamic = parse_stylesheet(
+        "memory:modern-dynamic-number-format.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:param name="format" select="'1'"/><xsl:template match="/"><xsl:number value="1" format="{$format}"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&modern_dynamic)
+        .expect_err("the XSLT 1.0 compatibility slice must not widen modern formats");
+    assert_eq!(failure.code, "FXST1049");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
 }
 
 #[test]

@@ -3,13 +3,14 @@
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, NumberFormat, NumberGrouping, NumberLevel, NumberPattern, NumberPositionPredicate,
-    NumberTokenStyle, NumberValue,
+    Instruction, NumberFormat, NumberFormatPlan, NumberGrouping, NumberLevel, NumberPattern,
+    NumberPositionPredicate, NumberTokenStyle, NumberValue, parse_admitted_number_format,
 };
 
 use super::{
-    ExecutionFailure, ResultNode, RuntimeVariables, SequenceContext, SequenceInputs, append_text,
-    control_failure, execution_context_string_value, required_source_context,
+    ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceContext,
+    SequenceInputs, append_text, control_failure, execution_context_string_value, failure,
+    required_source_context, value_evaluator,
 };
 
 pub(super) fn execute(
@@ -44,6 +45,24 @@ pub(super) fn evaluate(
     } = instruction
     else {
         unreachable!("number execution receives only number instructions")
+    };
+    let owned_format;
+    let format = match format {
+        NumberFormatPlan::Static(format) => format,
+        NumberFormatPlan::Xslt10Variable(variable) => {
+            let lexical = value_evaluator::xslt10_variable_string_value(
+                inputs, variable, variables, control,
+            )?;
+            owned_format = parse_admitted_number_format(&lexical).ok_or_else(|| {
+                failure(
+                    "FXRT1017",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    format!("unsupported dynamic xsl:number format token: {lexical}"),
+                )
+            })?;
+            &owned_format
+        }
     };
     let formatted = if let Some(value) = value {
         control

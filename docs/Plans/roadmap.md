@@ -5799,6 +5799,13 @@ host lifecycle.
     falls from five cases to four, and the conserved 2,008 / 3,173 (63.32%)
     strict lower bound does not change.
     [Evidence](../Evidence/oasis-xslt10-number-letter-value-static-classification-2026-09-23.md)
+  - [x] Compile the exact XSLT 1.0 number-format variable AVT as a typed
+    invocation-time plan, reusing charged variable string conversion and one
+    pure admitted-format parser while leaving modern static-format semantics
+    unchanged. Unchanged Lotus `namedtemplate12` becomes exact: initialization
+    reaches 2,210, successful execution 2,157, and exact matches 2,009 / 3,173
+    (63.32%) without adding a mismatch or execution failure.
+    [Evidence](../Evidence/oasis-xslt10-dynamic-number-format-parameter-2026-09-23.md)
   - [x] Separate proven-invalid resolved `format-number()` pictures from
     genuinely unsupported formatting work. Eleven runtime cases move from
     `FXRT1007` to invalid `XTDE1310`, reducing that unsupported frontier from

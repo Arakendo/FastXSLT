@@ -656,7 +656,7 @@ pub(crate) enum Instruction {
         level: NumberLevel,
         count: Option<NumberPattern>,
         from: Option<NumberPattern>,
-        format: NumberFormat,
+        format: NumberFormatPlan,
         xslt10_compatibility: bool,
         location: SourceLocation,
     },
@@ -881,6 +881,78 @@ pub(crate) struct NumberFormat {
     pub(crate) separators: Vec<String>,
     pub(crate) grouping: Option<NumberGrouping>,
     pub(crate) suffix: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum NumberFormatPlan {
+    Static(NumberFormat),
+    Xslt10Variable(String),
+}
+
+pub(crate) fn default_number_format() -> NumberFormat {
+    NumberFormat {
+        prefix: String::new(),
+        tokens: vec![NumberFormatToken {
+            minimum_width: 1,
+            style: NumberTokenStyle::Decimal,
+        }],
+        separators: Vec::new(),
+        grouping: None,
+        suffix: String::new(),
+    }
+}
+
+pub(crate) fn parse_admitted_number_format(format: &str) -> Option<NumberFormat> {
+    let mut token_ranges = Vec::new();
+    let mut token_start = None;
+    for (index, character) in format.char_indices() {
+        if character.is_ascii_alphanumeric() {
+            token_start.get_or_insert(index);
+        } else if let Some(start) = token_start.take() {
+            token_ranges.push((start, index));
+        }
+    }
+    if let Some(start) = token_start {
+        token_ranges.push((start, format.len()));
+    }
+    let &(first_start, _) = token_ranges.first()?;
+    let mut tokens = Vec::with_capacity(token_ranges.len());
+    let mut separators = Vec::with_capacity(token_ranges.len().saturating_sub(1));
+    for (index, &(start, end)) in token_ranges.iter().enumerate() {
+        tokens.push(parse_admitted_number_format_token(&format[start..end])?);
+        if let Some(&(next_start, _)) = token_ranges.get(index + 1) {
+            separators.push(format[end..next_start].to_owned());
+        }
+    }
+    let suffix_start = token_ranges.last()?.1;
+    Some(NumberFormat {
+        prefix: format[..first_start].to_owned(),
+        tokens,
+        separators,
+        grouping: None,
+        suffix: format[suffix_start..].to_owned(),
+    })
+}
+
+fn parse_admitted_number_format_token(token: &str) -> Option<NumberFormatToken> {
+    let (style, minimum_width) = match token {
+        "A" => (NumberTokenStyle::AlphabeticUpper, 1),
+        "a" => (NumberTokenStyle::AlphabeticLower, 1),
+        "I" => (NumberTokenStyle::RomanUpper, 1),
+        "i" => (NumberTokenStyle::RomanLower, 1),
+        _ if token.ends_with('1')
+            && token[..token.len() - 1]
+                .chars()
+                .all(|character| character == '0') =>
+        {
+            (NumberTokenStyle::Decimal, token.len())
+        }
+        _ => return None,
+    };
+    Some(NumberFormatToken {
+        minimum_width,
+        style,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

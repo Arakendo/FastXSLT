@@ -857,10 +857,15 @@ fn number_instruction_owned(instruction: &Instruction) -> usize {
     number_value_owned(value.as_ref())
         + count.as_ref().map_or(0, number_pattern_owned)
         + from.as_ref().map_or(0, number_pattern_owned)
-        + format.prefix.capacity()
-        + vec_owned(&format.tokens, |_| 0)
-        + vec_owned(&format.separators, String::capacity)
-        + format.suffix.capacity()
+        + match format {
+            super::NumberFormatPlan::Static(format) => {
+                format.prefix.capacity()
+                    + vec_owned(&format.tokens, |_| 0)
+                    + vec_owned(&format.separators, String::capacity)
+                    + format.suffix.capacity()
+            }
+            super::NumberFormatPlan::Xslt10Variable(variable) => variable.capacity(),
+        }
         + location_owned(location)
 }
 

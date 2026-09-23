@@ -6358,6 +6358,36 @@ fn xslt10_number_applies_alphabetic_and_roman_format_tokens() {
 }
 
 #[test]
+fn xslt10_number_resolves_a_named_template_format_parameter_per_call() {
+    const STYLESHEET: &str = "urn:fastxslt:number-dynamic-format";
+    const SOURCE: &str = "urn:fastxslt:number-dynamic-format-source";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:call-template name="emit"><xsl:with-param name="format">A. </xsl:with-param></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="format">(001)</xsl:with-param></xsl:call-template></out></xsl:template><xsl:template name="emit"><xsl:param name="format">1. </xsl:param><xsl:number value="27" format="{$format}"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit dynamic number-format stylesheet");
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile dynamic number-format plan");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("number-dynamic-format", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute dynamic number formats");
+
+    assert_eq!(
+        results.by_request["number-dynamic-format"].serialized,
+        "<out>AA. (027)</out>"
+    );
+}
+
+#[test]
 fn xslt10_multiple_number_applies_compiled_token_and_separator_sequence() {
     const STYLESHEET: &str = "urn:fastxslt:number-token-sequence";
     const SOURCE: &str = "urn:fastxslt:number-token-sequence-source";
