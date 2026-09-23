@@ -1315,6 +1315,9 @@ fn compile_sort_select(
             explicit_position_comparison,
         });
     }
+    if xslt10_compatibility && let Some(variable) = parse_xslt10_child_name_variable_sort(select) {
+        return Ok(SortSelect::Xslt10ChildNameEqualsVariable { variable });
+    }
     match select.trim() {
         "position()" => Ok(SortSelect::ContextPosition),
         "last()" => Ok(SortSelect::ContextSize),
@@ -1336,6 +1339,27 @@ fn compile_sort_select(
             )?))
         }
     }
+}
+
+fn parse_xslt10_child_name_variable_sort(expression: &str) -> Option<String> {
+    let (path, predicate) = expression.trim().split_once('[')?;
+    if !matches!(path.trim(), "./*" | "*") {
+        return None;
+    }
+    let predicate = predicate.strip_suffix(']')?;
+    let (left, right) = predicate.split_once('=')?;
+    if right.contains('=') {
+        return None;
+    }
+    let (left, right) = (left.trim(), right.trim());
+    let variable = if left == "name(.)" {
+        right.strip_prefix('$')?
+    } else if right == "name(.)" {
+        left.strip_prefix('$')?
+    } else {
+        return None;
+    };
+    is_ascii_ncname(variable).then(|| variable.to_owned())
 }
 
 fn compile_sort_data_type(

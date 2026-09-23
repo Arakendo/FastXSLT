@@ -1653,6 +1653,11 @@ fn evaluate_sort_key_value(
                     .and_then(|position| nodes.get(position.saturating_sub(1)).copied());
             Ok(selected.map_or_else(String::new, |selected| source.string_value(selected)))
         }
+        SortSelect::Xslt10ChildNameEqualsVariable { variable } => {
+            evaluate_xslt10_child_name_variable_sort(
+                inputs, source, node, variable, variables, control,
+            )
+        }
         SortSelect::Xslt10KeyLookup(lookup) => {
             Ok(
                 key_lookup::select(inputs, lookup, Some(node), variables, control)?
@@ -1708,6 +1713,35 @@ fn evaluate_sort_key_value(
             control,
         ),
     }
+}
+
+fn evaluate_xslt10_child_name_variable_sort(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    node: NodeId,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let expected = sort_variable(inputs, variable, variables, control)?;
+    for child in source.children(node) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if source.kind(*child) != NodeKind::Element {
+            continue;
+        }
+        let matches = source.name(*child).is_some_and(|name| {
+            source.prefix(*child).map_or_else(
+                || name.local == expected,
+                |prefix| format!("{prefix}:{}", name.local) == expected,
+            )
+        });
+        if matches {
+            return Ok(source.string_value(*child));
+        }
+    }
+    Ok(String::new())
 }
 
 fn evaluate_sort_control(

@@ -5513,6 +5513,67 @@ fn xslt10_sort_supports_numeric_variable_position_keys() {
 }
 
 #[test]
+fn xslt10_sort_selects_a_child_key_by_variable_lexical_name() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-variable-child-name-sort:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-child-name-sort:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="left-column" select="'left'"/>
+        <xsl:variable name="right-column" select="'right'"/>
+        <xsl:template match="/">
+          <out>
+            <left><xsl:for-each select="doc/row"><xsl:sort select="./*[name(.) = $left-column]"/><xsl:value-of select="@id"/></xsl:for-each></left>
+            <right><xsl:for-each select="doc/row"><xsl:sort select="*[$right-column = name(.)]"/><xsl:value-of select="@id"/></xsl:for-each></right>
+          </out>
+        </xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><row id="a"><left>z</left><right>a</right></row><row id="b"><left>a</left><right>z</right></row></doc>"#.to_vec(),
+        )
+        .expect("admit variable-child-name sort source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit variable-child-name sort stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile variable-child-name sort stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("variable-child-name-sort", "result", SOURCE))
+        .expect("admit variable-child-name sort request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable-child-name sort");
+    assert_eq!(
+        results.by_request["variable-child-name-sort"].serialized,
+        "<out><left>ba</left><right>ab</right></out>"
+    );
+
+    let modern = stylesheet
+        .windows(b"version=\"1.0\"".len())
+        .position(|window| window == b"version=\"1.0\"")
+        .map(|offset| {
+            let mut modern = stylesheet.to_vec();
+            modern[offset + 9] = b'3';
+            modern
+        })
+        .expect("stylesheet has version declaration");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit modern regression source");
+    resources
+        .admit(STYLESHEET, modern)
+        .expect("admit modern regression stylesheet");
+    let snapshot = resources.seal();
+    let failure = compile_resource(&snapshot, STYLESHEET)
+        .expect_err("modern variable child-name sort remains outside the admitted XPath slice");
+    assert_eq!(failure.code, "FXXP1001");
+}
+
+#[test]
 fn xslt10_variable_node_sequence_supports_a_variable_position_filter() {
     const SOURCE: &str = "urn:fastxslt:xslt10-variable-sequence-position:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-sequence-position:stylesheet";

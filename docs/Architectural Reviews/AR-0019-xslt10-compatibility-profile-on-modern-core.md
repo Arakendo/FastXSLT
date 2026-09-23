@@ -2702,3 +2702,11 @@ maintained redistributable legacy suite becomes available.
   credit. The full sweep initializes 2,197 cases and executes 2,144, while the
   strict lower bound remains 1,997 / 3,173 (62.94%).
   [Evidence](../Evidence/oasis-xslt10-outer-current-parent-child-predicate-2026-09-23.md)
+- 2026-09-23 -- A typed XSLT 1.0 sort-key plan now admits the bounded dynamic
+  child-column idiom `./*[name(.) = $variable]` and its symmetric comparison.
+  Execution resolves the normal invocation variable, charges child visits,
+  and selects the first matching child's string value; modern XPath retains
+  the previous unsupported boundary. Unchanged Lotus `sort35` becomes exact,
+  raising the complete-catalog lower bound to 1,998 / 3,173 (62.97%) without
+  adding a mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-variable-child-name-sort-2026-09-23.md)

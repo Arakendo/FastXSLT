@@ -576,6 +576,9 @@ pub(crate) enum SortSelect {
         variable: String,
         explicit_position_comparison: bool,
     },
+    Xslt10ChildNameEqualsVariable {
+        variable: String,
+    },
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     PathUnion(Vec<LocationPath>),
     Literal(String),
