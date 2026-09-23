@@ -2695,3 +2695,10 @@ maintained redistributable legacy suite becomes available.
   unsupported. Unchanged Microsoft `XSLTFunctions__84421` becomes exact,
   raising the complete-catalog lower bound to 1,997 / 3,173 (62.94%).
   [Evidence](../Evidence/oasis-xslt10-outer-current-parent-child-predicate-2026-09-23.md)
+- 2026-09-23 -- The same outer-context boundary now admits the adjacent
+  `current() = .` string-value comparison as a separate zero-allocation typed
+  predicate. Microsoft `BVTs_bvt083` advances from `XPST0003` initialization
+  rejection to a visible whitespace/output mismatch; it receives no pass
+  credit. The full sweep initializes 2,197 cases and executes 2,144, while the
+  strict lower bound remains 1,997 / 3,173 (62.94%).
+  [Evidence](../Evidence/oasis-xslt10-outer-current-parent-child-predicate-2026-09-23.md)

@@ -1717,6 +1717,35 @@ fn xslt10_path_predicate_compares_a_parent_child_with_the_outer_context() {
 }
 
 #[test]
+fn xslt10_path_predicate_compares_candidate_and_outer_context_string_values() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><item>same</item><item>different</item><item>same</item></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let items = document.children(doc);
+    let path = parse_xslt10_location_path("../item[current() = .]", location())
+        .expect("outer-context string-value equality should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let matched = evaluate_location_path_controlled(&document, items[0], &path, &mut control)
+        .expect("outer-context string values should evaluate");
+
+    assert_eq!(matched, vec![items[0], items[2]]);
+    assert!(control.consumed(WorkDomain::XPathOperation) >= 3);
+    assert!(
+        parse_location_path("../item[current() = .]", location()).is_err(),
+        "XPath without XSLT static context must not acquire current()"
+    );
+}
+
+#[test]
 fn attribute_wildcard_predicates_test_attribute_presence() {
     let parsed = parse_document(
         "memory:source.xml",

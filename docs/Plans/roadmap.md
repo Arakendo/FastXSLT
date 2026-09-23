@@ -5718,11 +5718,15 @@ host lifecycle.
     [Evidence](../Evidence/oasis-xslt10-number-value-lexical-recovery-2026-09-23.md)
   - [x] Preserve XSLT 1.0 outer `current()` identity while filtering a path
     whose candidate predicate compares one named child of the candidate parent.
-    The typed, charged predicate is selected only through the XSLT 1.0 parser;
-    broader XPath and modern semantics remain unchanged. Unchanged Microsoft
-    `XSLTFunctions__84421` becomes exact, raising the conserved sweep to 1,997
-    matches (62.94%) with 53 execution failures, 62 mismatches, and 75
-    comparator-unsupported results.
+    A sibling typed predicate compares the candidate's string value with the
+    outer context for `current() = .`. Both are selected only through the XSLT
+    1.0 parser; broader XPath and modern semantics remain unchanged. Unchanged
+    Microsoft `XSLTFunctions__84421` becomes exact, raising the conserved sweep
+    to 1,997 matches (62.94%). `BVTs_bvt083` advances from initialization
+    rejection to a visible whitespace/output mismatch without receiving pass
+    credit. The sweep now initializes 2,197 and executes 2,144 successfully,
+    with 53 execution failures, 63 mismatches, and 75 comparator-unsupported
+    results.
     [Evidence](../Evidence/oasis-xslt10-outer-current-parent-child-predicate-2026-09-23.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.

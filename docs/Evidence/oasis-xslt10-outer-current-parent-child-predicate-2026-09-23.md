@@ -5,14 +5,17 @@ Status: Local implementation and compatibility evidence
 
 ## Question
 
-Can an XSLT 1.0 location-path predicate compare a child of the candidate's
-parent with the node returned by `current()` without turning `current()` into
-ordinary XPath context or admitting a general expression evaluator?
+Can an XSLT 1.0 location-path predicate compare either the candidate or a
+child of the candidate's parent with the node returned by `current()` without
+turning `current()` into ordinary XPath context or admitting a general
+expression evaluator?
 
 ## Method
 
 - Add one private typed predicate for `../name = current()` and its symmetric
   spelling.
+- Add a second zero-allocation typed predicate for `current() = .` and its
+  symmetric spelling.
 - Select that predicate only through the XSLT 1.0 path entry point; ordinary
   XPath parsing continues to reject `current()`.
 - Preserve the instruction's outer context separately from each predicate
@@ -28,15 +31,23 @@ ordinary XPath context or admitting a general expression evaluator?
 The unchanged `Microsoft/XSLTFunctions__84421#1` case moves from the generic
 `FXXP1001` initialization frontier to an exact expected-result match.
 
-The complete sweep initializes 2,196 cases and executes 2,143 successfully.
-Exact XML-semantic matches rise from 1,996 to 1,997. Execution failures remain
-53, mismatches remain 62, and comparator-unsupported results remain 75. The
+The unchanged `Microsoft/BVTs_bvt083#1` case moves from an `XPST0003`
+initialization rejection to a visible expected-result mismatch. Its admitted
+`self::node()[current() = .]` sort expression is no longer the blocking
+frontier; the remaining difference is in the suite's broader whitespace/output
+expectation and receives no pass credit.
+
+The complete sweep initializes 2,197 cases and executes 2,144 successfully.
+Exact XML-semantic matches remain 1,997 after the first gain. Execution
+failures remain 53, visible mismatches rise from 62 to 63, and
+comparator-unsupported results remain 75. The
 strict complete-catalog lower bound is `1,997 / 3,173 = 62.94%`.
 
 ## Boundaries
 
 - This is not a general implementation of XPath filter expressions or the
-  XSLT `current()` function in arbitrary expressions.
+  XSLT `current()` function in arbitrary expressions. Only the two recorded
+  equality shapes are admitted.
 - The ordinary XPath parser does not acquire `current()`.
 - Parent traversal, child traversal, comparison work, cancellation, and
   budgets remain charged through the existing invocation control.

@@ -87,6 +87,7 @@ pub(super) enum PathBooleanPredicate {
         equal: bool,
     },
     ParentChildEqualsOuterContext(String),
+    ContextStringEqualsOuterContext,
     AttributeEqualsOuterAttribute {
         attribute: String,
         outer_attribute: String,
@@ -173,6 +174,7 @@ impl PathBooleanPredicate {
             | Self::ContextNameStartsWith(value)
             | Self::DescendantElementComparison { value, .. } => value.capacity(),
             Self::ContextNameLengthEquals(_)
+            | Self::ContextStringEqualsOuterContext
             | Self::ChildElementIntegerEquals { name: None, .. }
             | Self::AncestorElementCountComparison { .. }
             | Self::ContextPosition(_)
@@ -234,6 +236,9 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     }
     if let Some(name) = parse_parent_child_outer_context_equality(predicate) {
         return Some(PathBooleanPredicate::ParentChildEqualsOuterContext(name));
+    }
+    if parse_context_outer_context_equality(predicate) {
+        return Some(PathBooleanPredicate::ContextStringEqualsOuterContext);
     }
     if let Some((name, value)) = parse_attribute_inequality(predicate) {
         return Some(PathBooleanPredicate::NotEquals {
@@ -342,6 +347,17 @@ pub(super) fn recognizes_parent_attribute_string_comparison(predicate: &str) -> 
 
 pub(super) fn recognizes_parent_child_outer_context_equality(predicate: &str) -> bool {
     parse_parent_child_outer_context_equality(strip_outer_parentheses(predicate.trim())).is_some()
+}
+
+pub(super) fn recognizes_context_outer_context_equality(predicate: &str) -> bool {
+    parse_context_outer_context_equality(strip_outer_parentheses(predicate.trim()))
+}
+
+fn parse_context_outer_context_equality(predicate: &str) -> bool {
+    let Some((left, right)) = split_top_level_predicate_operator(predicate, "=") else {
+        return false;
+    };
+    matches!((left.trim(), right.trim()), (".", "'\0'") | ("'\0'", "."))
 }
 
 fn parse_parent_child_outer_context_equality(predicate: &str) -> Option<String> {
@@ -484,9 +500,6 @@ fn evaluate_atomic(
             value,
             equal,
         } => parent_attribute_string_comparison(document, node, attribute, value, *equal, control),
-        PathBooleanPredicate::ParentChildEqualsOuterContext(name) => {
-            parent_child_equals_outer_context(document, node, name, focus.outer_context, control)
-        }
         PathBooleanPredicate::NestedChildPathExists { outer, inner } => {
             nested_child_path_exists(document, node, outer, inner, control)
         }
@@ -494,6 +507,8 @@ fn evaluate_atomic(
         | PathBooleanPredicate::Equals { .. }
         | PathBooleanPredicate::NotEquals { .. }
         | PathBooleanPredicate::AttributeEqualsOuterAttribute { .. }
+        | PathBooleanPredicate::ParentChildEqualsOuterContext(_)
+        | PathBooleanPredicate::ContextStringEqualsOuterContext
         | PathBooleanPredicate::Not(_)
         | PathBooleanPredicate::And(_, _)
         | PathBooleanPredicate::Or(_, _) => {
@@ -535,8 +550,29 @@ fn evaluate_attribute_predicate(
             outer_attribute,
             control,
         )),
+        PathBooleanPredicate::ParentChildEqualsOuterContext(name) => {
+            Some(parent_child_equals_outer_context(
+                document,
+                focus.node,
+                name,
+                focus.outer_context,
+                control,
+            ))
+        }
+        PathBooleanPredicate::ContextStringEqualsOuterContext => {
+            Some(context_equals_outer_context(document, focus, control))
+        }
         _ => None,
     }
+}
+
+fn context_equals_outer_context(
+    document: &Document,
+    focus: EvaluationFocus,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    control.charge(WorkDomain::XPathOperation, 1)?;
+    Ok(document.string_value(focus.node) == document.string_value(focus.outer_context))
 }
 
 fn evaluate_not(

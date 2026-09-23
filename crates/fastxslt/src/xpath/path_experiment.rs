@@ -851,8 +851,9 @@ fn normalize_xslt10_outer_context_comparison(expression: &str) -> Option<String>
     normalized.push('\'');
     normalized.push_str(&expression[start + marker.len()..]);
     let predicate = normalized.rsplit_once('[')?.1.strip_suffix(']')?;
-    path_boolean_predicate::recognizes_parent_child_outer_context_equality(predicate)
-        .then_some(normalized)
+    (path_boolean_predicate::recognizes_parent_child_outer_context_equality(predicate)
+        || path_boolean_predicate::recognizes_context_outer_context_equality(predicate))
+    .then_some(normalized)
 }
 
 fn normalize_xslt10_outer_attribute_comparison(expression: &str) -> Option<String> {
@@ -1434,6 +1435,7 @@ fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBool
             && !path_boolean_predicate::recognizes_child_element_integer_equality(predicate)
             && !path_boolean_predicate::recognizes_parent_attribute_string_comparison(predicate)
             && !path_boolean_predicate::recognizes_parent_child_outer_context_equality(predicate)
+            && !path_boolean_predicate::recognizes_context_outer_context_equality(predicate)
             && !predicate.contains('['))
     {
         return (expression, None);
