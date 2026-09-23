@@ -5806,6 +5806,12 @@ host lifecycle.
     reaches 2,210, successful execution 2,157, and exact matches 2,009 / 3,173
     (63.32%) without adding a mismatch or execution failure.
     [Evidence](../Evidence/oasis-xslt10-dynamic-number-format-parameter-2026-09-23.md)
+  - [x] Classify statically known invalid effective `xsl:number` grouping
+    values as invalid `XTDE0030`, not unsupported `FXST1051`. The unchanged
+    Microsoft `Number_GroupingSeperatorShouldBe1Char` expected-error case
+    retains its existing credit, the `FXST1051` frontier falls from two cases
+    to one, and the conserved 2,009 / 3,173 (63.32%) lower bound is unchanged.
+    [Evidence](../Evidence/oasis-xslt10-number-grouping-invalid-effective-value-2026-09-23.md)
   - [x] Separate proven-invalid resolved `format-number()` pictures from
     genuinely unsupported formatting work. Eleven runtime cases move from
     `FXRT1007` to invalid `XTDE1310`, reducing that unsupported frontier from

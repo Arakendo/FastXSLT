@@ -2964,6 +2964,23 @@ fn number_admits_static_letter_values_only_when_existing_tokens_are_equivalent()
 }
 
 #[test]
+fn number_rejects_invalid_static_grouping_values_without_calling_them_unsupported() {
+    for (separator, size) in [("too-long", "3"), (",", "0"), (",", "bad")] {
+        let stylesheet = parse_stylesheet(
+            "memory:number-invalid-grouping.xsl",
+            format!(
+                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:number value="1000" grouping-separator="{separator}" grouping-size="{size}"/></xsl:template></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        let failure = compile_stylesheet(&stylesheet)
+            .expect_err("invalid effective grouping value must be rejected");
+        assert_eq!(failure.code, "XTDE0030");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",

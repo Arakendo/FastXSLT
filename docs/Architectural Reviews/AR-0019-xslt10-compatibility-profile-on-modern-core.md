@@ -2795,3 +2795,9 @@ maintained redistributable legacy suite becomes available.
   sweep to 2,009 / 3,173 exact matches with no new mismatch or execution
   failure.
   [Evidence](../Evidence/oasis-xslt10-dynamic-number-format-parameter-2026-09-23.md)
+- 2026-09-23 -- Statically known invalid effective `xsl:number` grouping
+  values now report invalid `XTDE0030` instead of unsupported `FXST1051`.
+  Unchanged Microsoft `Number_GroupingSeperatorShouldBe1Char` retains its
+  expected-error credit, the unsupported frontier falls from two cases to one,
+  and the conserved counts do not move.
+  [Evidence](../Evidence/oasis-xslt10-number-grouping-invalid-effective-value-2026-09-23.md)

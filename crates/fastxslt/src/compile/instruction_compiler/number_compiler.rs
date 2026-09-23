@@ -372,9 +372,9 @@ fn compile_grouping(
     let size = size.trim().parse::<usize>().ok().filter(|size| *size != 0);
     match (separator, size) {
         (Some(separator), Some(size)) => Ok(Some(NumberGrouping { separator, size })),
-        _ => Err(unsupported(
-            "FXST1051",
-            "xsl:number grouping requires one separator character and a positive integer size",
+        _ => Err(invalid(
+            "XTDE0030",
+            "xsl:number grouping requires a one-character separator and positive integer size",
             document.location(element),
         )),
     }
