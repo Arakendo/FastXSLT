@@ -5745,6 +5745,15 @@ host lifecycle.
     executed successfully without changing 53 execution failures, 63
     mismatches, or 75 comparator-unsupported results.
     [Evidence](../Evidence/oasis-xslt10-prior-descendant-current-name-2026-09-23.md)
+  - [x] Compose the same XSLT 1.0 name/position semantics with an
+    invocation-variable lexical QName and the exact
+    `//*[name()=$variable]/*` sequence. Unchanged Microsoft
+    `Miscellaneous__84425` now initializes and executes, raising those totals
+    to 2,200 and 2,147. It remains a suite-doubt-annotated mismatch because the
+    legacy expected file omits two children that its stylesheet selects, so the
+    exact lower bound remains 1,999 / 3,173 (63.00%) and the mismatch stays
+    visible rather than being converted into false pass credit.
+    [Evidence](../Evidence/oasis-xslt10-variable-name-sequence-predicates-2026-09-23.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

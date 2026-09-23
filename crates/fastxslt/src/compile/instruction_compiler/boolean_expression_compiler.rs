@@ -183,6 +183,24 @@ fn compile_xslt10_special(
             position_variable,
         ));
     }
+    if let Some((position_variable, name_variable)) =
+        parse_xslt10_prior_descendant_variable_name(expression, xslt10_compatibility)
+    {
+        return Some(BooleanExpression::Xslt10PriorDescendantSameNameAsVariable {
+            position_variable,
+            name_variable,
+        });
+    }
+    if let Some((parent_name_variable, position_variable)) =
+        parse_xslt10_prior_child_of_variable_named_elements(expression, xslt10_compatibility)
+    {
+        return Some(
+            BooleanExpression::Xslt10PriorChildOfVariableNamedElementsSameNameAsCurrent {
+                parent_name_variable,
+                position_variable,
+            },
+        );
+    }
     if xslt10_compatibility
         && let Some(value) =
             constant_numeric_experiment::fold_xslt10_nested_string_number_equality(expression)
@@ -247,6 +265,60 @@ fn parse_xslt10_prior_descendant_same_name(
         && candidate_name.trim() == "name()"
         && current_name.trim() == "name(current())")
         .then(|| position_variable.to_owned())
+}
+
+fn parse_xslt10_prior_descendant_variable_name(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<(String, String)> {
+    let expression = xslt10_compatibility.then(|| expression.trim())?;
+    let predicate = expression
+        .strip_prefix('/')
+        .unwrap_or(expression)
+        .strip_prefix("descendant::*[")?
+        .strip_suffix(']')?;
+    let (position, name) = predicate.split_once("and")?;
+    let (position, position_variable) = position.split_once('<')?;
+    let position_variable = position_variable.trim().strip_prefix('$')?;
+    let (candidate_name, name_variable) = name.split_once('=')?;
+    let name_variable = name_variable.trim().strip_prefix('$')?;
+    (position.trim() == "position()"
+        && is_ascii_ncname(position_variable)
+        && candidate_name.trim() == "name()"
+        && is_ascii_ncname(name_variable))
+    .then(|| (position_variable.to_owned(), name_variable.to_owned()))
+}
+
+fn parse_xslt10_prior_child_of_variable_named_elements(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<(String, String)> {
+    let expression = xslt10_compatibility.then(|| expression.trim())?;
+    let (parents, predicate) = expression.rsplit_once("/*[")?;
+    let parent_name_variable = parents
+        .strip_prefix("//*[name()")?
+        .trim_start()
+        .strip_prefix('=')?
+        .trim_start()
+        .strip_prefix('$')?
+        .strip_suffix(']')?
+        .trim();
+    let predicate = predicate.strip_suffix(']')?;
+    let (position, name) = predicate.split_once("and")?;
+    let (position, position_variable) = position.split_once('<')?;
+    let position_variable = position_variable.trim().strip_prefix('$')?;
+    let (candidate_name, current_name) = name.split_once('=')?;
+    (is_ascii_ncname(parent_name_variable)
+        && position.trim() == "position()"
+        && is_ascii_ncname(position_variable)
+        && candidate_name.trim() == "name()"
+        && current_name.trim() == "name(current())")
+        .then(|| {
+            (
+                parent_name_variable.to_owned(),
+                position_variable.to_owned(),
+            )
+        })
 }
 
 fn parse_xslt10_variable_less_than_node_count(

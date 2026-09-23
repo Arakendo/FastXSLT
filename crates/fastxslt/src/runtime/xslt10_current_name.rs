@@ -70,6 +70,17 @@ pub(super) fn has_prior_descendant_same_name(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    let expected_name = lexical_name(source, context);
+    has_prior_descendant_named(source, position, &expected_name, request_id, control)
+}
+
+pub(super) fn has_prior_descendant_named(
+    source: &Document,
+    position: f64,
+    expected_name: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
     let mut all_elements = Vec::new();
     collect_descendant_elements(
         source,
@@ -86,7 +97,7 @@ pub(super) fn has_prior_descendant_same_name(
         if candidate_position >= position {
             break;
         }
-        if same_lexical_name(source, context, candidate) {
+        if lexical_name(source, candidate) == expected_name {
             return Ok(true);
         }
         candidate_position += 1.0;
@@ -97,6 +108,16 @@ pub(super) fn has_prior_descendant_same_name(
 pub(super) fn select_children_of_same_name_elements(
     source: &Document,
     context: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let expected_name = lexical_name(source, context);
+    select_children_of_named_elements(source, &expected_name, request_id, control)
+}
+
+pub(super) fn select_children_of_named_elements(
+    source: &Document,
+    expected_name: &str,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
@@ -111,7 +132,7 @@ pub(super) fn select_children_of_same_name_elements(
     let mut selected = Vec::new();
     for matching in all_elements
         .into_iter()
-        .filter(|candidate| same_lexical_name(source, context, *candidate))
+        .filter(|candidate| lexical_name(source, *candidate) == expected_name)
     {
         for child in source.children(matching).iter().copied() {
             control
@@ -123,6 +144,31 @@ pub(super) fn select_children_of_same_name_elements(
         }
     }
     Ok(selected)
+}
+
+pub(super) fn has_prior_child_of_named_elements_same_name(
+    source: &Document,
+    context: NodeId,
+    parent_name: &str,
+    position: f64,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let selected = select_children_of_named_elements(source, parent_name, request_id, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let mut candidate_position = 1.0;
+    for candidate in selected {
+        if candidate_position >= position {
+            break;
+        }
+        if same_lexical_name(source, context, candidate) {
+            return Ok(true);
+        }
+        candidate_position += 1.0;
+    }
+    Ok(false)
 }
 
 fn collect_descendant_elements(
@@ -146,4 +192,13 @@ fn collect_descendant_elements(
 
 fn same_lexical_name(source: &Document, left: NodeId, right: NodeId) -> bool {
     source.name(left) == source.name(right) && source.prefix(left) == source.prefix(right)
+}
+
+fn lexical_name(source: &Document, node: NodeId) -> String {
+    source.name(node).map_or_else(String::new, |name| {
+        source.prefix(node).map_or_else(
+            || name.local.clone(),
+            |prefix| format!("{prefix}:{}", name.local),
+        )
+    })
 }

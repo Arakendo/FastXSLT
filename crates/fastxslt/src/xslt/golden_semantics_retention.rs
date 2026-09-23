@@ -425,6 +425,8 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         ApplySelection::AtomicIntegerRange { .. }
         | ApplySelection::ChildNodes(_)
         | ApplySelection::Xslt10ChildrenOfSameNameElementsAsCurrent => 0,
+        ApplySelection::Xslt10ChildrenOfSameNameElementsAsVariable(variable)
+        | ApplySelection::Xslt10VariableNodePosition { variable, .. } => variable.capacity(),
         ApplySelection::GlobalTemporaryChildren(name) | ApplySelection::VariableSequence(name) => {
             name.capacity()
         }
@@ -432,7 +434,6 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
             variable,
             position_variable,
         } => variable.capacity() + position_variable.capacity(),
-        ApplySelection::Xslt10VariableNodePosition { variable, .. } => variable.capacity(),
         ApplySelection::Xslt10VariableUnionPosition { variables, .. } => {
             vec_owned(variables, String::capacity)
         }
@@ -1332,9 +1333,13 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
         BooleanExpression::VariableEqualsEmptySequence(variable)
         | BooleanExpression::VariableEffectiveBooleanValue(variable)
-        | BooleanExpression::Xslt10VariableStringLength(variable)
-        | BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(variable) => {
+        | BooleanExpression::Xslt10VariableStringLength(variable) => {
             variable.capacity()
+        }
+        name_expression @ (BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(_)
+        | BooleanExpression::Xslt10PriorDescendantSameNameAsVariable { .. }
+        | BooleanExpression::Xslt10PriorChildOfVariableNamedElementsSameNameAsCurrent { .. }) => {
+            xslt10_name_boolean_owned(name_expression)
         }
         BooleanExpression::VariableStringEquals {
             left,
@@ -1421,6 +1426,21 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         | BooleanExpression::Xslt10ContextNumberIsNaN
         | BooleanExpression::ContextStringLengthEquals(_)
         | BooleanExpression::Constant(_) => 0,
+    }
+}
+
+fn xslt10_name_boolean_owned(value: &BooleanExpression) -> usize {
+    match value {
+        BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(variable) => variable.capacity(),
+        BooleanExpression::Xslt10PriorDescendantSameNameAsVariable {
+            position_variable,
+            name_variable,
+        } => position_variable.capacity() + name_variable.capacity(),
+        BooleanExpression::Xslt10PriorChildOfVariableNamedElementsSameNameAsCurrent {
+            parent_name_variable,
+            position_variable,
+        } => parent_name_variable.capacity() + position_variable.capacity(),
+        _ => unreachable!("name retention dispatch accepts only XSLT 1.0 name expressions"),
     }
 }
 

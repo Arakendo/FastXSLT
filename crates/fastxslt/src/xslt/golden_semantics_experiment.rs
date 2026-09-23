@@ -509,6 +509,7 @@ pub(crate) enum ApplySelection {
     },
     VariableFilteredElementPath(VariableFilteredElementPath),
     Xslt10ChildrenOfSameNameElementsAsCurrent,
+    Xslt10ChildrenOfSameNameElementsAsVariable(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1381,6 +1382,14 @@ pub(crate) enum BooleanExpression {
     Xslt10KeyLookupEffectiveBooleanValue(Box<Xslt10KeyLookup>),
     Xslt10DescendantOrFollowingSameNameAsCurrent,
     Xslt10PriorDescendantSameNameAsCurrent(String),
+    Xslt10PriorDescendantSameNameAsVariable {
+        position_variable: String,
+        name_variable: String,
+    },
+    Xslt10PriorChildOfVariableNamedElementsSameNameAsCurrent {
+        parent_name_variable: String,
+        position_variable: String,
+    },
     Xslt10ContextTranslateStartsWith(Xslt10ContextTranslateStartsWith),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     NodeExists(LocationPath),

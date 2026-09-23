@@ -325,6 +325,13 @@ pub(super) fn parse_apply_selection(
     {
         return Ok(ApplySelection::Xslt10ChildrenOfSameNameElementsAsCurrent);
     }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(variable) = parse_xslt10_children_of_variable_named_elements(expression)
+    {
+        return Ok(ApplySelection::Xslt10ChildrenOfSameNameElementsAsVariable(
+            variable,
+        ));
+    }
     if uses_xslt10_compatibility(document, element) {
         if let Some(selection) =
             parse_xslt10_key_selection(document, element, expression, &location)?
@@ -431,6 +438,20 @@ pub(super) fn parse_apply_selection(
         ));
     }
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
+}
+
+fn parse_xslt10_children_of_variable_named_elements(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    let variable = expression
+        .strip_prefix("//*[name()")?
+        .trim_start()
+        .strip_prefix('=')?
+        .trim_start()
+        .strip_prefix('$')?
+        .strip_suffix("/*")?
+        .strip_suffix(']')?
+        .trim();
+    is_ascii_ncname(variable).then(|| variable.to_owned())
 }
 
 fn parse_apply_union(

@@ -1627,6 +1627,98 @@ fn xslt10_prior_descendant_name_test_uses_the_outer_focus_and_position_variable(
 }
 
 #[test]
+fn xslt10_prior_descendant_name_test_accepts_an_invocation_variable() {
+    const SOURCE: &str = "urn:fastxslt:prior-descendant-variable-name:source";
+    const STYLESHEET: &str = "urn:fastxslt:prior-descendant-variable-name:stylesheet";
+    let stylesheet =
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+      <xsl:output method="text"/>
+      <xsl:template match="/"><xsl:for-each select="/descendant::*"><xsl:variable name="pos" select="position()"/><xsl:variable name="candidate-name" select="name()"/><xsl:if test="not(/descendant::*[position() &lt; $pos and name() = $candidate-name])"><xsl:value-of select="$candidate-name"/>;</xsl:if></xsl:for-each></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a/><b><a/></b><c/><b/></doc>".to_vec())
+        .expect("admit variable-name source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit variable-name stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable-name test");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("prior-variable-name", "result", SOURCE))
+        .expect("admit variable-name request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable-name test");
+    assert_eq!(
+        results.by_request["prior-variable-name"].serialized,
+        "doc;a;b;c;"
+    );
+
+    let modern = stylesheet
+        .windows(b"version=\"1.0\"".len())
+        .position(|window| window == b"version=\"1.0\"")
+        .map(|offset| {
+            let mut modern = stylesheet.to_vec();
+            modern[offset + 9] = b'3';
+            modern
+        })
+        .expect("stylesheet has version declaration");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit modern regression source");
+    resources
+        .admit(STYLESHEET, modern)
+        .expect("admit modern regression stylesheet");
+    let snapshot = resources.seal();
+    let failure = compile_resource(&snapshot, STYLESHEET)
+        .expect_err("XSLT 1.0 variable-name predicate must not widen modern XPath");
+    assert_eq!(failure.code, "FXXP1001");
+}
+
+#[test]
+fn xslt10_variable_named_parent_children_retain_first_names_in_sequence() {
+    const SOURCE: &str = "urn:fastxslt:variable-named-parent-children:source";
+    const STYLESHEET: &str = "urn:fastxslt:variable-named-parent-children:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><a><x/><y/><x/></a><a><z/><y/></a><b><x/></b></doc>".to_vec(),
+        )
+        .expect("admit variable-parent source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:variable name="parent-name" select="'a'"/><xsl:for-each select="//*[name()=$parent-name]/*"><xsl:variable name="position" select="position()"/><xsl:if test="not(//*[name()=$parent-name]/*[position() &lt; $position and name()=name(current())])"><xsl:value-of select="name()"/>;</xsl:if></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit variable-parent stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable-parent test");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("variable-parent", "result", SOURCE))
+        .expect("admit variable-parent request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable-parent test");
+    assert_eq!(results.by_request["variable-parent"].serialized, "x;y;z;");
+
+    let modern = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:variable name="parent-name" select="'a'"/><xsl:for-each select="//*[name()=$parent-name]/*"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit modern variable-parent source");
+    resources
+        .admit(STYLESHEET, modern.to_vec())
+        .expect("admit modern variable-parent stylesheet");
+    let snapshot = resources.seal();
+    let failure = compile_resource(&snapshot, STYLESHEET)
+        .expect_err("XSLT 1.0 variable-parent selection must not widen modern XPath");
+    assert_eq!(failure.code, "FXXP1001");
+}
+
+#[test]
 fn xslt_current_predicate_does_not_enter_the_general_xpath_path_parser() {
     let stylesheet = parse_document(
         "urn:fastxslt:modern-current-predicate:stylesheet",

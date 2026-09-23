@@ -2718,3 +2718,11 @@ maintained redistributable legacy suite becomes available.
   raising the lower bound to 1,999 / 3,173 (63.00%) without adding a mismatch
   or execution failure.
   [Evidence](../Evidence/oasis-xslt10-prior-descendant-current-name-2026-09-23.md)
+- 2026-09-23 -- Composed the prior-descendant name family with invocation
+  variables and the exact child sequence selected by
+  `//*[name()=$variable]/*`. The unchanged, suite-doubt-annotated Microsoft
+  `Miscellaneous__84425` case now initializes and executes, but remains a
+  visible mismatch because its legacy expected file omits two children selected
+  by the stylesheet. Initialization reaches 2,200 and successful execution
+  2,147 while the strict lower bound remains 1,999 / 3,173 (63.00%).
+  [Evidence](../Evidence/oasis-xslt10-variable-name-sequence-predicates-2026-09-23.md)

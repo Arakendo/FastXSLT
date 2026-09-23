@@ -3464,8 +3464,79 @@ fn evaluate_xslt10_current_name_boolean(
                 control,
             ))
         }
+        BooleanExpression::Xslt10PriorDescendantSameNameAsVariable {
+            position_variable,
+            name_variable,
+        } => Some(evaluate_xslt10_prior_descendant_variable_name(
+            inputs,
+            context,
+            position_variable,
+            name_variable,
+            variables,
+            control,
+        )),
+        BooleanExpression::Xslt10PriorChildOfVariableNamedElementsSameNameAsCurrent {
+            parent_name_variable,
+            position_variable,
+        } => Some(evaluate_xslt10_prior_child_of_variable_named_elements(
+            inputs,
+            context,
+            parent_name_variable,
+            position_variable,
+            variables,
+            control,
+        )),
         _ => None,
     }
+}
+
+fn evaluate_xslt10_prior_child_of_variable_named_elements(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    parent_name_variable: &str,
+    position_variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let parent_name = value_evaluator::xslt10_variable_string_value(
+        inputs,
+        parent_name_variable,
+        variables,
+        control,
+    )?;
+    let position =
+        value_evaluator::xslt10_variable_number(inputs, position_variable, variables, control)?;
+    xslt10_current_name::has_prior_child_of_named_elements_same_name(
+        source,
+        context,
+        &parent_name,
+        position,
+        inputs.request_id,
+        control,
+    )
+}
+
+fn evaluate_xslt10_prior_descendant_variable_name(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    position_variable: &str,
+    name_variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, _) = required_source_context(inputs, context)?;
+    let position =
+        value_evaluator::xslt10_variable_number(inputs, position_variable, variables, control)?;
+    let expected_name =
+        value_evaluator::xslt10_variable_string_value(inputs, name_variable, variables, control)?;
+    xslt10_current_name::has_prior_descendant_named(
+        source,
+        position,
+        &expected_name,
+        inputs.request_id,
+        control,
+    )
 }
 
 fn evaluate_xslt10_prior_descendant_same_name(
@@ -3592,6 +3663,8 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue(_)
         | BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent
         | BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(_)
+        | BooleanExpression::Xslt10PriorDescendantSameNameAsVariable { .. }
+        | BooleanExpression::Xslt10PriorChildOfVariableNamedElementsSameNameAsCurrent { .. }
         | BooleanExpression::ContextStringEquals(_)
         | BooleanExpression::Xslt10ContextNumberIsNaN => {
             unreachable!("specialized expressions return before ordinary boolean dispatch")
@@ -4779,12 +4852,10 @@ fn select_apply_nodes(
             inputs.request_id,
             control,
         ),
-        ApplySelection::Xslt10ChildrenOfSameNameElementsAsCurrent => {
-            xslt10_current_name::select_children_of_same_name_elements(
-                source,
-                context,
-                inputs.request_id,
-                control,
+        selection @ (ApplySelection::Xslt10ChildrenOfSameNameElementsAsCurrent
+        | ApplySelection::Xslt10ChildrenOfSameNameElementsAsVariable(_)) => {
+            select_xslt10_children_of_named_elements(
+                inputs, source, context, selection, variables, control,
             )
         }
         ApplySelection::VariableSequence(name) => source_variable_nodes(inputs, name, variables),
@@ -4798,6 +4869,38 @@ fn select_apply_nodes(
         | ApplySelection::AtomicIntegerRange { .. } => {
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
+    }
+}
+
+fn select_xslt10_children_of_named_elements(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    context: NodeId,
+    selection: &ApplySelection,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    match selection {
+        ApplySelection::Xslt10ChildrenOfSameNameElementsAsCurrent => {
+            xslt10_current_name::select_children_of_same_name_elements(
+                source,
+                context,
+                inputs.request_id,
+                control,
+            )
+        }
+        ApplySelection::Xslt10ChildrenOfSameNameElementsAsVariable(variable) => {
+            let expected_name = value_evaluator::xslt10_variable_string_value(
+                inputs, variable, variables, control,
+            )?;
+            xslt10_current_name::select_children_of_named_elements(
+                source,
+                &expected_name,
+                inputs.request_id,
+                control,
+            )
+        }
+        _ => unreachable!("name-selected child dispatch accepts only XSLT 1.0 name plans"),
     }
 }
 
