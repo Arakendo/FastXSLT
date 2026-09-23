@@ -128,3 +128,8 @@ and add the record to this index. Never reuse a retired number.
   with queued jobs. Finite uniform and mixed-duration queues confirm
   completion-driven claim one as the private reference; larger claims add tail
   and ownership radius without a repeatable throughput benefit.
+- [AR-0023: Bounded XSLT Message Observation and Delivery](AR-0023-bounded-xslt-message-observation-and-delivery.md)
+  -- Incubating; messages remain bounded invocation-owned observations rather
+  than ambient logs, with a retained private oracle leading while termination,
+  accounting, adapter parity, and the eventual host delivery surface are
+  established experimentally.

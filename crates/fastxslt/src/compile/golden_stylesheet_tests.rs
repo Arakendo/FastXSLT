@@ -2292,6 +2292,50 @@ fn distinguishes_invalid_stylesheet_from_unsupported_instruction() {
 }
 
 #[test]
+fn validates_xslt10_message_before_reporting_unsupported_execution() {
+    for terminate in [None, Some("no"), Some("yes")] {
+        let attribute = terminate
+            .map(|value| format!(r#" terminate="{value}""#))
+            .unwrap_or_default();
+        let stylesheet = parse_stylesheet(
+            "memory:valid-message.xsl",
+            format!(
+                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:message{attribute}>message</xsl:message></xsl:template></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        let failure = compile_stylesheet(&stylesheet)
+            .expect_err("valid XSLT 1.0 message should remain explicitly unsupported");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+        assert_eq!(failure.code, "FXST1006");
+    }
+
+    for terminate in ["", "true", "foobar", " yes "] {
+        let stylesheet = parse_stylesheet(
+            "memory:invalid-message-terminate.xsl",
+            format!(
+                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:message terminate="{terminate}">message</xsl:message></xsl:template></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        let failure = compile_stylesheet(&stylesheet)
+            .expect_err("invalid XSLT 1.0 terminate value should fail validation");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+        assert_eq!(failure.code, "XTSE0020");
+        assert!(failure.detail.contains("terminate"));
+    }
+
+    let stylesheet = parse_stylesheet(
+        "memory:unsupported-message-attribute.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:message extra="value">message</xsl:message></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&stylesheet)
+        .expect_err("unknown XSLT 1.0 message attribute should be classified");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+    assert_eq!(failure.code, "FXST1009");
+}
+
+#[test]
 fn classifies_xpath_outside_the_private_location_path_slice_as_unsupported() {
     let stylesheet = parse_stylesheet(
             "memory:path.xsl",
