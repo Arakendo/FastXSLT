@@ -1576,6 +1576,57 @@ fn xslt10_current_name_predicates_retain_the_outer_source_focus() {
 }
 
 #[test]
+fn xslt10_prior_descendant_name_test_uses_the_outer_focus_and_position_variable() {
+    const SOURCE: &str = "urn:fastxslt:prior-descendant-name:source";
+    const STYLESHEET: &str = "urn:fastxslt:prior-descendant-name:stylesheet";
+    let stylesheet =
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+      <xsl:output method="text"/>
+      <xsl:template match="/"><xsl:for-each select="/descendant::*"><xsl:variable name="pos" select="position()"/><xsl:if test="not(/descendant::*[position() &lt; $pos and name() = name(current())])"><xsl:value-of select="name()"/>;</xsl:if></xsl:for-each></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a/><b><a/></b><c/><b/></doc>".to_vec())
+        .expect("admit prior-descendant source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit prior-descendant stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile prior-descendant test");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("prior-descendant-name", "result", SOURCE))
+        .expect("admit prior-descendant request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute prior-descendant test");
+    assert_eq!(
+        results.by_request["prior-descendant-name"].serialized,
+        "doc;a;b;c;"
+    );
+
+    let modern = stylesheet
+        .windows(b"version=\"1.0\"".len())
+        .position(|window| window == b"version=\"1.0\"")
+        .map(|offset| {
+            let mut modern = stylesheet.to_vec();
+            modern[offset + 9] = b'3';
+            modern
+        })
+        .expect("stylesheet has version declaration");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit modern regression source");
+    resources
+        .admit(STYLESHEET, modern)
+        .expect("admit modern regression stylesheet");
+    let snapshot = resources.seal();
+    let failure = compile_resource(&snapshot, STYLESHEET)
+        .expect_err("XSLT 1.0 predicate must not widen modern XPath");
+    assert_eq!(failure.code, "FXXP1001");
+}
+
+#[test]
 fn xslt_current_predicate_does_not_enter_the_general_xpath_path_parser() {
     let stylesheet = parse_document(
         "urn:fastxslt:modern-current-predicate:stylesheet",

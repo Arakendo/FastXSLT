@@ -1332,7 +1332,10 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
         BooleanExpression::VariableEqualsEmptySequence(variable)
         | BooleanExpression::VariableEffectiveBooleanValue(variable)
-        | BooleanExpression::Xslt10VariableStringLength(variable) => variable.capacity(),
+        | BooleanExpression::Xslt10VariableStringLength(variable)
+        | BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(variable) => {
+            variable.capacity()
+        }
         BooleanExpression::VariableStringEquals {
             left,
             right,
@@ -1410,6 +1413,19 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             boolean_expression_owned(left) + boolean_expression_owned(right)
         }
         BooleanExpression::Not(expression) => boolean_expression_owned(expression),
+        identity @ (BooleanExpression::NodeIdentityEqual { .. }
+        | BooleanExpression::RootIdentityEqualsVariable { .. }
+        | BooleanExpression::TemporaryRootIdentityEqual { .. }
+        | BooleanExpression::DocumentRootIdentityEqual { .. }) => identity_boolean_owned(identity),
+        BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent
+        | BooleanExpression::Xslt10ContextNumberIsNaN
+        | BooleanExpression::ContextStringLengthEquals(_)
+        | BooleanExpression::Constant(_) => 0,
+    }
+}
+
+fn identity_boolean_owned(value: &BooleanExpression) -> usize {
+    match value {
         BooleanExpression::NodeIdentityEqual { left, right } => path_pair_owned(left, right),
         BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
             path.known_owned_capacity_bytes() + variable.capacity()
@@ -1419,16 +1435,13 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             descendant_local,
         } => variable.capacity() + descendant_local.capacity(),
         BooleanExpression::DocumentRootIdentityEqual { left, right } => {
-            document_identity_pair_owned(left, right)
+            document_pair_owned(left, right)
         }
-        BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent
-        | BooleanExpression::Xslt10ContextNumberIsNaN
-        | BooleanExpression::ContextStringLengthEquals(_)
-        | BooleanExpression::Constant(_) => 0,
+        _ => unreachable!("identity retention dispatch accepts only identity expressions"),
     }
 }
 
-fn document_identity_pair_owned(
+fn document_pair_owned(
     left: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
     right: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
 ) -> usize {

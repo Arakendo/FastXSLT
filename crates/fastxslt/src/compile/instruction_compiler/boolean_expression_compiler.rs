@@ -176,6 +176,13 @@ fn compile_xslt10_special(
     {
         return Some(BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent);
     }
+    if let Some(position_variable) =
+        parse_xslt10_prior_descendant_same_name(expression, xslt10_compatibility)
+    {
+        return Some(BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(
+            position_variable,
+        ));
+    }
     if xslt10_compatibility
         && let Some(value) =
             constant_numeric_experiment::fold_xslt10_nested_string_number_equality(expression)
@@ -219,6 +226,27 @@ fn compile_xslt10_special(
     }
     compile_xslt10_variable_numeric_comparison(expression, xslt10_compatibility)
         .or_else(|| compile_xslt10_context_translate_starts_with(expression, xslt10_compatibility))
+}
+
+fn parse_xslt10_prior_descendant_same_name(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<String> {
+    let expression = xslt10_compatibility.then(|| expression.trim())?;
+    let predicate = expression
+        .strip_prefix('/')
+        .unwrap_or(expression)
+        .strip_prefix("descendant::*[")?
+        .strip_suffix(']')?;
+    let (position, name) = predicate.split_once("and")?;
+    let (position, position_variable) = position.split_once('<')?;
+    let position_variable = position_variable.trim().strip_prefix('$')?;
+    let (candidate_name, current_name) = name.split_once('=')?;
+    (position.trim() == "position()"
+        && is_ascii_ncname(position_variable)
+        && candidate_name.trim() == "name()"
+        && current_name.trim() == "name(current())")
+        .then(|| position_variable.to_owned())
 }
 
 fn parse_xslt10_variable_less_than_node_count(

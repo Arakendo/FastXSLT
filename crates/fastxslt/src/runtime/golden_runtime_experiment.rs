@@ -3421,14 +3421,10 @@ fn evaluate_boolean(
         return key_lookup::select(inputs, lookup, context, variables, control)
             .map(|selected| !selected.is_empty());
     }
-    if let BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent = expression {
-        let (source, context) = required_source_context(inputs, context)?;
-        return xslt10_current_name::has_descendant_or_following(
-            source,
-            context,
-            inputs.request_id,
-            control,
-        );
+    if let Some(value) =
+        evaluate_xslt10_current_name_boolean(inputs, expression, context, variables, control)
+    {
+        return value;
     }
     if let BooleanExpression::ContextStringEquals(expected) = expression {
         return evaluate_context_string_equals(inputs, context, expected, control);
@@ -3437,6 +3433,58 @@ fn evaluate_boolean(
         return evaluate_xslt10_context_number_is_nan(inputs, context, control);
     }
     evaluate_ordinary_boolean(inputs, expression, context, focus, variables, control)
+}
+
+fn evaluate_xslt10_current_name_boolean(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    context: Option<NodeId>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Option<Result<bool, ExecutionFailure>> {
+    match expression {
+        BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent => {
+            let (source, context) = match required_source_context(inputs, context) {
+                Ok(value) => value,
+                Err(failure) => return Some(Err(failure)),
+            };
+            Some(xslt10_current_name::has_descendant_or_following(
+                source,
+                context,
+                inputs.request_id,
+                control,
+            ))
+        }
+        BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(position_variable) => {
+            Some(evaluate_xslt10_prior_descendant_same_name(
+                inputs,
+                context,
+                position_variable,
+                variables,
+                control,
+            ))
+        }
+        _ => None,
+    }
+}
+
+fn evaluate_xslt10_prior_descendant_same_name(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    position_variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let position =
+        value_evaluator::xslt10_variable_number(inputs, position_variable, variables, control)?;
+    xslt10_current_name::has_prior_descendant_same_name(
+        source,
+        context,
+        position,
+        inputs.request_id,
+        control,
+    )
 }
 
 fn evaluate_xslt10_variable_less_than_node_count(
@@ -3543,6 +3591,7 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::Xslt10AncestorFilter(_)
         | BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue(_)
         | BooleanExpression::Xslt10DescendantOrFollowingSameNameAsCurrent
+        | BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(_)
         | BooleanExpression::ContextStringEquals(_)
         | BooleanExpression::Xslt10ContextNumberIsNaN => {
             unreachable!("specialized expressions return before ordinary boolean dispatch")

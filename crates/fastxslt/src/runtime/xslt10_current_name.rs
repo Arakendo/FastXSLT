@@ -63,6 +63,37 @@ pub(super) fn count_descendants_same_name(
         .count())
 }
 
+pub(super) fn has_prior_descendant_same_name(
+    source: &Document,
+    context: NodeId,
+    position: f64,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let mut all_elements = Vec::new();
+    collect_descendant_elements(
+        source,
+        source.document_node(),
+        request_id,
+        control,
+        &mut all_elements,
+    )?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let mut candidate_position = 1.0;
+    for candidate in all_elements {
+        if candidate_position >= position {
+            break;
+        }
+        if same_lexical_name(source, context, candidate) {
+            return Ok(true);
+        }
+        candidate_position += 1.0;
+    }
+    Ok(false)
+}
+
 pub(super) fn select_children_of_same_name_elements(
     source: &Document,
     context: NodeId,

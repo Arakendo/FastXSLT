@@ -2710,3 +2710,11 @@ maintained redistributable legacy suite becomes available.
   raising the complete-catalog lower bound to 1,998 / 3,173 (62.97%) without
   adding a mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-variable-child-name-sort-2026-09-23.md)
+- 2026-09-23 -- A typed XSLT 1.0 boolean plan now recognizes the bounded
+  prior-descendant test `position() < $variable and name() = name(current())`.
+  Execution preserves the outer current node, resolves the ordinary numeric
+  variable, and performs charged document-order traversal; modern XPath stays
+  unsupported. Unchanged Microsoft `Miscellaneous__84423` becomes exact,
+  raising the lower bound to 1,999 / 3,173 (63.00%) without adding a mismatch
+  or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-prior-descendant-current-name-2026-09-23.md)

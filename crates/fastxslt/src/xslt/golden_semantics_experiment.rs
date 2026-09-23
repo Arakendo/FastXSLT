@@ -1380,6 +1380,7 @@ pub(crate) enum BooleanExpression {
     Xslt10AncestorFilter(Box<Xslt10AncestorFilter>),
     Xslt10KeyLookupEffectiveBooleanValue(Box<Xslt10KeyLookup>),
     Xslt10DescendantOrFollowingSameNameAsCurrent,
+    Xslt10PriorDescendantSameNameAsCurrent(String),
     Xslt10ContextTranslateStartsWith(Xslt10ContextTranslateStartsWith),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     NodeExists(LocationPath),
