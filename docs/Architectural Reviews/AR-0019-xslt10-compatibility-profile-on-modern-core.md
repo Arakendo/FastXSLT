@@ -2781,3 +2781,9 @@ maintained redistributable legacy suite becomes available.
   formatter breadth. Initialization becomes 2,209, successful execution stays
   2,156, and the strict lower bound remains 2,008 / 3,173 (63.32%).
   [Evidence](../Evidence/oasis-xslt10-format-number-invalid-operands-2026-09-23.md)
+- 2026-09-23 -- Unknown lexical `xsl:number/@letter-value` values now report
+  invalid `XTSE0020`; valid but unimplemented numbering reinterpretations
+  remain unsupported `FXST1049`. Unchanged Microsoft `Errors_err069` retains
+  its expected-error credit, the `FXST1049` frontier falls from five cases to
+  four, and the conserved counts remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-number-letter-value-static-classification-2026-09-23.md)

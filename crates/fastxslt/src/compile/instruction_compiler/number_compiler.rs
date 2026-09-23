@@ -77,6 +77,13 @@ fn validate_letter_value(
     let Some(letter_value) = optional_attribute(document, element, None, "letter-value") else {
         return Ok(());
     };
+    if !matches!(letter_value, "alphabetic" | "traditional") {
+        return Err(invalid(
+            "XTSE0020",
+            format!("invalid xsl:number letter-value: {letter_value}"),
+            document.location(element),
+        ));
+    }
     if letter_value == "traditional"
         || (letter_value == "alphabetic"
             && format.tokens.iter().all(|token| {

@@ -5792,6 +5792,13 @@ host lifecycle.
     (63.32%) strict lower bound do not change; the unsupported frontier is now
     more honest.
     [Evidence](../Evidence/oasis-xslt10-number-level-static-classification-2026-09-23.md)
+  - [x] Classify an unknown lexical `xsl:number/@letter-value` as invalid
+    `XTSE0020` while retaining valid but unimplemented token reinterpretation
+    as unsupported `FXST1049`. The unchanged Microsoft `Errors_err069`
+    expected-error case retains its existing credit, the unsupported frontier
+    falls from five cases to four, and the conserved 2,008 / 3,173 (63.32%)
+    strict lower bound does not change.
+    [Evidence](../Evidence/oasis-xslt10-number-letter-value-static-classification-2026-09-23.md)
   - [x] Separate proven-invalid resolved `format-number()` pictures from
     genuinely unsupported formatting work. Eleven runtime cases move from
     `FXRT1007` to invalid `XTDE1310`, reducing that unsupported frontier from

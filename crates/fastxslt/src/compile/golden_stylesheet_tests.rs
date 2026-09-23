@@ -2943,6 +2943,15 @@ fn number_admits_static_letter_values_only_when_existing_tokens_are_equivalent()
         .expect_err("alphabetic Roman-token reinterpretation remains unsupported");
     assert_eq!(failure.code, "FXST1049");
     assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let invalid = parse_stylesheet(
+        "memory:number-invalid-letter-value.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:number value="1" letter-value="unknown"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure =
+        compile_stylesheet(&invalid).expect_err("unknown letter-value must be rejected as invalid");
+    assert_eq!(failure.code, "XTSE0020");
+    assert_eq!(failure.category, CompileCategory::Invalid);
 }
 
 #[test]
