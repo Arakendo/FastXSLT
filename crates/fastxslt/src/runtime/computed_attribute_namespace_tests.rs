@@ -222,6 +222,39 @@ fn path_valued_attribute_name_retains_static_namespace_override() {
 }
 
 #[test]
+fn xslt10_path_valued_attribute_namespace_uses_first_node_string_value() {
+    let stylesheet = document(
+        "memory:dynamic-attribute-namespace.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="{docs/a}" namespace="{docs/a/@href}">one</xsl:attribute><xsl:attribute name="static" namespace="{docs/b/@href}">two</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document(
+        "memory:source.xml",
+        br#"<docs><a href="urn:dynamic">chosen</a><b href=""/></docs>"#,
+    );
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "dynamic-attribute-namespace-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let result = serialize_xml(
+        &result,
+        &program.output,
+        "dynamic-attribute-namespace-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("dynamic attribute should serialize");
+
+    assert_eq!(
+        result,
+        r#"<out xmlns:ns0="urn:dynamic" ns0:chosen="one" static="two"></out>"#
+    );
+}
+
+#[test]
 fn xslt10_context_name_attribute_uses_source_lexical_name() {
     let stylesheet = document(
         "memory:context-name-attribute.xsl",

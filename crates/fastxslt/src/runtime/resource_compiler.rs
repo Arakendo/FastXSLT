@@ -2,11 +2,12 @@
 
 use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
-    compile_stylesheet_with_import_and_include, compile_stylesheet_with_imports,
+    compile_stylesheet_with_import_and_include,
+    compile_stylesheet_with_imported_and_included_programs_at, compile_stylesheet_with_imports,
     compile_stylesheet_with_single_imported_program_at, compile_stylesheet_with_single_include,
     compile_stylesheet_with_single_include_program_at,
     compile_stylesheet_with_two_imported_programs_at,
-    compile_stylesheet_with_two_included_programs_at,
+    compile_stylesheet_with_two_included_programs_at, validate_import_order_at,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
@@ -51,6 +52,7 @@ fn compile_loaded_graph(
     if graph.dependencies.is_empty() {
         return compile_stylesheet(&graph.document);
     }
+    validate_loaded_import_order(graph)?;
     if graph.dependencies.len() > 2 {
         return Err(CompileFailure {
             code: "FXST1018",
@@ -63,6 +65,9 @@ fn compile_loaded_graph(
         });
     }
     if let Some(program) = compile_homogeneous_dependency_tree(graph) {
+        return program;
+    }
+    if let Some(program) = compile_import_then_include_tree(graph) {
         return program;
     }
     if let Some(program) = compile_linear_dependency_chain(graph) {
@@ -136,6 +141,43 @@ fn compile_loaded_graph(
                 .clone(),
         }),
     }
+}
+
+fn compile_import_then_include_tree(
+    graph: &LoadedStylesheetModule,
+) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    let [imported, included] = graph.dependencies.as_slice() else {
+        return None;
+    };
+    if imported.dependency_kind != Some(StylesheetDependencyKind::Import)
+        || included.dependency_kind != Some(StylesheetDependencyKind::Include)
+        || (imported.dependencies.is_empty() && included.dependencies.is_empty())
+    {
+        return None;
+    }
+    let imported_program = compile_homogeneous_module(imported)?;
+    let included_program = compile_homogeneous_module(included)?;
+    Some(imported_program.and_then(|imported_program| {
+        included_program.and_then(|included_program| {
+            compile_stylesheet_with_imported_and_included_programs_at(
+                &graph.document,
+                graph.root,
+                imported_program,
+                included_program,
+            )
+        })
+    }))
+}
+
+fn validate_loaded_import_order(graph: &LoadedStylesheetModule) -> Result<(), CompileFailure> {
+    if graph.dependencies.is_empty() {
+        return Ok(());
+    }
+    validate_import_order_at(&graph.document, graph.root)?;
+    for dependency in &graph.dependencies {
+        validate_loaded_import_order(dependency)?;
+    }
+    Ok(())
 }
 
 fn compile_homogeneous_dependency_tree(

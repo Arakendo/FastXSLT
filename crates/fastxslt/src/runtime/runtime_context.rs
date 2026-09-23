@@ -1798,6 +1798,20 @@ fn bind_template_parameter_default(
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             frame.bind_source_nodes(parameter.name.clone(), nodes);
         }
+        TemplateParameterDefault::SourceVariablePath { variable, path } => {
+            let source = inputs.source.ok_or_else(|| {
+                failure(
+                    "FXRT1004",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    "a variable-rooted template parameter default requires a principal source",
+                )
+            })?;
+            let nodes = super::evaluate_source_variable_path(
+                inputs, source, variable, path, frame, control,
+            )?;
+            frame.bind_source_nodes(parameter.name.clone(), nodes);
+        }
         TemplateParameterDefault::Variable(variable) => {
             copy_parameter_default_variable(frame, parameter, variable, inputs)?;
         }
@@ -1807,6 +1821,19 @@ fn bind_template_parameter_default(
             frame.bind_atomic(
                 parameter.name.clone(),
                 AtomicValue::from_validated_lexical(BuiltinAtomicType::Double, value),
+            );
+        }
+        TemplateParameterDefault::Xslt10SequenceConstructor(instructions) => {
+            let nodes = super::execute_sequence(
+                inputs,
+                instructions,
+                super::SequenceContext::new(context, None),
+                frame,
+                control,
+            )?;
+            frame.bind_temporary_tree(
+                parameter.name.clone(),
+                materialize_result_nodes(&nodes, inputs.request_id, control)?,
             );
         }
         TemplateParameterDefault::Xslt10TextChoice {

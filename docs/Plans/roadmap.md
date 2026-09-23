@@ -2030,7 +2030,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,967 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. General HTML result admission also moved all 119 formerly blocked HTML executions into visible later dispositions; subsequent URI-attribute, computed-name including focus-position and variable name AVTs, static key-declaration, bounded key-lookup and key-EBV, zero-argument node identity, Unicode NCName and `xml:lang` expanded-name tests, bounded relative and ancestor element-count predicates including intermediate-step retention, nested relative-path existence, focus-aware and sequential typed predicates, variable-node positional filters, multiple-variable apply unions, parenthesized path/union selection, sequential and grouped reverse-axis filters, following-sibling text tests, parent-attribute predicates, descendant-child per-parent position predicates, XSLT 1.0 chained literal relations, outer-current name predicates, relative paths, and typed outer-current attribute comparisons, variable-position sort and grouped-path position filtering, sequence filtering, value composition and count guards, child-node-test numeric predicates, global/local/parameter/argument QName identity, content-built apply and nested-template arguments including variable-string conversion, qualified variable-rooted paths and direct sequence selection, shared variable-conversion and value-kind-preserving local aliases, source-node variable comparison, finite and non-finite numeric compatibility including source-number globals, namespace-alias composition/name repair, merged-module global dependency ordering, linear mixed include/import chains and homogeneous nested dependency branches, source-path, conditional, bounded named-template global text, and static local global-tree construction, module decimal-format composition, local sequence temporary-tree construction, static mixed-root temporary trees, invocation-owned global document copying, static document-function introspection, normalized and transitively sealed supplemental resource identities, computed-attribute, processing-instruction, and comment sequence recovery, unavailable-extension fallback, fallback control-attribute scope, principal-root `xsl:apply-imports` context, shallow-copy body attribute assembly and path values, result-attribute recovery, nested context translation/prefix testing, variable/focus string composition, child-attribute variable predicates, static number/string round-trip conversion, bounded physical output comparison including full ISO-8859-1 byte encoding and BOM-marked UTF-16 comparison, legacy HTML output-version selection, `format-number()` path operands and alternate digit-family fallback, and suite-declared indentation-neutral comparison work converted mismatches/frontiers into exact matches without changing the denominator. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,968 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. General HTML result admission also moved all 119 formerly blocked HTML executions into visible later dispositions; subsequent URI-attribute, computed-name including focus-position and variable name AVTs, static key-declaration, bounded key-lookup and key-EBV, zero-argument node identity, Unicode NCName and `xml:lang` expanded-name tests, bounded relative and ancestor element-count predicates including intermediate-step retention, nested relative-path existence, focus-aware and sequential typed predicates, variable-node positional filters, multiple-variable apply unions, parenthesized path/union selection, sequential and grouped reverse-axis filters, following-sibling text tests, parent-attribute predicates, descendant-child per-parent position predicates, XSLT 1.0 chained literal relations, outer-current name predicates, relative paths, and typed outer-current attribute comparisons, variable-position sort and grouped-path position filtering, sequence filtering, value composition and count guards, child-node-test numeric predicates, global/local/parameter/argument QName identity, content-built apply and nested-template arguments including variable-string conversion, qualified variable-rooted paths and direct sequence selection, shared variable-conversion and value-kind-preserving local aliases, source-node variable comparison, finite and non-finite numeric compatibility including source-number globals, namespace-alias composition/name repair, merged-module global dependency ordering, linear and precedence-aware mixed include/import chains and homogeneous nested dependency branches, source-path, conditional, bounded named-template global text, and static local global-tree construction, module decimal-format composition, local sequence temporary-tree construction, static mixed-root temporary trees, invocation-owned global document copying, static document-function introspection, normalized and transitively sealed supplemental resource identities, computed-attribute, processing-instruction, and comment sequence recovery, unavailable-extension fallback, fallback control-attribute scope, principal-root `xsl:apply-imports` context, shallow-copy body attribute assembly and path values, result-attribute recovery, nested context translation/prefix testing, variable/focus string composition, child-attribute variable predicates, static number/string round-trip conversion, bounded physical output comparison including full ISO-8859-1 byte encoding and BOM-marked UTF-16 comparison, legacy HTML output-version selection, `format-number()` path operands and alternate digit-family fallback, and suite-declared indentation-neutral comparison work converted mismatches/frontiers into exact matches without changing the denominator. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -5597,6 +5597,93 @@ host lifecycle.
     successful execution reaches 2,114, and exact matches reach 1,967 (61.99%).
     Mixed sibling-edge precedence remains explicit rather than being inferred.
     [Evidence](../Evidence/oasis-xslt10-homogeneous-stylesheet-dependency-branches-2026-09-22.md)
+  - [x] Distinguish invalid include-before-import ordering from the valid
+    import-then-include shape in which the included module imports a later,
+    higher-precedence stylesheet. The invalid Microsoft case now reports
+    `XTSE0200`; the unchanged Lotus `impincl23` case becomes exact.
+    Initialization reaches 2,171, successful execution reaches 2,115, and exact
+    matches reach 1,968 (62.02%). The three remaining `FXST1029` cases require
+    textual expansion of two interleaved includes so declaration order remains
+    observable; completed-program merging cannot conserve that rule, so this
+    sibling shape remains explicit.
+    [Evidence](../Evidence/oasis-xslt10-mixed-module-import-precedence-2026-09-22.md)
+  - [x] Audit the seven expected-error cases that still succeeded instead of
+    forcing them all to fail. Reject an XSLT-namespace attribute on the
+    stylesheet root with `XTSE0090`, reducing unexpected successes to six, and
+    reclassify all ten malformed/empty mode cases from unsupported `FXST1012`
+    to invalid `XTSE0550`. Reclassify the eight forbidden
+    template-invocation-child cases from unsupported `FXST1014` to invalid
+    `XTSE0010`. The two XSLT-instruction document roots formerly reported as
+    unsupported `FXST1022` are likewise invalid `XTSE0010` rather than
+    simplified stylesheets; these are standards errors, not missing engine capabilities.
+    Exact positive coverage remains 1,968 (62.02%).
+    [Evidence](../Evidence/oasis-xslt10-static-error-honesty-2026-09-23.md)
+  - [x] Merge included `xsl:output` declarations through the existing
+    same-precedence property rules, including compatible repeated
+    `omit-xml-declaration` values. The seven-case `FXST1019` frontier is
+    eliminated; one unchanged Lotus case becomes exact and the other six
+    progress to explicit template-conflict or flattened imported-output
+    provenance boundaries. Exact matches reach 1,969 (62.05%).
+    [Evidence](../Evidence/oasis-xslt10-included-output-declarations-2026-09-23.md)
+  - [x] Route duplicate document and element template rules contributed through
+    includes through the ordinary precedence/priority/declaration-order
+    selector. Materialize duplicate root shortcuts at their textual positions
+    rather than maintaining a module-specific conflict path. Ten additional
+    unchanged cases become exact, eliminating `FXST1020` and `FXST1021` and
+    raising exact matches to 1,979 (62.37%).
+    [Evidence](../Evidence/oasis-xslt10-included-template-conflict-selection-2026-09-23.md)
+  - [x] Admit XSLT 1.0's declaration-order recovery for conflicting scalar
+    `xsl:output` properties while retaining strict modern-version and
+    cross-module merging. Six cases leave `FXST1018`; one becomes exact and the
+    others expose source, serialization, comparator, or archival-expectation
+    boundaries. Exact matches reach 1,980 (62.40%). The one remaining
+    `FXST1018` case requires property-level import-precedence provenance through
+    an intermediate included program.
+    [Evidence](../Evidence/oasis-xslt10-output-declaration-recovery-2026-09-23.md)
+  - [x] Reuse the ordinary bounded instruction engine and charged temporary-tree
+    materializer for non-text XSLT 1.0 template-parameter defaults, then compose
+    sequential defaults through the existing variable-rooted source-path plan.
+    Both `FXST1032` cases now execute: Microsoft `BVTs_bvt027` becomes exact,
+    while `BVTs_bvt091` reaches a visible source-whitespace mismatch.
+    Initialization reaches 2,188, successful execution 2,131, mismatches 67,
+    and exact matches 1,981 (62.43%). Modern static contexts remain unsupported
+    by the compatibility-only sequence constructor.
+    [Evidence](../Evidence/oasis-xslt10-template-parameter-sequence-constructor-2026-09-23.md)
+  - [x] Compile one XSLT 1.0 path-valued `xsl:element` namespace AVT through
+    the shared charged location-path evaluator and existing dynamic QName
+    constructor. All five `FXST1045` cases now execute: four unchanged Lotus
+    cases become exact and the Microsoft case reaches the explicit unsupported
+    comparison boundary for namespace names containing spaces. Initialization
+    reaches 2,193, successful execution 2,136, comparator-unsupported results
+    75, and exact matches 1,985 (62.56%). General namespace AVTs and modern
+    static contexts remain outside this compatibility-only slice.
+    [Evidence](../Evidence/oasis-xslt10-dynamic-computed-element-namespace-2026-09-23.md)
+  - [x] Share the private static-or-path namespace plan with XSLT 1.0
+    `xsl:attribute`, while retaining attribute-specific QName rules and adding
+    deterministic result-owned prefix bindings only when a runtime namespace
+    requires one. The sole `FXST1061` case becomes exact. Initialization
+    reaches 2,194, successful execution 2,137, and exact matches 1,986
+    (62.59%); mismatches and comparator-unsupported results remain unchanged.
+    General namespace AVTs and modern static contexts remain unsupported.
+    [Evidence](../Evidence/oasis-xslt10-dynamic-computed-attribute-namespace-2026-09-23.md)
+  - [x] Retain private property-level precedence provenance when an included
+    compiled module has inherited `xsl:output` properties through an import.
+    Same-precedence principal/include properties now shadow the admitted
+    lower-precedence `method`, `encoding`, and `indent` properties without
+    weakening ordinary conflict checks. The last `FXST1018` case becomes exact:
+    initialization reaches 2,195, successful execution 2,138, and exact
+    matches 1,987 (62.62%); mismatches, execution failures, and
+    comparator-unsupported results remain unchanged.
+    [Evidence](../Evidence/oasis-xslt10-included-output-import-precedence-2026-09-23.md)
+  - [x] Apply one effective namespace-alias set to a directly imported module
+    when a higher-precedence principal alias shadows the imported mapping.
+    Imported declarations remain statically validated, but constructors are
+    not rewritten by the losing mapping and guessed back afterward. The
+    unchanged Microsoft import case becomes exact: matches reach 1,988
+    (62.65%) and mismatches fall to 66 while initialization and execution
+    totals remain unchanged. Multiple-import and nested alias-precedence graphs
+    remain explicit follow-up boundaries.
+    [Evidence](../Evidence/oasis-xslt10-imported-namespace-alias-precedence-2026-09-23.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

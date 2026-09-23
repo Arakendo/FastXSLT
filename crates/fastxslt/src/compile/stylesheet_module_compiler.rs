@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xslt::golden_semantics_experiment::{
     Instruction, MatchPattern, MatchedTemplate, SourceWhitespacePolicy, StylesheetProgram,
@@ -11,8 +13,9 @@ use super::{
     CompileFailure, XSLT_NAMESPACE, compile_stylesheet_at_excluding_unvalidated,
     compile_stylesheet_excluding_unvalidated, default_output_settings, document_element,
     ensure_no_meaningful_children, ensure_only_attributes, finalize_character_maps,
-    finalize_decimal_formats, invalid, is_xslt_element, meaningful_children, optional_attribute,
-    require_stylesheet_root, required_attribute, unsupported,
+    finalize_decimal_formats, invalid, is_xslt_element, meaningful_children, merge_output,
+    optional_attribute, output_compiler::OutputDeclaration, require_stylesheet_root,
+    required_attribute, unsupported,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,12 +92,7 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
         compile_stylesheet_at_excluding_unvalidated(principal, principal_root, &[*include])?;
     apply_principal_namespace_aliases(principal, principal_root, &mut included_program)?;
 
-    merge_included_program(
-        &mut program,
-        included_program,
-        principal.location(*include),
-        false,
-    )?;
+    merge_included_program(&mut program, included_program, principal.location(*include))?;
     finalize_character_maps(&mut program)?;
     finalize_decimal_formats(&mut program)?;
     validate_named_template_references(&program)?;
@@ -105,9 +103,12 @@ fn merge_included_program(
     program: &mut StylesheetProgram,
     mut included_program: StylesheetProgram,
     location: &SourceLocation,
-    allow_duplicate_matches: bool,
 ) -> Result<(), CompileFailure> {
     merge_local_attribute_set_names(program, &mut included_program, location)?;
+    if program.root_template.is_some() && included_program.root_template.is_some() {
+        materialize_root_template_in_declaration_order(program);
+        materialize_root_template_in_declaration_order(&mut included_program);
+    }
     if included_program.source_whitespace == SourceWhitespacePolicy::StripAllElementWhitespace {
         program.source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
     }
@@ -120,41 +121,15 @@ fn merge_included_program(
     program
         .mode_policies
         .append(&mut included_program.mode_policies);
+    merge_included_output(program, &mut included_program, location)?;
     merge_included_character_maps(program, included_program.character_maps, location)?;
     merge_included_decimal_formats(program, included_program.decimal_formats, location)?;
     program
         .key_definitions
         .append(&mut included_program.key_definitions);
-    if included_program.output != default_output_settings() {
-        return Err(unsupported(
-            "FXST1019",
-            "included output declarations are outside the single-include slice",
-            location,
-        ));
-    }
-    if program.root_template.is_some() && included_program.root_template.is_some() {
-        return Err(unsupported(
-            "FXST1020",
-            "template priority across duplicate root matches is outside the single-include slice",
-            location,
-        ));
-    }
     if program.root_template.is_none() {
         program.root_template = included_program.root_template;
         program.root_template_modes = included_program.root_template_modes;
-    }
-    for matched in &included_program.matched_templates {
-        if !allow_duplicate_matches
-            && program.matched_templates.iter().any(|existing| {
-                existing.pattern == matched.pattern && existing.modes == matched.modes
-            })
-        {
-            return Err(unsupported(
-                "FXST1021",
-                "template priority across duplicate included matches is outside the single-include slice",
-                &matched.template.location,
-            ));
-        }
     }
     let insertion_index = program
         .matched_templates
@@ -206,6 +181,138 @@ fn merge_included_program(
     Ok(())
 }
 
+fn materialize_root_template_in_declaration_order(program: &mut StylesheetProgram) {
+    let Some(template) = program.root_template.take() else {
+        return;
+    };
+    let insertion_index = program
+        .matched_templates
+        .iter()
+        .position(|matched| {
+            matched.template.location.resource == template.location.resource
+                && matched.template.location.span.start > template.location.span.start
+        })
+        .unwrap_or(program.matched_templates.len());
+    program.matched_templates.insert(
+        insertion_index,
+        MatchedTemplate {
+            pattern: MatchPattern::Document,
+            import_precedence: 0,
+            priority: TemplatePriority::ROOT_DEFAULT,
+            modes: std::mem::take(&mut program.root_template_modes),
+            template,
+        },
+    );
+}
+
+fn merge_included_output(
+    program: &mut StylesheetProgram,
+    included: &mut StylesheetProgram,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    if included.output_specified_properties.is_empty() {
+        return Ok(());
+    }
+    let mut existing = OutputDeclaration {
+        name: None,
+        settings: std::mem::replace(&mut program.output, default_output_settings()),
+        character_map_names: std::mem::take(&mut program.output_character_map_names),
+        specified: std::mem::take(&mut program.output_specified_properties)
+            .into_iter()
+            .collect(),
+        location: program
+            .output_character_map_location
+            .clone()
+            .unwrap_or_else(|| location.clone()),
+    };
+    let mut next = OutputDeclaration {
+        name: None,
+        settings: std::mem::replace(&mut included.output, default_output_settings()),
+        character_map_names: std::mem::take(&mut included.output_character_map_names),
+        specified: std::mem::take(&mut included.output_specified_properties)
+            .into_iter()
+            .collect(),
+        location: included
+            .output_character_map_location
+            .clone()
+            .unwrap_or_else(|| location.clone()),
+    };
+    let existing_same_precedence = program
+        .output_same_precedence_properties
+        .iter()
+        .cloned()
+        .collect::<HashSet<_>>();
+    let included_same_precedence = included
+        .output_same_precedence_properties
+        .iter()
+        .cloned()
+        .collect::<HashSet<_>>();
+    let overlaps = existing
+        .specified
+        .intersection(&next.specified)
+        .cloned()
+        .collect::<Vec<_>>();
+    for property in overlaps {
+        match (
+            existing_same_precedence.contains(&property),
+            included_same_precedence.contains(&property),
+        ) {
+            (true, false) => {
+                next.specified.remove(&property);
+                clear_inherited_output_property(&mut next.settings, &property, location)?;
+            }
+            (false, true) => {
+                existing.specified.remove(&property);
+                clear_inherited_output_property(&mut existing.settings, &property, location)?;
+            }
+            (true, true) | (false, false) => {}
+        }
+    }
+    let merged = merge_output(existing, next, false)?;
+    program.output = merged.settings;
+    program.output_character_map_names = merged.character_map_names;
+    program.output_specified_properties = merged.specified.into_iter().collect();
+    for property in std::mem::take(&mut included.output_same_precedence_properties) {
+        if !program
+            .output_same_precedence_properties
+            .contains(&property)
+        {
+            program.output_same_precedence_properties.push(property);
+        }
+    }
+    if program.output_character_map_location.is_none()
+        && !program.output_character_map_names.is_empty()
+    {
+        program.output_character_map_location = included
+            .output_character_map_location
+            .clone()
+            .or_else(|| Some(location.clone()));
+    }
+    Ok(())
+}
+
+fn clear_inherited_output_property(
+    settings: &mut crate::xslt::golden_semantics_experiment::OutputSettings,
+    property: &str,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    match property {
+        "method" => settings.method = None,
+        "encoding" => settings.encoding = None,
+        "indent" => settings.indent = None,
+        _ => {
+            return Err(unsupported(
+                "FXST1024",
+                format!(
+                    "included inherited output property {property} is outside the bounded import-precedence slice"
+                ),
+                location,
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub(crate) fn compile_stylesheet_with_two_included_programs_at(
     principal: &Document,
     principal_root: NodeId,
@@ -226,7 +333,7 @@ pub(crate) fn compile_stylesheet_with_two_included_programs_at(
     )?;
     for (mut included, include) in included_programs.into_iter().zip(include_declarations) {
         apply_principal_namespace_aliases(principal, principal_root, &mut included)?;
-        merge_included_program(&mut program, included, principal.location(include), true)?;
+        merge_included_program(&mut program, included, principal.location(include))?;
     }
     finalize_character_maps(&mut program)?;
     finalize_decimal_formats(&mut program)?;
@@ -257,26 +364,93 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
             principal.location(*import),
         ));
     }
-    let mut program = compile_stylesheet_at_excluding_unvalidated(principal, root, &dependencies)?;
-    let mut included_program = compile_dependency_module(included.0, included.1)?;
-    apply_principal_namespace_aliases(principal, root, &mut included_program)?;
-    merge_included_program(
-        &mut program,
+    let imported_program = compile_dependency_module(imported.0, imported.1)?;
+    let included_program = compile_dependency_module(included.0, included.1)?;
+    compose_imported_and_included_programs(
+        principal,
+        root,
+        *import,
+        *include,
+        imported_program,
         included_program,
-        principal.location(*include),
-        false,
-    )?;
+    )
+}
 
-    let mut imported_program = compile_imported_program(imported.0, imported.1, -1)?;
+pub(crate) fn compile_stylesheet_with_imported_and_included_programs_at(
+    principal: &Document,
+    principal_root: NodeId,
+    imported_program: StylesheetProgram,
+    included_program: StylesheetProgram,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let dependencies = dependency_nodes_at(principal, principal_root)?;
+    let [import, include] = dependencies.as_slice() else {
+        return Err(invalid(
+            "FXST0033",
+            "mixed program compilation requires exactly one xsl:import followed by one xsl:include",
+            principal.location(principal_root),
+        ));
+    };
+    if !is_xslt_element(principal, *import, "import")
+        || !is_xslt_element(principal, *include, "include")
+    {
+        return Err(invalid(
+            "FXST0033",
+            "mixed program compilation requires one xsl:import followed by one xsl:include",
+            principal.location(*import),
+        ));
+    }
+    compose_imported_and_included_programs(
+        principal,
+        principal_root,
+        *import,
+        *include,
+        imported_program,
+        included_program,
+    )
+}
+
+fn compose_imported_and_included_programs(
+    principal: &Document,
+    principal_root: NodeId,
+    import: NodeId,
+    include: NodeId,
+    mut imported_program: StylesheetProgram,
+    mut included_program: StylesheetProgram,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let dependencies = [import, include];
+    let mut program =
+        compile_stylesheet_at_excluding_unvalidated(principal, principal_root, &dependencies)?;
+    let included_minimum_precedence = included_program
+        .matched_templates
+        .iter()
+        .map(|template| template.import_precedence)
+        .min()
+        .unwrap_or(0)
+        .min(0);
+    apply_principal_namespace_aliases(principal, principal_root, &mut included_program)?;
+    merge_included_program(&mut program, included_program, principal.location(include))?;
+
+    let imported_shift = included_minimum_precedence.checked_sub(1).ok_or_else(|| {
+        invalid(
+            "FXST0037",
+            "stylesheet import precedence exceeds the private integer domain",
+            principal.location(import),
+        )
+    })?;
+    rebase_imported_program(
+        &mut imported_program,
+        imported_shift,
+        principal.location(import),
+    )?;
     merge_local_attribute_set_names(
         &mut program,
         &mut imported_program,
-        principal.location(*import),
+        principal.location(import),
     )?;
     validate_fully_shadowed_imported_output(
         &program,
         &imported_program,
-        principal.location(*import),
+        principal.location(import),
     )?;
     materialize_principal_root_template(&mut program);
     imported_program
@@ -310,6 +484,21 @@ fn apply_principal_namespace_aliases(
     Ok(())
 }
 
+fn namespace_aliases_at(
+    document: &Document,
+    root: NodeId,
+) -> Result<(Vec<NodeId>, Vec<namespace_alias_compiler::NamespaceAlias>), CompileFailure> {
+    let nodes = meaningful_children(document, root)
+        .into_iter()
+        .filter(|child| is_xslt_element(document, *child, "namespace-alias"))
+        .collect::<Vec<_>>();
+    let mut aliases = Vec::new();
+    for declaration in &nodes {
+        namespace_alias_compiler::compile_declaration(document, *declaration, &mut aliases)?;
+    }
+    Ok((nodes, aliases))
+}
+
 pub(crate) fn compile_stylesheet_with_imports(
     principal: &Document,
     imported: &[(&Document, NodeId)],
@@ -332,6 +521,14 @@ pub(crate) fn compile_stylesheet_with_imports(
     let root = document_element(principal)?;
     let mut principal_program =
         compile_stylesheet_excluding_unvalidated(principal, &import_declarations)?;
+    let (_, principal_aliases) = namespace_aliases_at(principal, root)?;
+    let single_import_aliases = if imported.len() == 1 && !principal_aliases.is_empty() {
+        let (nodes, mut aliases) = namespace_aliases_at(imported[0].0, imported[0].1)?;
+        namespace_alias_compiler::overlay_higher_precedence(&mut aliases, &principal_aliases);
+        Some((nodes, aliases))
+    } else {
+        None
+    };
     let overridden_visibility_modes = explicit_visibility_mode_names(principal, root);
     let import_count = i32::try_from(imported.len()).expect("bounded import count fits i32");
     let mut imported_programs = imported
@@ -340,9 +537,21 @@ pub(crate) fn compile_stylesheet_with_imports(
         .map(|(index, (document, root))| {
             let precedence =
                 i32::try_from(index).expect("bounded import index fits i32") - import_count;
-            let excluded_modes =
+            let mut excluded =
                 shadowed_visibility_only_modes(document, *root, &overridden_visibility_modes);
-            compile_imported_program_excluding(document, *root, precedence, &excluded_modes)
+            if index == 0 {
+                if let Some((alias_nodes, _)) = &single_import_aliases {
+                    excluded.extend(alias_nodes);
+                }
+            }
+            let mut program =
+                compile_imported_program_excluding(document, *root, precedence, &excluded)?;
+            if index == 0 {
+                if let Some((_, aliases)) = &single_import_aliases {
+                    namespace_alias_compiler::apply(&mut program, aliases);
+                }
+            }
+            Ok(program)
         })
         .collect::<Result<Vec<_>, _>>()?;
     for program in &mut imported_programs {
@@ -569,14 +778,6 @@ fn rebase_imported_program(
         );
     }
     Ok(())
-}
-
-fn compile_imported_program(
-    imported: &Document,
-    imported_root: NodeId,
-    import_precedence: i32,
-) -> Result<StylesheetProgram, CompileFailure> {
-    compile_imported_program_excluding(imported, imported_root, import_precedence, &[])
 }
 
 fn compile_imported_program_excluding(
@@ -852,9 +1053,9 @@ pub(super) fn compile_simplified_stylesheet_at(
 ) -> Result<StylesheetProgram, CompileFailure> {
     let root_name = document.name(root).expect("element nodes have names");
     if root_name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
-        return Err(unsupported(
-            "FXST1022",
-            "the first included-module slice requires a simplified stylesheet",
+        return Err(invalid(
+            "XTSE0010",
+            "a simplified stylesheet must have a literal result element as its document element",
             document.location(root),
         ));
     }
@@ -874,6 +1075,7 @@ pub(super) fn compile_simplified_stylesheet_at(
         mode_policies: Vec::new(),
         output: default_output_settings(),
         output_specified_properties: Vec::new(),
+        output_same_precedence_properties: Vec::new(),
         character_maps: Vec::new(),
         decimal_formats: Vec::new(),
         output_character_map_names: Vec::new(),
@@ -918,6 +1120,31 @@ fn dependency_nodes_at(document: &Document, root: NodeId) -> Result<Vec<NodeId>,
                 || is_xslt_element(document, *child, "import")
         })
         .collect())
+}
+
+pub(crate) fn validate_import_order_at(
+    document: &Document,
+    root: NodeId,
+) -> Result<(), CompileFailure> {
+    require_stylesheet_root(document, root)?;
+    if optional_attribute(document, root, None, "version") != Some("1.0") {
+        return Ok(());
+    }
+    let mut saw_non_import = false;
+    for child in meaningful_children(document, root) {
+        if is_xslt_element(document, child, "import") {
+            if saw_non_import {
+                return Err(invalid(
+                    "XTSE0200",
+                    "xsl:import must precede every other top-level declaration",
+                    document.location(child),
+                ));
+            }
+        } else {
+            saw_non_import = true;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -41,6 +41,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) mode_policies: Vec<ModePolicy>,
     pub(crate) output: OutputSettings,
     pub(crate) output_specified_properties: Vec<String>,
+    pub(crate) output_same_precedence_properties: Vec<String>,
     pub(crate) character_maps: Vec<CharacterMapDefinition>,
     pub(crate) decimal_formats: Vec<DecimalFormatDefinition>,
     pub(crate) output_character_map_names: Vec<ExpandedName>,
@@ -251,8 +252,13 @@ pub(crate) enum TemplateParameterDefault {
     Text(String),
     Integer(i64),
     SourcePath(LocationPath),
+    SourceVariablePath {
+        variable: String,
+        path: LocationPath,
+    },
     Variable(String),
     Xslt10BinaryNumeric(Box<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>),
+    Xslt10SequenceConstructor(Box<[Instruction]>),
     Xslt10TextChoice {
         branches: Vec<Xslt10TextChoiceBranch>,
         otherwise: String,
@@ -593,7 +599,7 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     ContextNameElement {
-        namespace_override: Option<String>,
+        namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
         computed_attributes: Vec<ComputedAttribute>,
         body: Vec<Instruction>,
@@ -601,7 +607,7 @@ pub(crate) enum Instruction {
     },
     DynamicNameElement {
         name: DynamicElementName,
-        namespace_override: Option<String>,
+        namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
         computed_attributes: Vec<ComputedAttribute>,
         body: Vec<Instruction>,
@@ -834,9 +840,16 @@ pub(crate) enum Instruction {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DynamicElementName {
+    Literal(String),
     Path(LocationPath),
     FocusPosition { prefix: String, suffix: String },
     VariableAvt(Vec<DynamicAttributeNamePart>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum DynamicNamespaceValue {
+    Static(String),
+    Path(Box<LocationPath>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1516,21 +1529,21 @@ pub(crate) struct ComputedAttribute {
 pub(crate) enum DynamicAttributeName {
     Path {
         path: LocationPath,
-        namespace_override: Option<String>,
+        namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
     },
     ContextName {
-        namespace_override: Option<String>,
+        namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
     },
     Literal {
         value: String,
-        namespace_override: Option<String>,
+        namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
     },
     VariableAvt {
         parts: Vec<DynamicAttributeNamePart>,
-        namespace_override: Option<String>,
+        namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
     },
 }

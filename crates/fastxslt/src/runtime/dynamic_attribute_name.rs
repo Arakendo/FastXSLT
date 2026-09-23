@@ -4,7 +4,9 @@ use crate::execution_control_experiment::InvocationControl;
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
-use crate::xslt::golden_semantics_experiment::{DynamicAttributeName, DynamicAttributeNamePart};
+use crate::xslt::golden_semantics_experiment::{
+    DynamicAttributeName, DynamicAttributeNamePart, DynamicNamespaceValue,
+};
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs};
 use super::{
@@ -53,6 +55,8 @@ pub(super) fn resolve(
             static_namespaces,
         ),
     };
+    let namespace_override =
+        namespace_value(inputs, context, namespace_override.as_ref(), control)?;
     resolve_lexical_name(
         &lexical,
         namespace_override.as_deref(),
@@ -60,6 +64,20 @@ pub(super) fn resolve(
         location,
         inputs.request_id,
     )
+}
+
+fn namespace_value(
+    inputs: &SequenceInputs<'_>,
+    context: Option<crate::xdm::owned_tree_experiment::NodeId>,
+    namespace: Option<&DynamicNamespaceValue>,
+    control: &mut InvocationControl,
+) -> Result<Option<String>, ExecutionFailure> {
+    namespace
+        .map(|namespace| match namespace {
+            DynamicNamespaceValue::Static(value) => Ok(value.clone()),
+            DynamicNamespaceValue::Path(path) => path_name_value(inputs, context, path, control),
+        })
+        .transpose()
 }
 
 pub(super) fn variable_avt_value(

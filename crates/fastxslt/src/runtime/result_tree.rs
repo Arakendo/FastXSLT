@@ -99,6 +99,47 @@ pub(super) fn assemble_element_content(
     Ok(children)
 }
 
+pub(super) fn retain_dynamic_attribute_namespace_bindings(
+    namespaces: Arc<[NamespaceBinding]>,
+    attributes: &[ResultAttribute],
+) -> Arc<[NamespaceBinding]> {
+    const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+    let missing = attributes.iter().filter_map(|attribute| {
+        attribute.name.namespace.as_deref().filter(|namespace| {
+            *namespace != XML_NAMESPACE
+                && !namespaces
+                    .iter()
+                    .any(|binding| binding.prefix.is_some() && binding.namespace == *namespace)
+        })
+    });
+    let mut missing: Vec<&str> = missing.collect();
+    missing.sort_unstable();
+    missing.dedup();
+    if missing.is_empty() {
+        return namespaces;
+    }
+    let mut retained = Vec::with_capacity(namespaces.len() + missing.len());
+    retained.extend_from_slice(&namespaces);
+    let mut generated_index = 0_usize;
+    for namespace in missing {
+        let prefix = loop {
+            let candidate = format!("ns{generated_index}");
+            generated_index += 1;
+            if !retained
+                .iter()
+                .any(|binding: &NamespaceBinding| binding.prefix.as_deref() == Some(&candidate))
+            {
+                break candidate;
+            }
+        };
+        retained.push(NamespaceBinding {
+            prefix: Some(prefix),
+            namespace: namespace.to_owned(),
+        });
+    }
+    retained.into()
+}
+
 pub(super) fn literal_attributes_require_context_string(attributes: &[LiteralAttribute]) -> bool {
     attributes
         .iter()

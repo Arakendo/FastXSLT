@@ -1304,6 +1304,13 @@ pub(super) fn compile_xslt10_variable_path(
     if !is_ascii_ncname(variable) || relative.is_empty() {
         return Ok(None);
     }
+    let descendant_path;
+    let relative = if let Some(descendant) = relative.strip_prefix('/') {
+        descendant_path = format!(".//{descendant}");
+        descendant_path.as_str()
+    } else {
+        relative
+    };
     let mut path = parse_location_path(relative, location.clone()).map_err(map_path_failure)?;
     if let Some(namespace) = effective_xpath_default_namespace(document, element) {
         for step in &mut path.steps {

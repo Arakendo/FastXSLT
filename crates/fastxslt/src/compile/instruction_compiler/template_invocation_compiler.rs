@@ -106,9 +106,9 @@ fn compile_with_params_excluding(
             continue;
         }
         if !is_xslt_element(document, child, "with-param") {
-            return Err(unsupported(
-                "FXST1014",
-                format!("the private {parent_label} slice permits only xsl:with-param children"),
+            return Err(invalid(
+                "XTSE0010",
+                format!("{parent_label} permits only xsl:with-param children"),
                 document.location(child),
             ));
         }
@@ -857,9 +857,9 @@ pub(super) fn parse_mode(
         })?;
         return Ok(format!("Q{{{namespace}}}{local}"));
     }
-    Err(unsupported(
-        "FXST1012",
-        format!("unsupported mode name: {mode}"),
+    Err(invalid(
+        "XTSE0550",
+        format!("invalid mode name: {mode}"),
         document.location(element),
     ))
 }
@@ -891,8 +891,23 @@ pub(super) fn parse_template_modes(
     element: NodeId,
     mode: &str,
 ) -> Result<Vec<String>, CompileFailure> {
-    let modes = mode
-        .split_whitespace()
+    let names = mode.split_whitespace().collect::<Vec<_>>();
+    if names.is_empty()
+        || (uses_xslt10_compatibility(document, element) && names.len() != 1)
+        || (uses_xslt10_compatibility(document, element)
+            && names.iter().any(|name| name.starts_with('#')))
+        || names.iter().enumerate().any(|(index, name)| {
+            names[..index].contains(name) || (*name == "#all" && names.len() != 1)
+        })
+    {
+        return Err(invalid(
+            "XTSE0550",
+            "template mode must be a valid non-empty mode list",
+            document.location(element),
+        ));
+    }
+    names
+        .into_iter()
         .map(|name| {
             if matches!(name, "#all" | "#default" | "#unnamed") {
                 Ok(name.to_owned())
@@ -900,15 +915,7 @@ pub(super) fn parse_template_modes(
                 parse_mode(document, element, name)
             }
         })
-        .collect::<Result<Vec<_>, _>>()?;
-    if modes.is_empty() {
-        return Err(unsupported(
-            "FXST1012",
-            "template mode list is empty",
-            document.location(element),
-        ));
-    }
-    Ok(modes)
+        .collect()
 }
 
 pub(super) fn compile_call_template(
@@ -924,9 +931,9 @@ pub(super) fn compile_call_template(
     let mut arguments = Vec::new();
     for child in meaningful_children(document, element) {
         if !is_xslt_element(document, child, "with-param") {
-            return Err(unsupported(
-                "FXST1014",
-                "the private call-template slice permits only xsl:with-param children",
+            return Err(invalid(
+                "XTSE0010",
+                "xsl:call-template permits only xsl:with-param children",
                 document.location(child),
             ));
         }

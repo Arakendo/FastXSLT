@@ -77,7 +77,9 @@ mod variable_filtered_path;
 #[path = "xslt10_current_name.rs"]
 mod xslt10_current_name;
 
-use dynamic_element_name::{DynamicElementNameRequest, resolve_dynamic_element_name};
+use dynamic_element_name::{
+    DynamicElementNameRequest, resolve_dynamic_element_name, resolve_dynamic_element_namespace,
+};
 use number_executor::execute as execute_number_instruction;
 #[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
@@ -2469,7 +2471,8 @@ fn execute_literal_element(
     }
     let body = execute_sequence(inputs, body, execution, variables, control)?;
     let children = result_tree::assemble_element_content(&mut attributes, body, inputs.request_id)?;
-    let result_namespaces = namespaces;
+    let result_namespaces =
+        result_tree::retain_dynamic_attribute_namespace_bindings(namespaces, &attributes);
     #[cfg(test)]
     let result_namespaces = if control.complete_result_namespace_clones() {
         Arc::from(result_namespaces.as_ref())
@@ -2521,6 +2524,12 @@ fn prepare_element_execution<'a>(
             body,
             location,
         } => {
+            let namespace_override = resolve_dynamic_element_namespace(
+                inputs,
+                execution,
+                namespace_override.as_ref(),
+                control,
+            )?;
             let (name, namespaces) = resolve_context_element_name(
                 inputs,
                 execution,
@@ -2551,7 +2560,7 @@ fn prepare_element_execution<'a>(
                 DynamicElementNameRequest {
                     name,
                     variables,
-                    namespace_override: namespace_override.as_deref(),
+                    namespace_override: namespace_override.as_ref(),
                     static_namespaces,
                     location,
                 },

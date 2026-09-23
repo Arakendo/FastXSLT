@@ -62,7 +62,7 @@ use crate::xpath::string_length_experiment::{
     StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
 };
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, ChooseBranch, ComputedAttribute, DynamicElementName,
+    BooleanExpression, ChooseBranch, ComputedAttribute, DynamicElementName, DynamicNamespaceValue,
     ElementConstructorOrigin, FocusEqualityOperand, Instruction, LiteralAttributeValue,
     SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, StringComparison,
     TemplateArgument, ValueExpression,
@@ -164,11 +164,20 @@ pub(super) fn validate_local_attribute_set_graph(
     attribute_set_compiler::validate_local_attribute_set_graph(document, stylesheet)
 }
 
-fn compile_sequence(
+pub(super) fn compile_sequence(
     document: &Document,
     parent: NodeId,
 ) -> Result<Vec<Instruction>, CompileFailure> {
     compile_sequence_excluding(document, parent, &[])
+}
+
+pub(super) fn compile_xslt10_template_parameter_variable_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<(String, LocationPath)>, CompileFailure> {
+    value_expression_compiler::compile_xslt10_variable_path(document, element, expression, location)
 }
 
 pub(super) fn compile_sequence_excluding(
@@ -578,58 +587,49 @@ fn compile_static_computed_element(
     )?;
     let name = required_attribute(document, element, None, "name")?;
     let namespace = optional_attribute(document, element, None, "namespace");
-    if namespace.is_some_and(|value| value.contains(['{', '}'])) {
-        return Err(unsupported(
-            "FXST1045",
-            "the private xsl:element namespace slice requires a static URI",
-            document.location(element),
-        ));
-    }
+    let namespace_override = compile_dynamic_element_namespace(document, element, namespace)?;
     if matches!(name.trim(), "{name()}" | "{name(.)}") {
-        let (mut computed_attributes, computed_attribute_nodes) =
-            compile_computed_attributes(document, element)?;
-        let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
-        attribute_set_values.retain(|set_attribute| {
-            !computed_attributes.iter().any(|attribute| {
-                attribute.dynamic_name.is_none()
-                    && set_attribute.dynamic_name.is_none()
-                    && attribute.name == set_attribute.name
-            })
-        });
-        attribute_set_values.append(&mut computed_attributes);
+        let (computed_attributes, body) = compile_computed_element_content(document, element)?;
         return Ok(Instruction::ContextNameElement {
-            namespace_override: namespace.map(str::to_owned),
+            namespace_override,
             static_namespaces: document.in_scope_namespaces(element).into(),
-            computed_attributes: attribute_set_values,
-            body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
+            computed_attributes,
+            body,
             location: document.location(element).clone(),
         });
     }
     if uses_xslt10_compatibility(document, element)
         && let Some(name) = compile_dynamic_element_name(document, element, name)
     {
-        let (mut computed_attributes, computed_attribute_nodes) =
-            compile_computed_attributes(document, element)?;
-        let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
-        attribute_set_values.retain(|set_attribute| {
-            !computed_attributes.iter().any(|attribute| {
-                attribute.dynamic_name.is_none()
-                    && set_attribute.dynamic_name.is_none()
-                    && attribute.name == set_attribute.name
-            })
-        });
-        attribute_set_values.append(&mut computed_attributes);
+        let (computed_attributes, body) = compile_computed_element_content(document, element)?;
         return Ok(Instruction::DynamicNameElement {
             name,
-            namespace_override: namespace.map(str::to_owned),
+            namespace_override,
             static_namespaces: document.in_scope_namespaces(element).into(),
-            computed_attributes: attribute_set_values,
-            body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
+            computed_attributes,
+            body,
             location: document.location(element).clone(),
         });
     }
+    if matches!(namespace_override, Some(DynamicNamespaceValue::Path(_))) {
+        let (computed_attributes, body) = compile_computed_element_content(document, element)?;
+        return Ok(Instruction::DynamicNameElement {
+            name: DynamicElementName::Literal(name.to_owned()),
+            namespace_override,
+            static_namespaces: document.in_scope_namespaces(element).into(),
+            computed_attributes,
+            body,
+            location: document.location(element).clone(),
+        });
+    }
+    let static_namespace = namespace_override
+        .as_ref()
+        .map(|namespace| match namespace {
+            DynamicNamespaceValue::Static(value) => value.as_str(),
+            DynamicNamespaceValue::Path(_) => unreachable!("dynamic namespace returned above"),
+        });
     let (name, mut namespaces) =
-        compile_static_computed_element_name(document, element, name, namespace)?;
+        compile_static_computed_element_name(document, element, name, static_namespace)?;
     let (mut computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
     let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
@@ -652,6 +652,57 @@ fn compile_static_computed_element(
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_computed_element_content(
+    document: &Document,
+    element: NodeId,
+) -> Result<(Vec<ComputedAttribute>, Vec<Instruction>), CompileFailure> {
+    let (mut computed_attributes, computed_attribute_nodes) =
+        compile_computed_attributes(document, element)?;
+    let mut attributes = compile_local_attribute_sets(document, element, None)?;
+    attributes.retain(|set_attribute| {
+        !computed_attributes.iter().any(|attribute| {
+            attribute.dynamic_name.is_none()
+                && set_attribute.dynamic_name.is_none()
+                && attribute.name == set_attribute.name
+        })
+    });
+    attributes.append(&mut computed_attributes);
+    let body = compile_sequence_excluding(document, element, &computed_attribute_nodes)?;
+    Ok((attributes, body))
+}
+
+fn compile_dynamic_element_namespace(
+    document: &Document,
+    element: NodeId,
+    lexical: Option<&str>,
+) -> Result<Option<DynamicNamespaceValue>, CompileFailure> {
+    let Some(lexical) = lexical else {
+        return Ok(None);
+    };
+    if !lexical.contains(['{', '}']) {
+        return Ok(Some(DynamicNamespaceValue::Static(lexical.to_owned())));
+    }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(expression) = lexical
+            .strip_prefix('{')
+            .and_then(|value| value.strip_suffix('}'))
+        && !expression.contains(['{', '}'])
+        && let Ok(path) = compile_sort_path(
+            document,
+            element,
+            expression.trim(),
+            document.location(element),
+        )
+    {
+        return Ok(Some(DynamicNamespaceValue::Path(Box::new(path))));
+    }
+    Err(unsupported(
+        "FXST1045",
+        "the private xsl:element namespace slice requires a static URI or one XSLT 1.0 path AVT",
+        document.location(element),
+    ))
 }
 
 fn compile_dynamic_element_name(
@@ -702,9 +753,12 @@ fn retain_computed_attribute_namespace_bindings(
                 | crate::xslt::golden_semantics_experiment::DynamicAttributeName::VariableAvt {
                     namespace_override,
                     ..
-                } => namespace_override
-                    .as_deref()
-                    .filter(|value| !value.is_empty()),
+                } => namespace_override.as_ref().and_then(|value| match value {
+                    DynamicNamespaceValue::Static(value) if !value.is_empty() => {
+                        Some(value.as_str())
+                    }
+                    DynamicNamespaceValue::Static(_) | DynamicNamespaceValue::Path(_) => None,
+                }),
             })
         })
     }) {

@@ -309,6 +309,7 @@ fn compile_bounded_escape_uri_attributes(
 pub(super) fn merge_output(
     mut existing: OutputDeclaration,
     next: OutputDeclaration,
+    recover_conflicts_by_declaration_order: bool,
 ) -> Result<OutputDeclaration, CompileFailure> {
     debug_assert!(existing.name.is_none() && next.name.is_none());
     let overlaps = existing
@@ -317,7 +318,7 @@ pub(super) fn merge_output(
         .filter(|property| !repeat_is_compatible(&existing, &next, property))
         .cloned()
         .collect::<Vec<_>>();
-    if !overlaps.is_empty() {
+    if !overlaps.is_empty() && !recover_conflicts_by_declaration_order {
         return Err(unsupported(
             "FXST1018",
             format!(
@@ -368,7 +369,9 @@ pub(super) fn merge_output(
     );
     merge_optional(&mut existing.settings.standalone, next.settings.standalone);
     merge_optional(&mut existing.settings.indent, next.settings.indent);
-    existing.settings.omit_xml_declaration |= next.settings.omit_xml_declaration;
+    if next.specified.contains("omit-xml-declaration") {
+        existing.settings.omit_xml_declaration = next.settings.omit_xml_declaration;
+    }
     for name in next.settings.cdata_section_elements {
         if !existing.settings.cdata_section_elements.contains(&name) {
             existing.settings.cdata_section_elements.push(name);
@@ -398,6 +401,9 @@ fn repeat_is_compatible(
         "html-version" => existing.settings.html_version == next.settings.html_version,
         "encoding" => existing.settings.encoding == next.settings.encoding,
         "indent" => existing.settings.indent == next.settings.indent,
+        "omit-xml-declaration" => {
+            existing.settings.omit_xml_declaration == next.settings.omit_xml_declaration
+        }
         _ => false,
     }
 }

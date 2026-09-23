@@ -410,6 +410,20 @@ fn compiles_a_simplified_stylesheet_through_the_literal_result_element_path() {
 }
 
 #[test]
+fn rejects_an_xslt_instruction_as_a_simplified_stylesheet_root() {
+    let document = parse_stylesheet(
+        "test:invalid-simplified-root.xsl",
+        br#"<xsl:template xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0" match="/"/>"#,
+    );
+    let failure = compile_stylesheet(&document)
+        .expect_err("an XSLT instruction is not a literal-result simplified stylesheet root");
+
+    assert_eq!(failure.code, "XTSE0010");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+    assert!(failure.detail.contains("literal result element"));
+}
+
+#[test]
 fn ignores_foreign_top_level_data_and_rejects_unqualified_top_level_elements() {
     let foreign = parse_stylesheet(
         "memory:foreign-top-level.xsl",
@@ -483,6 +497,11 @@ fn rejects_non_decimal_stylesheet_versions_and_mode_on_named_only_templates() {
 fn rejects_forbidden_mode_and_malformed_extension_prefixes_on_stylesheet_root() {
     for (label, attribute, code) in [
         ("root-mode", "mode=\"named\"", "XTSE0090"),
+        (
+            "xslt-namespace-attribute",
+            "xsl:use-attribute-sets=\"common\"",
+            "XTSE0090",
+        ),
         (
             "extension-prefix",
             "extension-element-prefixes=\"foo:bar\"",
@@ -1104,6 +1123,16 @@ fn rejects_overlapping_output_properties_during_bounded_merge() {
         .expect_err("repeated scalar properties remain outside bounded merging");
     assert_eq!(failure.code, "FXST1018");
     assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let xslt10 = parse_stylesheet(
+        "memory:xslt10-overlapping-output.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" encoding="US-ASCII" omit-xml-declaration="yes"/><xsl:output method="text" encoding="UTF-8" omit-xml-declaration="no"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&xslt10)
+        .expect("XSLT 1.0 may recover conflicting output properties by choosing last");
+    assert_eq!(program.output.method.as_deref(), Some("text"));
+    assert_eq!(program.output.encoding.as_deref(), Some("UTF-8"));
+    assert!(!program.output.omit_xml_declaration);
 }
 
 #[test]
@@ -1307,6 +1336,53 @@ fn compiles_exact_element_template_dispatch_and_modes() {
             && name.local == "tail"
             && mode == "#current"
     ));
+}
+
+#[test]
+fn rejects_invalid_template_mode_lists_without_treating_them_as_unsupported() {
+    for (label, version, mode) in [
+        ("empty", "1.0", ""),
+        ("invalid-qname", "1.0", "::"),
+        ("xslt10-list", "1.0", "one two"),
+        ("xslt10-reserved", "1.0", "#all"),
+        ("duplicate", "3.0", "one one"),
+        ("all-plus-name", "3.0", "#all one"),
+    ] {
+        let bytes = format!(
+            r#"<xsl:stylesheet version="{version}" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/" mode="{mode}"/></xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet(&format!("memory:{label}.xsl"), bytes.as_bytes());
+        let failure = compile_stylesheet(&document).expect_err("invalid mode list must fail");
+        assert_eq!(failure.code, "XTSE0550", "{label}");
+        assert_eq!(failure.category, CompileCategory::Invalid, "{label}");
+    }
+}
+
+#[test]
+fn rejects_invalid_template_invocation_children_as_static_errors() {
+    for (label, instruction) in [
+        (
+            "apply-templates",
+            "<xsl:apply-templates><xsl:text>bad</xsl:text></xsl:apply-templates>",
+        ),
+        (
+            "apply-imports",
+            "<xsl:apply-imports><xsl:text>bad</xsl:text></xsl:apply-imports>",
+        ),
+        (
+            "call-template",
+            "<xsl:call-template name=\"worker\"><xsl:sort/></xsl:call-template>",
+        ),
+    ] {
+        let bytes = format!(
+            r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/">{instruction}</xsl:template><xsl:template name="worker"/></xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet(&format!("memory:{label}.xsl"), bytes.as_bytes());
+        let failure =
+            compile_stylesheet(&document).expect_err("invalid invocation child must fail");
+        assert_eq!(failure.code, "XTSE0010", "{label}");
+        assert_eq!(failure.category, CompileCategory::Invalid, "{label}");
+    }
 }
 
 #[test]
@@ -2422,9 +2498,19 @@ fn computed_attribute_retains_static_namespace_and_literal_text() {
 
     let dynamic = parse_stylesheet(
         "memory:computed-attribute-dynamic-namespace.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="answer" namespace="{@namespace}">value</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="answer" namespace="{namespace-uri()}">value</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&dynamic).expect_err("namespace AVTs remain unsupported");
+    let failure = compile_stylesheet(&dynamic)
+        .expect_err("namespace AVTs outside the admitted path form remain unsupported");
+    assert_eq!(failure.code, "FXST1061");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let modern = parse_stylesheet(
+        "memory:computed-attribute-modern-dynamic-namespace.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="answer" namespace="{@namespace}">value</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&modern)
+        .expect_err("the path namespace compatibility slice must not widen modern semantics");
     assert_eq!(failure.code, "FXST1061");
     assert_eq!(failure.category, CompileCategory::Unsupported);
 }

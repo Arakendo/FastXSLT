@@ -126,6 +126,18 @@ pub(super) fn apply(program: &mut StylesheetProgram, aliases: &[NamespaceAlias])
     }
 }
 
+pub(super) fn overlay_higher_precedence(
+    aliases: &mut Vec<NamespaceAlias>,
+    higher_precedence: &[NamespaceAlias],
+) {
+    aliases.retain(|alias| {
+        !higher_precedence
+            .iter()
+            .any(|higher| higher.stylesheet_namespace == alias.stylesheet_namespace)
+    });
+    aliases.extend_from_slice(higher_precedence);
+}
+
 fn apply_instructions(instructions: &mut [Instruction], aliases: &[NamespaceAlias]) {
     for instruction in instructions {
         match instruction {

@@ -6,7 +6,7 @@ use crate::execution_control_experiment::InvocationControl;
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
-use crate::xslt::golden_semantics_experiment::DynamicElementName;
+use crate::xslt::golden_semantics_experiment::{DynamicElementName, DynamicNamespaceValue};
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs};
 use super::{
@@ -18,7 +18,7 @@ use super::{
 pub(super) struct DynamicElementNameRequest<'a> {
     pub(super) name: &'a DynamicElementName,
     pub(super) variables: &'a RuntimeVariables,
-    pub(super) namespace_override: Option<&'a str>,
+    pub(super) namespace_override: Option<&'a DynamicNamespaceValue>,
     pub(super) static_namespaces: &'a [NamespaceBinding],
     pub(super) location: &'a SourceLocation,
 }
@@ -30,6 +30,7 @@ pub(super) fn resolve_dynamic_element_name(
     control: &mut InvocationControl,
 ) -> Result<(ExpandedName, Arc<[NamespaceBinding]>), ExecutionFailure> {
     let lexical = match request.name {
+        DynamicElementName::Literal(value) => value.clone(),
         DynamicElementName::Path(path) => path_name_value(inputs, execution, path, control)?,
         DynamicElementName::FocusPosition { prefix, suffix } => {
             format!("{prefix}{}{suffix}", execution.focus_position)
@@ -45,13 +46,29 @@ pub(super) fn resolve_dynamic_element_name(
             )?
         }
     };
+    let namespace_override =
+        resolve_dynamic_element_namespace(inputs, execution, request.namespace_override, control)?;
     resolve_lexical_element_name(
         &lexical,
-        request.namespace_override,
+        namespace_override.as_deref(),
         request.static_namespaces,
         request.location,
         inputs.request_id,
     )
+}
+
+pub(super) fn resolve_dynamic_element_namespace(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    namespace: Option<&DynamicNamespaceValue>,
+    control: &mut InvocationControl,
+) -> Result<Option<String>, ExecutionFailure> {
+    namespace
+        .map(|namespace| match namespace {
+            DynamicNamespaceValue::Static(value) => Ok(value.clone()),
+            DynamicNamespaceValue::Path(path) => path_name_value(inputs, execution, path, control),
+        })
+        .transpose()
 }
 
 fn path_name_value(

@@ -32,6 +32,7 @@ impl StylesheetProgram {
             })
             + output_owned(&self.output)
             + vec_owned(&self.output_specified_properties, String::capacity)
+            + vec_owned(&self.output_same_precedence_properties, String::capacity)
             + vec_owned(&self.character_maps, character_map_owned)
             + vec_owned(&self.decimal_formats, decimal_format_owned)
             + vec_owned(&self.output_character_map_names, name_owned)
@@ -133,8 +134,15 @@ fn template_parameter_owned(value: &TemplateParameter) -> usize {
             }
             TemplateParameterDefault::Integer(_) => 0,
             TemplateParameterDefault::SourcePath(path) => path.known_owned_capacity_bytes(),
+            TemplateParameterDefault::SourceVariablePath { variable, path } => {
+                variable.capacity() + path.known_owned_capacity_bytes()
+            }
             TemplateParameterDefault::Xslt10BinaryNumeric(expression) => {
                 expression.known_owned_capacity_bytes()
+            }
+            TemplateParameterDefault::Xslt10SequenceConstructor(instructions) => {
+                size_of_val(instructions.as_ref())
+                    + instructions.iter().map(instruction_owned).sum::<usize>()
             }
             TemplateParameterDefault::Xslt10TextChoice {
                 branches,
@@ -632,7 +640,9 @@ fn dynamic_name_element_owned(value: &Instruction) -> usize {
         unreachable!("dynamic-name retention requires its element instruction")
     };
     dynamic_element_name_owned(name)
-        + option_string_owned(namespace_override.as_ref())
+        + namespace_override
+            .as_ref()
+            .map_or(0, dynamic_element_namespace_owned)
         + arc_slice_owned(static_namespaces, namespace_owned)
         + vec_owned(computed_attributes, computed_attribute_owned)
         + vec_owned(body, instruction_owned)
@@ -644,6 +654,7 @@ fn dynamic_element_name_owned(
 ) -> usize {
     use crate::xslt::golden_semantics_experiment::DynamicElementName;
     match name {
+        DynamicElementName::Literal(value) => value.capacity(),
         DynamicElementName::Path(path) => path.known_owned_capacity_bytes(),
         DynamicElementName::FocusPosition { prefix, suffix } => {
             prefix.capacity() + suffix.capacity()
@@ -658,6 +669,18 @@ fn dynamic_element_name_owned(
     }
 }
 
+fn dynamic_element_namespace_owned(
+    namespace: &crate::xslt::golden_semantics_experiment::DynamicNamespaceValue,
+) -> usize {
+    use crate::xslt::golden_semantics_experiment::DynamicNamespaceValue;
+    match namespace {
+        DynamicNamespaceValue::Static(value) => value.capacity(),
+        DynamicNamespaceValue::Path(path) => {
+            size_of_val(path.as_ref()) + path.known_owned_capacity_bytes()
+        }
+    }
+}
+
 fn context_name_element_owned(value: &Instruction) -> usize {
     let Instruction::ContextNameElement {
         namespace_override,
@@ -669,7 +692,9 @@ fn context_name_element_owned(value: &Instruction) -> usize {
     else {
         unreachable!("context-name retention requires a context-name element instruction")
     };
-    option_string_owned(namespace_override.as_ref())
+    namespace_override
+        .as_ref()
+        .map_or(0, dynamic_element_namespace_owned)
         + arc_slice_owned(static_namespaces, namespace_owned)
         + vec_owned(computed_attributes, computed_attribute_owned)
         + vec_owned(body, instruction_owned)
@@ -1521,14 +1546,18 @@ fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
                 static_namespaces,
             } => {
                 path.known_owned_capacity_bytes()
-                    + namespace_override.as_ref().map_or(0, String::capacity)
+                    + namespace_override
+                        .as_ref()
+                        .map_or(0, dynamic_element_namespace_owned)
                     + arc_slice_owned(static_namespaces, namespace_owned)
             }
             crate::xslt::golden_semantics_experiment::DynamicAttributeName::ContextName {
                 namespace_override,
                 static_namespaces,
             } => {
-                namespace_override.as_ref().map_or(0, String::capacity)
+                namespace_override
+                    .as_ref()
+                    .map_or(0, dynamic_element_namespace_owned)
                     + arc_slice_owned(static_namespaces, namespace_owned)
             }
             crate::xslt::golden_semantics_experiment::DynamicAttributeName::Literal {
@@ -1537,7 +1566,9 @@ fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
                 static_namespaces,
             } => {
                 value.capacity()
-                    + namespace_override.as_ref().map_or(0, String::capacity)
+                    + namespace_override
+                        .as_ref()
+                        .map_or(0, dynamic_element_namespace_owned)
                     + arc_slice_owned(static_namespaces, namespace_owned)
             }
             crate::xslt::golden_semantics_experiment::DynamicAttributeName::VariableAvt {
@@ -1557,7 +1588,9 @@ fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
             }
                     })
                     .sum::<usize>()
-                    + namespace_override.as_ref().map_or(0, String::capacity)
+                    + namespace_override
+                        .as_ref()
+                        .map_or(0, dynamic_element_namespace_owned)
                     + arc_slice_owned(static_namespaces, namespace_owned)
             }
         })

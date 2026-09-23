@@ -4,7 +4,8 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
-    ComputedAttribute, DynamicAttributeName, DynamicAttributeNamePart, LiteralAttributeValue,
+    ComputedAttribute, DynamicAttributeName, DynamicAttributeNamePart, DynamicNamespaceValue,
+    LiteralAttributeValue,
 };
 
 use super::value_expression_compiler::compile_xslt10_concat;
@@ -64,13 +65,7 @@ pub(super) fn compile_computed_attribute(
     ensure_only_attributes(document, element, &["name", "namespace"], "xsl:attribute")?;
     let name = required_attribute(document, element, None, "name")?;
     let namespace = optional_attribute(document, element, None, "namespace");
-    if namespace.is_some_and(|value| value.contains(['{', '}'])) {
-        return Err(unsupported(
-            "FXST1061",
-            "the private xsl:attribute namespace slice requires a static URI",
-            document.location(element),
-        ));
-    }
+    let namespace = compile_dynamic_attribute_namespace(document, element, namespace)?;
     let (name, dynamic_name) = compile_computed_attribute_name(document, element, name, namespace)?;
     if dynamic_name.is_none()
         && (name.local == "xmlns" || name.namespace.as_deref() == Some(XMLNS_NAMESPACE))
@@ -169,11 +164,28 @@ fn compile_computed_attribute_name(
     document: &Document,
     element: NodeId,
     lexical: &str,
-    namespace: Option<&str>,
+    namespace: Option<DynamicNamespaceValue>,
 ) -> Result<(ExpandedName, Option<DynamicAttributeName>), CompileFailure> {
     if !lexical.contains(['{', '}']) {
+        if matches!(namespace, Some(DynamicNamespaceValue::Path(_))) {
+            return Ok((
+                ExpandedName {
+                    namespace: None,
+                    local: String::new(),
+                },
+                Some(DynamicAttributeName::Literal {
+                    value: lexical.to_owned(),
+                    namespace_override: namespace,
+                    static_namespaces: document.in_scope_namespaces(element).into(),
+                }),
+            ));
+        }
+        let static_namespace = namespace.as_ref().map(|namespace| match namespace {
+            DynamicNamespaceValue::Static(value) => value.as_str(),
+            DynamicNamespaceValue::Path(_) => unreachable!("dynamic namespace returned above"),
+        });
         return Ok((
-            compile_static_attribute_name(document, element, lexical, namespace)?,
+            compile_static_attribute_name(document, element, lexical, static_namespace)?,
             None,
         ));
     }
@@ -184,7 +196,7 @@ fn compile_computed_attribute_name(
             document.location(element),
         ));
     }
-    let namespace_override = namespace.map(str::to_owned);
+    let namespace_override = namespace;
     let static_namespaces = || document.in_scope_namespaces(element).into();
     let dynamic_name = if let Some(parts) = parse_xslt10_name_avt_parts(lexical) {
         DynamicAttributeName::VariableAvt {
@@ -237,6 +249,38 @@ fn compile_computed_attribute_name(
             local: String::new(),
         },
         Some(dynamic_name),
+    ))
+}
+
+fn compile_dynamic_attribute_namespace(
+    document: &Document,
+    element: NodeId,
+    lexical: Option<&str>,
+) -> Result<Option<DynamicNamespaceValue>, CompileFailure> {
+    let Some(lexical) = lexical else {
+        return Ok(None);
+    };
+    if !lexical.contains(['{', '}']) {
+        return Ok(Some(DynamicNamespaceValue::Static(lexical.to_owned())));
+    }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(expression) = lexical
+            .strip_prefix('{')
+            .and_then(|value| value.strip_suffix('}'))
+        && !expression.contains(['{', '}'])
+        && let Ok(path) = super::compile_sort_path(
+            document,
+            element,
+            expression.trim(),
+            document.location(element),
+        )
+    {
+        return Ok(Some(DynamicNamespaceValue::Path(Box::new(path))));
+    }
+    Err(unsupported(
+        "FXST1061",
+        "the private xsl:attribute namespace slice requires a static URI or one XSLT 1.0 path AVT",
+        document.location(element),
     ))
 }
 

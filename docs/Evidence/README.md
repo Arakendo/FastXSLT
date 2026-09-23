@@ -7,6 +7,16 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Imported Namespace-Alias Precedence](oasis-xslt10-imported-namespace-alias-precedence-2026-09-23.md)
+- [OASIS XSLT 1.0 Included Output Import Precedence](oasis-xslt10-included-output-import-precedence-2026-09-23.md)
+- [OASIS XSLT 1.0 Dynamic Computed-Attribute Namespace](oasis-xslt10-dynamic-computed-attribute-namespace-2026-09-23.md)
+- [OASIS XSLT 1.0 Dynamic Computed-Element Namespace](oasis-xslt10-dynamic-computed-element-namespace-2026-09-23.md)
+- [OASIS XSLT 1.0 Template-Parameter Defaults](oasis-xslt10-template-parameter-sequence-constructor-2026-09-23.md)
+- [OASIS XSLT 1.0 Output-Declaration Recovery](oasis-xslt10-output-declaration-recovery-2026-09-23.md)
+- [OASIS XSLT 1.0 Included Template Conflict Selection](oasis-xslt10-included-template-conflict-selection-2026-09-23.md)
+- [OASIS XSLT 1.0 Included Output Declarations](oasis-xslt10-included-output-declarations-2026-09-23.md)
+- [OASIS XSLT 1.0 Static-Error Honesty](oasis-xslt10-static-error-honesty-2026-09-23.md)
+- [OASIS XSLT 1.0 Mixed-Module Import Precedence](oasis-xslt10-mixed-module-import-precedence-2026-09-22.md)
 - [OASIS XSLT 1.0 Homogeneous Stylesheet Dependency Branches](oasis-xslt10-homogeneous-stylesheet-dependency-branches-2026-09-22.md)
 - [OASIS XSLT 1.0 Linear Mixed Stylesheet Dependency Chain](oasis-xslt10-linear-mixed-stylesheet-dependency-chain-2026-09-22.md)
 - [OASIS XSLT 1.0 Transitive Stylesheet Resource Admission](oasis-xslt10-transitive-stylesheet-resource-admission-2026-09-22.md)

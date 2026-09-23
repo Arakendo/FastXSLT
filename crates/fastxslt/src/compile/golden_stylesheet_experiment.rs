@@ -38,10 +38,12 @@ mod xslt10_global_constructor_compiler;
 
 pub(crate) use stylesheet_module_compiler::{
     StylesheetDependencyKind, compile_stylesheet_with_import_and_include,
-    compile_stylesheet_with_imports, compile_stylesheet_with_single_imported_program_at,
-    compile_stylesheet_with_single_include, compile_stylesheet_with_single_include_program_at,
+    compile_stylesheet_with_imported_and_included_programs_at, compile_stylesheet_with_imports,
+    compile_stylesheet_with_single_imported_program_at, compile_stylesheet_with_single_include,
+    compile_stylesheet_with_single_include_program_at,
     compile_stylesheet_with_two_imported_programs_at,
     compile_stylesheet_with_two_included_programs_at, discovered_stylesheet_dependencies_at,
+    validate_import_order_at,
 };
 use stylesheet_validation::validate_named_template_references;
 use template_pattern_compiler::compile_match_pattern;
@@ -183,7 +185,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                     named_output_names.push(name.clone());
                 } else {
                     output = Some(match output {
-                        Some(existing) => merge_output(existing, declaration)?,
+                        Some(existing) => {
+                            merge_output(existing, declaration, declared_version == "1.0")?
+                        }
                         None => declaration,
                     });
                 }
@@ -314,11 +318,12 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let output_character_map_location = output.as_ref().and_then(|declaration| {
         (!declaration.character_map_names.is_empty()).then(|| declaration.location.clone())
     });
-    let output_specified_properties = output
+    let output_specified_properties: Vec<String> = output
         .as_ref()
         .map(|declaration| declaration.specified.iter().cloned().collect())
         .unwrap_or_default();
 
+    let output_same_precedence_properties = output_specified_properties.clone();
     let mut program = StylesheetProgram {
         declared_version,
         default_initial_mode,
@@ -328,6 +333,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         mode_policies: modes.policies,
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
         output_specified_properties,
+        output_same_precedence_properties,
         character_maps,
         decimal_formats: decimal_formats.into_definitions(),
         output_character_map_names,
@@ -799,6 +805,23 @@ fn validate_stylesheet_root_controls(
     document: &Document,
     root: NodeId,
 ) -> Result<(), CompileFailure> {
+    if let Some(attribute) = document.attributes(root).iter().copied().find(|attribute| {
+        document
+            .name(*attribute)
+            .is_some_and(|name| name.namespace.as_deref() == Some(XSLT_NAMESPACE))
+    }) {
+        let name = document
+            .name(attribute)
+            .expect("attribute nodes have expanded names");
+        return Err(invalid(
+            "XTSE0090",
+            format!(
+                "attribute xsl:{} is not permitted on xsl:stylesheet",
+                name.local
+            ),
+            document.location(attribute),
+        ));
+    }
     validate_exclude_result_prefixes(document, root)?;
     validate_extension_element_prefixes(document, root)?;
     if optional_attribute(document, root, None, "mode").is_some() {
@@ -2153,6 +2176,25 @@ fn compile_template_parameter_default(
         {
             return Ok(default);
         }
+        if instruction_compiler::uses_xslt10_compatibility(document, child)
+            && children
+                .iter()
+                .any(|node| document.kind(*node) != NodeKind::Text)
+        {
+            const MAX_SEQUENCE_CONSTRUCTOR_CHILDREN: usize = 64;
+            if children.len() > MAX_SEQUENCE_CONSTRUCTOR_CHILDREN {
+                return Err(unsupported(
+                    "FXST1032",
+                    format!(
+                        "the private XSLT 1.0 template-parameter sequence constructor is limited to {MAX_SEQUENCE_CONSTRUCTOR_CHILDREN} children"
+                    ),
+                    document.location(child),
+                ));
+            }
+            return Ok(TemplateParameterDefault::Xslt10SequenceConstructor(
+                instruction_compiler::compile_sequence(document, child)?.into_boxed_slice(),
+            ));
+        }
         if children
             .iter()
             .any(|node| document.kind(*node) != NodeKind::Text)
@@ -2176,6 +2218,17 @@ fn compile_template_parameter_default(
         crate::xpath::static_string_experiment::fold_binary_literal_function(select)
     {
         return Ok(TemplateParameterDefault::Text(value));
+    }
+    if instruction_compiler::uses_xslt10_compatibility(document, child)
+        && let Some((variable, path)) =
+            instruction_compiler::compile_xslt10_template_parameter_variable_path(
+                document,
+                child,
+                select,
+                document.location(child),
+            )?
+    {
+        return Ok(TemplateParameterDefault::SourceVariablePath { variable, path });
     }
     if let Some(variable) = select
         .strip_prefix('$')
