@@ -8,11 +8,14 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    KeyUseExpression, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyNodePredicate, Xslt10KeyValue,
+    KeyUseExpression, StylesheetProgram, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyNodePredicate,
+    Xslt10KeyValue,
 };
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs, required_source_context};
-use super::template_selector::{TemplateSelectionContext, matches_pattern};
+use super::template_selector::{
+    DocumentRootedMatchCache, TemplateSelectionContext, matches_pattern,
+};
 use super::value_evaluator::xslt10_number_lexical;
 use super::{ExecutionFailure, FailureCategory, control_failure, failure_at};
 
@@ -56,6 +59,7 @@ pub(super) fn select(
         let mut matches = false;
         for (definition_index, definition) in &definitions {
             let selection = TemplateSelectionContext {
+                program: inputs.program,
                 source,
                 node: candidate,
                 mode: None,
@@ -73,10 +77,10 @@ pub(super) fn select(
                 continue;
             }
             if evaluate_use(
-                inputs,
                 source,
                 candidate,
                 &definition.use_expression,
+                inputs.request_id,
                 control,
             )?
             .into_iter()
@@ -99,6 +103,98 @@ pub(super) fn select(
             tailed.extend(
                 evaluate_location_path_controlled(source, node, tail, control)
                     .map_err(|failure| control_failure(failure, inputs.request_id))?,
+            );
+        }
+        tailed.sort_unstable_by_key(|node| source.document_order(*node));
+        tailed.dedup();
+        selected = tailed;
+    }
+    Ok(selected)
+}
+
+pub(super) fn select_static_pattern(
+    program: &StylesheetProgram,
+    source: &Document,
+    lookup: &Xslt10KeyLookup,
+    request_id: &str,
+    document_rooted_matches: &std::cell::RefCell<DocumentRootedMatchCache>,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let (Xslt10KeyName::Static(lookup_name), Xslt10KeyValue::Static(lookup_value)) =
+        (&lookup.name, &lookup.value)
+    else {
+        return Err(failure_at(
+            "FXIN0001",
+            FailureCategory::Invalid,
+            Some(request_id),
+            lookup.location.clone(),
+            "compiled key() match pattern did not retain static arguments",
+        ));
+    };
+    let definitions = program
+        .key_definitions
+        .iter()
+        .enumerate()
+        .filter(|(_, definition)| definition.name == *lookup_name)
+        .collect::<Vec<_>>();
+    if definitions.is_empty() {
+        return Err(failure_at(
+            "XTDE1260",
+            FailureCategory::Invalid,
+            Some(request_id),
+            lookup.location.clone(),
+            format!("key() refers to an undeclared key: {}", lookup_name.local),
+        ));
+    }
+
+    let mut candidates = Vec::new();
+    collect_source_nodes(source, source.document_node(), &mut candidates);
+    let variables = BTreeMap::new();
+    let mut selected = Vec::new();
+    for candidate in candidates {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        for (definition_index, definition) in &definitions {
+            let selection = TemplateSelectionContext {
+                program,
+                source,
+                node: candidate,
+                mode: None,
+                variables: &variables,
+                request_id,
+                document_rooted_matches,
+            };
+            if !matches_pattern(
+                program.matched_templates.len() + *definition_index,
+                &definition.match_pattern,
+                &selection,
+                control,
+            )? {
+                continue;
+            }
+            if evaluate_use(
+                source,
+                candidate,
+                &definition.use_expression,
+                request_id,
+                control,
+            )?
+            .iter()
+            .any(|value| value == lookup_value)
+            {
+                selected.push(candidate);
+                break;
+            }
+        }
+    }
+
+    if let Some(tail) = &lookup.tail {
+        let mut tailed = Vec::new();
+        for node in selected {
+            tailed.extend(
+                evaluate_location_path_controlled(source, node, tail, control)
+                    .map_err(|failure| control_failure(failure, request_id))?,
             );
         }
         tailed.sort_unstable_by_key(|node| source.document_order(*node));
@@ -291,23 +387,23 @@ fn evaluate_lookup_value(
 }
 
 fn evaluate_use(
-    inputs: &SequenceInputs<'_>,
     source: &Document,
     candidate: NodeId,
     expression: &KeyUseExpression,
+    request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Vec<String>, ExecutionFailure> {
     match expression {
         KeyUseExpression::LiteralString(value) => Ok(vec![value.clone()]),
         KeyUseExpression::LocationPath(path) => {
             let selected = evaluate_location_path_controlled(source, candidate, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                .map_err(|failure| control_failure(failure, request_id))?;
             selected
                 .into_iter()
                 .map(|node| {
                     source
                         .string_value_controlled(node, control)
-                        .map_err(|failure| control_failure(failure, inputs.request_id))
+                        .map_err(|failure| control_failure(failure, request_id))
                 })
                 .collect()
         }
@@ -316,7 +412,7 @@ fn evaluate_use(
             for path in alternatives {
                 selected.extend(
                     evaluate_location_path_controlled(source, candidate, path, control)
-                        .map_err(|failure| control_failure(failure, inputs.request_id))?,
+                        .map_err(|failure| control_failure(failure, request_id))?,
                 );
             }
             selected.sort_unstable_by_key(|node| source.document_order(*node));
@@ -326,23 +422,23 @@ fn evaluate_use(
                 .map(|node| {
                     source
                         .string_value_controlled(node, control)
-                        .map_err(|failure| control_failure(failure, inputs.request_id))
+                        .map_err(|failure| control_failure(failure, request_id))
                 })
                 .collect()
         }
         KeyUseExpression::NumberPath(path) => {
             let selected = evaluate_location_path_controlled(source, candidate, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                .map_err(|failure| control_failure(failure, request_id))?;
             let lexical = if let Some(node) = selected.first().copied() {
                 source
                     .string_value_controlled(node, control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?
+                    .map_err(|failure| control_failure(failure, request_id))?
             } else {
                 String::new()
             };
             control
                 .charge(WorkDomain::XPathOperation, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                .map_err(|failure| control_failure(failure, request_id))?;
             Ok(vec![xslt10_number_lexical(&lexical)])
         }
     }

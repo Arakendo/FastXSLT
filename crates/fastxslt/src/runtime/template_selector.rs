@@ -21,6 +21,7 @@ use super::runtime_failure::{
 use super::variable_filtered_path::{attribute_equals_atomic, matches as matches_variable_path};
 
 pub(super) struct TemplateSelectionContext<'a> {
+    pub(super) program: &'a StylesheetProgram,
     pub(super) source: &'a Document,
     pub(super) node: NodeId,
     pub(super) mode: Option<&'a str>,
@@ -447,6 +448,30 @@ pub(super) fn matches_pattern(
         } => matches_descendant_sibling_boundary(
             source, node, ancestor, element, *boundary, request_id, control,
         ),
+        MatchPattern::Xslt10KeyLookup(lookup) => {
+            if let Some(matches) = selection
+                .document_rooted_matches
+                .borrow()
+                .lookup(template_index, node)
+            {
+                return Ok(matches);
+            }
+            let selected = super::key_lookup::select_static_pattern(
+                selection.program,
+                source,
+                lookup,
+                request_id,
+                selection.document_rooted_matches,
+                control,
+            )?;
+            let matches = selected.contains(&node);
+            selection.document_rooted_matches.borrow_mut().insert(
+                template_index,
+                source.node_count(),
+                &selected,
+            );
+            Ok(matches)
+        }
         MatchPattern::Path(path) => match_path_pattern(
             source,
             node,

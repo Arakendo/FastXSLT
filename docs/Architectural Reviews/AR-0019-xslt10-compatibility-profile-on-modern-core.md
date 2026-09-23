@@ -2726,3 +2726,11 @@ maintained redistributable legacy suite becomes available.
   by the stylesheet. Initialization reaches 2,200 and successful execution
   2,147 while the strict lower bound remains 1,999 / 3,173 (63.00%).
   [Evidence](../Evidence/oasis-xslt10-variable-name-sequence-predicates-2026-09-23.md)
+- 2026-09-23 -- Static XSLT 1.0 `key()` match patterns now reuse the declared
+  key definitions, charged key-use/path evaluation, and the existing bounded
+  invocation-owned document-rooted membership cache. Literal key name/value
+  arguments and an optional admitted child/descendant tail are supported;
+  dynamic arguments and broader pattern grammar remain explicit boundaries.
+  Six unchanged OASIS cases become exact, raising the sweep to 2,005 / 3,173
+  (63.19%), with 2,206 initialized and 2,153 executed successfully.
+  [Evidence](../Evidence/oasis-xslt10-key-match-patterns-2026-09-23.md)

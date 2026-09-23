@@ -312,6 +312,41 @@ pub(super) fn compile_match_pattern(
                 boundary,
             }
         }
+        invalid_pattern if invalid_match_pattern_reason(invalid_pattern).is_some() => {
+            return Err(invalid(
+                "FXST1005",
+                invalid_match_pattern_reason(invalid_pattern)
+                    .expect("invalid match-pattern reason was checked"),
+                document.location(element),
+            ));
+        }
+        key_pattern
+            if super::instruction_compiler::uses_xslt10_compatibility(document, element)
+                && key_pattern.trim_start().starts_with("key(") =>
+        {
+            let lookup =
+                super::instruction_compiler::value_expression_compiler::compile_xslt10_literal_key_lookup(
+                    document,
+                    element,
+                    key_pattern,
+                    &document.location(element).clone(),
+                )?;
+            if !matches!(
+                (&lookup.name, &lookup.value),
+                (
+                    crate::xslt::golden_semantics_experiment::Xslt10KeyName::Static(_),
+                    crate::xslt::golden_semantics_experiment::Xslt10KeyValue::Static(_)
+                )
+            ) || lookup.predicate.is_some()
+            {
+                return Err(invalid(
+                    "FXST1005",
+                    "XSLT 1.0 key() match-pattern arguments must be string literals",
+                    document.location(element),
+                ));
+            }
+            MatchPattern::Xslt10KeyLookup(Box::new(lookup))
+        }
         path if path.starts_with("//")
             && effective_xpath_default_namespace(document, element).is_none()
             && parse_location_path(path, document.location(element).clone())
@@ -1091,6 +1126,7 @@ fn compile_template_priority(
             | MatchPattern::ElementWithSequentialPredicates { .. }
             | MatchPattern::DescendantElementPathAtPosition { .. }
             | MatchPattern::DescendantElementAtNamedSiblingBoundary { .. }
+            | MatchPattern::Xslt10KeyLookup(_)
             | MatchPattern::UnionAlternatives(_) => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT

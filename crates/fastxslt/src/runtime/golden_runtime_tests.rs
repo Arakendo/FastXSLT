@@ -3320,6 +3320,33 @@ fn xslt10_key_lookup_has_node_set_effective_boolean_value() {
 }
 
 #[test]
+fn xslt10_key_match_patterns_select_keyed_nodes_and_relative_children() {
+    const SOURCE: &str = "urn:fastxslt:key-pattern:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-pattern:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:key name="sections" match="section" use="title"/><xsl:template match="/"><xsl:apply-templates select="key('sections', 'Introduction')/p"/><xsl:apply-templates select="key('sections', 'Details')"/></xsl:template><xsl:template match="key('sections', 'Introduction')/p"><xsl:value-of select="."/><xsl:text>|</xsl:text></xsl:template><xsl:template match="key('sections', 'Details')"><xsl:value-of select="p"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><section><title>Introduction</title><p>intro</p></section><section><title>Details</title><p>detail</p></section></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-pattern", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(results.by_request["key-pattern"].serialized, "intro|detail");
+}
+
+#[test]
 fn xslt10_key_use_path_union_restores_document_order_and_node_identity() {
     const SOURCE: &str = "urn:fastxslt:key-use-union:source";
     const STYLESHEET: &str = "urn:fastxslt:key-use-union:stylesheet";

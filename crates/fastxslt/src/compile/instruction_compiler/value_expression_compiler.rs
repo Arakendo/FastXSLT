@@ -797,7 +797,7 @@ fn compile_format_number(
     Ok(Box::new(format))
 }
 
-pub(super) fn compile_xslt10_literal_key_lookup(
+pub(in crate::compile) fn compile_xslt10_literal_key_lookup(
     document: &Document,
     element: NodeId,
     expression: &str,

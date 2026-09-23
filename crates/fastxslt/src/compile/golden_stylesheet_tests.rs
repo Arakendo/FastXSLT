@@ -101,6 +101,24 @@ fn xslt10_key_lookup_with_variable_name_compiles_as_a_typed_plan() {
 }
 
 #[test]
+fn xslt10_static_key_match_patterns_compile_as_typed_plans() {
+    let document = parse_stylesheet(
+        "test:key-match-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0"
+              xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:key name="sections" match="section" use="title"/>
+              <xsl:template match="key('sections', 'Introduction')/p"/>
+            </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("static key match pattern should compile");
+    assert!(matches!(
+        program.matched_templates[0].pattern,
+        MatchPattern::Xslt10KeyLookup(_)
+    ));
+}
+
+#[test]
 fn xslt10_namespace_alias_rewrites_literal_result_names_and_bindings() {
     let document = parse_stylesheet(
         "test:namespace-alias.xsl",
@@ -1812,7 +1830,7 @@ fn compiles_attribute_name_predicate_with_path_priority() {
 }
 
 #[test]
-fn distinguishes_invalid_match_grammar_from_unimplemented_id_key_semantics() {
+fn distinguishes_invalid_match_grammar_from_unimplemented_id_semantics() {
     for lexical in ["$var", "key(bookstore, bookstore)"] {
         let stylesheet = parse_stylesheet(
             "memory:invalid-match-grammar.xsl",
@@ -1826,19 +1844,14 @@ fn distinguishes_invalid_match_grammar_from_unimplemented_id_key_semantics() {
         assert_eq!(failure.category, CompileCategory::Invalid);
     }
 
-    for lexical in ["id('b')", "key('x','Redmond')"] {
-        let stylesheet = parse_stylesheet(
-            "memory:unsupported-match-capability.xsl",
-            format!(
-                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="{lexical}"/></xsl:stylesheet>"#
-            )
-            .as_bytes(),
-        );
-        let failure = compile_stylesheet(&stylesheet)
-            .expect_err("valid but unimplemented id/key semantics must fail");
-        assert_eq!(failure.code, "FXST1005");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
-    }
+    let stylesheet = parse_stylesheet(
+        "memory:unsupported-match-capability.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="id('b')"/></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&stylesheet)
+        .expect_err("valid but unimplemented id() semantics must fail");
+    assert_eq!(failure.code, "FXST1005");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
 }
 
 #[test]

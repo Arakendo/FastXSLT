@@ -78,7 +78,7 @@ mod boolean_expression_compiler;
 #[path = "instruction_compiler/conditional_expression_compiler.rs"]
 mod conditional_expression_compiler;
 #[path = "instruction_compiler/value_expression_compiler.rs"]
-mod value_expression_compiler;
+pub(super) mod value_expression_compiler;
 #[path = "instruction_compiler/xslt10_static_introspection_compiler.rs"]
 mod xslt10_static_introspection_compiler;
 pub(super) use value_expression_compiler::compile_value_expression;

@@ -462,6 +462,7 @@ fn apply_initial_mode_template(
     if let Some((template_index, template)) = select_template_with_index(
         inputs.program,
         &TemplateSelectionContext {
+            program: inputs.program,
             source,
             node,
             mode: Some(mode),
@@ -3090,6 +3091,7 @@ fn execute_next_match(
     if let Some((next_index, template)) = select_next_template(
         inputs.program,
         &TemplateSelectionContext {
+            program: inputs.program,
             source,
             node,
             mode: execution.current_mode,
@@ -3165,6 +3167,7 @@ fn execute_apply_imports(
     if let Some((next_index, template)) = select_imported_template(
         inputs.program,
         &TemplateSelectionContext {
+            program: inputs.program,
             source,
             node,
             mode: execution.current_mode,
@@ -5390,6 +5393,7 @@ fn apply_template_at(
     if let Some((template_index, template)) = select_template_with_index(
         inputs.program,
         &TemplateSelectionContext {
+            program: inputs.program,
             source,
             node,
             mode,
