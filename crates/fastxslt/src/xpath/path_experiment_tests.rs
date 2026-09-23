@@ -2268,6 +2268,31 @@ fn path_boolean_predicates_select_nested_relative_path_existence() {
 }
 
 #[test]
+fn path_boolean_predicates_select_children_by_nested_attribute_prefix() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><level><name first='John'/></level><level><name first='Amy'/></level><level><other first='Jane'/></level></root>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let path = parse_location_path("level[name[starts-with(@first,'J')]]", location())
+        .expect("nested attribute-prefix predicate should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, root, &path, &mut control)
+        .expect("nested attribute-prefix predicate evaluation should succeed");
+
+    assert_eq!(selected, [document.children(root)[0]]);
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+    assert!(control.consumed(WorkDomain::XPathOperation) > 0);
+}
+
+#[test]
 fn path_boolean_conjunction_preserves_original_position_focus() {
     let parsed = parse_document(
         "memory:source.xml",

@@ -2734,3 +2734,11 @@ maintained redistributable legacy suite becomes available.
   Six unchanged OASIS cases become exact, raising the sweep to 2,005 / 3,173
   (63.19%), with 2,206 initialized and 2,153 executed successfully.
   [Evidence](../Evidence/oasis-xslt10-key-match-patterns-2026-09-23.md)
+- 2026-09-23 -- The shared typed path evaluator now admits the bounded nested
+  predicate `Name[starts-with(@First,'J')]`: one unqualified child, one
+  unqualified attribute, and one literal prefix, with charged document-order
+  traversal and comparison. This is shared XPath behavior rather than a
+  key-specific executor. Unchanged Lotus `idkey44` and `idkey45` become exact,
+  raising the sweep to 2,007 / 3,173 (63.25%), with 2,208 initialized and 2,155
+  executed successfully.
+  [Evidence](../Evidence/oasis-xslt10-nested-child-attribute-prefix-predicate-2026-09-23.md)

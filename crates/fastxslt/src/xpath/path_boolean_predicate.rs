@@ -96,6 +96,11 @@ pub(super) enum PathBooleanPredicate {
         outer: Vec<RelativeChildStep>,
         inner: Vec<RelativeChildStep>,
     },
+    ChildAttributeStartsWith {
+        child: String,
+        attribute: String,
+        prefix: String,
+    },
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
@@ -169,6 +174,11 @@ impl PathBooleanPredicate {
             Self::NestedChildPathExists { outer, inner } => {
                 child_path_capacity(outer) + child_path_capacity(inner)
             }
+            Self::ChildAttributeStartsWith {
+                child,
+                attribute,
+                prefix,
+            } => child.capacity() + attribute.capacity() + prefix.capacity(),
             Self::ContextStringEquals(value)
             | Self::ContextNameComparison { value, .. }
             | Self::ContextNameStartsWith(value)
@@ -299,6 +309,13 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     if let Some((outer, inner)) = parse_nested_child_path_existence(predicate) {
         return Some(PathBooleanPredicate::NestedChildPathExists { outer, inner });
     }
+    if let Some((child, attribute, prefix)) = parse_child_attribute_starts_with(predicate) {
+        return Some(PathBooleanPredicate::ChildAttributeStartsWith {
+            child,
+            attribute,
+            prefix,
+        });
+    }
     if let Some((name, position, value)) = parse_positional_child_string_equality(predicate) {
         return Some(PathBooleanPredicate::PositionalChildStringEquals {
             name,
@@ -413,6 +430,10 @@ pub(super) fn evaluate(
     }
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "the exhaustive typed predicate dispatch remains one semantic ownership point"
+)]
 fn evaluate_atomic(
     document: &Document,
     predicate: &PathBooleanPredicate,
@@ -503,6 +524,11 @@ fn evaluate_atomic(
         PathBooleanPredicate::NestedChildPathExists { outer, inner } => {
             nested_child_path_exists(document, node, outer, inner, control)
         }
+        PathBooleanPredicate::ChildAttributeStartsWith {
+            child,
+            attribute,
+            prefix,
+        } => child_attribute_starts_with(document, node, child, attribute, prefix, control),
         PathBooleanPredicate::Present(_)
         | PathBooleanPredicate::Equals { .. }
         | PathBooleanPredicate::NotEquals { .. }
@@ -657,6 +683,41 @@ fn nested_child_path_exists(
     Ok(false)
 }
 
+fn child_attribute_starts_with(
+    document: &Document,
+    node: NodeId,
+    child: &str,
+    attribute: &str,
+    prefix: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for candidate in document.children(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if !document
+            .name(candidate)
+            .is_some_and(|name| name.namespace.is_none() && name.local == child)
+        {
+            continue;
+        }
+        for candidate_attribute in document.attributes(candidate).iter().copied() {
+            control.charge(WorkDomain::XPathNodeVisit, 1)?;
+            if document
+                .name(candidate_attribute)
+                .is_some_and(|name| name.namespace.is_none() && name.local == attribute)
+            {
+                control.charge(WorkDomain::XPathOperation, 1)?;
+                if document
+                    .string_value(candidate_attribute)
+                    .starts_with(prefix)
+                {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+    Ok(false)
+}
+
 fn context_string_equals(
     document: &Document,
     node: NodeId,
@@ -800,6 +861,22 @@ fn parse_nested_child_path_existence(
     Some((
         parse_relative_child_path(outer.trim())?,
         parse_relative_child_path(inner.trim())?,
+    ))
+}
+
+fn parse_child_attribute_starts_with(predicate: &str) -> Option<(String, String, String)> {
+    let (child, inner) = predicate.split_once('[')?;
+    let arguments = inner
+        .strip_suffix(']')?
+        .strip_prefix("starts-with(")?
+        .strip_suffix(')')?;
+    let (attribute, prefix) = arguments.split_once(',')?;
+    let child = child.trim();
+    let attribute = attribute.trim().strip_prefix('@')?;
+    (is_ncname(child) && is_ncname(attribute)).then_some((
+        child.to_owned(),
+        attribute.to_owned(),
+        xpath_string_literal(prefix.trim())?.to_owned(),
     ))
 }
 
