@@ -449,6 +449,12 @@ fn format_decimal(
     format: &DecimalFormat,
     xslt10_compatibility: bool,
 ) -> Result<String, FormatNumberEvaluationFailure> {
+    // XSLT 1.0 deliberately uses the JDK 1.1 DecimalFormat pattern language
+    // from before currency-sign support was added. The Recommendation makes
+    // U+00A4 invalid anywhere in the picture, including quoted literals.
+    if xslt10_compatibility && picture.contains('\u{00a4}') {
+        return Err(FormatNumberEvaluationFailure::InvalidPicture);
+    }
     let number = if value_is_expression {
         evaluate_source_free_number(value).ok_or(FormatNumberEvaluationFailure::Unsupported(
             FormatNumberUnsupported::Number,
@@ -1314,6 +1320,29 @@ mod tests {
                 Err(FormatNumberEvaluationFailure::InvalidPicture)
             );
         }
+    }
+
+    #[test]
+    fn xslt10_rejects_the_currency_sign_in_static_and_dynamic_pictures() {
+        let expression =
+            parse_with_path_operands("format-number(1234.5, '¤#,##0.00')", &location(), true)
+                .expect("XSLT 1.0 format-number expression should parse");
+        assert_eq!(
+            evaluate(&expression, &BTreeMap::new()),
+            Err(FormatNumberEvaluationFailure::InvalidPicture)
+        );
+
+        let expression =
+            parse_with_path_operands("format-number($value, $picture)", &location(), true)
+                .expect("dynamic XSLT 1.0 picture should parse");
+        let variables = BTreeMap::from([
+            ("value".to_owned(), AtomicValue::string("1234.5")),
+            ("picture".to_owned(), AtomicValue::string("'¤'0.00")),
+        ]);
+        assert_eq!(
+            evaluate(&expression, &variables),
+            Err(FormatNumberEvaluationFailure::InvalidPicture)
+        );
     }
 
     #[test]

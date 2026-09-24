@@ -5827,6 +5827,15 @@ host lifecycle.
     empty-element indentation mismatch and one later `xsl:apply-imports`
     context failure remain explicit.
     [Evidence](../Evidence/oasis-xslt10-invocation-owned-message-2026-09-23.md)
+  - [x] Reject U+00A4 CURRENCY SIGN in resolved XSLT 1.0 `format-number()`
+    pictures as required by the Recommendation's JDK 1.1 pattern boundary.
+    One Microsoft expected-error case now produces `XTDE1310`; one Lotus
+    implementation-specific recovery output deliberately loses exact credit.
+    The sweep records 2,233 initialized, 2,173 successfully executed, five
+    remaining unexpected expected-error successes, and 2,025 / 3,173 exact
+    matches (63.82%). The remaining five were audited rather than coerced into
+    non-standard failures.
+    [Evidence](../Evidence/oasis-xslt10-currency-picture-error-2026-09-23.md)
   - [x] Separate proven-invalid resolved `format-number()` pictures from
     genuinely unsupported formatting work. Eleven runtime cases move from
     `FXRT1007` to invalid `XTDE1310`, reducing that unsupported frontier from

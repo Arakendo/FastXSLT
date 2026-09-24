@@ -6175,6 +6175,36 @@ fn format_number_reports_invalid_picture_grammar_separately_from_unsupported_wor
 }
 
 #[test]
+fn xslt10_format_number_rejects_a_currency_sign_selected_from_the_source() {
+    const SOURCE: &str = "urn:fastxslt:currency-picture:source";
+    const STYLESHEET: &str = "urn:fastxslt:currency-picture:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><case number="1234.5" pattern="&#xA4;#,##0.00"/></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="doc/case"><xsl:variable name="number" select="@number"/><xsl:variable name="pattern" select="@pattern"/><xsl:value-of select="format-number($number, $pattern)"/></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile dynamic currency picture probe");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("currency-picture", "result", SOURCE))
+        .expect("add currency-picture request");
+
+    let failure = execute_transform_set(builder.seal()).expect_err("currency picture must fail");
+    assert_eq!(failure.code, "XTDE1310");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
 fn xslt10_format_number_converts_first_nodes_selected_by_child_paths() {
     const SOURCE: &str = "urn:fastxslt:format-number-child-paths:source";
     const STYLESHEET: &str = "urn:fastxslt:format-number-child-paths:stylesheet";

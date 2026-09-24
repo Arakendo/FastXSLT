@@ -2817,3 +2817,13 @@ maintained redistributable legacy suite becomes available.
   `XTMM9000`, one case reaches a later `xsl:apply-imports` context failure, and
   one empty-result indentation mismatch remains visible.
   [Evidence](../Evidence/oasis-xslt10-invocation-owned-message-2026-09-23.md)
+- 2026-09-23 -- Resolved XSLT 1.0 `format-number()` pictures now reject U+00A4
+  CURRENCY SIGN with structured `XTDE1310`, preserving the Recommendation's
+  pre-currency JDK 1.1 pattern boundary for literal, variable, and path-selected
+  pictures. One Microsoft expected-error case is now observed; one Lotus
+  implementation-specific recovery output loses exact credit. The sweep moves
+  to 2,233 initialized, 2,173 successfully executed, and 2,025 / 3,173 exact
+  matches (63.82%), while unexpected expected-error successes fall from six to
+  five. The remaining five were audited and are not treated as one missing
+  engine feature.
+  [Evidence](../Evidence/oasis-xslt10-currency-picture-error-2026-09-23.md)
