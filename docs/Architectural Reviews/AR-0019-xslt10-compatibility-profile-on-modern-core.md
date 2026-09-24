@@ -2807,3 +2807,13 @@ maintained redistributable legacy suite becomes available.
   and eliminate the corpus-visible `FXST1044` frontier without changing the
   conserved counts or admitting extension comparison behavior.
   [Evidence](../Evidence/oasis-xslt10-sort-data-type-invalid-effective-values-2026-09-23.md)
+- 2026-09-23 -- XSLT 1.0 `xsl:message` now compiles to a private typed
+  instruction and records bounded invocation-owned message text without
+  entering the principal result tree or selecting an ambient/public sink.
+  `terminate="yes"` records before structured `XTMM9000`; message construction
+  remains under existing result work accounting. The unchanged sweep moves to
+  2,233 initialized, 2,175 successfully executed, and 2,026 / 3,173 exact
+  matches (63.85%). Seventeen cases become exact, four terminating cases expose
+  `XTMM9000`, one case reaches a later `xsl:apply-imports` context failure, and
+  one empty-result indentation mismatch remains visible.
+  [Evidence](../Evidence/oasis-xslt10-invocation-owned-message-2026-09-23.md)

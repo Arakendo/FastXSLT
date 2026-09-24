@@ -353,14 +353,7 @@ fn compile_xslt_instruction(
         "call-template" => compile_call_template(document, element)?,
         "copy" => compile_copy(document, element)?,
         "copy-of" => compile_copy_of(document, element)?,
-        "message" => {
-            validate_xslt10_message(document, element)?;
-            return Err(unsupported(
-                "FXST1006",
-                "unsupported XSLT instruction: xsl:message",
-                document.location(element),
-            ));
-        }
+        "message" => compile_xslt10_message(document, element)?,
         _ => {
             return Err(unsupported(
                 "FXST1006",
@@ -372,22 +365,35 @@ fn compile_xslt_instruction(
     Ok(instruction)
 }
 
-fn validate_xslt10_message(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
+fn compile_xslt10_message(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
     if !uses_xslt10_compatibility(document, element) {
-        return Ok(());
-    }
-
-    ensure_only_attributes(document, element, &["terminate"], "xsl:message")?;
-    if let Some(terminate) = optional_attribute(document, element, None, "terminate")
-        && !matches!(terminate, "yes" | "no")
-    {
-        return Err(invalid(
-            "XTSE0020",
-            "xsl:message terminate must be 'yes' or 'no' in XSLT 1.0",
+        return Err(unsupported(
+            "FXST1006",
+            "unsupported XSLT instruction: xsl:message",
             document.location(element),
         ));
     }
-    Ok(())
+
+    ensure_only_attributes(document, element, &["terminate"], "xsl:message")?;
+    let terminate = match optional_attribute(document, element, None, "terminate") {
+        None | Some("no") => false,
+        Some("yes") => true,
+        Some(_) => {
+            return Err(invalid(
+                "XTSE0020",
+                "xsl:message terminate must be 'yes' or 'no' in XSLT 1.0",
+                document.location(element),
+            ));
+        }
+    };
+    Ok(Instruction::Xslt10Message {
+        terminate,
+        body: compile_sequence(document, element)?,
+        location: document.location(element).clone(),
+    })
 }
 
 fn compile_literal_text_node(

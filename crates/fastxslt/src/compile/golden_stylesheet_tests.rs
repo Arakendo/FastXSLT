@@ -2311,7 +2311,7 @@ fn distinguishes_invalid_stylesheet_from_unsupported_instruction() {
 
     let unsupported = parse_stylesheet(
             "memory:unsupported.xsl",
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:message>unsupported</xsl:message></xsl:template></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:message>unsupported</xsl:message></xsl:template></xsl:stylesheet>"#,
         );
     let failure =
         compile_stylesheet(&unsupported).expect_err("unsupported instruction should fail");
@@ -2364,7 +2364,7 @@ fn distinguishes_invalid_stylesheet_from_unsupported_instruction() {
 }
 
 #[test]
-fn validates_xslt10_message_before_reporting_unsupported_execution() {
+fn compiles_xslt10_message_after_validating_its_attributes() {
     for terminate in [None, Some("no"), Some("yes")] {
         let attribute = terminate
             .map(|value| format!(r#" terminate="{value}""#))
@@ -2376,10 +2376,15 @@ fn validates_xslt10_message_before_reporting_unsupported_execution() {
             )
             .as_bytes(),
         );
-        let failure = compile_stylesheet(&stylesheet)
-            .expect_err("valid XSLT 1.0 message should remain explicitly unsupported");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
-        assert_eq!(failure.code, "FXST1006");
+        let program = compile_stylesheet(&stylesheet)
+            .expect("valid XSLT 1.0 messages should compile to invocation-owned observations");
+        assert!(matches!(
+            &program.root_template.as_ref().unwrap().body[..],
+            [crate::xslt::golden_semantics_experiment::Instruction::Xslt10Message {
+                terminate: compiled,
+                ..
+            }] if *compiled == (terminate == Some("yes"))
+        ));
     }
 
     for terminate in ["", "true", "foobar", " yes "] {

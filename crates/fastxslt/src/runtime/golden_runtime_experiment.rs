@@ -761,23 +761,16 @@ fn execute_instruction(
         } => {
             execute_value_of(inputs, select, separator, execution, scope, result, control)?;
         }
-        Instruction::SequenceNodes { select, .. } => {
-            result.extend(execute_sequence_nodes(
-                inputs,
-                select,
-                execution.node,
-                control,
-            )?);
-        }
-        Instruction::SequenceItems { select, .. } => {
-            result.extend(execute_sequence_items(
-                inputs,
-                select,
-                execution.node,
-                scope,
-                control,
-            )?);
-        }
+        Instruction::Xslt10Message {
+            terminate,
+            body,
+            location,
+        } => execute_xslt10_message(
+            inputs, body, *terminate, location, execution, scope, control,
+        )?,
+        Instruction::SequenceNodes { .. } | Instruction::SequenceItems { .. } => result.extend(
+            execute_sequence_instruction(inputs, instruction, execution, scope, control)?,
+        ),
         Instruction::Variable { .. }
         | Instruction::StaticAtomicVariable { .. }
         | Instruction::VariableAlias { .. }
@@ -829,6 +822,71 @@ fn execute_instruction(
         )?),
     }
     Ok(())
+}
+
+fn execute_sequence_instruction(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    execution: SequenceContext<'_>,
+    scope: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    match instruction {
+        Instruction::SequenceNodes { select, .. } => {
+            execute_sequence_nodes(inputs, select, execution.node, control)
+        }
+        Instruction::SequenceItems { select, .. } => {
+            execute_sequence_items(inputs, select, execution.node, scope, control)
+        }
+        _ => unreachable!("only sequence instructions are delegated here"),
+    }
+}
+
+fn execute_xslt10_message(
+    inputs: &SequenceInputs<'_>,
+    body: &[Instruction],
+    terminate: bool,
+    location: &SourceLocation,
+    execution: SequenceContext<'_>,
+    scope: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let nodes = execute_sequence(inputs, body, execution, scope, control)?;
+    let content = message_string_value(&nodes);
+    control.record_message(content.clone());
+    if terminate {
+        return Err(failure_at(
+            "XTMM9000",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            format!("xsl:message requested termination: {content}"),
+        ));
+    }
+    Ok(())
+}
+
+fn message_string_value(nodes: &[ResultNode]) -> String {
+    fn append(node: &ResultNode, value: &mut String) {
+        match node {
+            ResultNode::Element { children, .. } => {
+                for child in children {
+                    append(child, value);
+                }
+            }
+            ResultNode::Text(text) => value.push_str(text),
+            ResultNode::PendingAttribute(_)
+            | ResultNode::Xslt10RecoverableAttribute(_)
+            | ResultNode::ProcessingInstruction { .. }
+            | ResultNode::Comment(_) => {}
+        }
+    }
+
+    let mut value = String::new();
+    for node in nodes {
+        append(node, &mut value);
+    }
+    value
 }
 
 fn execute_node_constructor(

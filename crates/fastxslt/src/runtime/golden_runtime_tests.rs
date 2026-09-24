@@ -217,6 +217,97 @@ fn source_dependent_global_count_uses_the_principal_document_focus() {
 }
 
 #[test]
+fn xslt10_message_is_invocation_owned_and_does_not_enter_the_principal_result() {
+    let source = parse_document(
+        "memory:message.xml",
+        b"<docs><a>payload</a></docs>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:message.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="/"><out><xsl:message>seen <xsl:value-of select="docs/a"/></xsl:message>kept</out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("XSLT 1.0 message should compile");
+    let mut control = InvocationControl::unbounded();
+    let result = execute_program(&program, &source, "message-request", &mut control)
+        .expect("non-terminating message should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "message-request",
+        4_096,
+        &mut control,
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>kept</out>");
+    assert_eq!(control.messages(), ["seen payload"]);
+
+    let mut limits = WorkLimits::unbounded();
+    limits.result_text_bytes = 4;
+    let mut bounded = InvocationControl::new(CancellationToken::new(), limits);
+    let failure = execute_program(&program, &source, "bounded-message-request", &mut bounded)
+        .expect_err("message construction must remain inside result-text accounting");
+    assert_eq!(failure.category, FailureCategory::Limit);
+    assert!(failure.detail.contains("result-text-byte"));
+    assert!(bounded.messages().is_empty());
+}
+
+#[test]
+fn xslt10_terminating_message_reports_xtmm9000_after_recording_the_message() {
+    let source = parse_document(
+        "memory:terminating-message.xml",
+        b"<docs/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:terminating-message.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:template match="/"><xsl:message terminate="yes"><reason>stop</reason></xsl:message><unreachable/></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("terminating message should compile");
+    let mut control = InvocationControl::unbounded();
+    let failure = execute_program(
+        &program,
+        &source,
+        "terminating-message-request",
+        &mut control,
+    )
+    .expect_err("terminate=yes should stop execution");
+
+    assert_eq!(failure.code, "XTMM9000");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert!(failure.detail.contains("stop"));
+    assert_eq!(control.messages(), ["stop"]);
+}
+
+#[test]
 fn static_contains_local_variable_reuses_atomic_boolean_execution() {
     let source = parse_document(
         "memory:static-contains.xml",

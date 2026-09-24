@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Invocation-Owned Message](oasis-xslt10-invocation-owned-message-2026-09-23.md)
 - [OASIS XSLT 1.0 Sort Data-Type Invalid Effective Values](oasis-xslt10-sort-data-type-invalid-effective-values-2026-09-23.md)
 - [OASIS XSLT 1.0 Number Grouping Invalid Effective Value](oasis-xslt10-number-grouping-invalid-effective-value-2026-09-23.md)
 - [OASIS XSLT 1.0 Dynamic Number-Format Parameter](oasis-xslt10-dynamic-number-format-parameter-2026-09-23.md)

@@ -660,6 +660,11 @@ pub(crate) enum Instruction {
         xslt10_compatibility: bool,
         location: SourceLocation,
     },
+    Xslt10Message {
+        terminate: bool,
+        body: Vec<Instruction>,
+        location: SourceLocation,
+    },
     Variable {
         name: String,
         select: Box<CastExpression>,

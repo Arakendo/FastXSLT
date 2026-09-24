@@ -265,6 +265,14 @@ compatibility profile or expose a public or host-configurable policy. The
 current executable slice proves only the bounded module topologies below; it
 does not define a public module graph representation.
 
+The private XSLT 1.0 compatibility slice constructs `xsl:message` content under
+the current invocation focus and variable frame. Message text is retained on
+invocation-local control state and never enters the principal result tree;
+`terminate="yes"` records before structured `XTMM9000` termination. Construction
+uses the ordinary instruction/result work charges. This behavior does not
+select an ambient logger, a public message sink, adapter delivery, or modern
+profile message semantics.
+
 Named-template declarations and `xsl:call-template` instructions use the same
 expanded QName identity. Unprefixed names remain in no namespace; prefixed
 names are resolved from the owning stylesheet instruction and stored in

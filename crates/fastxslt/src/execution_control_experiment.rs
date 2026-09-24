@@ -183,6 +183,7 @@ pub(crate) struct InvocationControl {
     remaining: WorkLimits,
     cancellation_fault: Option<CancellationFault>,
     next_temporary_tree_identity: u64,
+    messages: Vec<String>,
     #[cfg(test)]
     observations: InvocationObservations,
 }
@@ -233,6 +234,7 @@ impl InvocationControl {
             remaining: limits,
             cancellation_fault: None,
             next_temporary_tree_identity: 0,
+            messages: Vec::new(),
             #[cfg(test)]
             observations: InvocationObservations::default(),
         }
@@ -246,6 +248,15 @@ impl InvocationControl {
         let identity = self.next_temporary_tree_identity;
         self.next_temporary_tree_identity = identity.checked_add(1)?;
         Some(identity)
+    }
+
+    pub(crate) fn record_message(&mut self, message: String) {
+        self.messages.push(message);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn messages(&self) -> &[String] {
+        &self.messages
     }
 
     /// Installs a deterministic test fault at a real charge point.

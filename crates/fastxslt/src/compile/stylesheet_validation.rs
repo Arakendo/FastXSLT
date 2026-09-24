@@ -30,6 +30,7 @@ fn validate_named_calls(
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }
             | Instruction::Xslt10SequenceTreeVariable { body, .. }
+            | Instruction::Xslt10Message { body, .. }
             | Instruction::If { body, .. } => {
                 validate_named_calls(program, body)?;
             }

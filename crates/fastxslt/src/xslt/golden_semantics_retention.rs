@@ -523,6 +523,9 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => value_expression_owned(select) + separator.capacity() + location_owned(location),
         instruction @ Instruction::Number { .. } => number_instruction_owned(instruction),
+        Instruction::Xslt10Message { body, location, .. } => {
+            vec_owned(body, instruction_owned) + location_owned(location)
+        }
         Instruction::Variable {
             name,
             select,
