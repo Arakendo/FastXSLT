@@ -3434,6 +3434,49 @@ fn xslt10_literal_key_lookup_scans_composed_definitions_in_document_order() {
 }
 
 #[test]
+fn xslt10_local_key_variable_retains_source_nodes_for_copying() {
+    const SOURCE: &str = "urn:fastxslt:key-variable:source";
+    const LEGACY: &str = "urn:fastxslt:key-variable:legacy";
+    const MODERN: &str = "urn:fastxslt:key-variable:modern";
+    let body = r#"<xsl:output method="xml" omit-xml-declaration="yes"/><xsl:key name="codes" match="item" use="@code"/><xsl:template match="/"><xsl:variable name="selected" select="key('codes', 'b')"/><out><xsl:copy-of select="$selected"/></out></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 12_288, 24_576));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><item code="a"/><item code="b">selected</item></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, LEGACY).expect("compile XSLT 1.0 key variable");
+    let modern = compile_resource(&snapshot, MODERN)
+        .expect_err("the XSLT 1.0 binding must not select modern key semantics");
+    assert_eq!(modern.code, "FXXP1008");
+    assert_eq!(modern.category, FailureCategory::Unsupported);
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-variable", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute key variable");
+    assert_eq!(
+        results.by_request["key-variable"].serialized,
+        "<out><item code=\"b\">selected</item></out>"
+    );
+}
+
+#[test]
 fn xslt10_key_lookup_has_node_set_effective_boolean_value() {
     const SOURCE: &str = "urn:fastxslt:key-boolean:source";
     const LEGACY: &str = "urn:fastxslt:key-boolean:legacy";
@@ -4475,6 +4518,78 @@ fn xslt10_same_name_attribute_set_declarations_compose_in_document_order() {
     assert_eq!(
         results.by_request["composed-attribute-set"].serialized,
         "<out left=\"yes\" shared=\"second\" right=\"explicit\"></out>"
+    );
+}
+
+#[test]
+fn xslt10_attribute_sets_link_across_imported_sibling_and_principal_modules() {
+    const SOURCE: &str = "https://fastxslt.test/attribute-set-package/source.xml";
+    const PRINCIPAL: &str = "https://fastxslt.test/attribute-set-package/principal.xsl";
+    const COLORS: &str = "https://fastxslt.test/attribute-set-package/colors.xsl";
+    const TEMPLATE: &str = "https://fastxslt.test/attribute-set-package/template.xsl";
+    let principal = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:import href="colors.xsl"/><xsl:import href="template.xsl"/><xsl:output omit-xml-declaration="yes"/><xsl:attribute-set name="decoration"><xsl:attribute name="decoration">underline</xsl:attribute></xsl:attribute-set><xsl:template match="/"><out><xsl:apply-templates select="doc/item"/></out></xsl:template></xsl:stylesheet>"#;
+    let colors = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:attribute-set name="colors"><xsl:attribute name="color">green</xsl:attribute></xsl:attribute-set></xsl:stylesheet>"#;
+    let template = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:attribute-set name="font"><xsl:attribute name="font-size">14pt</xsl:attribute></xsl:attribute-set><xsl:template match="item"><xsl:element name="copy" use-attribute-sets="colors decoration font"><xsl:value-of select="."/></xsl:element></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 16_384, 32_768));
+    resources
+        .admit(SOURCE, b"<doc><item>value</item></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(PRINCIPAL, principal.to_vec())
+        .expect("admit principal stylesheet");
+    resources
+        .admit(COLORS, colors.to_vec())
+        .expect("admit imported colors stylesheet");
+    resources
+        .admit(TEMPLATE, template.to_vec())
+        .expect("admit imported template stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PRINCIPAL).expect("compile attribute-set package");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("cross-module-attribute-sets", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet package");
+
+    assert_eq!(
+        results.by_request["cross-module-attribute-sets"].serialized,
+        "<out><copy color=\"green\" decoration=\"underline\" font-size=\"14pt\">value</copy></out>"
+    );
+}
+
+#[test]
+fn xslt10_import_precedence_composes_same_name_attribute_sets() {
+    const SOURCE: &str = "https://fastxslt.test/attribute-set-precedence/source.xml";
+    const PRINCIPAL: &str = "https://fastxslt.test/attribute-set-precedence/principal.xsl";
+    const LOWER: &str = "https://fastxslt.test/attribute-set-precedence/lower.xsl";
+    const HIGHER: &str = "https://fastxslt.test/attribute-set-precedence/higher.xsl";
+    let principal = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:import href="lower.xsl"/><xsl:import href="higher.xsl"/><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out xsl:use-attribute-sets="common"/></xsl:template></xsl:stylesheet>"#;
+    let lower = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:attribute-set name="common"><xsl:attribute name="shared">lower</xsl:attribute><xsl:attribute name="lower">retained</xsl:attribute></xsl:attribute-set></xsl:stylesheet>"#;
+    let higher = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:attribute-set name="common"><xsl:attribute name="shared">higher</xsl:attribute><xsl:attribute name="higher">retained</xsl:attribute></xsl:attribute-set></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 16_384, 32_768));
+    for (identity, bytes) in [
+        (SOURCE, b"<doc/>".as_slice()),
+        (PRINCIPAL, principal.as_slice()),
+        (LOWER, lower.as_slice()),
+        (HIGHER, higher.as_slice()),
+    ] {
+        resources
+            .admit(identity, bytes.to_vec())
+            .expect("admit package resource");
+    }
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PRINCIPAL).expect("compile precedence package");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("attribute-set-precedence", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute precedence package");
+
+    assert_eq!(
+        results.by_request["attribute-set-precedence"].serialized,
+        "<out lower=\"retained\" shared=\"higher\" higher=\"retained\"></out>"
     );
 }
 
@@ -8766,6 +8881,122 @@ fn xslt10_literal_attribute_concatenates_literal_with_global_variable() {
     assert_eq!(
         results.by_request["literal-variable-concat-avt"].serialized,
         "<out style=\"border: solid red\"></out>"
+    );
+}
+
+#[test]
+fn xslt10_local_concat_variable_can_reference_an_outer_binding() {
+    const SOURCE: &str = "urn:fastxslt:local-concat-variable:source";
+    const STYLESHEET: &str = "urn:fastxslt:local-concat-variable:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="value" select="'global'"/><xsl:template match="/"><xsl:variable name="result"><xsl:variable name="value" select="concat('local from ', $value)"/><xsl:value-of select="$value"/></xsl:variable><out><xsl:value-of select="$result"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile local concat variable");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("local-concat-variable", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute local concat variable");
+    assert_eq!(
+        results.by_request["local-concat-variable"].serialized,
+        "<out>local from global</out>"
+    );
+}
+
+#[test]
+fn xslt10_contains_compares_two_typed_concat_operands() {
+    const SOURCE: &str = "urn:fastxslt:concat-contains:source";
+    const STYLESHEET: &str = "urn:fastxslt:concat-contains:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc>A</doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><xsl:value-of select="contains(concat(.,'BC'),concat('A','B','C'))"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile concat contains");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("concat-contains", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute concat contains");
+    assert_eq!(results.by_request["concat-contains"].serialized, "true");
+}
+
+#[test]
+fn xslt10_concat_explicitly_converts_a_source_node_variable_to_string() {
+    const SOURCE: &str = "urn:fastxslt:concat-variable-string:source";
+    const STYLESHEET: &str = "urn:fastxslt:concat-variable-string:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br"<doc><value>first</value><value>second</value></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:variable name="values" select="doc/value"/><xsl:value-of select="concat('value=', string($values))"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable string concat");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("concat-variable-string", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable string concat");
+    assert_eq!(
+        results.by_request["concat-variable-string"].serialized,
+        "value=first"
+    );
+}
+
+#[test]
+fn xslt10_template_argument_composes_concat_with_variable_string_conversion() {
+    const SOURCE: &str = "urn:fastxslt:concat-argument-string:source";
+    const STYLESHEET: &str = "urn:fastxslt:concat-argument-string:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br"<doc><value>first</value><value>second</value></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:variable name="values" select="doc/value"/><xsl:call-template name="emit"><xsl:with-param name="value" select="concat('value=', string($values))"/></xsl:call-template></xsl:template><xsl:template name="emit"><xsl:param name="value" select="'bad'"/><xsl:value-of select="$value"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile concat template argument");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("concat-argument-string", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute concat argument");
+    assert_eq!(
+        results.by_request["concat-argument-string"].serialized,
+        "value=first"
     );
 }
 

@@ -4,7 +4,7 @@
 - Date: 2026-08-30
 - Related reviews: AR-0007, AR-0009, AR-0013, AR-0016
 - Related ADRs: ADR-0001, ADR-0002, ADR-0004, ADR-0007
-- Related evidence: `docs/Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `docs/Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, `docs/Evidence/peer-ar-0016-decision-readiness-monday-2026-08-30.md`, `docs/Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md`, and pinned XSLT30 case `mode-1301`
+- Related evidence: `docs/Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `docs/Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, `docs/Evidence/peer-ar-0016-decision-readiness-monday-2026-08-30.md`, `docs/Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md`, `docs/Evidence/oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md`, and pinned XSLT30 case `mode-1301`
 - Supersedes: None
 
 ## Context
@@ -31,8 +31,9 @@ bytes were 32,408 for the view and 3,214,912 for the clone.
 
 ## Decision
 
-For the exact admitted `xsl:strip-space elements="*"` policy, compose the
-immutable prepared source with a private invocation-owned visibility view.
+For the admitted `xsl:strip-space elements="*"` policy and exact expanded-name
+strip policies, compose the immutable prepared source with a private
+invocation-owned visibility view.
 
 The view must:
 
@@ -48,6 +49,12 @@ The view must:
 - be dropped without mutating the prepared input, compiled stylesheet,
   snapshot, worker, or another generation.
 
+When an admitted stripping policy is active, view construction also derives
+the inherited source `xml:space` state. `preserve` protects whitespace-only
+text children in that subtree and `default` restores the stylesheet policy.
+This remains invocation-owned relationship derivation; it does not move
+stripping into XML parsing or prepared XDM.
+
 Retain the complete safe derived-document implementation as a test-only
 differential oracle wherever practical. A new source-semantic consumer must use
 the effective `Document` access surface and receive a stripping parity control
@@ -57,9 +64,10 @@ before admission.
 
 This ADR does not admit:
 
-- general `xsl:strip-space` name tests or declaration precedence;
+- namespace-wildcard `xsl:strip-space` name tests or declaration precedence;
 - `xsl:preserve-space`;
-- `xml:space` or schema-aware typed whitespace semantics;
+- invalid `xml:space` recovery, CDATA lexical-origin compatibility, or
+  schema-aware typed whitespace semantics;
 - a public or universal source-provider/view trait;
 - a stylesheet-specific prepared-input variant;
 - retention or reuse of a view across invocations or generations;
@@ -99,6 +107,8 @@ map, vector, arena, cache key, or public Rust type.
   source and overlap old/new stylesheet generations.
 - Stop view construction through real cancellation and XDM budget charge
   points.
+- Differentially verify inherited `xml:space="preserve"` and resetting
+  `xml:space="default"` through the complete reference and visibility view.
 - Keep source locations and visible node identities equal to the prepared
   source.
 - Run the normal FastXSLT verification suite.
@@ -108,3 +118,15 @@ effective access seam, a corpus case requires broader whitespace semantics, a
 consumer requires effective-document inspection, a retained/shared view is
 proposed, or representative measurement materially reverses the observed
 construction, execution, memory, or concurrency result.
+
+## Amendment history
+
+- 2026-09-23 -- Admitted inherited source `xml:space` preserve/default state
+  under the existing exact strip-all policy after twelve unchanged OASIS cases
+  activated AR-0016's reopening trigger. Both safe representations retain the
+  same rule; CDATA lexical provenance remains outside the XDM semantic model.
+- 2026-09-23 -- Admitted exact expanded-name `xsl:strip-space` tests after 17
+  unchanged OASIS cases activated the broader matching trigger. Compilation
+  owns QName expansion, both safe representations apply the same parent-name
+  predicate, and namespace wildcards, selective preservation, and precedence
+  remain unselected.

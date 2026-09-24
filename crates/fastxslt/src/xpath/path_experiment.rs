@@ -283,6 +283,7 @@ pub(crate) enum PathStep {
     PrecedingSiblingNamed(String),
     PrecedingSiblingAnyElement,
     PrecedingSiblingAnyNode,
+    PrecedingSiblingText,
 }
 
 impl PathStep {
@@ -395,7 +396,7 @@ impl PathStep {
             return match name_test {
                 "*" => Some(Self::PrecedingSiblingAnyElement),
                 "node()" => Some(Self::PrecedingSiblingAnyNode),
-                "text()" => None,
+                "text()" => Some(Self::PrecedingSiblingText),
                 _ => Some(Self::PrecedingSiblingNamed(name_test.to_owned())),
             };
         }
@@ -557,6 +558,7 @@ impl PathStep {
             Self::PrecedingSiblingNamed(_)
                 | Self::PrecedingSiblingAnyElement
                 | Self::PrecedingSiblingAnyNode
+                | Self::PrecedingSiblingText
         )
     }
 }
@@ -607,7 +609,8 @@ impl PartialEq<&str> for PathStep {
             | Self::SelfText
             | Self::FollowingText
             | Self::FollowingSiblingText
-            | Self::PrecedingText => *other == "text()",
+            | Self::PrecedingText
+            | Self::PrecedingSiblingText => *other == "text()",
             Self::ChildComment
             | Self::SelfComment
             | Self::FollowingComment
@@ -1046,6 +1049,54 @@ fn is_xpath_whitespace(character: char) -> bool {
     matches!(character, '\u{9}' | '\u{A}' | '\u{D}' | ' ')
 }
 
+fn parse_qualified_path_axis_step(
+    step: &str,
+    location: &SourceLocation,
+) -> Result<Option<PathStep>, PathFailure> {
+    let Some((_, name_test)) = step.split_once("::") else {
+        return Ok(None);
+    };
+    if name_test.contains(':') {
+        return Err(PathFailure::Unsupported {
+            detail: format!(
+                "the private slice does not support a qualified name test on this axis step: {step}"
+            ),
+            location: location.clone(),
+        });
+    }
+    PathStep::from_validated(step)
+        .filter(|parsed| !matches!(parsed, PathStep::ChildNamed(name) if name == step))
+        .map(Some)
+        .ok_or_else(|| PathFailure::Unsupported {
+            detail: format!(
+                "the private slice does not support this qualified location-path axis step: {step}"
+            ),
+            location: location.clone(),
+        })
+}
+
+fn parse_qualified_path_origin<'a>(
+    expression: &'a str,
+    location: &SourceLocation,
+) -> Result<(PathOrigin, &'a str), PathFailure> {
+    if let Some(path) = expression.strip_prefix(".//") {
+        Ok((PathOrigin::ContextDescendant, path))
+    } else if let Some(path) = expression.strip_prefix("//") {
+        Ok((PathOrigin::Descendant, path))
+    } else if let Some(path) = expression.strip_prefix('/') {
+        Ok((PathOrigin::DocumentNode, path))
+    } else if expression.contains("//") {
+        Err(PathFailure::Unsupported {
+            detail: format!(
+                "the private slice does not support this qualified location-path form: {expression}"
+            ),
+            location: location.clone(),
+        })
+    } else {
+        Ok((PathOrigin::Relative, expression))
+    }
+}
+
 /// Parses the deliberately narrow qualified-child path needed by static `XPath`
 /// expressions while preserving the existing location-path execution backend.
 pub(crate) fn parse_qualified_child_path(
@@ -1063,22 +1114,7 @@ pub(crate) fn parse_qualified_child_path(
         });
     }
 
-    let (origin, expression) = if let Some(path) = expression.strip_prefix(".//") {
-        (PathOrigin::ContextDescendant, path)
-    } else if let Some(path) = expression.strip_prefix("//") {
-        (PathOrigin::Descendant, path)
-    } else if let Some(path) = expression.strip_prefix('/') {
-        (PathOrigin::DocumentNode, path)
-    } else if expression.contains("//") {
-        return Err(PathFailure::Unsupported {
-            detail: format!(
-                "the private slice does not support this qualified location-path form: {expression}"
-            ),
-            location,
-        });
-    } else {
-        (PathOrigin::Relative, expression)
-    };
+    let (origin, expression) = parse_qualified_path_origin(expression, &location)?;
     if expression.is_empty() {
         return Err(invalid_syntax(
             "a descendant abbreviation requires a following name test",
@@ -1089,6 +1125,10 @@ pub(crate) fn parse_qualified_child_path(
     let mut found_qualified_step = false;
     let mut steps = Vec::new();
     for step in expression.split('/') {
+        if let Some(parsed) = parse_qualified_path_axis_step(step, &location)? {
+            steps.push(parsed);
+            continue;
+        }
         let (attribute, name_test) = step
             .strip_prefix('@')
             .map_or((false, step), |name| (true, name));
@@ -2243,7 +2283,8 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         | PathStep::SelfText
         | PathStep::FollowingText
         | PathStep::FollowingSiblingText
-        | PathStep::PrecedingText => document.kind(child) == NodeKind::Text,
+        | PathStep::PrecedingText
+        | PathStep::PrecedingSiblingText => document.kind(child) == NodeKind::Text,
         PathStep::ChildComment
         | PathStep::SelfComment
         | PathStep::FollowingComment

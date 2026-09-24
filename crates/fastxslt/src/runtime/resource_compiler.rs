@@ -2,7 +2,7 @@
 
 use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
-    compile_stylesheet_with_import_and_include,
+    compile_stylesheet_module_at_unlinked, compile_stylesheet_with_import_and_include,
     compile_stylesheet_with_imported_and_included_programs_at, compile_stylesheet_with_imports,
     compile_stylesheet_with_single_imported_program_at, compile_stylesheet_with_single_include,
     compile_stylesheet_with_single_include_program_at,
@@ -43,7 +43,10 @@ fn compile_resource_with_resolver(
     let graph = load_stylesheet_dependency_graph(resolver, stylesheet_id, DEPENDENCY_LIMITS)
         .map_err(dependency_failure)?;
     debug_assert_eq!(graph.identity, stylesheet_id);
-    compile_loaded_graph(&graph).map_err(compile_failure)
+    let mut program = compile_loaded_graph(&graph).map_err(compile_failure)?;
+    crate::compile::golden_stylesheet_experiment::finalize_attribute_sets(&mut program)
+        .map_err(compile_failure)?;
+    Ok(program)
 }
 
 fn compile_loaded_graph(
@@ -197,12 +200,10 @@ fn compile_homogeneous_module(
     module: &LoadedStylesheetModule,
 ) -> Option<Result<StylesheetProgram, CompileFailure>> {
     match module.dependencies.as_slice() {
-        [] => Some(
-            crate::compile::golden_stylesheet_experiment::compile_stylesheet_at(
-                &module.document,
-                module.root,
-            ),
-        ),
+        [] => Some(compile_stylesheet_module_at_unlinked(
+            &module.document,
+            module.root,
+        )),
         [dependency] => {
             let dependency_program = compile_homogeneous_module(dependency)?;
             Some(dependency_program.and_then(|dependency_program| {
@@ -320,10 +321,7 @@ fn compile_linear_module(
             ),
         };
     };
-    crate::compile::golden_stylesheet_experiment::compile_stylesheet_at(
-        &module.document,
-        module.root,
-    )
+    compile_stylesheet_module_at_unlinked(&module.document, module.root)
 }
 
 fn compile_nested_import_chain(
@@ -446,10 +444,7 @@ fn compile_nested_include_chain(
         return None;
     }
     Some((|| {
-        let nested_program = crate::compile::golden_stylesheet_experiment::compile_stylesheet_at(
-            &nested.document,
-            nested.root,
-        )?;
+        let nested_program = compile_stylesheet_module_at_unlinked(&nested.document, nested.root)?;
         let dependency_program = compile_stylesheet_with_single_include_program_at(
             &dependency.document,
             dependency.root,

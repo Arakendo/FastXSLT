@@ -46,13 +46,23 @@ pub(crate) struct StylesheetProgram {
     pub(crate) decimal_formats: Vec<DecimalFormatDefinition>,
     pub(crate) output_character_map_names: Vec<ExpandedName>,
     pub(crate) output_character_map_location: Option<SourceLocation>,
-    pub(crate) local_attribute_set_names: Vec<ExpandedName>,
+    pub(crate) attribute_set_declarations: Vec<AttributeSetDeclaration>,
     pub(crate) key_definitions: Vec<KeyDefinition>,
     pub(crate) root_template: Option<Template>,
     pub(crate) root_template_modes: Vec<String>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct AttributeSetDeclaration {
+    pub(crate) name: ExpandedName,
+    pub(crate) referenced_names: Vec<ExpandedName>,
+    pub(crate) dependency_names: Vec<ExpandedName>,
+    pub(crate) attributes: Vec<ComputedAttribute>,
+    pub(crate) import_precedence: i32,
+    pub(crate) location: SourceLocation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,10 +131,11 @@ pub(crate) enum OnNoMatchPolicy {
     TextOnlyCopy,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SourceWhitespacePolicy {
     Preserve,
     StripAllElementWhitespace,
+    StripExpandedNames(Vec<ExpandedName>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -281,26 +292,67 @@ pub(crate) struct MatchedTemplate {
     pub(crate) template: Template,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct TemplatePriority(i64);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TemplatePriority {
+    negative: bool,
+    whole: u128,
+    fractional_e18: u64,
+}
 
 impl TemplatePriority {
-    // The private comparison domain stores exact millionths. This retains the
-    // standard half- and quarter-step defaults plus bounded explicit decimals
-    // without binary floating-point ordering.
-    const SCALE: i64 = 1_000_000;
-    pub(crate) const PATH_DEFAULT: Self = Self(500_000);
-    pub(crate) const EXACT_NAME_DEFAULT: Self = Self(0);
-    pub(crate) const NAMESPACE_WILDCARD_DEFAULT: Self = Self(-250_000);
-    pub(crate) const ROOT_DEFAULT: Self = Self(-500_000);
-    pub(crate) const NODE_TEST_DEFAULT: Self = Self(-500_000);
+    // The private comparison domain stores an exact bounded decimal without
+    // multiplying a large whole part by the fractional scale. This keeps the
+    // hot-path value Copy while admitting priorities that exceed i64 after
+    // scaling.
+    pub(crate) const PATH_DEFAULT: Self = Self {
+        negative: false,
+        whole: 0,
+        fractional_e18: 500_000_000_000_000_000,
+    };
+    pub(crate) const EXACT_NAME_DEFAULT: Self = Self {
+        negative: false,
+        whole: 0,
+        fractional_e18: 0,
+    };
+    pub(crate) const NAMESPACE_WILDCARD_DEFAULT: Self = Self {
+        negative: true,
+        whole: 0,
+        fractional_e18: 250_000_000_000_000_000,
+    };
+    pub(crate) const ROOT_DEFAULT: Self = Self {
+        negative: true,
+        whole: 0,
+        fractional_e18: 500_000_000_000_000_000,
+    };
+    pub(crate) const NODE_TEST_DEFAULT: Self = Self::ROOT_DEFAULT;
 
-    pub(crate) fn explicit_integer(value: i32) -> Self {
-        Self(i64::from(value) * Self::SCALE)
+    pub(crate) fn explicit_decimal_parts(negative: bool, whole: u128, fractional_e18: u64) -> Self {
+        Self {
+            negative: negative && (whole != 0 || fractional_e18 != 0),
+            whole,
+            fractional_e18,
+        }
     }
 
-    pub(crate) fn explicit_millionths(value: i64) -> Self {
-        Self(value)
+    fn magnitude_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.whole, self.fractional_e18).cmp(&(other.whole, other.fractional_e18))
+    }
+}
+
+impl PartialOrd for TemplatePriority {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TemplatePriority {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self.negative, other.negative) {
+            (false, true) => std::cmp::Ordering::Greater,
+            (true, false) => std::cmp::Ordering::Less,
+            (false, false) => self.magnitude_cmp(other),
+            (true, true) => other.magnitude_cmp(self),
+        }
     }
 }
 
@@ -600,6 +652,7 @@ pub(crate) enum Instruction {
         name: ExpandedName,
         namespaces: Arc<[NamespaceBinding]>,
         attributes: Vec<LiteralAttribute>,
+        attribute_set_names: Vec<ExpandedName>,
         computed_attributes: Vec<ComputedAttribute>,
         body: Vec<Instruction>,
         location: SourceLocation,
@@ -607,6 +660,7 @@ pub(crate) enum Instruction {
     ContextNameElement {
         namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
+        attribute_set_names: Vec<ExpandedName>,
         computed_attributes: Vec<ComputedAttribute>,
         body: Vec<Instruction>,
         location: SourceLocation,
@@ -615,6 +669,7 @@ pub(crate) enum Instruction {
         name: DynamicElementName,
         namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
+        attribute_set_names: Vec<ExpandedName>,
         computed_attributes: Vec<ComputedAttribute>,
         body: Vec<Instruction>,
         location: SourceLocation,
@@ -697,6 +752,16 @@ pub(crate) enum Instruction {
     Xslt10BinaryNumericVariable {
         name: String,
         select: Box<BinaryNumericExpression>,
+        location: SourceLocation,
+    },
+    Xslt10ConcatVariable {
+        name: String,
+        select: Box<Xslt10ConcatExpression>,
+        location: SourceLocation,
+    },
+    Xslt10KeyVariable {
+        name: String,
+        select: Box<Xslt10KeyLookup>,
         location: SourceLocation,
     },
     SourceNodeVariable {
@@ -844,6 +909,7 @@ pub(crate) enum Instruction {
     },
     Copy {
         attributes: Vec<LiteralAttribute>,
+        attribute_set_names: Vec<ExpandedName>,
         body: Vec<Instruction>,
         recover_unattached_attributes: bool,
         location: SourceLocation,
@@ -1177,6 +1243,10 @@ pub(crate) enum ValueExpression {
     Xslt10VariableContains {
         haystack: String,
         needle: String,
+    },
+    Xslt10ConcatContains {
+        haystack: Box<Xslt10ConcatExpression>,
+        needle: Box<Xslt10ConcatExpression>,
     },
     Xslt10SourcePathStringComparison {
         left: LocationPath,
@@ -1596,6 +1666,7 @@ pub(crate) enum TemplateArgumentValue {
     CurrentSourceNode,
     Variable(String),
     Xslt10VariableString(String),
+    Xslt10Concat(Box<Xslt10ConcatExpression>),
     SourceVariablePath {
         variable: String,
         path: LocationPath,

@@ -240,27 +240,6 @@ enum WhitespaceRepresentation {
     CompleteReference,
 }
 
-fn validate_whitespace_source(
-    policy: SourceWhitespacePolicy,
-    source: &Document,
-    request_id: &str,
-    control: &mut InvocationControl,
-) -> Result<(), ExecutionFailure> {
-    if policy == SourceWhitespacePolicy::StripAllElementWhitespace
-        && source
-            .has_xml_space_declaration(control)
-            .map_err(|failure| control_failure(failure, request_id))?
-    {
-        return Err(failure(
-            "FXRT1014",
-            FailureCategory::Unsupported,
-            Some(request_id),
-            "xsl:strip-space over a source containing xml:space is outside the admitted whitespace profile",
-        ));
-    }
-    Ok(())
-}
-
 #[allow(
     clippy::too_many_arguments,
     reason = "the test-only representation choice preserves the complete runtime invocation contract"
@@ -290,8 +269,7 @@ fn execute_program_with_parameters_using(
             control,
         );
     }
-    validate_whitespace_source(program.source_whitespace, source, request_id, control)?;
-    let effective_source = match (program.source_whitespace, representation) {
+    let effective_source = match (&program.source_whitespace, representation) {
         (SourceWhitespacePolicy::Preserve, _) => None,
         (
             SourceWhitespacePolicy::StripAllElementWhitespace,
@@ -301,6 +279,14 @@ fn execute_program_with_parameters_using(
                 .view_stripping_all_element_whitespace(control)
                 .map_err(|failure| control_failure(failure, request_id))?,
         ),
+        (
+            SourceWhitespacePolicy::StripExpandedNames(names),
+            WhitespaceRepresentation::VisibilityView,
+        ) => Some(
+            source
+                .view_stripping_named_element_whitespace(names, control)
+                .map_err(|failure| control_failure(failure, request_id))?,
+        ),
         #[cfg(test)]
         (
             SourceWhitespacePolicy::StripAllElementWhitespace,
@@ -308,6 +294,15 @@ fn execute_program_with_parameters_using(
         ) => Some(
             source
                 .derive_stripping_all_element_whitespace(control)
+                .map_err(|failure| control_failure(failure, request_id))?,
+        ),
+        #[cfg(test)]
+        (
+            SourceWhitespacePolicy::StripExpandedNames(names),
+            WhitespaceRepresentation::CompleteReference,
+        ) => Some(
+            source
+                .derive_stripping_named_element_whitespace(names, control)
                 .map_err(|failure| control_failure(failure, request_id))?,
         ),
     };
@@ -402,12 +397,16 @@ fn execute_initial_mode(
             "the requested typed mode cannot accept an untyped source node",
         ));
     }
-    validate_whitespace_source(program.source_whitespace, source, request_id, control)?;
-    let effective_source = match program.source_whitespace {
+    let effective_source = match &program.source_whitespace {
         SourceWhitespacePolicy::Preserve => None,
         SourceWhitespacePolicy::StripAllElementWhitespace => Some(
             source
                 .view_stripping_all_element_whitespace(control)
+                .map_err(|failure| control_failure(failure, request_id))?,
+        ),
+        SourceWhitespacePolicy::StripExpandedNames(names) => Some(
+            source
+                .view_stripping_named_element_whitespace(names, control)
                 .map_err(|failure| control_failure(failure, request_id))?,
         ),
     };
@@ -778,6 +777,8 @@ fn execute_instruction(
         | Instruction::ContextNodeNameVariable { .. }
         | Instruction::ContextCountPathVariable { .. }
         | Instruction::Xslt10BinaryNumericVariable { .. }
+        | Instruction::Xslt10ConcatVariable { .. }
+        | Instruction::Xslt10KeyVariable { .. }
         | Instruction::SourceNodeVariable { .. }
         | Instruction::SourceVariablePathVariable { .. }
         | Instruction::SourceNodeUnionVariable { .. }
@@ -2044,6 +2045,20 @@ fn execute_binding(
         Instruction::Xslt10BinaryNumericVariable { name, select, .. } => {
             bind_binary_numeric_variable(inputs, execution, name, select, scope, control)?;
         }
+        Instruction::Xslt10ConcatVariable { name, select, .. } => {
+            let value = value_evaluator::xslt10_concat_value(
+                inputs,
+                execution.node,
+                select,
+                scope,
+                control,
+            )?;
+            scope.bind_atomic(name.clone(), AtomicValue::string(value));
+        }
+        Instruction::Xslt10KeyVariable { name, select, .. } => {
+            let selected = key_lookup::select(inputs, select, execution.node, scope, control)?;
+            scope.bind_source_nodes(name.clone(), selected);
+        }
         Instruction::SourceNodeVariable { name, select, .. } => {
             bind_source_node_variable(inputs, execution, name, select, scope, control)?;
         }
@@ -2619,6 +2634,7 @@ fn prepare_element_execution<'a>(
             computed_attributes,
             body,
             location,
+            ..
         } => {
             let namespace_override = resolve_dynamic_element_namespace(
                 inputs,
@@ -2649,6 +2665,7 @@ fn prepare_element_execution<'a>(
             computed_attributes,
             body,
             location,
+            ..
         } => {
             let (name, namespaces) = resolve_dynamic_element_name(
                 inputs,

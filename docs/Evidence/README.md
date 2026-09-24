@@ -7,6 +7,10 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Inherited `xml:space` Stripping](oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md)
+- [OASIS XSLT 1.0 Cross-Module Attribute-Set Linking](oasis-xslt10-cross-module-attribute-set-linking-2026-09-23.md)
+- [OASIS XSLT 1.0 Bounded Exact Template Priorities](oasis-xslt10-bounded-exact-template-priority-2026-09-23.md)
+- [OASIS XSLT 1.0 Qualified `count()` Text Axes](oasis-xslt10-qualified-count-text-axes-2026-09-23.md)
 - [OASIS XSLT 1.0 Currency-Picture Error](oasis-xslt10-currency-picture-error-2026-09-23.md)
 - [OASIS XSLT 1.0 Invocation-Owned Message](oasis-xslt10-invocation-owned-message-2026-09-23.md)
 - [OASIS XSLT 1.0 Sort Data-Type Invalid Effective Values](oasis-xslt10-sort-data-type-invalid-effective-values-2026-09-23.md)
@@ -173,6 +177,10 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Composed Local Attribute Sets](oasis-xslt10-composed-local-attribute-sets-2026-09-16.md)
 - [OASIS XSLT 1.0 Attribute-Set Global Variable Scope](oasis-xslt10-attribute-set-global-variable-scope-2026-09-16.md)
 - [OASIS XSLT 1.0 Attribute-Set Invocation Value Constructors](oasis-xslt10-attribute-set-invocation-value-constructors-2026-09-23.md)
+- [OASIS XSLT 1.0 Local `concat()` Variable Binding](oasis-xslt10-local-concat-variable-binding-2026-09-23.md)
+- [OASIS XSLT 1.0 Local `key()` Variable Binding](oasis-xslt10-local-key-variable-binding-2026-09-23.md)
+- [OASIS XSLT 1.0 `contains()` over Typed `concat()` Operands](oasis-xslt10-concat-contains-composition-2026-09-23.md)
+- [OASIS XSLT 1.0 `concat()` Variable Conversion in Template Arguments](oasis-xslt10-concat-variable-string-template-argument-2026-09-23.md)
 - [OASIS XSLT 1.0 Duplicate Result-Attribute Recovery](oasis-xslt10-duplicate-result-attribute-recovery-2026-09-16.md)
 - [OASIS XSLT 1.0 Late Result-Attribute Recovery](oasis-xslt10-late-result-attribute-recovery-2026-09-16.md)
 - [OASIS XSLT 1.0 Source-Node Union Variable](oasis-xslt10-source-node-union-variable-2026-09-08.md)
@@ -545,6 +553,7 @@ pressure architecture but does not silently create a public guarantee.
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
 - [Peer Review: AR-0016 Decision Readiness](peer-ar-0016-decision-readiness-monday-2026-08-30.md)
 - [AR-0016 Decision Measurement Matrix](ar-0016-decision-measurement-matrix-2026-08-30.md)
+- [OASIS XSLT 1.0 Exact-Name Whitespace Stripping](oasis-xslt10-exact-name-whitespace-stripping-2026-09-23.md)
 - [XSLT30 `mode-1439` Typed-Mode Untyped-Source Error](xslt30-mode-1439-typed-untyped-error-2026-08-30.md)
 - [XSLT30 `mode-1431` Fail-on-No-Match Error](xslt30-mode-1431-fail-on-no-match-error-2026-08-30.md)
 - [XSLT30 `mode-1423` Fail-on-No-Match Success Control](xslt30-mode-1423-fail-on-no-match-success-control-2026-08-30.md)

@@ -637,7 +637,7 @@ fn declared_extension_elements_compile_only_standard_fallback_content() {
 fn computed_element_keeps_dynamic_namespaces_and_unknown_attribute_sets_explicit() {
     for (attribute, code) in [
         ("name=\"out\" namespace=\"{namespace-uri()}\"", "FXST1045"),
-        ("name=\"out\" use-attribute-sets=\"common\"", "FXST1065"),
+        ("name=\"out\" use-attribute-sets=\"common\"", "XTSE0710"),
     ] {
         let bytes = format!(
             r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:test" version="1.0">
@@ -647,7 +647,11 @@ fn computed_element_keeps_dynamic_namespaces_and_unknown_attribute_sets_explicit
         let document = parse_stylesheet("memory:bounded-computed-element.xsl", bytes.as_bytes());
         let failure = compile_stylesheet(&document).expect_err("unadmitted form should fail");
         assert_eq!(failure.code, code);
-        assert_eq!(failure.category, CompileCategory::Unsupported);
+        if code == "XTSE0710" {
+            assert_eq!(failure.category, CompileCategory::Invalid);
+        } else {
+            assert_eq!(failure.category, CompileCategory::Unsupported);
+        }
     }
 }
 
@@ -1570,9 +1574,24 @@ fn retains_bounded_exact_template_priority_and_classifies_other_lexicals() {
         TemplatePriority::PATH_DEFAULT
     );
 
+    let extended = parse_stylesheet(
+            "memory:extended-priority.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item" priority="222222222222222222222222222222222222"><large/></xsl:template><xsl:template match="item" priority="1.222222222222222222"><fraction/></xsl:template><xsl:template match="item" priority="1.222222222222222221"><lower/></xsl:template></xsl:stylesheet>"#,
+        );
+    let extended_program =
+        compile_stylesheet(&extended).expect("bounded exact priorities should compile");
+    assert!(
+        extended_program.matched_templates[0].priority
+            > extended_program.matched_templates[1].priority
+    );
+    assert!(
+        extended_program.matched_templates[1].priority
+            > extended_program.matched_templates[2].priority
+    );
+
     let overprecision = parse_stylesheet(
             "memory:overprecision-priority.xsl",
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item" priority=".1234567"><out/></xsl:template></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item" priority=".1234567890123456789"><out/></xsl:template></xsl:stylesheet>"#,
         );
     let failure = compile_stylesheet(&overprecision)
         .expect_err("priority beyond the fixed-point domain should remain unsupported");
@@ -1597,7 +1616,7 @@ fn retains_bounded_exact_template_priority_and_classifies_other_lexicals() {
     assert_eq!(root_program.matched_templates.len(), 1);
     assert_eq!(
         root_program.matched_templates[0].priority,
-        TemplatePriority::explicit_integer(1)
+        TemplatePriority::explicit_decimal_parts(false, 1, 0)
     );
 
     let default_mode_root = parse_stylesheet(
@@ -2349,7 +2368,7 @@ fn distinguishes_invalid_stylesheet_from_unsupported_instruction() {
     assert_eq!(program.matched_templates[0].modes, ["a"]);
     assert_eq!(
         program.matched_templates[0].priority,
-        TemplatePriority::explicit_integer(2)
+        TemplatePriority::explicit_decimal_parts(false, 2, 0)
     );
 
     let standard_initial_template = parse_stylesheet(
@@ -2451,7 +2470,7 @@ fn xslt10_variable_position_predicates_do_not_approximate_multi_step_focus() {
 }
 
 #[test]
-fn compiles_only_the_exact_strip_all_whitespace_reference_policy() {
+fn compiles_strip_all_and_exact_expanded_name_whitespace_policies() {
     let stylesheet = parse_stylesheet(
             "memory:strip-all.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:strip-space elements="*"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
@@ -2462,12 +2481,33 @@ fn compiles_only_the_exact_strip_all_whitespace_reference_policy() {
         crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::StripAllElementWhitespace
     );
 
-    let unsupported = parse_stylesheet(
+    let selective = parse_stylesheet(
             "memory:selective-strip.xsl",
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:strip-space elements="item"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:n="urn:n"><xsl:strip-space elements="item n:item item"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
         );
+    let selective = compile_stylesheet(&selective)
+        .expect("exact expanded-name whitespace rules should compile");
+    assert!(matches!(
+        selective.source_whitespace,
+        crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::StripExpandedNames(ref names)
+            if names == &[
+                crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: "item".to_owned(),
+                },
+                crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: Some("urn:n".to_owned()),
+                    local: "item".to_owned(),
+                },
+            ]
+    ));
+
+    let unsupported = parse_stylesheet(
+        "memory:namespace-wildcard-strip.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:n="urn:n"><xsl:strip-space elements="n:*"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
     let failure = compile_stylesheet(&unsupported)
-        .expect_err("selective whitespace rules remain outside the reference slice");
+        .expect_err("namespace-wildcard whitespace rules remain outside the reference slice");
     assert_eq!(failure.code, "FXST1043");
     assert_eq!(failure.category, CompileCategory::Unsupported);
 }
@@ -3045,6 +3085,89 @@ fn static_integer_range_requires_a_context_independent_body() {
         .expect_err("atomic-focus-dependent body should stay unsupported");
     assert_eq!(failure.code, "FXST1007");
     assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
+fn local_concat_variable_is_selected_only_for_xslt10_compatibility() {
+    let legacy = parse_stylesheet(
+        "memory:xslt10-local-concat.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:variable name="outer" select="'value'"/><xsl:variable name="inner" select="concat('prefix-', $outer)"/><xsl:value-of select="$inner"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&legacy).expect("XSLT 1.0 concat binding should compile");
+    assert!(matches!(
+        program
+            .root_template
+            .expect("root template")
+            .body
+            .as_slice(),
+        [
+            Instruction::StaticAtomicVariable { .. },
+            Instruction::Xslt10ConcatVariable { .. },
+            Instruction::ValueOf { .. }
+        ]
+    ));
+
+    let modern = parse_stylesheet(
+        "memory:modern-local-concat.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:variable name="outer" select="'value'"/><xsl:variable name="inner" select="concat('prefix-', $outer)"/><xsl:value-of select="$inner"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&modern)
+        .expect_err("the XSLT 1.0 binding must not silently select modern concat semantics");
+    assert_eq!(failure.code, "FXXP1008");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
+fn concat_operands_for_contains_are_selected_only_for_xslt10_compatibility() {
+    let legacy = parse_stylesheet(
+        "memory:xslt10-concat-contains.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="contains(concat(.,'BC'),concat('A','B','C'))"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&legacy).expect("XSLT 1.0 concat contains should compile");
+    assert!(matches!(
+        program
+            .root_template
+            .expect("root template")
+            .body
+            .as_slice(),
+        [Instruction::ValueOf {
+            select: ValueExpression::Xslt10ConcatContains { .. },
+            ..
+        }]
+    ));
+
+    let modern = parse_stylesheet(
+        "memory:modern-concat-contains.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="contains(concat(.,'BC'),concat('A','B','C'))"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&modern)
+        .expect_err("the compatibility path must not select modern contains semantics");
+    assert_eq!(failure.code, "FXXP1001");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
+fn xslt10_concat_reuses_explicit_variable_string_conversion() {
+    let legacy = parse_stylesheet(
+        "memory:xslt10-concat-variable-string.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:variable name="value" select="'kept'"/><xsl:value-of select="concat('value=', string($value))"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&legacy)
+        .expect("XSLT 1.0 concat should retain explicit variable conversion");
+    assert!(matches!(
+        program
+            .root_template
+            .expect("root template")
+            .body
+            .as_slice(),
+        [
+            Instruction::StaticAtomicVariable { .. },
+            Instruction::ValueOf {
+                select: ValueExpression::Xslt10Concat(_),
+                ..
+            }
+        ]
+    ));
 }
 
 #[test]

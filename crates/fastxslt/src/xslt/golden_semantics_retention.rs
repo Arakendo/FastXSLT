@@ -1,8 +1,8 @@
 use std::{mem::size_of, sync::Arc};
 
 use super::{
-    ApplySelection, AtomicValue, BooleanExpression, CastExpression, CastableExpression,
-    CharacterMapDefinition, ChildPresenceTest, ChooseBranch, ComputedAttribute,
+    ApplySelection, AtomicValue, AttributeSetDeclaration, BooleanExpression, CastExpression,
+    CastableExpression, CharacterMapDefinition, ChildPresenceTest, ChooseBranch, ComputedAttribute,
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
     ConditionalPathBranch, ConditionalPathExpression, ConstructedAttribute, ConstructedElement,
     ConstructedNode, DecimalFormatDefinition, DecimalSumForExpression, DeepEqualBooleanExpression,
@@ -11,16 +11,17 @@ use super::{
     KeyUseExpression, LiteralAttribute, LiteralAttributeValue, LocationPath, MatchNodeTest,
     MatchPattern, MatchSequencePredicate, MatchStringPredicate, MatchedTemplate, NamedTemplate,
     NamespaceBinding, OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation,
-    StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue, TemplateParameter,
-    TemplateParameterDefault, ValueExpression, VariableFilteredElementPath, Xslt10ApplyUnionPart,
-    Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyValue,
-    Xslt10TemporaryTextPart,
+    SourceWhitespacePolicy, StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue,
+    TemplateParameter, TemplateParameterDefault, ValueExpression, VariableFilteredElementPath,
+    Xslt10ApplyUnionPart, Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName,
+    Xslt10KeyValue, Xslt10TemporaryTextPart,
 };
 
 impl StylesheetProgram {
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
         self.declared_version.capacity()
             + option_string_owned(self.default_initial_mode.as_ref())
+            + source_whitespace_owned(&self.source_whitespace)
             + vec_owned(&self.typed_mode_requirements, |item| {
                 item.name.capacity() + location_owned(&item.location)
             })
@@ -36,7 +37,10 @@ impl StylesheetProgram {
             + vec_owned(&self.character_maps, character_map_owned)
             + vec_owned(&self.decimal_formats, decimal_format_owned)
             + vec_owned(&self.output_character_map_names, name_owned)
-            + vec_owned(&self.local_attribute_set_names, name_owned)
+            + vec_owned(
+                &self.attribute_set_declarations,
+                attribute_set_declaration_owned,
+            )
             + vec_owned(&self.key_definitions, key_definition_owned)
             + self
                 .output_character_map_location
@@ -48,6 +52,21 @@ impl StylesheetProgram {
             + vec_owned(&self.named_templates, named_template_owned)
             + vec_owned(&self.global_bindings, global_binding_owned)
     }
+}
+
+fn source_whitespace_owned(value: &SourceWhitespacePolicy) -> usize {
+    match value {
+        SourceWhitespacePolicy::Preserve | SourceWhitespacePolicy::StripAllElementWhitespace => 0,
+        SourceWhitespacePolicy::StripExpandedNames(names) => vec_owned(names, name_owned),
+    }
+}
+
+fn attribute_set_declaration_owned(value: &AttributeSetDeclaration) -> usize {
+    name_owned(&value.name)
+        + vec_owned(&value.referenced_names, name_owned)
+        + vec_owned(&value.dependency_names, name_owned)
+        + vec_owned(&value.attributes, computed_attribute_owned)
+        + location_owned(&value.location)
 }
 
 fn decimal_format_owned(value: &DecimalFormatDefinition) -> usize {
@@ -542,6 +561,21 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::Xslt10BinaryNumericVariable { .. }) => {
             context_derived_variable_owned(instruction)
         }
+        Instruction::Xslt10ConcatVariable {
+            name,
+            select,
+            location,
+        } => {
+            name.capacity()
+                + size_of_val(select.as_ref())
+                + xslt10_concat_owned(select)
+                + location_owned(location)
+        }
+        Instruction::Xslt10KeyVariable {
+            name,
+            select,
+            location,
+        } => name.capacity() + xslt10_key_lookup_owned(select) + location_owned(location),
         instruction @ (Instruction::SourceNodeVariable { .. }
         | Instruction::SourceVariablePathVariable { .. }
         | Instruction::Xslt10ForEachTextTreeVariable { .. }) => path_binding_owned(instruction),
@@ -606,10 +640,11 @@ fn instruction_owned(value: &Instruction) -> usize {
         } => call_template_owned(name, arguments, location),
         Instruction::Copy {
             attributes,
+            attribute_set_names,
             body,
             location,
             ..
-        } => copy_owned(attributes, body, location),
+        } => copy_owned(attributes, body, location) + vec_owned(attribute_set_names, name_owned),
     }
 }
 
@@ -639,6 +674,7 @@ fn dynamic_name_element_owned(value: &Instruction) -> usize {
         name,
         namespace_override,
         static_namespaces,
+        attribute_set_names,
         computed_attributes,
         body,
         location,
@@ -651,6 +687,7 @@ fn dynamic_name_element_owned(value: &Instruction) -> usize {
             .as_ref()
             .map_or(0, dynamic_element_namespace_owned)
         + arc_slice_owned(static_namespaces, namespace_owned)
+        + vec_owned(attribute_set_names, name_owned)
         + vec_owned(computed_attributes, computed_attribute_owned)
         + vec_owned(body, instruction_owned)
         + location_owned(location)
@@ -695,6 +732,7 @@ fn context_name_element_owned(value: &Instruction) -> usize {
     let Instruction::ContextNameElement {
         namespace_override,
         static_namespaces,
+        attribute_set_names,
         computed_attributes,
         body,
         location,
@@ -706,6 +744,7 @@ fn context_name_element_owned(value: &Instruction) -> usize {
         .as_ref()
         .map_or(0, dynamic_element_namespace_owned)
         + arc_slice_owned(static_namespaces, namespace_owned)
+        + vec_owned(attribute_set_names, name_owned)
         + vec_owned(computed_attributes, computed_attribute_owned)
         + vec_owned(body, instruction_owned)
         + location_owned(location)
@@ -955,6 +994,7 @@ fn literal_element_instruction_owned(value: &Instruction) -> usize {
         name,
         namespaces,
         attributes,
+        attribute_set_names,
         computed_attributes,
         body,
         location,
@@ -969,7 +1009,7 @@ fn literal_element_instruction_owned(value: &Instruction) -> usize {
         computed_attributes,
         body,
         location,
-    )
+    ) + vec_owned(attribute_set_names, name_owned)
 }
 
 fn for_each_owned(value: &Instruction) -> usize {
@@ -1204,6 +1244,12 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         }
         ValueExpression::Xslt10VariableContains { haystack, needle } => {
             haystack.capacity() + needle.capacity()
+        }
+        ValueExpression::Xslt10ConcatContains { haystack, needle } => {
+            size_of_val(haystack.as_ref())
+                + xslt10_concat_owned(haystack)
+                + size_of_val(needle.as_ref())
+                + xslt10_concat_owned(needle)
         }
         ValueExpression::Xslt10SourcePathStringComparison { left, right, .. } => {
             path_pair_owned(left, right) + size_of_val(right.as_ref())
@@ -1544,6 +1590,9 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             TemplateArgumentValue::Text(text)
             | TemplateArgumentValue::Variable(text)
             | TemplateArgumentValue::Xslt10VariableString(text) => text.capacity(),
+            TemplateArgumentValue::Xslt10Concat(expression) => {
+                size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
+            }
             TemplateArgumentValue::SourceVariablePath { variable, path } => {
                 variable.capacity() + path.known_owned_capacity_bytes()
             }

@@ -2834,6 +2834,78 @@ maintained redistributable legacy suite becomes available.
   applications participate in static circularity validation without being
   flattened onto the target element. The unchanged sweep reaches 2,236
   initialized, 2,176 successfully executed, and 2,027 / 3,173 exact matches
-  (63.88%); the remaining seven `FXST1065` cases require cross-module
-  attribute-set composition.
+  (63.88%); the remaining seven `FXST1065` cases were deferred to package-level
+  composition and were subsequently closed by the static linker tranche.
   [Evidence](../Evidence/oasis-xslt10-attribute-set-invocation-value-constructors-2026-09-23.md)
+- 2026-09-23 -- Select-based local variables now retain the existing typed
+  XSLT 1.0 `concat()` plan as an atomic invocation binding. The evaluator
+  resolves outer lexical variables through the current runtime frame, keeps
+  compiled state immutable, and does not add a general expression-valued
+  binding or change modern semantics. Unchanged Microsoft
+  `Variables_VariableWithinVariable` becomes exact; the sweep reaches 2,237
+  initialized, 2,177 successfully executed, and 2,028 / 3,173 exact matches
+  (63.91%) without another mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-local-concat-variable-binding-2026-09-23.md)
+- 2026-09-23 -- Select-based local variables in the XSLT 1.0 compatibility
+  path can now retain the existing typed `key()` lookup as an invocation-owned
+  source-node binding. The compiled plan remains source-independent, no new
+  cache or general expression evaluator is introduced, and equivalent modern
+  syntax retains the existing unsupported diagnostic. Unchanged Microsoft
+  `Keys_Bug76935` becomes exact; the sweep reaches 2,238 initialized, 2,178
+  successfully executed, and 2,029 / 3,173 exact matches (63.95%) without
+  another mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-local-key-variable-binding-2026-09-23.md)
+- 2026-09-23 -- XSLT 1.0 `contains()` can now compose two existing typed
+  `concat()` operands, preserving their bounded argument count, invocation
+  scope, source context, and work charging. This is not a general nested
+  function evaluator, and the equivalent modern expression remains explicit
+  unsupported work. Unchanged Lotus `string_string57` becomes exact; the sweep
+  reaches 2,239 initialized, 2,179 successfully executed, and 2,030 / 3,173
+  exact matches (63.98%) without another mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-concat-contains-composition-2026-09-23.md)
+- 2026-09-23 -- The existing typed XSLT 1.0 concat plan now preserves explicit
+  `string($variable)` conversion and can cross a template-argument boundary.
+  Runtime evaluation remains caller-focus and invocation-frame owned; compiled
+  state retains only the typed plan, and no general nested-function evaluator
+  is introduced. Unchanged Lotus `variable_variable48` becomes exact; the
+  sweep reaches 2,240 initialized, 2,180 successfully executed, and 2,031 /
+  3,173 exact matches (64.01%) without another mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-concat-variable-string-template-argument-2026-09-23.md)
+- 2026-09-23 -- Qualified child paths can now retain trailing
+  `preceding::text()` and `preceding-sibling::text()` steps through the shared
+  reverse-axis evaluator and typed `count()` operation. Four unchanged
+  Microsoft whitespace cases become exact; four more reach the deliberately
+  separate `xml:space` stripping boundary. The sweep reaches 2,248 initialized,
+  2,184 successfully executed, and 2,035 / 3,173 exact matches (64.13%).
+  [Evidence](../Evidence/oasis-xslt10-qualified-count-text-axes-2026-09-23.md)
+- 2026-09-23 -- The shared template-priority value now compares bounded
+  36-digit whole and 18-place fractional priorities exactly while remaining
+  immutable, `Copy`, and allocation-free during dispatch. Five unchanged
+  Microsoft cases become exact; one newly visible mismatch depends on legacy
+  XSLT 1.0 binary-number rounding and is not used to weaken modern exact
+  ordering. The sweep reaches 2,254 initialized, 2,190 successfully executed,
+  and 2,040 / 3,173 exact matches (64.29%).
+  [Evidence](../Evidence/oasis-xslt10-bounded-exact-template-priority-2026-09-23.md)
+- 2026-09-23 -- Attribute-set compilation now separates module-local
+  declaration compilation from package-level static linking. The linker
+  validates the complete dependency graph, composes included and imported
+  declarations with stable precedence/order, writes resolved attributes into
+  immutable constructor plans, and leaves no runtime name lookup. Six unchanged
+  standard-result cases become exact and the seventh former `FXST1065` case
+  reaches its expected static error. The sweep reaches 2,260 initialized,
+  2,196 successfully executed, and 2,046 / 3,173 exact matches (64.48%).
+  [Evidence](../Evidence/oasis-xslt10-cross-module-attribute-set-linking-2026-09-23.md)
+- 2026-09-23 -- Exact strip-all whitespace views now derive inherited source
+  `xml:space` preserve/default state without mutating prepared XDM. Twelve
+  unchanged Microsoft cases leave `FXRT1014`; eight become exact while four
+  expose separate indentation or CDATA-origin differences. The sweep reaches
+  2,208 successful executions and 2,054 / 3,173 exact matches (64.73%).
+  [Evidence](../Evidence/oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md)
+- 2026-09-23 -- Exact `xsl:strip-space` QNames now compile to immutable
+  expanded-name policy and execute through both the complete safe reference and
+  invocation-owned visibility view. Seventeen cases leave `FXST1043`; eight
+  become exact and nine expose later independent frontiers. The sweep reaches
+  2,268 initialized, 2,216 successfully executed, and 2,062 / 3,173 exact
+  matches (64.99%). Namespace wildcards, selective preservation, and
+  declaration precedence remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-exact-name-whitespace-stripping-2026-09-23.md)

@@ -96,7 +96,7 @@ use source_copy_compiler::compile_copy;
 mod attribute_set_compiler;
 #[path = "instruction_compiler/template_invocation_compiler.rs"]
 mod template_invocation_compiler;
-use attribute_set_compiler::compile_local_attribute_sets;
+use attribute_set_compiler::compile_attribute_set_use_names;
 
 fn parse_context_focus_equality(
     expression: &str,
@@ -150,18 +150,11 @@ use super::{
     optional_attribute, required_attribute, unsupported,
 };
 
-pub(super) fn validate_local_attribute_set(
+pub(super) fn compile_attribute_set_declaration(
     document: &Document,
     element: NodeId,
-) -> Result<ExpandedName, CompileFailure> {
-    attribute_set_compiler::validate_local_attribute_set(document, element)
-}
-
-pub(super) fn validate_local_attribute_set_graph(
-    document: &Document,
-    stylesheet: NodeId,
-) -> Result<(), CompileFailure> {
-    attribute_set_compiler::validate_local_attribute_set_graph(document, stylesheet)
+) -> Result<crate::xslt::golden_semantics_experiment::AttributeSetDeclaration, CompileFailure> {
+    attribute_set_compiler::compile_attribute_set_declaration(document, element)
 }
 
 pub(super) fn compile_sequence(
@@ -447,6 +440,8 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::ContextNodeNameVariable { name, .. }
     | Instruction::ContextCountPathVariable { name, .. }
     | Instruction::Xslt10BinaryNumericVariable { name, .. }
+    | Instruction::Xslt10ConcatVariable { name, .. }
+    | Instruction::Xslt10KeyVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
     | Instruction::SourceVariablePathVariable { name, .. }
     | Instruction::SourceNodeUnionVariable { name, .. }
@@ -522,7 +517,7 @@ pub(super) fn compile_literal_element(
     }
     ensure_literal_result_control_attributes(document, element)?;
     validate_exclude_result_prefixes(document, element)?;
-    let (mut computed_attributes, computed_attribute_nodes) =
+    let (computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
     let mut attributes = compile_literal_result_attributes(document, element)?;
     if uses_xslt10_compatibility(document, element) {
@@ -538,19 +533,8 @@ pub(super) fn compile_literal_element(
             document.location(element),
         )?;
     }
-    let mut attribute_set_values =
-        compile_local_attribute_sets(document, element, Some(XSLT_NAMESPACE))?;
-    attribute_set_values.retain(|set_attribute| {
-        !attributes.iter().any(|attribute| {
-            set_attribute.dynamic_name.is_none() && attribute.name == set_attribute.name
-        }) && !computed_attributes.iter().any(|attribute| {
-            attribute.dynamic_name.is_none()
-                && set_attribute.dynamic_name.is_none()
-                && attribute.name == set_attribute.name
-        })
-    });
-    attribute_set_values.append(&mut computed_attributes);
-    let computed_attributes = attribute_set_values;
+    let attribute_set_names =
+        compile_attribute_set_use_names(document, element, Some(XSLT_NAMESPACE))?;
     let mut namespaces = literal_result_namespaces(document, element);
     retain_computed_attribute_namespace_bindings(&mut namespaces, &computed_attributes);
     Ok(Instruction::LiteralElement {
@@ -561,6 +545,7 @@ pub(super) fn compile_literal_element(
             .clone(),
         namespaces: namespaces.into(),
         attributes,
+        attribute_set_names,
         computed_attributes,
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
         location: document.location(element).clone(),
@@ -621,10 +606,15 @@ fn compile_static_computed_element(
     let namespace = optional_attribute(document, element, None, "namespace");
     let namespace_override = compile_dynamic_element_namespace(document, element, namespace)?;
     if matches!(name.trim(), "{name()}" | "{name(.)}") {
-        let (computed_attributes, body) = compile_computed_element_content(document, element)?;
+        let ComputedElementContent {
+            attribute_set_names,
+            computed_attributes,
+            body,
+        } = compile_computed_element_content(document, element)?;
         return Ok(Instruction::ContextNameElement {
             namespace_override,
             static_namespaces: document.in_scope_namespaces(element).into(),
+            attribute_set_names,
             computed_attributes,
             body,
             location: document.location(element).clone(),
@@ -633,22 +623,32 @@ fn compile_static_computed_element(
     if uses_xslt10_compatibility(document, element)
         && let Some(name) = compile_dynamic_element_name(document, element, name)?
     {
-        let (computed_attributes, body) = compile_computed_element_content(document, element)?;
+        let ComputedElementContent {
+            attribute_set_names,
+            computed_attributes,
+            body,
+        } = compile_computed_element_content(document, element)?;
         return Ok(Instruction::DynamicNameElement {
             name,
             namespace_override,
             static_namespaces: document.in_scope_namespaces(element).into(),
+            attribute_set_names,
             computed_attributes,
             body,
             location: document.location(element).clone(),
         });
     }
     if matches!(namespace_override, Some(DynamicNamespaceValue::Path(_))) {
-        let (computed_attributes, body) = compile_computed_element_content(document, element)?;
+        let ComputedElementContent {
+            attribute_set_names,
+            computed_attributes,
+            body,
+        } = compile_computed_element_content(document, element)?;
         return Ok(Instruction::DynamicNameElement {
             name: DynamicElementName::Literal(name.to_owned()),
             namespace_override,
             static_namespaces: document.in_scope_namespaces(element).into(),
+            attribute_set_names,
             computed_attributes,
             body,
             location: document.location(element).clone(),
@@ -662,24 +662,16 @@ fn compile_static_computed_element(
         });
     let (name, mut namespaces) =
         compile_static_computed_element_name(document, element, name, static_namespace)?;
-    let (mut computed_attributes, computed_attribute_nodes) =
+    let (computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
-    let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
-    attribute_set_values.retain(|set_attribute| {
-        !computed_attributes.iter().any(|attribute| {
-            attribute.dynamic_name.is_none()
-                && set_attribute.dynamic_name.is_none()
-                && attribute.name == set_attribute.name
-        })
-    });
-    attribute_set_values.append(&mut computed_attributes);
-    let computed_attributes = attribute_set_values;
+    let attribute_set_names = compile_attribute_set_use_names(document, element, None)?;
     retain_computed_attribute_namespace_bindings(&mut namespaces, &computed_attributes);
     Ok(Instruction::LiteralElement {
         origin: ElementConstructorOrigin::ComputedStatic,
         name,
         namespaces: namespaces.into(),
         attributes: Vec::new(),
+        attribute_set_names,
         computed_attributes,
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
         location: document.location(element).clone(),
@@ -689,20 +681,22 @@ fn compile_static_computed_element(
 fn compile_computed_element_content(
     document: &Document,
     element: NodeId,
-) -> Result<(Vec<ComputedAttribute>, Vec<Instruction>), CompileFailure> {
-    let (mut computed_attributes, computed_attribute_nodes) =
+) -> Result<ComputedElementContent, CompileFailure> {
+    let (computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
-    let mut attributes = compile_local_attribute_sets(document, element, None)?;
-    attributes.retain(|set_attribute| {
-        !computed_attributes.iter().any(|attribute| {
-            attribute.dynamic_name.is_none()
-                && set_attribute.dynamic_name.is_none()
-                && attribute.name == set_attribute.name
-        })
-    });
-    attributes.append(&mut computed_attributes);
+    let attribute_set_names = compile_attribute_set_use_names(document, element, None)?;
     let body = compile_sequence_excluding(document, element, &computed_attribute_nodes)?;
-    Ok((attributes, body))
+    Ok(ComputedElementContent {
+        attribute_set_names,
+        computed_attributes,
+        body,
+    })
+}
+
+struct ComputedElementContent {
+    attribute_set_names: Vec<ExpandedName>,
+    computed_attributes: Vec<ComputedAttribute>,
+    body: Vec<Instruction>,
 }
 
 fn compile_dynamic_element_namespace(
@@ -782,7 +776,7 @@ fn compile_dynamic_element_name(
     )
 }
 
-fn retain_computed_attribute_namespace_bindings(
+pub(super) fn retain_computed_attribute_namespace_bindings(
     namespaces: &mut Vec<NamespaceBinding>,
     attributes: &[ComputedAttribute],
 ) {
@@ -2255,6 +2249,27 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         compile_local_binary_numeric_variable(document, element, &name, expression, &location)
     {
         return Ok(variable);
+    }
+    if uses_xslt10_compatibility(document, element) && expression.trim_start().starts_with("key(") {
+        let select = value_expression_compiler::compile_xslt10_literal_key_lookup(
+            document, element, expression, &location,
+        )?;
+        return Ok(Instruction::Xslt10KeyVariable {
+            name,
+            select: Box::new(select),
+            location,
+        });
+    }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(select) = value_expression_compiler::compile_xslt10_concat(
+            document, element, expression, &location,
+        )?
+    {
+        return Ok(Instruction::Xslt10ConcatVariable {
+            name,
+            select: Box::new(select),
+            location,
+        });
     }
     if let Some(variable) =
         compile_local_variable_path_variable(document, element, &name, expression, &location)?

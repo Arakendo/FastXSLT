@@ -74,6 +74,8 @@ fn validate_named_calls(
             | Instruction::ContextNodeNameVariable { .. }
             | Instruction::ContextCountPathVariable { .. }
             | Instruction::Xslt10BinaryNumericVariable { .. }
+            | Instruction::Xslt10ConcatVariable { .. }
+            | Instruction::Xslt10KeyVariable { .. }
             | Instruction::SourceNodeVariable { .. }
             | Instruction::SourceVariablePathVariable { .. }
             | Instruction::SourceNodeUnionVariable { .. }

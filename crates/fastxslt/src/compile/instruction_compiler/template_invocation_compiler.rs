@@ -13,8 +13,9 @@ use crate::xslt::golden_semantics_experiment::{
 use super::super::normalize_variable_qname;
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::value_expression_compiler::{
-    compile_value_expression, compile_xslt10_binary_numeric, compile_xslt10_sum_path,
-    compile_xslt10_variable_path, parse_xslt10_variable_position_selection,
+    compile_value_expression, compile_xslt10_binary_numeric, compile_xslt10_concat,
+    compile_xslt10_sum_path, compile_xslt10_variable_path,
+    parse_xslt10_variable_position_selection,
 };
 use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
@@ -145,6 +146,9 @@ fn compile_selected_argument_value(
     element: NodeId,
     select: &str,
 ) -> Result<TemplateArgumentValue, CompileFailure> {
+    if let Some(value) = compile_xslt10_concat_argument(document, element, select)? {
+        return Ok(value);
+    }
     if let Some(expression) =
         compile_xslt10_binary_numeric(document, element, select, document.location(element))
     {
@@ -240,6 +244,19 @@ fn compile_selected_argument_value(
                 document.location(element),
             )
         })
+}
+
+fn compile_xslt10_concat_argument(
+    document: &Document,
+    element: NodeId,
+    select: &str,
+) -> Result<Option<TemplateArgumentValue>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    compile_xslt10_concat(document, element, select, document.location(element)).map(|expression| {
+        expression.map(|value| TemplateArgumentValue::Xslt10Concat(Box::new(value)))
+    })
 }
 
 fn compile_xslt10_argument_path_union_count(

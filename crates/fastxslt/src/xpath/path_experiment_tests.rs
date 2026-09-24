@@ -144,6 +144,36 @@ fn qualified_child_steps_reject_unbound_prefixes() {
 }
 
 #[test]
+fn qualified_child_paths_retain_trailing_text_axes() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<doc xmlns:p="urn:selected">before<p:item/>between<p:item/>after</doc>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let resolve = |prefix: &str| (prefix == "p").then(|| "urn:selected".to_owned());
+    let preceding = parse_qualified_child_path("doc/p:item/preceding::text()", location(), resolve)
+        .expect("qualified path with preceding text axis should parse");
+    let siblings =
+        parse_qualified_child_path("doc/p:item/preceding-sibling::text()", location(), resolve)
+            .expect("qualified path with preceding-sibling text axis should parse");
+
+    let preceding = evaluate_location_path(&document, document.document_node(), &preceding);
+    let siblings = evaluate_location_path(&document, document.document_node(), &siblings);
+
+    assert_eq!(preceding.len(), 2);
+    assert_eq!(siblings.len(), 2);
+    assert_eq!(document.string_value(preceding[0]), "before");
+    assert_eq!(document.string_value(preceding[1]), "between");
+    assert_eq!(document.string_value(siblings[0]), "before");
+    assert_eq!(document.string_value(siblings[1]), "between");
+}
+
+#[test]
 fn local_name_predicate_selects_namespaced_and_unnamespaced_children() {
     let parsed = parse_document(
         "memory:source.xml",

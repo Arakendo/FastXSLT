@@ -369,6 +369,15 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         return Ok(ValueExpression::Xslt10VariablePath { variable, path });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((haystack, needle)) =
+            compile_xslt10_concat_contains(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10ConcatContains {
+            haystack: Box::new(haystack),
+            needle: Box::new(needle),
+        });
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some((haystack, needle)) = parse_xslt10_variable_contains(expression)
     {
         return Ok(ValueExpression::Xslt10VariableContains {
@@ -758,6 +767,30 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             static_context,
         )?
     })
+}
+
+fn compile_xslt10_concat_contains(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<(Xslt10ConcatExpression, Xslt10ConcatExpression)>, CompileFailure> {
+    let Some(arguments) = expression
+        .trim()
+        .strip_prefix("contains(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(|value| crate::xpath::static_string_experiment::split_arguments(value, 2))
+        .filter(|arguments| arguments.len() == 2)
+    else {
+        return Ok(None);
+    };
+    let Some(haystack) = compile_xslt10_concat(document, element, arguments[0], location)? else {
+        return Ok(None);
+    };
+    let Some(needle) = compile_xslt10_concat(document, element, arguments[1], location)? else {
+        return Ok(None);
+    };
+    Ok(Some((haystack, needle)))
 }
 
 fn compile_format_number(
@@ -1713,6 +1746,16 @@ pub(super) fn compile_xslt10_concat(
             parts.push(Xslt10ConcatPart::Variable(variable.to_owned()));
             continue;
         }
+        if let Some(variable) = argument
+            .strip_prefix("string(")
+            .and_then(|value| value.strip_suffix(')'))
+            .map(str::trim)
+            .and_then(|value| value.strip_prefix('$'))
+            .filter(|name| is_ascii_ncname(name))
+        {
+            parts.push(Xslt10ConcatPart::Variable(variable.to_owned()));
+            continue;
+        }
         if let Some((variable, position_variable)) =
             parse_xslt10_variable_position_selection(argument)
         {
@@ -2566,8 +2609,17 @@ fn compile_count_value(
             .collect::<Result<Vec<_>, _>>()?;
         return Ok(Some(ValueExpression::Xslt10CountPathUnion(alternatives)));
     }
-    let mut path =
-        parse_location_path(argument.trim(), location.clone()).map_err(map_path_failure)?;
+    let argument = argument.trim();
+    let mut path = parse_location_path(argument, location.clone())
+        .or_else(|failure| match failure {
+            PathFailure::Unsupported { .. } if argument.contains(':') => {
+                parse_qualified_child_path(argument, location.clone(), |prefix| {
+                    namespace_for_prefix(document, element, prefix).map(str::to_owned)
+                })
+            }
+            failure => Err(failure),
+        })
+        .map_err(map_path_failure)?;
     if let Some(namespace) = effective_xpath_default_namespace(document, element) {
         for step in &mut path.steps {
             if let PathStep::ChildNamed(local) = step {

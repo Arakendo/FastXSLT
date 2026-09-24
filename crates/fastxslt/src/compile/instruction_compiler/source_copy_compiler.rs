@@ -7,7 +7,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::{
-    CompileFailure, compile_local_attribute_sets, compile_sequence_excluding,
+    CompileFailure, compile_attribute_set_use_names, compile_sequence_excluding,
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
     is_xslt_element, meaningful_children, required_attribute, unsupported,
     uses_xslt10_compatibility,
@@ -19,14 +19,8 @@ pub(super) fn compile_copy(
 ) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["use-attribute-sets"], "xsl:copy")?;
     let mut attribute_nodes = Vec::new();
-    let mut attributes = compile_local_attribute_sets(document, element, None)?
-        .into_iter()
-        .map(|attribute| LiteralAttribute {
-            name: attribute.name,
-            value: attribute.value,
-            location: attribute.location,
-        })
-        .collect::<Vec<_>>();
+    let attribute_set_names = compile_attribute_set_use_names(document, element, None)?;
+    let mut attributes: Vec<LiteralAttribute> = Vec::new();
     let mut content_started = false;
     let recover_late_attributes = uses_xslt10_compatibility(document, element);
     for child in meaningful_children(document, element) {
@@ -57,6 +51,7 @@ pub(super) fn compile_copy(
     }
     Ok(Instruction::Copy {
         attributes,
+        attribute_set_names,
         body: compile_sequence_excluding(document, element, &attribute_nodes)?,
         recover_unattached_attributes: recover_late_attributes,
         location: document.location(element).clone(),

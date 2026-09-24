@@ -24,7 +24,8 @@ use super::dynamic_document::DynamicDocument;
 use super::result_tree::ResultNode;
 use super::template_selector::DocumentRootedMatchCache;
 use super::value_evaluator::{
-    evaluate_binary_numeric_value, evaluate_xslt10_sum_path, xslt10_variable_string_value,
+    evaluate_binary_numeric_value, evaluate_xslt10_sum_path, xslt10_concat_value,
+    xslt10_variable_string_value,
 };
 use super::{
     ExecutionFailure, FailureCategory, MultipleMatchPolicy, control_failure,
@@ -171,6 +172,11 @@ fn evaluate_template_argument(
         TemplateArgumentValue::Xslt10VariableString(name) => {
             InvocationParameterValue::Atomic(AtomicValue::string(xslt10_variable_string_value(
                 inputs, name, variables, control,
+            )?))
+        }
+        TemplateArgumentValue::Xslt10Concat(expression) => {
+            InvocationParameterValue::Atomic(AtomicValue::string(xslt10_concat_value(
+                inputs, context, expression, variables, control,
             )?))
         }
         TemplateArgumentValue::SourceVariablePath { variable, path } => {

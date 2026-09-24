@@ -13,6 +13,8 @@ use crate::xslt::golden_semantics_experiment::{
     Xslt10TextChoiceBranch,
 };
 
+#[path = "attribute_set_linker.rs"]
+mod attribute_set_linker;
 #[path = "decimal_format_compiler.rs"]
 mod decimal_format_compiler;
 #[path = "instruction_compiler.rs"]
@@ -92,9 +94,24 @@ pub(crate) fn compile_stylesheet_at(
         return stylesheet_module_compiler::compile_simplified_stylesheet_at(document, root);
     }
     let mut program = compile_stylesheet_at_excluding_unvalidated(document, root, &[])?;
+    finalize_attribute_sets(&mut program)?;
     finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
+}
+
+pub(crate) fn compile_stylesheet_module_at_unlinked(
+    document: &Document,
+    root: NodeId,
+) -> Result<StylesheetProgram, CompileFailure> {
+    if document.name(root).is_some_and(|name| {
+        name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+            && matches!(name.local.as_str(), "stylesheet" | "transform")
+    }) {
+        compile_stylesheet_at_excluding_unvalidated(document, root, &[])
+    } else {
+        stylesheet_module_compiler::compile_simplified_stylesheet_at(document, root)
+    }
 }
 
 pub(super) fn compile_stylesheet_excluding_unvalidated(
@@ -158,7 +175,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut character_maps = Vec::new();
     let mut decimal_formats = decimal_format_compiler::DecimalFormats::default();
     let mut namespace_aliases = Vec::new();
-    let mut local_attribute_set_names = Vec::new();
+    let mut attribute_set_declarations = Vec::new();
     let mut key_definitions = Vec::new();
     for child in top_level_children {
         let Some(name) = document.name(child) else {
@@ -223,10 +240,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                 )?;
             }
             (Some(XSLT_NAMESPACE), "attribute-set") => {
-                let name = instruction_compiler::validate_local_attribute_set(document, child)?;
-                if !local_attribute_set_names.contains(&name) {
-                    local_attribute_set_names.push(name);
-                }
+                attribute_set_declarations.push(
+                    instruction_compiler::compile_attribute_set_declaration(document, child)?,
+                );
             }
             (Some(XSLT_NAMESPACE), "key") => {
                 key_definitions.push(compile_key_definition(document, child)?);
@@ -235,13 +251,6 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                 ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
                 ensure_no_meaningful_children(document, child, "xsl:strip-space")?;
                 let elements = required_attribute(document, child, None, "elements")?;
-                if elements != "*" {
-                    return Err(unsupported(
-                        "FXST1043",
-                        "the private whitespace-policy reference supports only xsl:strip-space elements='*'",
-                        document.location(child),
-                    ));
-                }
                 if saw_preserve_space {
                     return Err(unsupported(
                         "FXST1043",
@@ -250,7 +259,24 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                     ));
                 }
                 saw_strip_space = true;
-                source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
+                if elements == "*" {
+                    source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
+                } else {
+                    let names = compile_exact_whitespace_names(document, child, elements)?;
+                    match &mut source_whitespace {
+                        SourceWhitespacePolicy::Preserve => {
+                            source_whitespace = SourceWhitespacePolicy::StripExpandedNames(names);
+                        }
+                        SourceWhitespacePolicy::StripAllElementWhitespace => {}
+                        SourceWhitespacePolicy::StripExpandedNames(existing) => {
+                            for name in names {
+                                if !existing.contains(&name) {
+                                    existing.push(name);
+                                }
+                            }
+                        }
+                    }
+                }
             }
             (Some(XSLT_NAMESPACE), "preserve-space") => {
                 ensure_only_attributes(document, child, &["elements"], "xsl:preserve-space")?;
@@ -309,7 +335,6 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
             }
         }
     }
-    instruction_compiler::validate_local_attribute_set_graph(document, root)?;
     order_global_dependencies(&mut global_bindings, &global_binding_locations)?;
     let output_character_map_names = output
         .as_ref()
@@ -338,7 +363,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         decimal_formats: decimal_formats.into_definitions(),
         output_character_map_names,
         output_character_map_location,
-        local_attribute_set_names,
+        attribute_set_declarations,
         key_definitions,
         root_template,
         root_template_modes,
@@ -351,11 +376,46 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     Ok(program)
 }
 
+fn compile_exact_whitespace_names(
+    document: &Document,
+    element: NodeId,
+    elements: &str,
+) -> Result<Vec<ExpandedName>, CompileFailure> {
+    let mut names = Vec::new();
+    for lexical in elements.split_whitespace() {
+        if lexical == "*" || lexical.ends_with(":*") {
+            return Err(unsupported(
+                "FXST1043",
+                "namespace-wildcard whitespace name tests remain outside the private slice",
+                document.location(element),
+            ));
+        }
+        let name = compile_expanded_qname(document, element, lexical, "xsl:strip-space elements")?;
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    if names.is_empty() {
+        return Err(invalid(
+            "XTSE0280",
+            "xsl:strip-space elements must contain at least one NameTest",
+            document.location(element),
+        ));
+    }
+    Ok(names)
+}
+
 pub(super) fn finalize_decimal_formats(
     program: &mut StylesheetProgram,
 ) -> Result<(), CompileFailure> {
     let declarations = program.decimal_formats.clone();
     decimal_format_compiler::apply(program, &declarations)
+}
+
+pub(crate) fn finalize_attribute_sets(
+    program: &mut StylesheetProgram,
+) -> Result<(), CompileFailure> {
+    attribute_set_linker::link(program)
 }
 
 fn compile_key_definition(

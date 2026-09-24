@@ -1148,19 +1148,14 @@ fn compile_template_priority(
         });
     };
     let lexical = lexical.trim();
-    if let Ok(value) = lexical.parse::<i32>() {
-        return Ok(TemplatePriority::explicit_integer(value));
-    }
     if is_decimal_lexical(lexical) {
-        return parse_bounded_decimal_millionths(lexical)
-            .map(TemplatePriority::explicit_millionths)
-            .ok_or_else(|| {
-                unsupported(
-                    "FXST1025",
-                    "explicit template priority exceeds the private six-place fixed-point domain",
-                    document.location(element),
-                )
-            });
+        return parse_bounded_template_priority(lexical).ok_or_else(|| {
+            unsupported(
+                "FXST1025",
+                "explicit template priority exceeds the private exact-decimal domain",
+                document.location(element),
+            )
+        });
     }
     Err(invalid(
         "FXST0030",
@@ -1178,35 +1173,32 @@ fn parse_atomic_integer_threshold(pattern: &str) -> Option<i64> {
         .ok()
 }
 
-fn parse_bounded_decimal_millionths(value: &str) -> Option<i64> {
+fn parse_bounded_template_priority(value: &str) -> Option<TemplatePriority> {
     let (negative, unsigned) = if let Some(unsigned) = value.strip_prefix('-') {
         (true, unsigned)
     } else {
         (false, value.strip_prefix('+').unwrap_or(value))
     };
-    let (whole, fractional) = unsigned.split_once('.')?;
-    if fractional.len() > 6 {
+    let (whole, fractional) = unsigned.split_once('.').unwrap_or((unsigned, ""));
+    if fractional.len() > 18 {
         return None;
     }
     let whole = if whole.is_empty() {
         0
     } else {
-        whole.parse::<i64>().ok()?
+        whole.parse::<u128>().ok()?
     };
     let mut fraction = if fractional.is_empty() {
         0
     } else {
-        fractional.parse::<i64>().ok()?
+        fractional.parse::<u64>().ok()?
     };
-    for _ in fractional.len()..6 {
+    for _ in fractional.len()..18 {
         fraction = fraction.checked_mul(10)?;
     }
-    let magnitude = whole.checked_mul(1_000_000)?.checked_add(fraction)?;
-    if negative {
-        magnitude.checked_neg()
-    } else {
-        Some(magnitude)
-    }
+    Some(TemplatePriority::explicit_decimal_parts(
+        negative, whole, fraction,
+    ))
 }
 
 fn is_decimal_lexical(value: &str) -> bool {

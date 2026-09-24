@@ -350,6 +350,24 @@ impl Document {
         &self,
         control: &mut InvocationControl,
     ) -> Result<Self, ControlFailure> {
+        self.derive_stripping_element_whitespace(&[], control)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn derive_stripping_named_element_whitespace(
+        &self,
+        names: &[ExpandedName],
+        control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
+        self.derive_stripping_element_whitespace(names, control)
+    }
+
+    #[cfg(test)]
+    fn derive_stripping_element_whitespace(
+        &self,
+        names: &[ExpandedName],
+        control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
         let mut nodes = Vec::new();
         for node in self.nodes.iter() {
             control.charge(WorkDomain::XdmNode, 1)?;
@@ -360,8 +378,23 @@ impl Document {
             root: self.root,
             child_overrides: None,
         };
+        let mut preserves_space = vec![false; self.nodes.len()];
         for index in 0..self.nodes.len() {
             if self.nodes[index].kind != NodeKind::Element {
+                continue;
+            }
+            let parent_preserves = self.nodes[index]
+                .parent
+                .is_some_and(|parent| preserves_space[parent.0]);
+            preserves_space[index] =
+                self.element_preserves_xml_space(NodeId(index), parent_preserves);
+            if preserves_space[index]
+                || (!names.is_empty()
+                    && self.nodes[index]
+                        .name
+                        .as_ref()
+                        .is_none_or(|name| !names.iter().any(|candidate| candidate == name)))
+            {
                 continue;
             }
             derived.nodes_mut()[index].children.retain(|child| {
@@ -371,6 +404,23 @@ impl Document {
             });
         }
         Ok(derived)
+    }
+
+    fn element_preserves_xml_space(&self, element: NodeId, inherited: bool) -> bool {
+        const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+        self.attributes(element)
+            .iter()
+            .find_map(|attribute| {
+                let name = self.name(*attribute)?;
+                (name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space").then(
+                    || match self.value(*attribute) {
+                        Some("preserve") => true,
+                        Some("default") => false,
+                        _ => inherited,
+                    },
+                )
+            })
+            .unwrap_or(inherited)
     }
 
     pub(crate) fn node_count(&self) -> usize {
@@ -543,27 +593,6 @@ impl Document {
         self.nodes[id.0]
             .document_order
             .expect("owned XDM nodes have assigned document order")
-    }
-
-    pub(crate) fn has_xml_space_declaration(
-        &self,
-        control: &mut InvocationControl,
-    ) -> Result<bool, ControlFailure> {
-        const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
-        for node in self.nodes.iter() {
-            control.charge(WorkDomain::XdmNode, 1)?;
-            if node.kind != NodeKind::Element {
-                continue;
-            }
-            if node.attributes.iter().any(|attribute| {
-                self.name(*attribute).is_some_and(|name| {
-                    name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space"
-                })
-            }) {
-                return Ok(true);
-            }
-        }
-        Ok(false)
     }
 
     pub(crate) fn string_value(&self, id: NodeId) -> String {

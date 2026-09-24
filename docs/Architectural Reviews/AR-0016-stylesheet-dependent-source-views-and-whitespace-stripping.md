@@ -9,7 +9,7 @@
 | Trigger | XSLT30 `mode-1301` requires `xsl:strip-space` over a reusable prepared source |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0004, ADR-0007, ADR-0012 |
 | Related reviews | AR-0007, AR-0008, AR-0009, AR-0013 |
-| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, `../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, `../Evidence/peer-ar-0016-decision-readiness-monday-2026-08-30.md`, `../Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md`, and the pinned XSLT30 `mode-1301` case |
+| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, `../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, `../Evidence/peer-ar-0016-decision-readiness-monday-2026-08-30.md`, `../Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md`, `../Evidence/oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md`, `../Evidence/oasis-xslt10-exact-name-whitespace-stripping-2026-09-23.md`, and the pinned XSLT30 `mode-1301` case |
 
 ## Architectural question
 
@@ -176,10 +176,14 @@ conformance shortcut.
   additional-capacity estimate for the view. The later five-shape decision
   matrix and allocator-requested probe supersede that preliminary result for
   representation selection while remaining non-product benchmark evidence.
-- General `xsl:strip-space` and `xsl:preserve-space` matching, import
-  precedence, conflicts, schema-aware whitespace, and interaction with
-  `xml:space` remain outside the first exact `elements="*"` experiment unless
-  required by the pinned case.
+- Exact expanded-name `xsl:strip-space` tests now use the same reference and
+  view after eight unchanged OASIS cases became exact. Namespace wildcards,
+  selective `xsl:preserve-space`, import precedence, conflicts, schema-aware
+  whitespace, and CDATA lexical-origin compatibility remain outside the
+  admitted decision. Inherited
+  source `xml:space` preserve/default state was later admitted by ADR-0012's
+  2026-09-23 amendment after twelve unchanged OASIS cases activated the
+  reopening trigger.
 - The required private seam may also inform future physical source strategies,
   but this evidence does not reopen XSLT streaming or justify a universal
   navigation provider.
@@ -233,8 +237,16 @@ performance guarantee.
   retaining an optimized representation or cache. The five-shape release
   matrix and allocator-requested probe select the invocation-owned view without
   admitting a retained cache.
-- [ ] Revisit general declaration matching, precedence, `xml:space`, and typed
-  whitespace only when exact corpus cases enter selection.
+- [x] Revisit inherited source `xml:space` when exact corpus cases enter
+  selection. Twelve unchanged OASIS cases now execute through the complete
+  reference and visibility view; eight become exact and four expose separate
+  indentation or CDATA-origin compatibility differences.
+- [x] Revisit exact expanded-name declaration matching when corpus cases enter
+  selection. Seventeen cases leave `FXST1043`; eight become exact and nine
+  expose independent later frontiers.
+- [ ] Revisit namespace wildcards, selective preservation, declaration
+  precedence, CDATA lexical origin, and typed whitespace only when exact corpus
+  cases enter selection.
 
 ## Reopening triggers
 
@@ -278,3 +290,12 @@ effective-document inspection contract.
   total time by 2.74x to 8.35x and large-source peak requested bytes by about
   99.2x versus the complete reference. Accepted the narrow disposition through
   ADR-0012; broader whitespace declaration semantics remain demand-gated.
+- 2026-09-23 -- Twelve unchanged OASIS strip-all cases containing source
+  `xml:space` declarations activated the reopening trigger. Admitted inherited
+  preserve/default state through the same invocation-owned reference and view;
+  eight cases become exact and four retain visible serializer or CDATA-origin
+  differences.
+- 2026-09-23 -- Seventeen unchanged OASIS cases activated exact-name matching.
+  Admitted compiled expanded-name strip tests through both safe
+  representations; eight cases become exact and nine expose later independent
+  frontiers. Wildcards, selective preservation, and precedence remain open.

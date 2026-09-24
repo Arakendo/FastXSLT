@@ -248,6 +248,9 @@ pub(super) fn apply(
     for declaration in declarations {
         validate_distinct_symbols(&declaration.format, &declaration.location)?;
     }
+    for attribute_set in &mut program.attribute_set_declarations {
+        apply_computed_attributes(&mut attribute_set.attributes, declarations)?;
+    }
     if let Some(template) = &mut program.root_template {
         apply_instructions(&mut template.body, declarations)?;
     }

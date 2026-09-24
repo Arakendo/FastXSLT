@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
+use crate::xml::quick_xml_experiment::ExpandedName;
 
 use super::{Document, NodeId, NodeKind, is_xml_whitespace_only};
 
@@ -9,12 +10,41 @@ impl Document {
         &self,
         control: &mut InvocationControl,
     ) -> Result<Self, ControlFailure> {
+        self.view_stripping_element_whitespace(&[], control)
+    }
+
+    pub(crate) fn view_stripping_named_element_whitespace(
+        &self,
+        names: &[ExpandedName],
+        control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
+        self.view_stripping_element_whitespace(names, control)
+    }
+
+    fn view_stripping_element_whitespace(
+        &self,
+        names: &[ExpandedName],
+        control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
         let mut child_overrides = HashMap::new();
+        let mut preserves_space = vec![false; self.nodes.len()];
 
         for index in 0..self.nodes.len() {
             control.charge(WorkDomain::XdmNode, 1)?;
             let parent = NodeId(index);
             if self.kind(parent) != NodeKind::Element {
+                continue;
+            }
+            let parent_preserves = self.parent(parent).is_some_and(|ancestor| {
+                self.kind(ancestor) == NodeKind::Element && preserves_space[ancestor.index()]
+            });
+            preserves_space[index] = self.element_preserves_xml_space(parent, parent_preserves);
+            if preserves_space[index]
+                || (!names.is_empty()
+                    && self
+                        .name(parent)
+                        .is_none_or(|name| !names.iter().any(|candidate| candidate == name)))
+            {
                 continue;
             }
 

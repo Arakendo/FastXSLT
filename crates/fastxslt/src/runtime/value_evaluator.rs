@@ -62,7 +62,7 @@ use crate::xpath::string_length_experiment::{
 use crate::xslt::golden_semantics_experiment::{
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
     ConditionalPathBranch, ConditionalPathExpression, FocusEqualityOperand,
-    IntegerComparisonOperator, ValueExpression, Xslt10KeyLookup,
+    IntegerComparisonOperator, ValueExpression, Xslt10ConcatExpression, Xslt10KeyLookup,
 };
 
 #[path = "value_evaluator/xslt10_compatibility.rs"]
@@ -148,6 +148,16 @@ pub(super) fn xslt10_variable_number(
         crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&value)
             .unwrap_or(f64::NAN),
     )
+}
+
+pub(super) fn xslt10_concat_value(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &Xslt10ConcatExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    xslt10_compatibility::concat_value(inputs, context, expression, variables, control)
 }
 
 pub(super) fn evaluate_as_temporary_text(
@@ -692,6 +702,14 @@ pub(super) fn execute_value_of(
                 xslt10_compatibility::variable_string_value(inputs, haystack, variables, control)?;
             let needle =
                 xslt10_compatibility::variable_string_value(inputs, needle, variables, control)?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            append_boolean(inputs, haystack.contains(&needle), result, control)?;
+        }
+        ValueExpression::Xslt10ConcatContains { haystack, needle } => {
+            let haystack = xslt10_concat_value(inputs, context, haystack, variables, control)?;
+            let needle = xslt10_concat_value(inputs, context, needle, variables, control)?;
             control
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;

@@ -181,12 +181,13 @@ fn overlapping_stylesheet_generations_keep_independent_whitespace_policies() {
 }
 
 #[test]
-fn strip_all_rejects_sources_with_unadmitted_xml_space_semantics() {
+fn strip_all_honors_inherited_source_xml_space_declarations() {
     let program = compile(
         "memory:xml-space-style.xsl",
         br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0">
+            <xsl:output omit-xml-declaration="yes"/>
             <xsl:strip-space elements="*"/>
-            <xsl:template match="/"><xsl:value-of select="."/></xsl:template>
+            <xsl:template match="/"><out><xsl:value-of select="root"/></out></xsl:template>
         </xsl:stylesheet>"#,
     );
 
@@ -197,27 +198,65 @@ fn strip_all_rejects_sources_with_unadmitted_xml_space_semantics() {
         ),
         (
             "default",
-            b"<root xml:space=\"default\"><child>   </child></root>".as_slice(),
+            b"<root xml:space=\"preserve\"><child xml:space=\"default\">   </child></root>"
+                .as_slice(),
         ),
     ] {
         let source = document(&format!("memory:xml-space-{value}.xml"), source_xml);
-        let mut control = InvocationControl::unbounded();
-
-        let failure = execute_program_with_parameters_using(
+        let reference = execute_with(
             &program,
             &source,
-            &BTreeMap::new(),
-            MultipleMatchPolicy::UseLast,
-            &format!("xml-space-{value}"),
+            WhitespaceRepresentation::CompleteReference,
+            &format!("xml-space-{value}-reference"),
+        );
+        let view = execute_with(
+            &program,
+            &source,
             WhitespaceRepresentation::VisibilityView,
-            None,
-            None,
-            &mut control,
-        )
-        .expect_err("xml:space requires broader whitespace semantics");
+            &format!("xml-space-{value}-view"),
+        );
 
-        assert_eq!(failure.code, "FXRT1014");
-        assert_eq!(failure.category, super::FailureCategory::Unsupported);
-        assert!(failure.detail.contains("xml:space"));
+        assert_eq!(view, reference);
+        assert_eq!(
+            view,
+            if value == "preserve" {
+                "<out>   </out>"
+            } else {
+                "<out></out>"
+            }
+        );
     }
+}
+
+#[test]
+fn selective_strip_uses_expanded_parent_names_and_honors_xml_space() {
+    let program = compile(
+        "memory:selective-strip-style.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:n="urn:n" version="1.0">
+            <xsl:output method="text"/>
+            <xsl:strip-space elements="drop n:drop"/>
+            <xsl:template match="/"><xsl:for-each select="root/*"><xsl:value-of select="count(text())"/></xsl:for-each></xsl:template>
+        </xsl:stylesheet>"#,
+    );
+    let source = document(
+        "memory:selective-strip-source.xml",
+        br#"<root xmlns:n="urn:n"><drop>  </drop><keep>  </keep><n:drop>
+</n:drop><drop xml:space="preserve">  </drop></root>"#,
+    );
+
+    let reference = execute_with(
+        &program,
+        &source,
+        WhitespaceRepresentation::CompleteReference,
+        "selective-strip-reference",
+    );
+    let view = execute_with(
+        &program,
+        &source,
+        WhitespaceRepresentation::VisibilityView,
+        "selective-strip-view",
+    );
+
+    assert_eq!(view, reference);
+    assert_eq!(view, "0101");
 }
