@@ -164,7 +164,9 @@ fn compile_attribute_set_attribute(
 ) -> Result<ComputedAttribute, CompileFailure> {
     let mut attribute = compile_computed_attribute(document, element)?;
     match &attribute.value {
-        LiteralAttributeValue::Text(_) => {}
+        LiteralAttributeValue::Text(_) | LiteralAttributeValue::ContextStringValue => {}
+        LiteralAttributeValue::Xslt10SequenceConstructor(_)
+            if constructor_has_no_variable_reference(document, element) => {}
         LiteralAttributeValue::Variable(name) => {
             let stylesheet = containing_stylesheet(document, element)
                 .expect("attribute-set attribute has stylesheet");
@@ -191,12 +193,27 @@ fn compile_attribute_set_attribute(
         _ => {
             return Err(unsupported(
                 "FXST1065",
-                "the local attribute-set slice admits static text or one global atomic variable value",
+                "the local attribute-set slice admits static text, the current source string value, a variable-free XSLT 1.0 constructor, or one global atomic variable value",
                 document.location(element),
             ));
         }
     }
     Ok(attribute)
+}
+
+fn constructor_has_no_variable_reference(document: &Document, node: NodeId) -> bool {
+    if document
+        .attributes(node)
+        .iter()
+        .filter_map(|attribute| document.value(*attribute))
+        .any(|value| value.contains('$'))
+    {
+        return false;
+    }
+    document
+        .children(node)
+        .iter()
+        .all(|child| constructor_has_no_variable_reference(document, *child))
 }
 
 fn validate_dependencies(
@@ -223,7 +240,7 @@ fn validate_dependencies(
     }
     active.push(requested_name.clone());
     for declaration in declarations {
-        for referenced_name in attribute_set_references(document, declaration)? {
+        for referenced_name in attribute_set_graph_references(document, declaration)? {
             validate_dependencies(
                 document,
                 stylesheet,
@@ -267,25 +284,58 @@ fn attribute_set_references(
     let Some(names) = optional_attribute(document, declaration, None, "use-attribute-sets") else {
         return Ok(Vec::new());
     };
+    compile_attribute_set_reference_list(document, declaration, names)
+}
+
+fn attribute_set_graph_references(
+    document: &Document,
+    declaration: NodeId,
+) -> Result<Vec<ExpandedName>, CompileFailure> {
+    let mut references = Vec::new();
+    collect_attribute_set_references(document, declaration, &mut references)?;
+    Ok(references)
+}
+
+fn compile_attribute_set_reference_list(
+    document: &Document,
+    element: NodeId,
+    names: &str,
+) -> Result<Vec<ExpandedName>, CompileFailure> {
     let names = names
         .split_whitespace()
         .map(|name| {
-            super::super::compile_expanded_qname(
-                document,
-                declaration,
-                name,
-                "xsl:use-attribute-sets",
-            )
+            super::super::compile_expanded_qname(document, element, name, "xsl:use-attribute-sets")
         })
         .collect::<Result<Vec<_>, _>>()?;
     if names.is_empty() {
         return Err(invalid(
             "XTSE0020",
             "xsl:use-attribute-sets must name at least one attribute set",
-            document.location(declaration),
+            document.location(element),
         ));
     }
     Ok(names)
+}
+
+fn collect_attribute_set_references(
+    document: &Document,
+    element: NodeId,
+    references: &mut Vec<ExpandedName>,
+) -> Result<(), CompileFailure> {
+    const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
+    for namespace in [None, Some(XSLT_NAMESPACE)] {
+        let Some(names) = optional_attribute(document, element, namespace, "use-attribute-sets")
+        else {
+            continue;
+        };
+        references.extend(compile_attribute_set_reference_list(
+            document, element, names,
+        )?);
+    }
+    for child in document.children(element) {
+        collect_attribute_set_references(document, *child, references)?;
+    }
+    Ok(())
 }
 
 fn containing_stylesheet(document: &Document, element: NodeId) -> Option<NodeId> {

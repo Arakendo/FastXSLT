@@ -176,6 +176,7 @@ pub(super) fn materialize_literal_attributes(
     inputs: &SequenceInputs<'_>,
     attributes: &[LiteralAttribute],
     variables: &RuntimeVariables,
+    execution: SequenceContext<'_>,
     focus: LiteralAttributeFocus<'_>,
     request_id: &str,
     control: &mut InvocationControl,
@@ -192,14 +193,24 @@ pub(super) fn materialize_literal_attributes(
     };
     attributes
         .iter()
-        .map(|attribute| {
-            materialize_attribute(
+        .map(|attribute| match &attribute.value {
+            LiteralAttributeValue::Xslt10SequenceConstructor(instructions) => {
+                materialize_xslt10_sequence_attribute(
+                    inputs,
+                    &attribute.name,
+                    instructions,
+                    execution,
+                    variables,
+                    control,
+                )
+            }
+            _ => materialize_attribute(
                 &attribute.name,
                 &attribute.value,
                 &attribute.location,
                 &context,
                 control,
-            )
+            ),
         })
         .collect()
 }
@@ -269,7 +280,7 @@ fn materialize_computed_attribute_value(
         LiteralAttributeValue::Xslt10SequenceConstructor(instructions) => {
             materialize_xslt10_sequence_attribute(
                 context.inputs,
-                attribute,
+                &attribute.name,
                 instructions,
                 execution,
                 context.variables,
@@ -340,7 +351,7 @@ fn materialize_computed_attribute_value(
 
 fn materialize_xslt10_sequence_attribute(
     inputs: &SequenceInputs<'_>,
-    attribute: &ComputedAttribute,
+    name: &ExpandedName,
     instructions: &[crate::xslt::golden_semantics_experiment::Instruction],
     execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
@@ -354,7 +365,7 @@ fn materialize_xslt10_sequence_attribute(
         }
     }
     Ok(ResultAttribute {
-        name: attribute.name.clone(),
+        name: name.clone(),
         value,
     })
 }

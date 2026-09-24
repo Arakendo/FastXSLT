@@ -5836,6 +5836,15 @@ host lifecycle.
     matches (63.82%). The remaining five were audited rather than coerced into
     non-standard failures.
     [Evidence](../Evidence/oasis-xslt10-currency-picture-error-2026-09-23.md)
+  - [x] Evaluate source-context and bounded variable-free constructors in
+    local XSLT 1.0 attribute sets without retaining invocation state or
+    admitting caller-local variable scope. Nested attribute-set applications
+    now participate in circularity validation. Three additional stylesheets
+    initialize and execute, Microsoft `bvt003` and `91119` become exact, and
+    the strict lower bound reaches 2,027 / 3,173 (63.88%). The remaining seven
+    `FXST1065` cases require cross-module attribute-set composition and remain
+    explicit.
+    [Evidence](../Evidence/oasis-xslt10-attribute-set-invocation-value-constructors-2026-09-23.md)
   - [x] Separate proven-invalid resolved `format-number()` pictures from
     genuinely unsupported formatting work. Eleven runtime cases move from
     `FXRT1007` to invalid `XTDE1310`, reducing that unsupported frontier from

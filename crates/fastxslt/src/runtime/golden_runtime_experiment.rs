@@ -2391,6 +2391,7 @@ fn execute_source_element_copy(
                 inputs,
                 attributes,
                 variables,
+                execution,
                 LiteralAttributeFocus {
                     position: execution.focus_position,
                     size: execution.focus_size,
@@ -2478,6 +2479,7 @@ fn execute_source_element_copy_element(
         inputs,
         attributes,
         variables,
+        execution,
         LiteralAttributeFocus {
             position: execution.focus_position,
             size: execution.focus_size,
@@ -2528,6 +2530,7 @@ fn execute_literal_element(
         inputs,
         attributes,
         variables,
+        execution,
         LiteralAttributeFocus {
             position: execution.focus_position,
             size: execution.focus_size,

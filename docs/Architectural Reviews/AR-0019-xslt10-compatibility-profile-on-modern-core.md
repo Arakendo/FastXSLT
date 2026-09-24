@@ -2827,3 +2827,13 @@ maintained redistributable legacy suite becomes available.
   five. The remaining five were audited and are not treated as one missing
   engine feature.
   [Evidence](../Evidence/oasis-xslt10-currency-picture-error-2026-09-23.md)
+- 2026-09-23 -- Local attribute sets now retain source-context string values
+  and bounded variable-free sequence constructors for invocation-time
+  evaluation. Compiled state remains immutable, lexical variable references
+  remain outside this constructor slice, and nested `use-attribute-sets`
+  applications participate in static circularity validation without being
+  flattened onto the target element. The unchanged sweep reaches 2,236
+  initialized, 2,176 successfully executed, and 2,027 / 3,173 exact matches
+  (63.88%); the remaining seven `FXST1065` cases require cross-module
+  attribute-set composition.
+  [Evidence](../Evidence/oasis-xslt10-attribute-set-invocation-value-constructors-2026-09-23.md)

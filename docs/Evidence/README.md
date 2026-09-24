@@ -172,6 +172,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Source-Copy Attribute Sets](oasis-xslt10-source-copy-attribute-sets-2026-09-16.md)
 - [OASIS XSLT 1.0 Composed Local Attribute Sets](oasis-xslt10-composed-local-attribute-sets-2026-09-16.md)
 - [OASIS XSLT 1.0 Attribute-Set Global Variable Scope](oasis-xslt10-attribute-set-global-variable-scope-2026-09-16.md)
+- [OASIS XSLT 1.0 Attribute-Set Invocation Value Constructors](oasis-xslt10-attribute-set-invocation-value-constructors-2026-09-23.md)
 - [OASIS XSLT 1.0 Duplicate Result-Attribute Recovery](oasis-xslt10-duplicate-result-attribute-recovery-2026-09-16.md)
 - [OASIS XSLT 1.0 Late Result-Attribute Recovery](oasis-xslt10-late-result-attribute-recovery-2026-09-16.md)
 - [OASIS XSLT 1.0 Source-Node Union Variable](oasis-xslt10-source-node-union-variable-2026-09-08.md)

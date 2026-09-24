@@ -695,6 +695,7 @@ pub(super) fn execute_temporary_copy(
                 inputs,
                 attributes,
                 variables,
+                execution,
                 LiteralAttributeFocus {
                     position: execution.focus_position,
                     size: execution.focus_size,

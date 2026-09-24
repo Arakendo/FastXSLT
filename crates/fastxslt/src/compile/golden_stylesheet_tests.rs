@@ -700,6 +700,16 @@ fn local_attribute_set_graph_rejects_undefined_and_circular_references() {
             r#"<xsl:attribute-set name="outer" use-attribute-sets="inner"/><xsl:attribute-set name="inner" use-attribute-sets="outer"/>"#,
             "XTSE0720",
         ),
+        (
+            "nested-copy-self-cycle",
+            r#"<xsl:attribute-set name="outer"><xsl:attribute name="value"><xsl:copy use-attribute-sets="outer"/></xsl:attribute></xsl:attribute-set>"#,
+            "XTSE0720",
+        ),
+        (
+            "nested-copy-indirect-cycle",
+            r#"<xsl:attribute-set name="outer"><xsl:attribute name="value"><xsl:copy use-attribute-sets="inner"/></xsl:attribute></xsl:attribute-set><xsl:attribute-set name="inner"><xsl:attribute name="value"><xsl:copy use-attribute-sets="outer"/></xsl:attribute></xsl:attribute-set>"#,
+            "XTSE0720",
+        ),
     ] {
         let stylesheet = format!(
             r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{declaration}<xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#

@@ -4506,6 +4506,60 @@ fn xslt10_attribute_set_values_resolve_only_global_variables() {
 }
 
 #[test]
+fn xslt10_attribute_set_value_can_read_the_application_context_string_value() {
+    const SOURCE: &str = "urn:fastxslt:context-attribute-set-value:source";
+    const STYLESHEET: &str = "urn:fastxslt:context-attribute-set-value:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:attribute-set name="context"><xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute></xsl:attribute-set><xsl:template match="item"><xsl:copy use-attribute-sets="context"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<item>application context</item>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("context-attribute-set-value", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["context-attribute-set-value"].serialized,
+        "<item value=\"application context\"></item>"
+    );
+}
+
+#[test]
+fn xslt10_attribute_set_value_can_use_a_variable_free_sequence_constructor() {
+    const SOURCE: &str = "urn:fastxslt:sequence-attribute-set-value:source";
+    const STYLESHEET: &str = "urn:fastxslt:sequence-attribute-set-value:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:attribute-set name="context"><xsl:attribute name="value"><xsl:copy/>after-copy</xsl:attribute></xsl:attribute-set><xsl:template match="item"><out xsl:use-attribute-sets="context"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<item>application context</item>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("sequence-attribute-set-value", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["sequence-attribute-set-value"].serialized,
+        "<out value=\"after-copy\"></out>"
+    );
+}
+
+#[test]
 fn xslt10_duplicate_result_attributes_recover_with_the_last_value() {
     const SOURCE: &str = "urn:fastxslt:duplicate-attribute-recovery:source";
     const STYLESHEET: &str = "urn:fastxslt:duplicate-attribute-recovery:stylesheet";
