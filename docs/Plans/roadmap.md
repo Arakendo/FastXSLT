@@ -5812,6 +5812,13 @@ host lifecycle.
     retains its existing credit, the `FXST1051` frontier falls from two cases
     to one, and the conserved 2,009 / 3,173 (63.32%) lower bound is unchanged.
     [Evidence](../Evidence/oasis-xslt10-number-grouping-invalid-effective-value-2026-09-23.md)
+  - [x] Distinguish invalid unqualified `xsl:sort/@data-type` effective values
+    from valid prefixed extension names. Four unchanged Microsoft
+    expected-error cases move from unsupported `FXST1044` to invalid
+    `XTDE0030`, eliminating that corpus frontier without admitting extension
+    comparison semantics; the conserved 2,009 / 3,173 (63.32%) lower bound is
+    unchanged.
+    [Evidence](../Evidence/oasis-xslt10-sort-data-type-invalid-effective-values-2026-09-23.md)
   - [x] Separate proven-invalid resolved `format-number()` pictures from
     genuinely unsupported formatting work. Eleven runtime cases move from
     `FXRT1007` to invalid `XTDE1310`, reducing that unsupported frontier from

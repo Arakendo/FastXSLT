@@ -296,6 +296,28 @@ fn sort_controls_fold_exact_literal_avts() {
     let failure = compile_stylesheet(&wider_dynamic).expect_err("path sort control stays explicit");
     assert_eq!(failure.code, "FXST1044");
     assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    for value in ["", "unknown", "number;text"] {
+        let invalid = parse_stylesheet(
+            "test:sort-invalid-static-data-type.xsl",
+            format!(
+                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="doc/item"><xsl:sort data-type="{value}"/></xsl:for-each></xsl:template></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        let failure = compile_stylesheet(&invalid).expect_err("invalid static data-type must fail");
+        assert_eq!(failure.code, "XTDE0030");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    let extension = parse_stylesheet(
+        "test:sort-extension-data-type.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:ext="urn:example"><xsl:template match="/"><xsl:for-each select="doc/item"><xsl:sort data-type="ext:custom"/></xsl:for-each></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&extension)
+        .expect_err("valid extension sort data-type remains unsupported");
+    assert_eq!(failure.code, "FXST1044");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
 }
 
 #[test]

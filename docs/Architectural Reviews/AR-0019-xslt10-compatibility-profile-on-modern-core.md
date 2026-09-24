@@ -2801,3 +2801,9 @@ maintained redistributable legacy suite becomes available.
   expected-error credit, the unsupported frontier falls from two cases to one,
   and the conserved counts do not move.
   [Evidence](../Evidence/oasis-xslt10-number-grouping-invalid-effective-value-2026-09-23.md)
+- 2026-09-23 -- Invalid unqualified `xsl:sort/@data-type` effective values now
+  report invalid `XTDE0030`, while syntactically valid prefixed extension names
+  remain unsupported. Four unchanged expected-error cases retain their credit
+  and eliminate the corpus-visible `FXST1044` frontier without changing the
+  conserved counts or admitting extension comparison behavior.
+  [Evidence](../Evidence/oasis-xslt10-sort-data-type-invalid-effective-values-2026-09-23.md)

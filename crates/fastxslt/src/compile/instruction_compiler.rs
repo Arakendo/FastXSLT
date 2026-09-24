@@ -1394,9 +1394,14 @@ fn compile_sort_data_type(
     match value.map(fold_static_sort_control_avt) {
         None | Some(Some("text")) => Ok(SortDataType::Text),
         Some(Some("number")) => Ok(SortDataType::Number),
-        Some(Some(value)) => Err(unsupported(
+        Some(Some(value)) if is_prefixed_qname(value) => Err(unsupported(
             "FXST1044",
-            format!("unsupported xsl:sort data-type: {value}"),
+            format!("extension xsl:sort data-type is outside the admitted slice: {value}"),
+            location,
+        )),
+        Some(Some(value)) => Err(invalid(
+            "XTDE0030",
+            format!("invalid xsl:sort data-type: {value}"),
             location,
         )),
         Some(None) => compile_sort_control_variable(value.expect("dynamic sort control exists"))
@@ -1409,6 +1414,13 @@ fn compile_sort_data_type(
                 )
             }),
     }
+}
+
+fn is_prefixed_qname(value: &str) -> bool {
+    let Some((prefix, local)) = value.split_once(':') else {
+        return false;
+    };
+    !local.contains(':') && is_ascii_ncname(prefix) && is_ascii_ncname(local)
 }
 
 fn compile_sort_order(
