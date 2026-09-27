@@ -2,7 +2,8 @@
 
 #[cfg(any(test, feature = "workbench"))]
 use super::byte_encoding::{
-    encode_iso_8859_1_text, encode_iso_8859_1_xml, encode_us_ascii_cdata, serialize_utf16_be,
+    encode_iso_8859_1_text, encode_iso_8859_1_xml, encode_iso_8859_2_text, encode_iso_8859_2_xml,
+    encode_us_ascii_cdata, serialize_utf16_be,
 };
 use super::{
     ExecutionFailure, FailureCategory, ResultAttribute, ResultNode, SemanticResult,
@@ -184,12 +185,18 @@ fn serialize_xml_with_namespace_mode(
     let mut namespace_scope =
         NamespaceScope::new(output_namespace_mode(namespace_mode, xhtml_mode));
     let mut doctype_written = false;
+    let mut previous_was_element = false;
     for node in &result.children {
+        let is_element = matches!(node, ResultNode::Element { .. });
+        if options.indent && previous_was_element && is_element {
+            write_indentation(0, &mut output)?;
+        }
         if !doctype_written && matches!(node, ResultNode::Element { .. }) {
             serialize_doctype(result, settings, xhtml, &mut output)?;
             doctype_written = true;
         }
         serialize_node(node, &mut namespace_scope, options, 0, &mut output)?;
+        previous_was_element = is_element;
     }
     Ok(output.finish())
 }
@@ -1230,7 +1237,8 @@ fn serialize_single_byte_bytes(
     encoding: &str,
 ) -> Result<Vec<u8>, ExecutionFailure> {
     let us_ascii = encoding.eq_ignore_ascii_case("US-ASCII");
-    if !us_ascii && !encoding.eq_ignore_ascii_case("ISO-8859-1") {
+    let iso_8859_2 = encoding.eq_ignore_ascii_case("ISO-8859-2");
+    if !us_ascii && !iso_8859_2 && !encoding.eq_ignore_ascii_case("ISO-8859-1") {
         return Err(failure(
             "SESU0007",
             FailureCategory::Unsupported,
@@ -1280,6 +1288,10 @@ fn serialize_single_byte_bytes(
     let body_len = body.len();
     let encoded_body = if us_ascii {
         encode_us_ascii_cdata(&body, request_id)?.into_bytes()
+    } else if iso_8859_2 && matches!(settings.method.as_deref(), Some("text" | "html")) {
+        encode_iso_8859_2_text(&body, request_id)?
+    } else if iso_8859_2 {
+        encode_iso_8859_2_xml(&body, request_id)?
     } else if matches!(settings.method.as_deref(), Some("text" | "html")) {
         encode_iso_8859_1_text(&body, request_id)?
     } else {

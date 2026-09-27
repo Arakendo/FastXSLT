@@ -1,4 +1,5 @@
-use crate::xslt::golden_semantics_experiment::{Instruction, StylesheetProgram};
+use crate::xdm::owned_tree_experiment::SourceLocation;
+use crate::xslt::golden_semantics_experiment::{Instruction, StylesheetProgram, TemplateArgument};
 
 use super::{CompileFailure, invalid};
 
@@ -29,7 +30,7 @@ fn validate_named_calls(
             | Instruction::ForEachVariable { body, .. }
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }
-            | Instruction::Xslt10SequenceTreeVariable { body, .. }
+            | Instruction::SequenceTreeVariable { body, .. }
             | Instruction::Xslt10Message { body, .. }
             | Instruction::If { body, .. } => {
                 validate_named_calls(program, body)?;
@@ -48,19 +49,11 @@ fn validate_named_calls(
                 }
                 validate_named_calls(program, otherwise)?;
             }
-            Instruction::CallTemplate { name, location, .. } => {
-                program
-                    .named_templates
-                    .iter()
-                    .find(|template| template.name == *name)
-                    .ok_or_else(|| {
-                        invalid(
-                            "FXST0014",
-                            format!("unknown named template: {name}"),
-                            location,
-                        )
-                    })?;
-            }
+            Instruction::CallTemplate {
+                name,
+                arguments,
+                location,
+            } => validate_named_call(program, name, arguments, location)?,
             Instruction::Text { .. }
             | Instruction::Number { .. }
             | Instruction::ProcessingInstructionNode { .. }
@@ -77,6 +70,7 @@ fn validate_named_calls(
             | Instruction::Xslt10ConcatVariable { .. }
             | Instruction::Xslt10KeyVariable { .. }
             | Instruction::SourceNodeVariable { .. }
+            | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { .. }
             | Instruction::SourceVariablePathVariable { .. }
             | Instruction::SourceNodeUnionVariable { .. }
             | Instruction::IntegerRangeVariable { .. }
@@ -93,6 +87,7 @@ fn validate_named_calls(
             | Instruction::CopyOfChildElements { .. }
             | Instruction::CopyOfAncestorOrSelfElements { .. }
             | Instruction::CopyOfLocationPath { .. }
+            | Instruction::CopyOfDocument { .. }
             | Instruction::CopyOfXslt10KeyLookup { .. }
             | Instruction::CopyOfPathUnion { .. }
             | Instruction::CopyOfStaticAtomicText { .. }
@@ -100,6 +95,42 @@ fn validate_named_calls(
             | Instruction::CopyOfAtomicValue { .. }
             | Instruction::Copy { .. } => {}
         }
+    }
+    Ok(())
+}
+
+fn validate_named_call(
+    program: &StylesheetProgram,
+    name: &str,
+    arguments: &[TemplateArgument],
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    let called = program
+        .named_templates
+        .iter()
+        .find(|template| template.name == name)
+        .ok_or_else(|| {
+            invalid(
+                "FXST0014",
+                format!("unknown named template: {name}"),
+                location,
+            )
+        })?;
+    if let Some(parameter) = called.template.parameters.iter().find(|parameter| {
+        parameter.required
+            && !parameter.tunnel
+            && !arguments
+                .iter()
+                .any(|argument| argument.name == parameter.name)
+    }) {
+        return Err(invalid(
+            "XTSE0690",
+            format!(
+                "call to named template {name} omits required parameter {}",
+                parameter.name
+            ),
+            location,
+        ));
     }
     Ok(())
 }

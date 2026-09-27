@@ -88,3 +88,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; amortize isolated boundaries with bounded incremental input-
   order correlation and delivery while preserving independent member semantics,
   conservative loss truth, and private wire and binding representations.
+- [ADR-0020: Official `wasm32-unknown-unknown` Build Target](ADR-0020-official-wasm32-unknown-unknown-build-target.md)
+  -- Accepted; continuously build the shared safe engine for the presealed
+  `wasm32-unknown-unknown` target while keeping the feasibility binding,
+  packaging, and target-specific operational guarantees private and unstable.

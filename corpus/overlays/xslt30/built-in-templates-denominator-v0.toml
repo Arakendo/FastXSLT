@@ -19,3 +19,27 @@ case_name = "built-in-templates-0102"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 2.0 case resolves #default to the unnamed mode and carries it through recursive built-in document and element rules, matching its native XML assertion."
+
+[[case_override]]
+case_name = "built-in-templates-0201"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case distinguishes an empty string from a typed empty sequence and carries both supplied parameters through recursive built-in document and element rules."
+
+[[case_override]]
+case_name = "built-in-templates-0202"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case carries an invocation-owned temporary tree and its typed string conversion through recursive built-in rules, preserving node and atomic type identity."
+
+[[case_override]]
+case_name = "built-in-templates-0301"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged non-schema-aware XSLT 3.0 case shallow-copies untyped source nodes through a temporary tree and preserves their untyped element annotation."
+
+[[case_override]]
+case_name = "built-in-templates-0302"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The case explicitly requires schema-aware XSLT and typed input; FastXSLT's selected staged-modern profile does not claim schema-aware processing."

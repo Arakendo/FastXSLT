@@ -81,7 +81,6 @@ impl PreparedInputBuilder {
 
     pub(super) fn seal(self) -> PreparedInputSet {
         PreparedInputSet {
-            #[cfg(test)]
             snapshot: self.snapshot,
             documents: Arc::new(self.documents),
             #[cfg(test)]
@@ -131,7 +130,6 @@ pub(super) fn prepare_document(
 
 #[derive(Clone, Debug)]
 pub(super) struct PreparedInputSet {
-    #[cfg(test)]
     snapshot: ResourceSnapshot,
     documents: Arc<BTreeMap<String, Arc<Document>>>,
     #[cfg(test)]
@@ -143,6 +141,7 @@ pub(super) struct PreparedInputSet {
 pub(super) struct PreparedRetentionObservation {
     pub(super) document_count: usize,
     pub(super) xdm_node_count: usize,
+    pub(super) snapshot_known_capacity_bytes: usize,
     pub(super) prepared_map_known_capacity_bytes: usize,
     pub(super) xdm_owned_capacity_bytes: usize,
 }
@@ -166,9 +165,8 @@ impl PreparedInputSet {
         self.documents.get(identity).cloned()
     }
 
-    #[cfg(test)]
-    pub(super) fn test_only_snapshot_known_capacity_bytes(&self) -> usize {
-        self.snapshot.test_only_known_capacity_bytes()
+    pub(super) fn snapshot(&self) -> &ResourceSnapshot {
+        &self.snapshot
     }
 
     #[cfg(feature = "workbench")]
@@ -185,6 +183,7 @@ impl PreparedInputSet {
                 .values()
                 .map(|document| document.node_count())
                 .sum(),
+            snapshot_known_capacity_bytes: self.snapshot.known_capacity_bytes(),
             prepared_map_known_capacity_bytes,
             xdm_owned_capacity_bytes: self
                 .documents

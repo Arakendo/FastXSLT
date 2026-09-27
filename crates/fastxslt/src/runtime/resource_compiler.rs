@@ -4,6 +4,7 @@ use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
     compile_stylesheet_module_at_unlinked, compile_stylesheet_with_import_and_include,
     compile_stylesheet_with_imported_and_included_programs_at, compile_stylesheet_with_imports,
+    compile_stylesheet_with_included_programs_at,
     compile_stylesheet_with_single_imported_program_at, compile_stylesheet_with_single_include,
     compile_stylesheet_with_single_include_program_at,
     compile_stylesheet_with_two_imported_programs_at,
@@ -17,7 +18,10 @@ use super::stylesheet_dependency_loader::{
 };
 use super::{ExecutionFailure, FailureCategory, failure, failure_at};
 
-const DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(2, 5, 1_048_576);
+#[cfg(test)]
+const DEFAULT_DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(2, 5, 1_048_576);
+#[cfg(test)]
+const DEFAULT_RESOLUTION_ATTEMPTS: usize = 5;
 
 #[cfg(test)]
 pub(in crate::runtime) fn compile_resource(
@@ -27,20 +31,58 @@ pub(in crate::runtime) fn compile_resource(
     compile_resource_with_denied(snapshot, stylesheet_id, std::iter::empty())
 }
 
+#[cfg(test)]
 pub(in crate::runtime) fn compile_resource_with_denied(
     snapshot: &ResourceSnapshot,
     stylesheet_id: &str,
     denied: impl IntoIterator<Item = String>,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let mut resolver = SnapshotResolver::new(snapshot, denied, ResolutionLimits::new(5));
-    compile_resource_with_resolver(&mut resolver, stylesheet_id)
+    compile_resource_with_denied_and_limits(
+        snapshot,
+        stylesheet_id,
+        denied,
+        2,
+        5,
+        1_048_576,
+        DEFAULT_RESOLUTION_ATTEMPTS,
+    )
 }
 
+pub(in crate::runtime) fn compile_resource_with_denied_and_limits(
+    snapshot: &ResourceSnapshot,
+    stylesheet_id: &str,
+    denied: impl IntoIterator<Item = String>,
+    max_dependency_depth: usize,
+    max_modules: usize,
+    max_dependency_bytes: usize,
+    max_resolution_attempts: usize,
+) -> Result<StylesheetProgram, ExecutionFailure> {
+    let mut resolver = SnapshotResolver::new(
+        snapshot,
+        denied,
+        ResolutionLimits::new(max_resolution_attempts),
+    );
+    compile_resource_with_resolver_and_limits(
+        &mut resolver,
+        stylesheet_id,
+        DependencyLimits::new(max_dependency_depth, max_modules, max_dependency_bytes),
+    )
+}
+
+#[cfg(test)]
 fn compile_resource_with_resolver(
     resolver: &mut SnapshotResolver<'_>,
     stylesheet_id: &str,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let graph = load_stylesheet_dependency_graph(resolver, stylesheet_id, DEPENDENCY_LIMITS)
+    compile_resource_with_resolver_and_limits(resolver, stylesheet_id, DEFAULT_DEPENDENCY_LIMITS)
+}
+
+fn compile_resource_with_resolver_and_limits(
+    resolver: &mut SnapshotResolver<'_>,
+    stylesheet_id: &str,
+    dependency_limits: DependencyLimits,
+) -> Result<StylesheetProgram, ExecutionFailure> {
+    let graph = load_stylesheet_dependency_graph(resolver, stylesheet_id, dependency_limits)
         .map_err(dependency_failure)?;
     debug_assert_eq!(graph.identity, stylesheet_id);
     let mut program = compile_loaded_graph(&graph).map_err(compile_failure)?;
@@ -56,16 +98,15 @@ fn compile_loaded_graph(
         return compile_stylesheet(&graph.document);
     }
     validate_loaded_import_order(graph)?;
-    if graph.dependencies.len() > 2 {
-        return Err(CompileFailure {
-            code: "FXST1018",
-            category: CompileCategory::Unsupported,
-            detail: "the private slice permits at most two stylesheet dependencies".to_owned(),
-            location: graph
-                .document
-                .location(graph.document.document_node())
-                .clone(),
-        });
+    let is_include_only = graph
+        .dependencies
+        .iter()
+        .all(|dependency| dependency.dependency_kind == Some(StylesheetDependencyKind::Include));
+    validate_sibling_dependency_shape(graph, is_include_only)?;
+    if is_include_only {
+        if let Some(program) = compile_homogeneous_module(graph) {
+            return program;
+        }
     }
     if let Some(program) = compile_homogeneous_dependency_tree(graph) {
         return program;
@@ -144,6 +185,25 @@ fn compile_loaded_graph(
                 .clone(),
         }),
     }
+}
+
+fn validate_sibling_dependency_shape(
+    graph: &LoadedStylesheetModule,
+    is_include_only: bool,
+) -> Result<(), CompileFailure> {
+    if graph.dependencies.len() <= 2 || is_include_only {
+        return Ok(());
+    }
+    Err(CompileFailure {
+        code: "FXST1018",
+        category: CompileCategory::Unsupported,
+        detail: "the private slice permits at most two non-include stylesheet dependencies"
+            .to_owned(),
+        location: graph
+            .document
+            .location(graph.document.document_node())
+            .clone(),
+    })
 }
 
 fn compile_import_then_include_tree(
@@ -254,6 +314,28 @@ fn compile_homogeneous_module(
                     }
                 })
             }))
+        }
+        dependencies
+            if dependencies.iter().all(|dependency| {
+                dependency.dependency_kind == Some(StylesheetDependencyKind::Include)
+            }) =>
+        {
+            let included_programs = dependencies
+                .iter()
+                .map(compile_homogeneous_module)
+                .collect::<Option<Vec<_>>>()?;
+            Some(
+                included_programs
+                    .into_iter()
+                    .collect::<Result<Vec<_>, _>>()
+                    .and_then(|included_programs| {
+                        compile_stylesheet_with_included_programs_at(
+                            &module.document,
+                            module.root,
+                            included_programs,
+                        )
+                    }),
+            )
         }
         _ => None,
     }
@@ -623,7 +705,9 @@ mod tests {
         ResolutionLimits, ResourceLimits, ResourceSetBuilder, SnapshotResolver,
     };
 
-    use super::{compile_resource, compile_resource_with_resolver};
+    use super::{
+        compile_resource, compile_resource_with_denied_and_limits, compile_resource_with_resolver,
+    };
     use crate::runtime::golden_runtime_experiment::FailureCategory;
 
     const STYLESHEET_ID: &str = "urn:fastxslt:test:stylesheet";
@@ -746,5 +830,66 @@ mod tests {
         let program = compile_resource(&resources.seal(), PRINCIPAL)
             .expect("XSLT 3.0 permits imports after other declarations");
         assert_eq!(program.matched_templates.len(), 2);
+    }
+
+    #[test]
+    fn repeated_includes_preserve_every_bounded_declaration_occurrence_in_source_order() {
+        const PRINCIPAL: &str = "https://example.invalid/styles/main.xsl";
+        const FIRST: &str = "https://example.invalid/styles/first.xsl";
+        const SECOND: &str = "https://example.invalid/styles/second.xsl";
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 4_096, 8_192));
+        resources
+            .admit(
+                PRINCIPAL,
+                br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="first.xsl"/><xsl:include href="second.xsl"/><xsl:include href="first.xsl"/></xsl:stylesheet>"#.to_vec(),
+            )
+            .expect("admit principal stylesheet");
+        resources
+            .admit(
+                FIRST,
+                br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item"><first/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            )
+            .expect("admit first included stylesheet");
+        resources
+            .admit(
+                SECOND,
+                br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item"><second/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            )
+            .expect("admit second included stylesheet");
+        let snapshot = resources.seal();
+
+        let program = compile_resource_with_denied_and_limits(
+            &snapshot,
+            PRINCIPAL,
+            std::iter::empty(),
+            2,
+            4,
+            8_192,
+            4,
+        )
+        .expect("compile three ordered include occurrences");
+
+        assert_eq!(program.matched_templates.len(), 3);
+        assert_eq!(
+            program
+                .matched_templates
+                .iter()
+                .map(|matched| matched.template.location.resource.as_str())
+                .collect::<Vec<_>>(),
+            [FIRST, SECOND, FIRST]
+        );
+
+        let failure = compile_resource_with_denied_and_limits(
+            &snapshot,
+            PRINCIPAL,
+            std::iter::empty(),
+            2,
+            3,
+            8_192,
+            4,
+        )
+        .expect_err("repeated references must each consume the module budget");
+        assert_eq!(failure.code, "FXRS0006");
+        assert_eq!(failure.category, FailureCategory::Limit);
     }
 }

@@ -16,29 +16,39 @@ use crate::xslt30_overlay_test_support::{
     assert_denominator_case_disposition, assert_denominator_override_names,
 };
 
-const RESULT_CASES: [&str; 14] = [
+const RESULT_CASES: [&str; 23] = [
     "call-template-0101",
     "call-template-0102",
     "call-template-0103",
     "call-template-0201",
     "call-template-0402",
+    "call-template-0501",
+    "call-template-0601",
+    "call-template-0701",
     "call-template-0801",
     "call-template-0802",
     "call-template-0109",
     "call-template-1101",
+    "call-template-1102",
+    "call-template-1301",
+    "call-template-1401",
     "call-template-1501",
+    "call-template-1601",
     "call-template-1701",
     "call-template-1801",
     "call-template-1802",
     "call-template-1803",
+    "call-template-1901",
+    "call-template-2001",
 ];
-const ERROR_CASES: [(&str, &str); 6] = [
+const ERROR_CASES: [(&str, &str); 7] = [
     ("call-template-0001", "XPDY0002"),
     ("call-template-0104", "XTDE0040"),
     ("call-template-0105", "XTDE0040"),
     ("call-template-0106", "XTSE0080"),
     ("call-template-0107", "XTDE0040"),
     ("call-template-0401a", "XTDE0700"),
+    ("call-template-2101", "XTSE0690"),
 ];
 const PROFILE_EXCLUDED_CASES: [&str; 1] = ["call-template-0401"];
 #[test]
@@ -98,10 +108,13 @@ fn execute_case(case_name: &str) {
     let document = load_test_set();
     let case = case_named(&document, case_name);
     let test = child_named(&document, case, "test").expect("test metadata");
-    let expected = child_named(&document, case, "result")
+    let assertion = child_named(&document, case, "result")
         .and_then(|node| child_named(&document, node, "assert-xml"))
-        .map(|node| document.string_value(node))
-        .expect("inline XML assertion");
+        .expect("XML assertion");
+    let expected = attribute(&document, assertion, "file").map_or_else(
+        || document.string_value(assertion),
+        |file| fs::read_to_string(corpus_directory().join(file)).expect("read expected XML"),
+    );
     let environment_ref = child_named(&document, case, "environment")
         .and_then(|node| attribute(&document, node, "ref"))
         .expect("environment reference");

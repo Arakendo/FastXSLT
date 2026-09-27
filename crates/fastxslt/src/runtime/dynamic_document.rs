@@ -1,5 +1,7 @@
 //! Invocation-owned preparation for literal sealed-snapshot `document()` references.
 
+use std::sync::Arc;
+
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::resources::{ResolutionFailure, ResolutionLimits, SnapshotResolver};
 use crate::xdm::owned_tree_experiment::{BuildFailure, Document, NodeId};
@@ -7,10 +9,10 @@ use crate::xslt::golden_semantics_experiment::DocumentRootReference;
 
 use super::{ExecutionFailure, FailureCategory, SequenceInputs, control_failure, failure};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct DynamicDocument {
     pub(super) identity: u64,
-    pub(super) document: Document,
+    pub(super) document: Arc<Document>,
 }
 
 pub(super) fn document_root_identity(
@@ -18,6 +20,89 @@ pub(super) fn document_root_identity(
     reference: &DocumentRootReference,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
+    let dynamic = prepare_document(inputs, reference, control)?;
+    if let Some(local) = reference.descendant_local.as_deref()
+        && !contains_descendant_local(
+            &dynamic.document,
+            dynamic.document.document_node(),
+            local,
+            inputs.request_id,
+            control,
+        )?
+    {
+        return Ok(String::new());
+    }
+    Ok(format!("d{}", dynamic.identity))
+}
+
+pub(super) fn copy_document(
+    inputs: &SequenceInputs<'_>,
+    reference: &DocumentRootReference,
+    recover_unattached_attributes: bool,
+    control: &mut InvocationControl,
+) -> Result<Vec<super::ResultNode>, ExecutionFailure> {
+    let dynamic = prepare_document(inputs, reference, control)?;
+    let Some(descendant_local) = reference.descendant_local.as_deref() else {
+        return super::copy_source_node(
+            &dynamic.document,
+            inputs.request_id,
+            dynamic.document.document_node(),
+            recover_unattached_attributes,
+            control,
+        );
+    };
+    copy_matching_descendants(
+        &dynamic.document,
+        dynamic.document.document_node(),
+        descendant_local,
+        inputs.request_id,
+        recover_unattached_attributes,
+        control,
+    )
+}
+
+fn copy_matching_descendants(
+    document: &Document,
+    parent: NodeId,
+    local: &str,
+    request_id: &str,
+    recover_unattached_attributes: bool,
+    control: &mut InvocationControl,
+) -> Result<Vec<super::ResultNode>, ExecutionFailure> {
+    let mut copied = Vec::new();
+    for child in document.children(parent) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if document
+            .name(*child)
+            .is_some_and(|name| name.namespace.is_none() && name.local == local)
+        {
+            copied.extend(super::copy_source_node(
+                document,
+                request_id,
+                *child,
+                recover_unattached_attributes,
+                control,
+            )?);
+        }
+        copied.extend(copy_matching_descendants(
+            document,
+            *child,
+            local,
+            request_id,
+            recover_unattached_attributes,
+            control,
+        )?);
+    }
+    Ok(copied)
+}
+
+pub(super) fn prepare_document(
+    inputs: &SequenceInputs<'_>,
+    reference: &DocumentRootReference,
+    control: &mut InvocationControl,
+) -> Result<DynamicDocument, ExecutionFailure> {
     let snapshot = inputs.resource_snapshot.ok_or_else(|| {
         failure(
             "FXRT1015",
@@ -67,8 +152,8 @@ pub(super) fn document_root_identity(
                 |failure| control_failure(*failure, inputs.request_id),
             )
         })?;
-        let document =
-            Document::from_parsed_controlled(parsed, control).map_err(|error| match error {
+        let document = Arc::new(Document::from_parsed_controlled(parsed, control).map_err(
+            |error| match error {
                 BuildFailure::Control(failure) => control_failure(failure, inputs.request_id),
                 _ => failure(
                     "FXXD0002",
@@ -76,7 +161,8 @@ pub(super) fn document_root_identity(
                     Some(inputs.request_id),
                     format!("document() resource XDM construction failed: {error:?}"),
                 ),
-            })?;
+            },
+        )?);
         let identity = control.allocate_temporary_tree_identity().ok_or_else(|| {
             failure(
                 "FXRT0016",
@@ -90,22 +176,12 @@ pub(super) fn document_root_identity(
             .borrow_mut()
             .insert(identity_key.clone(), DynamicDocument { identity, document });
     }
-    let documents = inputs.dynamic_documents.borrow();
-    let dynamic = documents
+    Ok(inputs
+        .dynamic_documents
+        .borrow()
         .get(&identity_key)
-        .expect("resolved dynamic document was inserted");
-    if let Some(local) = reference.descendant_local.as_deref()
-        && !contains_descendant_local(
-            &dynamic.document,
-            dynamic.document.document_node(),
-            local,
-            inputs.request_id,
-            control,
-        )?
-    {
-        return Ok(String::new());
-    }
-    Ok(format!("d{}", dynamic.identity))
+        .expect("resolved dynamic document was inserted")
+        .clone())
 }
 
 fn contains_descendant_local(

@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Status | Draft, pre-stability |
-| Last updated | 2026-08-26 |
+| Last updated | 2026-09-24 |
 | Applies to | FastXSLT workspace |
 
 ## 1. Product intent
@@ -81,6 +81,12 @@ FastXSLT.
 Host-specific adapters, including a future ASP.NET/.NET adapter, sit above the
 public facade. They translate host values, lifetime, cancellation, diagnostics,
 and output without reimplementing engine semantics.
+
+ADR-0020 accepts `wasm32-unknown-unknown` as an official build target for the
+same safe semantic engine and a private presealed adapter. This is a maintained
+target constraint, not a stable browser or JavaScript binding: concrete exports,
+packaging, runtime integration, concurrency, and operational guarantees remain
+unstabilized.
 
 ### Architectural invariants
 
@@ -568,6 +574,24 @@ once through the shared XSLT 1.0 string rules, charges the function operation,
 and emits the typed boolean or string result. This does not admit dynamic
 second operands, general nested calls, or the equivalent modern expression
 grammar.
+The same compatibility conversion may supply the first argument to
+`substring()` when its start and optional length are finite static numbers.
+This form composes the invocation-owned variable value with the shared
+codepoint-aware substring evaluator; it does not retain temporary trees in
+compiled state or admit dynamic position operands.
+An ordered XSLT 1.0 boolean comparison may likewise combine one direct
+unqualified variable with one finite static decimal literal. Compilation
+retains the variable, literal bits, and normalized operator; execution applies
+the existing XSLT 1.0 variable-number conversion and shared XPath numeric
+comparison. This does not admit exponent notation, non-finite literals,
+arbitrary numeric operands, or modern implicit conversion.
+An XSLT 1.0 `xsl:value-of` may compile a top-level union when every alternative
+is an admitted location path. Execution evaluates the alternatives through the
+controlled path owner, normalizes selected source-node identities in document
+order, and applies first-node string conversion only after normalization.
+Qualified alternatives use the instruction's static namespace context. This
+does not admit function or variable union alternatives, namespace nodes,
+general sequence expressions, or a public node-set representation.
 The exact XSLT 1.0 effective-boolean path
 `child[@attribute=string($variable)]`, with an optional leading `./`, converts
 the variable once through those same string rules and performs a charged scan
@@ -1726,9 +1750,10 @@ reference and differential evidence; ADR-0008 authorizes only native FFI copies.
 ### Deferred capability decisions
 
 - `no_std` and CLI requirements.
-- A presealed, memory-resident WASM embedding profile, target/runtime choice,
-  host boundary, operational guarantees, and parity evidence, tracked by
-  AR-0015.
+- ADR-0020 fixes `wasm32-unknown-unknown` as an official build target using the
+  shared safe engine and presealed memory-resident boundary. Stable browser,
+  JavaScript, WASI, component-model, packaging, concurrency, interruption, and
+  operational profiles remain deferred.
 - Streaming and incremental execution, including any XSLT streaming-conformance
   claim, tracked as architectural optionality by AR-0007.
 - Schema awareness and typed values beyond the initial profile.

@@ -21,10 +21,41 @@ impl Document {
         self.view_stripping_element_whitespace(names, control)
     }
 
+    pub(crate) fn view_stripping_mixed_element_whitespace(
+        &self,
+        strip_all: bool,
+        stripped_names: &[ExpandedName],
+        preserved_names: &[ExpandedName],
+        stripped_namespaces: &[String],
+        preserved_namespaces: &[String],
+        control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
+        self.view_stripping_element_whitespace_by(control, |name| {
+            whitespace_name_test_strips(
+                name,
+                strip_all,
+                stripped_names,
+                preserved_names,
+                stripped_namespaces,
+                preserved_namespaces,
+            )
+        })
+    }
+
     fn view_stripping_element_whitespace(
         &self,
         names: &[ExpandedName],
         control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
+        self.view_stripping_element_whitespace_by(control, |name| {
+            names.is_empty() || names.contains(name)
+        })
+    }
+
+    fn view_stripping_element_whitespace_by(
+        &self,
+        control: &mut InvocationControl,
+        should_strip: impl Fn(&ExpandedName) -> bool,
     ) -> Result<Self, ControlFailure> {
         let mut child_overrides = HashMap::new();
         let mut preserves_space = vec![false; self.nodes.len()];
@@ -39,12 +70,7 @@ impl Document {
                 self.kind(ancestor) == NodeKind::Element && preserves_space[ancestor.index()]
             });
             preserves_space[index] = self.element_preserves_xml_space(parent, parent_preserves);
-            if preserves_space[index]
-                || (!names.is_empty()
-                    && self
-                        .name(parent)
-                        .is_none_or(|name| !names.iter().any(|candidate| candidate == name)))
-            {
+            if preserves_space[index] || self.name(parent).is_none_or(|name| !should_strip(name)) {
                 continue;
             }
 
@@ -89,6 +115,31 @@ impl Document {
                     .sum::<usize>()
         })
     }
+}
+
+pub(super) fn whitespace_name_test_strips(
+    name: &ExpandedName,
+    strip_all: bool,
+    stripped_names: &[ExpandedName],
+    preserved_names: &[ExpandedName],
+    stripped_namespaces: &[String],
+    preserved_namespaces: &[String],
+) -> bool {
+    if stripped_names.contains(name) {
+        return true;
+    }
+    if preserved_names.contains(name) {
+        return false;
+    }
+    if let Some(namespace) = name.namespace.as_ref() {
+        if stripped_namespaces.contains(namespace) {
+            return true;
+        }
+        if preserved_namespaces.contains(namespace) {
+            return false;
+        }
+    }
+    strip_all
 }
 
 #[cfg(test)]

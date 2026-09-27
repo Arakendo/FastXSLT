@@ -13,7 +13,7 @@ use crate::xslt::golden_semantics_experiment::{
 use super::super::normalize_variable_qname;
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::value_expression_compiler::{
-    compile_value_expression, compile_xslt10_binary_numeric, compile_xslt10_concat,
+    compile_template_argument_binary_numeric, compile_value_expression, compile_xslt10_concat,
     compile_xslt10_sum_path, compile_xslt10_variable_path,
     parse_xslt10_variable_position_selection,
 };
@@ -113,7 +113,7 @@ fn compile_with_params_excluding(
                 document.location(child),
             ));
         }
-        ensure_only_attributes(document, child, &["name", "select"], "xsl:with-param")?;
+        ensure_only_attributes(document, child, &["name", "select", "as"], "xsl:with-param")?;
         let lexical_name = required_attribute(document, child, None, "name")?;
         let argument_name = normalize_template_argument_name(document, child, lexical_name)?;
         if arguments
@@ -129,6 +129,8 @@ fn compile_with_params_excluding(
         let value = if let Some(select) = optional_attribute(document, child, None, "select") {
             ensure_no_meaningful_children(document, child, "xsl:with-param")?;
             compile_selected_argument_value(document, child, select)?
+        } else if let Some(sequence_type) = optional_attribute(document, child, None, "as") {
+            compile_typed_argument(document, child, sequence_type)?
         } else {
             compile_content_argument_value(document, child)?
         };
@@ -141,6 +143,58 @@ fn compile_with_params_excluding(
     Ok(arguments)
 }
 
+fn compile_typed_argument(
+    document: &Document,
+    element: NodeId,
+    sequence_type: &str,
+) -> Result<TemplateArgumentValue, CompileFailure> {
+    let trimmed = sequence_type.trim();
+    let optional = trimmed.ends_with('?');
+    let item = trimmed.strip_suffix('?').unwrap_or(trimmed);
+    let Some((prefix, local)) = item
+        .split_once(':')
+        .map(|(prefix, local)| (prefix.trim(), local.trim()))
+    else {
+        return Err(unsupported(
+            "FXST1033",
+            "the private typed xsl:with-param slice supports xs:string and xs:string?",
+            document.location(element),
+        ));
+    };
+    if local != "string"
+        || namespace_for_prefix(document, element, prefix)
+            != Some("http://www.w3.org/2001/XMLSchema")
+    {
+        return Err(unsupported(
+            "FXST1033",
+            "the private typed xsl:with-param slice supports xs:string and xs:string?",
+            document.location(element),
+        ));
+    }
+    if meaningful_children(document, element).is_empty() {
+        return if optional {
+            Ok(TemplateArgumentValue::EmptySequence)
+        } else {
+            Err(invalid(
+                "XTTE0590",
+                "an empty xsl:with-param constructor does not satisfy xs:string",
+                document.location(element),
+            ))
+        };
+    }
+    match compile_content_argument_value(document, element)? {
+        TemplateArgumentValue::Text(value) => Ok(TemplateArgumentValue::Text(value)),
+        TemplateArgumentValue::Xslt10ConstructedContent(nodes) => {
+            Ok(TemplateArgumentValue::ConstructedString(nodes))
+        }
+        _ => Err(unsupported(
+            "FXST1033",
+            "the private typed xs:string xsl:with-param slice supports literal constructed content",
+            document.location(element),
+        )),
+    }
+}
+
 fn compile_selected_argument_value(
     document: &Document,
     element: NodeId,
@@ -149,12 +203,13 @@ fn compile_selected_argument_value(
     if let Some(value) = compile_xslt10_concat_argument(document, element, select)? {
         return Ok(value);
     }
-    if let Some(expression) =
-        compile_xslt10_binary_numeric(document, element, select, document.location(element))
-    {
-        return Ok(TemplateArgumentValue::Xslt10BinaryNumeric(Box::new(
-            expression,
-        )));
+    if let Some(expression) = compile_template_argument_binary_numeric(
+        document,
+        element,
+        select,
+        document.location(element),
+    ) {
+        return Ok(TemplateArgumentValue::BinaryNumeric(Box::new(expression)));
     }
     if let Some((variable, path)) =
         compile_xslt10_variable_path(document, element, select, document.location(element))?
@@ -199,30 +254,8 @@ fn compile_selected_argument_value(
         };
         return Ok(TemplateArgumentValue::Variable(variable));
     }
-    if let Ok(value) = select.parse::<i64>() {
-        return Ok(TemplateArgumentValue::Integer(value));
-    }
-    if let Some(value) = xpath_string_literal(select) {
-        return Ok(TemplateArgumentValue::Text(value.to_owned()));
-    }
-    if let Some(value) = match select.trim() {
-        "true()" => Some(true),
-        "false()" => Some(false),
-        _ => None,
-    } {
-        return Ok(TemplateArgumentValue::Boolean(value));
-    }
-    if select.trim() == "position()" {
-        return Ok(TemplateArgumentValue::ContextPosition);
-    }
-    if select.trim() == "last()" {
-        return Ok(TemplateArgumentValue::ContextSize);
-    }
-    if matches!(select.trim(), "name()" | "name(.)") {
-        return Ok(TemplateArgumentValue::ContextNodeName);
-    }
-    if select.trim() == "current()" {
-        return Ok(TemplateArgumentValue::CurrentSourceNode);
+    if let Some(value) = compile_immediate_argument_value(document, element, select) {
+        return Ok(value);
     }
     if let Some(value) = compile_xslt10_argument_path_union_count(document, element, select)? {
         return Ok(value);
@@ -244,6 +277,31 @@ fn compile_selected_argument_value(
                 document.location(element),
             )
         })
+}
+
+fn compile_immediate_argument_value(
+    document: &Document,
+    element: NodeId,
+    select: &str,
+) -> Option<TemplateArgumentValue> {
+    if let Ok(value) = select.parse::<i64>() {
+        return Some(TemplateArgumentValue::Integer(value));
+    }
+    if let Some(value) = xpath_string_literal(select) {
+        return Some(TemplateArgumentValue::Text(value.to_owned()));
+    }
+    match select.trim() {
+        "true()" => Some(TemplateArgumentValue::Boolean(true)),
+        "false()" => Some(TemplateArgumentValue::Boolean(false)),
+        "position()" => Some(TemplateArgumentValue::ContextPosition),
+        "last()" => Some(TemplateArgumentValue::ContextSize),
+        "name()" | "name(.)" => Some(TemplateArgumentValue::ContextNodeName),
+        "string-length()" | "string-length(.)" => Some(
+            TemplateArgumentValue::ContextNodeStringLength(document.location(element).clone()),
+        ),
+        "current()" => Some(TemplateArgumentValue::CurrentSourceNode),
+        _ => None,
+    }
 }
 
 fn compile_xslt10_concat_argument(
@@ -350,11 +408,25 @@ pub(super) fn parse_apply_selection(
         ));
     }
     if uses_xslt10_compatibility(document, element) {
+        if let Some(argument) =
+            super::value_expression_compiler::compile_xslt10_id_without_typed_ids(
+                expression, &location,
+            )?
+        {
+            let argument_path = match argument {
+                super::value_expression_compiler::Xslt10IdArgument::Literal => None,
+                super::value_expression_compiler::Xslt10IdArgument::Path(path) => Some(path),
+            };
+            return Ok(ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path });
+        }
         if let Some(selection) =
             parse_xslt10_key_selection(document, element, expression, &location)?
         {
             return Ok(selection);
         }
+    }
+    if let Some(selection) = compile_literal_document_selection(document, element, expression) {
+        return Ok(selection);
     }
     if let Some(selection) = parse_apply_union(document, element, expression, &location)? {
         return Ok(selection);
@@ -455,6 +527,58 @@ pub(super) fn parse_apply_selection(
         ));
     }
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
+}
+
+fn parse_literal_document_selection(expression: &str) -> Option<(&str, Option<&str>)> {
+    let argument_and_tail = expression.strip_prefix("document(")?;
+    let quote = *argument_and_tail.as_bytes().first()?;
+    if !matches!(quote, b'\'' | b'"') {
+        return None;
+    }
+    let closing_quote = argument_and_tail.as_bytes()[1..]
+        .iter()
+        .position(|byte| *byte == quote)?
+        + 1;
+    let reference = &argument_and_tail[1..closing_quote];
+    if reference.is_empty() {
+        return None;
+    }
+    let tail = argument_and_tail[closing_quote + 1..].strip_prefix(')')?;
+    let child = if tail.is_empty() {
+        None
+    } else {
+        let child = tail.strip_prefix('/')?;
+        if child == "*" || is_ascii_ncname(child) {
+            Some(child)
+        } else {
+            return None;
+        }
+    };
+    Some((reference, child))
+}
+
+fn compile_literal_document_selection(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Option<ApplySelection> {
+    let (reference, child) = parse_literal_document_selection(expression)?;
+    let reference = crate::xslt::golden_semantics_experiment::DocumentRootReference {
+        base: document.location(element).resource.clone(),
+        reference: reference.to_owned(),
+        descendant_local: None,
+    };
+    Some(match child {
+        None => ApplySelection::LiteralDocumentRoot(reference),
+        Some("*") => ApplySelection::LiteralDocumentChildren {
+            reference,
+            name: None,
+        },
+        Some(local) => ApplySelection::LiteralDocumentChildren {
+            reference,
+            name: Some(expanded_name(None, local)),
+        },
+    })
 }
 
 fn parse_xslt10_children_of_variable_named_elements(expression: &str) -> Option<String> {
@@ -975,7 +1099,7 @@ pub(super) fn compile_call_template(
                 document.location(child),
             ));
         }
-        ensure_only_attributes(document, child, &["name", "select"], "xsl:with-param")?;
+        ensure_only_attributes(document, child, &["name", "select", "as"], "xsl:with-param")?;
         let lexical_name = required_attribute(document, child, None, "name")?;
         let argument_name = normalize_template_argument_name(document, child, lexical_name)?;
         if arguments
@@ -991,6 +1115,8 @@ pub(super) fn compile_call_template(
         let value = if let Some(select) = optional_attribute(document, child, None, "select") {
             ensure_no_meaningful_children(document, child, "xsl:with-param")?;
             compile_selected_argument_value(document, child, select)?
+        } else if let Some(sequence_type) = optional_attribute(document, child, None, "as") {
+            compile_typed_argument(document, child, sequence_type)?
         } else {
             compile_content_argument_value(document, child)?
         };
@@ -1103,10 +1229,9 @@ fn compile_content_argument_value(
     }
     if let [for_each] = children.as_slice()
         && is_xslt_element(document, *for_each, "for-each")
-        && uses_xslt10_compatibility(document, *for_each)
     {
-        return Ok(TemplateArgumentValue::Xslt10ForEachPathStringContent(
-            super::computed_attribute_compiler::compile_xslt10_for_each_string_value_path(
+        return Ok(TemplateArgumentValue::ForEachPathStringContent(
+            super::computed_attribute_compiler::compile_for_each_string_value_path(
                 document, *for_each,
             )?,
         ));
@@ -1128,7 +1253,7 @@ fn compile_content_argument_value(
     }
     Err(unsupported(
         "FXST1033",
-        "the private call-template argument content slice permits literal text or one admitted XSLT 1.0 value constructor",
+        "the private call-template argument content slice permits literal text or one admitted value constructor",
         document.location(element),
     ))
 }

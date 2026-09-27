@@ -486,14 +486,29 @@ fn format_decimal(
     };
     let (positive, negative) = split_subpictures(picture, format.pattern_separator)
         .ok_or(FormatNumberEvaluationFailure::InvalidPicture)?;
-    let negative_value = number.is_sign_negative();
-    let selected = if negative_value {
-        negative.unwrap_or(positive)
+    // XSLT 1.0 delegates this function to the pre-negative-zero
+    // `DecimalFormat` model.  Treat both IEEE zero signs as the positive
+    // subpicture in that compatibility profile; modern XPath retains the
+    // sign and therefore continues to select the negative subpicture.
+    let negative_value = number.is_sign_negative() && !(xslt10_compatibility && number == 0.0);
+    let positive_parsed =
+        parse_subpicture(positive, format).ok_or(FormatNumberEvaluationFailure::InvalidPicture)?;
+    let mut parsed = if negative_value {
+        if let Some(negative) = negative {
+            parse_subpicture(negative, format)
+                .ok_or(FormatNumberEvaluationFailure::InvalidPicture)?
+        } else {
+            positive_parsed.clone()
+        }
     } else {
-        positive
+        positive_parsed.clone()
     };
-    let parsed =
-        parse_subpicture(selected, format).ok_or(FormatNumberEvaluationFailure::InvalidPicture)?;
+    // The negative subpicture contributes only its prefix and suffix.  Its
+    // digit, grouping, decimal, and multiplier shape is ignored; those
+    // formatting properties always come from the positive subpicture.
+    parsed.integer.clone_from(&positive_parsed.integer);
+    parsed.fraction.clone_from(&positive_parsed.fraction);
+    parsed.scale = positive_parsed.scale;
     let implicit_minus = negative_value
         && negative.is_none_or(|negative| {
             let positive = parse_subpicture(positive, format);
@@ -502,29 +517,42 @@ fn format_decimal(
                 positive.prefix == negative.prefix && positive.suffix == negative.suffix
             })
         });
+    // NaN is represented by the decimal format's NaN token alone. Picture
+    // prefixes, suffixes, percent/per-mille scaling, and an IEEE sign bit do
+    // not decorate it, but the picture is still parsed and validated above.
+    if number.is_nan() {
+        return Ok(format.nan.clone());
+    }
     let mut output = String::new();
     if implicit_minus {
         output.push(format.minus_sign);
     }
     output.push_str(&parsed.prefix);
-    if number.is_nan() {
-        output.push_str(&format.nan);
-    } else if number.is_infinite() {
+    if number.is_infinite() {
         output.push_str(&format.infinity);
     } else {
-        let exact = (value_is_expression)
-            .then(|| evaluate_source_free_exact(value))
-            .flatten()
-            .and_then(|value| value.format_decimal().ok())
-            .or_else(|| simple_decimal_lexical(value))
-            .or_else(|| {
-                ExactRational::parse_decimal(&number.to_string())?
-                    .format_decimal()
-                    .ok()
-            })
-            .ok_or(FormatNumberEvaluationFailure::Unsupported(
-                FormatNumberUnsupported::Number,
-            ))?;
+        let xpath10_number = number.to_string();
+        let exact = if xslt10_compatibility {
+            // XPath 1.0 converts the first argument to its IEEE-754 `number`
+            // type before XSLT formats it. Do not let the modern exact-decimal
+            // implementation retain precision that the compatibility profile
+            // has already discarded.
+            simple_decimal_lexical(&xpath10_number)
+        } else {
+            (value_is_expression)
+                .then(|| evaluate_source_free_exact(value))
+                .flatten()
+                .and_then(|value| value.format_decimal().ok())
+                .or_else(|| simple_decimal_lexical(value))
+                .or_else(|| {
+                    ExactRational::parse_decimal(&xpath10_number)?
+                        .format_decimal()
+                        .ok()
+                })
+        }
+        .ok_or(FormatNumberEvaluationFailure::Unsupported(
+            FormatNumberUnsupported::Number,
+        ))?;
         output.push_str(&format_finite_exact(&exact, &parsed, format).ok_or(
             FormatNumberEvaluationFailure::Unsupported(FormatNumberUnsupported::FiniteFormatting),
         )?);
@@ -1346,6 +1374,47 @@ mod tests {
     }
 
     #[test]
+    fn xslt10_formats_negative_zero_with_the_positive_subpicture() {
+        let expression =
+            parse_with_path_operands("format-number(-0.00, '0.00;(0.00)')", &location(), true)
+                .expect("XSLT 1.0 negative-zero expression should parse");
+        assert_eq!(
+            evaluate(&expression, &BTreeMap::new()),
+            Ok("0.00".to_owned())
+        );
+
+        let modern = parse("format-number(-0.00, '0.00;(0.00)')", &location())
+            .expect("modern negative-zero expression should parse");
+        assert_eq!(evaluate(&modern, &BTreeMap::new()), Ok("(0.00)".to_owned()));
+    }
+
+    #[test]
+    fn negative_subpicture_changes_affixes_without_changing_digit_shape() {
+        let expression =
+            parse_with_path_operands("format-number(-3.12, '#.00;(#)')", &location(), true)
+                .expect("negative-subpicture expression should parse");
+        assert_eq!(
+            evaluate(&expression, &BTreeMap::new()),
+            Ok("(3.12)".to_owned())
+        );
+    }
+
+    #[test]
+    fn nan_ignores_picture_affixes_in_compatibility_and_modern_profiles() {
+        for expression in [
+            parse_with_path_operands("format-number('bad', '#%')", &location(), true)
+                .expect("XSLT 1.0 NaN expression should parse"),
+            parse("format-number('bad', '#%')", &location())
+                .expect("modern NaN expression should parse"),
+        ] {
+            assert_eq!(
+                evaluate(&expression, &BTreeMap::new()),
+                Ok("NaN".to_owned())
+            );
+        }
+    }
+
+    #[test]
     fn formats_static_default_decimal_pictures() {
         for (source, expected) in [
             ("format-number(.12, '.000')", ".120"),
@@ -1379,5 +1448,23 @@ mod tests {
                 Ok(expected.to_owned())
             );
         }
+    }
+
+    #[test]
+    fn xslt10_format_number_rounds_through_xpath_double_before_formatting() {
+        let source =
+            "format-number(9999999999999999999999999999999999999999999999999999999999999999, '0')";
+        let xslt10 = parse_with_path_operands(source, &location(), true)
+            .expect("parse XSLT 1.0 format-number expression");
+        let modern = parse(source, &location()).expect("parse modern format-number expression");
+
+        assert_eq!(
+            evaluate(&xslt10, &BTreeMap::new()),
+            Ok(format!("1{}", "0".repeat(64)))
+        );
+        assert_eq!(
+            evaluate(&modern, &BTreeMap::new()),
+            Ok("9999999999999999999999999999999999999999999999999999999999999999".to_owned())
+        );
     }
 }

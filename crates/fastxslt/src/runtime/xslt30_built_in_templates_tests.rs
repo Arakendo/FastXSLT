@@ -11,10 +11,26 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt30_overlay_test_support::{
-    DenominatorIdentity, assert_built_in_templates_case_passed, assert_denominator_override_names,
+    DenominatorIdentity, ExecutionDisposition, SelectionDisposition,
+    assert_built_in_templates_case_passed, assert_denominator_case_disposition,
+    assert_denominator_override_names,
 };
 
-const PASSED_CASES: [&str; 2] = ["built-in-templates-0101", "built-in-templates-0102"];
+const PASSED_CASES: [&str; 5] = [
+    "built-in-templates-0101",
+    "built-in-templates-0102",
+    "built-in-templates-0201",
+    "built-in-templates-0202",
+    "built-in-templates-0301",
+];
+const OVERRIDE_CASES: [&str; 6] = [
+    "built-in-templates-0101",
+    "built-in-templates-0102",
+    "built-in-templates-0201",
+    "built-in-templates-0202",
+    "built-in-templates-0301",
+    "built-in-templates-0302",
+];
 #[test]
 fn inventories_complete_built_in_templates_denominator_before_selection() {
     let document = load_test_set();
@@ -30,15 +46,21 @@ fn inventories_complete_built_in_templates_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert_eq!(names.first(), Some(&"built-in-templates-0101"));
     assert_eq!(names.last(), Some(&"built-in-templates-0302"));
-    assert_denominator_override_names(DenominatorIdentity::BuiltInTemplates, &PASSED_CASES);
+    assert_denominator_override_names(DenominatorIdentity::BuiltInTemplates, &OVERRIDE_CASES);
     for case_name in PASSED_CASES {
         assert!(names.contains(case_name));
         assert_built_in_templates_case_passed(case_name);
     }
+    assert_denominator_case_disposition(
+        DenominatorIdentity::BuiltInTemplates,
+        "built-in-templates-0302",
+        SelectionDisposition::ExcludedByProfile,
+        ExecutionDisposition::NotRun,
+    );
 }
 
 #[test]
-fn executes_unchanged_current_and_default_mode_cases() {
+fn executes_selected_unchanged_built_in_template_cases() {
     for case_name in PASSED_CASES {
         assert_built_in_templates_case_passed(case_name);
         let (actual, expected) = execute_case(case_name);
@@ -71,14 +93,27 @@ fn execute_case(case_name: &str) -> (String, String) {
         .and_then(|node| attribute(&document, node, "file"))
         .expect("stylesheet file");
     let result = child_named(&document, case, "result").expect("result metadata");
-    let assertion = child_named(&document, result, "assert-xml").expect("XML assertion");
+    let xml_assertion = child_named(&document, result, "assert-xml");
+    let value_assertion = child_named(&document, result, "assert");
 
     let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../vendor/xslt30-test/tests/misc/built-in-templates");
-    let expected = attribute(&document, assertion, "file").map_or_else(
-        || document.string_value(assertion),
-        |file| fs::read_to_string(directory.join(file)).expect("read expected XML"),
-    );
+    let expected = if let Some(assertion) = xml_assertion {
+        attribute(&document, assertion, "file").map_or_else(
+            || document.string_value(assertion),
+            |file| fs::read_to_string(directory.join(file)).expect("read expected XML"),
+        )
+    } else {
+        let assertion = value_assertion
+            .map(|node| document.string_value(node))
+            .expect("XML or admitted root-string assertion");
+        let value = assertion
+            .trim()
+            .strip_prefix("/out='")
+            .and_then(|value| value.strip_suffix('\''))
+            .expect("admitted exact /out string assertion");
+        format!("<out>{value}</out>")
+    };
     let stylesheet_id =
         format!("https://example.invalid/xslt30/misc/built-in-templates/{stylesheet_file}");
     let source_id = format!("urn:w3c:xslt30:misc:built-in-templates:{case_name}:source");

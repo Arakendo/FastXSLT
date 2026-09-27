@@ -125,6 +125,7 @@ pub(crate) enum OnMultipleMatchPolicy {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OnNoMatchPolicy {
+    DeepSkip,
     Fail,
     ShallowCopy,
     ShallowSkip,
@@ -134,8 +135,17 @@ pub(crate) enum OnNoMatchPolicy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SourceWhitespacePolicy {
     Preserve,
+    PreserveAllDeclared,
+    PreserveExpandedNames(Vec<ExpandedName>),
     StripAllElementWhitespace,
     StripExpandedNames(Vec<ExpandedName>),
+    Mixed {
+        strip_all: bool,
+        stripped_names: Vec<ExpandedName>,
+        preserved_names: Vec<ExpandedName>,
+        stripped_namespaces: Vec<String>,
+        preserved_namespaces: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -150,6 +160,7 @@ pub(crate) struct GlobalBinding {
     pub(crate) name: String,
     pub(crate) required: bool,
     pub(crate) default: GlobalBindingDefault,
+    pub(crate) import_precedence: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -219,6 +230,9 @@ pub(crate) struct ConstructedAttribute {
 pub(crate) enum ConstructedNode {
     Element(ConstructedElement),
     Text(String),
+    Comment(String),
+    Xslt10SourcePathString(LocationPath),
+    Xslt10ForEachText { select: LocationPath, value: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -517,6 +531,14 @@ pub(crate) enum ApplySelection {
         end: i64,
     },
     LocationPath(LocationPath),
+    LiteralDocumentRoot(DocumentRootReference),
+    LiteralDocumentChildren {
+        reference: DocumentRootReference,
+        name: Option<ExpandedName>,
+    },
+    Xslt10IdLookupWithoutTypedIds {
+        argument_path: Option<LocationPath>,
+    },
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Xslt10KeyUnion(Vec<Xslt10KeyLookup>),
     Xslt10MixedUnion(Vec<Xslt10ApplyUnionPart>),
@@ -633,13 +655,20 @@ pub(crate) enum SortSelect {
     Xslt10ChildNameEqualsVariable {
         variable: String,
     },
+    Xslt10PathStringLiteralComparison {
+        path: LocationPath,
+        literal: String,
+        equal: bool,
+    },
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
+    Xslt10PathSubstring(Box<Xslt10PathSubstring>),
     PathUnion(Vec<LocationPath>),
     Literal(String),
     Variable(String),
     ContextPosition,
     ContextSize,
     ContextNodeName,
+    ContextNodeLocalName,
     ContextStringLength,
     CountPath(LocationPath),
     NumberPath(LocationPath),
@@ -769,6 +798,12 @@ pub(crate) enum Instruction {
         select: LocationPath,
         location: SourceLocation,
     },
+    Xslt10SourceNodesAttributeEqualsCurrentName {
+        name: String,
+        select: LocationPath,
+        attribute: String,
+        location: SourceLocation,
+    },
     SourceVariablePathVariable {
         name: String,
         source: String,
@@ -806,7 +841,7 @@ pub(crate) enum Instruction {
         select: LocationPath,
         location: SourceLocation,
     },
-    Xslt10SequenceTreeVariable {
+    SequenceTreeVariable {
         name: String,
         body: Vec<Instruction>,
         location: SourceLocation,
@@ -869,6 +904,11 @@ pub(crate) enum Instruction {
         recover_unattached_attributes: bool,
         location: SourceLocation,
     },
+    CopyOfDocument {
+        select: DocumentRootReference,
+        recover_unattached_attributes: bool,
+        location: SourceLocation,
+    },
     CopyOfXslt10KeyLookup {
         select: Box<Xslt10KeyLookup>,
         recover_unattached_attributes: bool,
@@ -908,7 +948,7 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     Copy {
-        attributes: Vec<LiteralAttribute>,
+        attributes: Vec<ComputedAttribute>,
         attribute_set_names: Vec<ExpandedName>,
         body: Vec<Instruction>,
         recover_unattached_attributes: bool,
@@ -942,6 +982,7 @@ pub(crate) enum NumberValue {
     Literal(String),
     ContextPosition,
     ContextItem,
+    Xslt10FirstNodePath(LocationPath),
     BinaryNumeric(Box<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>),
 }
 
@@ -958,6 +999,7 @@ pub(crate) struct NumberFormat {
 pub(crate) enum NumberFormatPlan {
     Static(NumberFormat),
     Xslt10Variable(String),
+    Variable(String),
 }
 
 pub(crate) fn default_number_format() -> NumberFormat {
@@ -1104,11 +1146,19 @@ pub(crate) enum FocusComparison {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
     LiteralString(String),
+    Xslt10IdLookupWithoutTypedIds {
+        argument_path: Option<LocationPath>,
+    },
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Xslt10CountKeyLookup(Box<Xslt10KeyLookup>),
     LocationPath(LocationPath),
     Xslt10FirstNodeLocationPath(LocationPath),
+    Xslt10FirstNodePathUnion(Vec<LocationPath>),
     Xslt10CurrentPredicatePath(LocationPath),
+    Xslt10FirstDescendantSameNameAttribute {
+        attribute: String,
+        value: String,
+    },
     Xslt10CountCurrentNode,
     Xslt10CountDescendantsSameNameAsCurrent,
     CountLocationPath(LocationPath),
@@ -1123,6 +1173,10 @@ pub(crate) enum ValueExpression {
         descendant_local: Option<String>,
     },
     GeneratedDocumentRootIdentity(DocumentRootReference),
+    Xslt10LiteralDocumentPath {
+        reference: DocumentRootReference,
+        path: LocationPath,
+    },
     NodeIdentityEqual {
         left: LocationPath,
         right: LocationPath,
@@ -1144,6 +1198,7 @@ pub(crate) enum ValueExpression {
     Xslt10FirstNodeNormalizedStringPath(LocationPath),
     StringPath(LocationPath),
     Xslt10FirstNodeStringPath(LocationPath),
+    Xslt10FirstNodeStringLengthPath(LocationPath),
     IntegralFunctionPath {
         function: crate::xpath::constant_numeric_experiment::IntegralFunction,
         path: LocationPath,
@@ -1166,6 +1221,11 @@ pub(crate) enum ValueExpression {
         literal: String,
         variable: String,
     },
+    VariableLiteralConcat {
+        variable: String,
+        literal: String,
+        location: SourceLocation,
+    },
     IntegerFor(Box<IntegerForExpression>),
     FocusSumFor(Box<FocusSumForExpression>),
     DecimalSumFor(Box<DecimalSumForExpression>),
@@ -1178,6 +1238,17 @@ pub(crate) enum ValueExpression {
     SequenceCardinality(Box<SequenceCardinalityExpression>),
     EmptyLocationPath(LocationPath),
     VariableEffectiveBooleanValue(String),
+    VariableIsEmpty(String),
+    VariableIsString(String),
+    TemporaryDescendantNames(String),
+    TemporaryDescendantIsUntypedElement {
+        variable: String,
+        name: ExpandedName,
+    },
+    VariableStringValueEquals {
+        variable: String,
+        value: String,
+    },
     Xslt10VariableBooleanAnd {
         left: String,
         right: String,
@@ -1189,6 +1260,10 @@ pub(crate) enum ValueExpression {
         factor: usize,
     },
     Xslt10VariableNumber(String),
+    VariableNumber {
+        variable: String,
+        location: SourceLocation,
+    },
     Xslt10VariableDivisionString {
         numerator: String,
         denominator: String,
@@ -1220,6 +1295,7 @@ pub(crate) enum ValueExpression {
     Xslt10SumPath(LocationPath),
     Xslt10VariableSum(String),
     Xslt10PathSubstring(Box<Xslt10PathSubstring>),
+    Xslt10VariableSubstring(Box<Xslt10VariableSubstring>),
     Xslt10PathTranslate(Box<Xslt10PathTranslate>),
     Xslt10NormalizedVariableTranslate(Box<Xslt10NormalizedVariableTranslate>),
     Xslt10ComposedPathTranslate(Box<Xslt10ComposedPathTranslate>),
@@ -1342,6 +1418,13 @@ pub(crate) enum Xslt10StringOperand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Xslt10PathSubstring {
     pub(crate) path: LocationPath,
+    pub(crate) start_bits: u64,
+    pub(crate) length_bits: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10VariableSubstring {
+    pub(crate) variable: String,
     pub(crate) start_bits: u64,
     pub(crate) length_bits: Option<u64>,
 }
@@ -1516,6 +1599,11 @@ pub(crate) enum BooleanExpression {
         operator: FocusComparison,
         right: String,
     },
+    Xslt10VariableNumericLiteralComparison {
+        variable: String,
+        operator: FocusComparison,
+        value_bits: u64,
+    },
     Xslt10VariableLessThanNodeCount {
         numeric_variable: String,
         nodes_variable: String,
@@ -1526,6 +1614,11 @@ pub(crate) enum BooleanExpression {
         equal: bool,
     },
     Xslt10ChildAttributeVariableEquals {
+        child: ExpandedName,
+        attribute: ExpandedName,
+        variable: String,
+    },
+    ChildAttributeVariableStringEquals {
         child: ExpandedName,
         attribute: ExpandedName,
         variable: String,
@@ -1657,12 +1750,15 @@ pub(crate) struct Xslt10ContentTextBinding {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum TemplateArgumentValue {
+    EmptySequence,
+    ConstructedString(Vec<ConstructedNode>),
     Text(String),
     Integer(i64),
     Boolean(bool),
     ContextPosition,
     ContextSize,
     ContextNodeName,
+    ContextNodeStringLength(SourceLocation),
     CurrentSourceNode,
     Variable(String),
     Xslt10VariableString(String),
@@ -1671,12 +1767,12 @@ pub(crate) enum TemplateArgumentValue {
         variable: String,
         path: LocationPath,
     },
-    Xslt10BinaryNumeric(Box<BinaryNumericExpression>),
+    BinaryNumeric(Box<BinaryNumericExpression>),
     SourcePath(LocationPath),
     Xslt10CountPathUnion(Vec<LocationPath>),
     Xslt10SumPath(LocationPath),
     Xslt10Content(Box<Xslt10ContentArgument>),
-    Xslt10ForEachPathStringContent(LocationPath),
+    ForEachPathStringContent(LocationPath),
     Xslt10ConstructedContent(Vec<ConstructedNode>),
     Xslt10SequenceConstructor(Box<[Instruction]>),
     SourcePathStringComparison {
@@ -1774,6 +1870,10 @@ pub(crate) enum LiteralAttributeValue {
         lookup: Box<Xslt10KeyLookup>,
         suffix: String,
     },
+    TextAndContextIdentity {
+        prefix: String,
+        suffix: String,
+    },
     Xslt10TextAndAttributeIntegerOffset {
         prefix: String,
         name: ExpandedName,
@@ -1808,6 +1908,7 @@ pub(crate) enum LiteralAttributeValue {
     ContextSize,
     ContextLocalName,
     ContextLexicalName,
+    Xslt10ContextNamespaceCount,
     ContextStringValue,
     ContextIntegerIncrement(i64),
 }

@@ -116,7 +116,6 @@ impl ResourceSetBuilder {
     pub(crate) fn seal(self) -> ResourceSnapshot {
         ResourceSnapshot {
             entries: Arc::new(self.entries),
-            #[cfg(test)]
             total_bytes: self.total_bytes,
         }
     }
@@ -125,7 +124,6 @@ impl ResourceSetBuilder {
 #[derive(Clone, Debug)]
 pub(crate) struct ResourceSnapshot {
     entries: Arc<BTreeMap<String, Arc<[u8]>>>,
-    #[cfg(test)]
     total_bytes: usize,
 }
 
@@ -149,17 +147,12 @@ impl ResourceSnapshot {
         self.total_bytes
     }
 
-    #[cfg(test)]
-    pub(crate) fn test_only_known_capacity_bytes(&self) -> usize {
+    pub(crate) fn known_capacity_bytes(&self) -> usize {
         std::mem::size_of::<BTreeMap<String, Arc<[u8]>>>()
             + self.entries.len()
                 * (std::mem::size_of::<String>() + std::mem::size_of::<Arc<[u8]>>())
             + self.entries.keys().map(String::capacity).sum::<usize>()
-            + self
-                .entries
-                .values()
-                .map(|bytes| bytes.len())
-                .sum::<usize>()
+            + self.total_bytes
     }
 }
 

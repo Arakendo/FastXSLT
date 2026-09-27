@@ -208,7 +208,7 @@ fn compile_xslt10_special(
         return Some(BooleanExpression::Constant(value));
     }
     if let Some(expression) =
-        compile_xslt10_child_attribute_variable_path(expression, xslt10_compatibility)
+        compile_child_attribute_variable_string_path(expression, xslt10_compatibility)
     {
         return Some(expression);
     }
@@ -386,16 +386,14 @@ fn parse_xslt10_context_node_set_variable_equality(
     (left.trim() == "." && is_ascii_ncname(variable)).then_some(variable)
 }
 
-fn compile_xslt10_child_attribute_variable_path(
+fn compile_child_attribute_variable_string_path(
     expression: &str,
     xslt10_compatibility: bool,
 ) -> Option<BooleanExpression> {
-    let expression = xslt10_compatibility.then(|| {
-        expression
-            .trim()
-            .strip_prefix("./")
-            .unwrap_or(expression.trim())
-    })?;
+    let expression = expression
+        .trim()
+        .strip_prefix("./")
+        .unwrap_or(expression.trim());
     let (child, predicate) = expression.split_once("[@")?;
     let predicate = predicate.strip_suffix(']')?;
     let (attribute, value) = predicate.split_once('=')?;
@@ -408,16 +406,26 @@ fn compile_xslt10_child_attribute_variable_path(
     if !is_ascii_ncname(child) || !is_ascii_ncname(attribute) || !is_ascii_ncname(variable) {
         return None;
     }
-    Some(BooleanExpression::Xslt10ChildAttributeVariableEquals {
-        child: ExpandedName {
-            namespace: None,
-            local: child.to_owned(),
-        },
-        attribute: ExpandedName {
-            namespace: None,
-            local: attribute.to_owned(),
-        },
-        variable: variable.to_owned(),
+    let child = ExpandedName {
+        namespace: None,
+        local: child.to_owned(),
+    };
+    let attribute = ExpandedName {
+        namespace: None,
+        local: attribute.to_owned(),
+    };
+    Some(if xslt10_compatibility {
+        BooleanExpression::Xslt10ChildAttributeVariableEquals {
+            child,
+            attribute,
+            variable: variable.to_owned(),
+        }
+    } else {
+        BooleanExpression::ChildAttributeVariableStringEquals {
+            child,
+            attribute,
+            variable: variable.to_owned(),
+        }
     })
 }
 
@@ -554,6 +562,15 @@ fn compile_xslt10_variable_numeric_comparison(
     expression: &str,
     xslt10_compatibility: bool,
 ) -> Option<BooleanExpression> {
+    if let Some((variable, operator, value)) = xslt10_compatibility
+        .then(|| parse_xslt10_variable_numeric_literal_comparison(expression))?
+    {
+        return Some(BooleanExpression::Xslt10VariableNumericLiteralComparison {
+            variable: variable.to_owned(),
+            operator,
+            value_bits: value.to_bits(),
+        });
+    }
     let (left, operator, right) =
         xslt10_compatibility.then(|| parse_xslt10_variable_numeric_comparison(expression))??;
     Some(BooleanExpression::Xslt10VariableNumericComparison {
@@ -561,6 +578,44 @@ fn compile_xslt10_variable_numeric_comparison(
         operator,
         right: right.to_owned(),
     })
+}
+
+fn parse_xslt10_variable_numeric_literal_comparison(
+    expression: &str,
+) -> Option<(&str, FocusComparison, f64)> {
+    for (token, operator) in [
+        (">=", FocusComparison::GreaterThanOrEqual),
+        ("<=", FocusComparison::LessThanOrEqual),
+        (">", FocusComparison::GreaterThan),
+        ("<", FocusComparison::LessThan),
+    ] {
+        let Some((left, right)) = expression.split_once(token) else {
+            continue;
+        };
+        if left.contains(['=', '!', '<', '>']) || right.contains(['=', '!', '<', '>']) {
+            return None;
+        }
+        if let Some(variable) = parse_variable_operand(left) {
+            return parse_finite_xpath10_number(right).map(|value| (variable, operator, value));
+        }
+        let variable = parse_variable_operand(right)?;
+        return parse_finite_xpath10_number(left)
+            .map(|value| (variable, reverse_comparison(operator), value));
+    }
+    None
+}
+
+fn parse_finite_xpath10_number(expression: &str) -> Option<f64> {
+    let expression = expression.trim();
+    if expression.is_empty()
+        || expression
+            .bytes()
+            .any(|byte| !byte.is_ascii_digit() && byte != b'.')
+    {
+        return None;
+    }
+    let value = expression.parse::<f64>().ok()?;
+    value.is_finite().then_some(value)
 }
 
 fn compile_xslt10_variable_string_length_comparison(
@@ -896,31 +951,10 @@ fn parse_scalar(
             .map(BooleanExpression::NodeExists)
             .map_err(map_path_failure);
     }
-    if let Some((variable, integer)) = parsed.split_once('=') {
-        let variable = variable.trim().strip_prefix('$').unwrap_or_default();
-        if is_ascii_ncname(variable) {
-            if integer.trim() == "()" {
-                return Ok(BooleanExpression::VariableEqualsEmptySequence(
-                    variable.to_owned(),
-                ));
-            }
-            let integer = integer
-                .trim()
-                .parse::<i64>()
-                .map_err(|_| unsupported_boolean_expression(expression, location))?;
-            return Ok(BooleanExpression::VariableEqualsInteger(EqualityTest {
-                variable: variable.to_owned(),
-                integer,
-                xslt10_compatibility,
-            }));
-        }
-    }
-    if let Some(variable) = parsed.strip_prefix('$')
-        && is_ascii_ncname(variable)
+    if let Some(variable) =
+        parse_variable_scalar(parsed, expression, location, xslt10_compatibility)?
     {
-        return Ok(BooleanExpression::VariableEffectiveBooleanValue(
-            variable.to_owned(),
-        ));
+        return Ok(variable);
     }
     if !parsed.contains('=') && !parsed.contains('>') {
         let ordering =
@@ -961,6 +995,55 @@ fn parse_scalar(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn parse_variable_scalar(
+    parsed: &str,
+    expression: &str,
+    location: &SourceLocation,
+    xslt10_compatibility: bool,
+) -> Result<Option<BooleanExpression>, CompileFailure> {
+    if let Some((variable, integer)) = parsed.split_once("!=") {
+        let variable = variable.trim().strip_prefix('$').unwrap_or_default();
+        if is_ascii_ncname(variable) {
+            let integer = integer
+                .trim()
+                .parse::<i64>()
+                .map_err(|_| unsupported_boolean_expression(expression, location))?;
+            return Ok(Some(BooleanExpression::Not(Box::new(
+                BooleanExpression::VariableEqualsInteger(EqualityTest {
+                    variable: variable.to_owned(),
+                    integer,
+                    xslt10_compatibility,
+                }),
+            ))));
+        }
+    }
+    if let Some((variable, integer)) = parsed.split_once('=') {
+        let variable = variable.trim().strip_prefix('$').unwrap_or_default();
+        if is_ascii_ncname(variable) {
+            if integer.trim() == "()" {
+                return Ok(Some(BooleanExpression::VariableEqualsEmptySequence(
+                    variable.to_owned(),
+                )));
+            }
+            let integer = integer
+                .trim()
+                .parse::<i64>()
+                .map_err(|_| unsupported_boolean_expression(expression, location))?;
+            return Ok(Some(BooleanExpression::VariableEqualsInteger(
+                EqualityTest {
+                    variable: variable.to_owned(),
+                    integer,
+                    xslt10_compatibility,
+                },
+            )));
+        }
+    }
+    Ok(parsed
+        .strip_prefix('$')
+        .filter(|variable| is_ascii_ncname(variable))
+        .map(|variable| BooleanExpression::VariableEffectiveBooleanValue(variable.to_owned())))
 }
 
 fn compile_context_string_comparison(expression: &str) -> Option<BooleanExpression> {

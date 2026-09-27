@@ -41,6 +41,7 @@ mod xslt10_global_constructor_compiler;
 pub(crate) use stylesheet_module_compiler::{
     StylesheetDependencyKind, compile_stylesheet_with_import_and_include,
     compile_stylesheet_with_imported_and_included_programs_at, compile_stylesheet_with_imports,
+    compile_stylesheet_with_included_programs_at,
     compile_stylesheet_with_single_imported_program_at, compile_stylesheet_with_single_include,
     compile_stylesheet_with_single_include_program_at,
     compile_stylesheet_with_two_imported_programs_at,
@@ -52,8 +53,9 @@ use template_pattern_compiler::compile_match_pattern;
 
 use instruction_compiler::{
     compile_comment, compile_literal_result_attributes, compile_processing_instruction,
-    compile_sequence_excluding_with_bindings, compile_text, literal_result_namespaces,
-    parse_template_modes, validate_exclude_result_prefixes, validate_extension_element_prefixes,
+    compile_sequence_excluding_with_bindings, compile_text, effective_xml_space_preserved,
+    literal_result_namespaces, parse_template_modes, validate_exclude_result_prefixes,
+    validate_extension_element_prefixes,
 };
 use mode_declaration_compiler::{
     validate_mode_declaration as validate_mode, validate_same_precedence_mode_declaration_conflicts,
@@ -94,6 +96,7 @@ pub(crate) fn compile_stylesheet_at(
         return stylesheet_module_compiler::compile_simplified_stylesheet_at(document, root);
     }
     let mut program = compile_stylesheet_at_excluding_unvalidated(document, root, &[])?;
+    finalize_decimal_formats(&mut program)?;
     finalize_attribute_sets(&mut program)?;
     finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;
@@ -162,9 +165,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 
     let mut output = None;
     let mut named_output_names = Vec::new();
-    let mut source_whitespace = SourceWhitespacePolicy::Preserve;
-    let mut saw_strip_space = false;
-    let mut saw_preserve_space = false;
+    let mut source_whitespace = WhitespacePolicyBuilder::default();
     let mut modes = CompiledModes::default();
     let mut root_template = None;
     let mut root_template_modes = Vec::new();
@@ -251,52 +252,13 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                 ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
                 ensure_no_meaningful_children(document, child, "xsl:strip-space")?;
                 let elements = required_attribute(document, child, None, "elements")?;
-                if saw_preserve_space {
-                    return Err(unsupported(
-                        "FXST1043",
-                        "composing xsl:strip-space with xsl:preserve-space is outside the private whitespace-policy slice",
-                        document.location(child),
-                    ));
-                }
-                saw_strip_space = true;
-                if elements == "*" {
-                    source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
-                } else {
-                    let names = compile_exact_whitespace_names(document, child, elements)?;
-                    match &mut source_whitespace {
-                        SourceWhitespacePolicy::Preserve => {
-                            source_whitespace = SourceWhitespacePolicy::StripExpandedNames(names);
-                        }
-                        SourceWhitespacePolicy::StripAllElementWhitespace => {}
-                        SourceWhitespacePolicy::StripExpandedNames(existing) => {
-                            for name in names {
-                                if !existing.contains(&name) {
-                                    existing.push(name);
-                                }
-                            }
-                        }
-                    }
-                }
+                source_whitespace.apply(document, child, elements, true)?;
             }
             (Some(XSLT_NAMESPACE), "preserve-space") => {
                 ensure_only_attributes(document, child, &["elements"], "xsl:preserve-space")?;
                 ensure_no_meaningful_children(document, child, "xsl:preserve-space")?;
                 let elements = required_attribute(document, child, None, "elements")?;
-                if elements != "*" {
-                    return Err(unsupported(
-                        "FXST1043",
-                        "the private whitespace-policy slice supports only xsl:preserve-space elements='*'",
-                        document.location(child),
-                    ));
-                }
-                if saw_strip_space {
-                    return Err(unsupported(
-                        "FXST1043",
-                        "composing xsl:preserve-space with xsl:strip-space is outside the private whitespace-policy slice",
-                        document.location(child),
-                    ));
-                }
-                saw_preserve_space = true;
+                source_whitespace.apply(document, child, elements, false)?;
             }
             (Some(XSLT_NAMESPACE), "variable" | "param") => {
                 let kind = if name.local == "variable" {
@@ -352,7 +314,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut program = StylesheetProgram {
         declared_version,
         default_initial_mode,
-        source_whitespace,
+        source_whitespace: source_whitespace.finish(),
         typed_mode_requirements: modes.typed,
         private_initial_modes: modes.private_initial,
         mode_policies: modes.policies,
@@ -372,37 +334,168 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         global_bindings,
     };
     namespace_alias_compiler::apply(&mut program, &namespace_aliases);
-    finalize_decimal_formats(&mut program)?;
     Ok(program)
 }
 
-fn compile_exact_whitespace_names(
+#[derive(Default)]
+struct WhitespacePolicyBuilder {
+    declarations: WhitespaceDeclarationKinds,
+    wildcard_strip: Option<bool>,
+    stripped_names: Vec<ExpandedName>,
+    preserved_names: Vec<ExpandedName>,
+    stripped_namespaces: Vec<String>,
+    preserved_namespaces: Vec<String>,
+}
+
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+enum WhitespaceDeclarationKinds {
+    #[default]
+    None,
+    Strip,
+    Preserve,
+    Mixed,
+}
+
+impl WhitespacePolicyBuilder {
+    fn apply(
+        &mut self,
+        document: &Document,
+        element: NodeId,
+        elements: &str,
+        strip: bool,
+    ) -> Result<(), CompileFailure> {
+        self.declarations = match (self.declarations, strip) {
+            (WhitespaceDeclarationKinds::None, true) => WhitespaceDeclarationKinds::Strip,
+            (WhitespaceDeclarationKinds::None, false) => WhitespaceDeclarationKinds::Preserve,
+            (WhitespaceDeclarationKinds::Strip, false)
+            | (WhitespaceDeclarationKinds::Preserve, true) => WhitespaceDeclarationKinds::Mixed,
+            (existing, _) => existing,
+        };
+        let tests = compile_whitespace_name_tests(document, element, elements)?;
+        for test in tests {
+            match test {
+                WhitespaceNameTest::Wildcard => self.wildcard_strip = Some(strip),
+                WhitespaceNameTest::Namespace(namespace) => {
+                    let (selected, displaced) = if strip {
+                        (
+                            &mut self.stripped_namespaces,
+                            &mut self.preserved_namespaces,
+                        )
+                    } else {
+                        (
+                            &mut self.preserved_namespaces,
+                            &mut self.stripped_namespaces,
+                        )
+                    };
+                    displaced.retain(|candidate| candidate != &namespace);
+                    if !selected.contains(&namespace) {
+                        selected.push(namespace);
+                    }
+                }
+                WhitespaceNameTest::Exact(name) => {
+                    let (selected, displaced) = if strip {
+                        (&mut self.stripped_names, &mut self.preserved_names)
+                    } else {
+                        (&mut self.preserved_names, &mut self.stripped_names)
+                    };
+                    displaced.retain(|candidate| candidate != &name);
+                    if !selected.contains(&name) {
+                        selected.push(name);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn finish(self) -> SourceWhitespacePolicy {
+        if self.declarations == WhitespaceDeclarationKinds::Mixed
+            || !self.stripped_namespaces.is_empty()
+            || !self.preserved_namespaces.is_empty()
+        {
+            return SourceWhitespacePolicy::Mixed {
+                strip_all: self.wildcard_strip == Some(true),
+                stripped_names: self.stripped_names,
+                preserved_names: self.preserved_names,
+                stripped_namespaces: self.stripped_namespaces,
+                preserved_namespaces: self.preserved_namespaces,
+            };
+        }
+        if self.declarations == WhitespaceDeclarationKinds::Strip {
+            if self.wildcard_strip == Some(true) {
+                SourceWhitespacePolicy::StripAllElementWhitespace
+            } else {
+                SourceWhitespacePolicy::StripExpandedNames(self.stripped_names)
+            }
+        } else if self.declarations == WhitespaceDeclarationKinds::Preserve {
+            if self.wildcard_strip == Some(false) {
+                SourceWhitespacePolicy::PreserveAllDeclared
+            } else {
+                SourceWhitespacePolicy::PreserveExpandedNames(self.preserved_names)
+            }
+        } else {
+            SourceWhitespacePolicy::Preserve
+        }
+    }
+}
+
+enum WhitespaceNameTest {
+    Wildcard,
+    Namespace(String),
+    Exact(ExpandedName),
+}
+
+fn compile_whitespace_name_tests(
     document: &Document,
     element: NodeId,
     elements: &str,
-) -> Result<Vec<ExpandedName>, CompileFailure> {
-    let mut names = Vec::new();
+) -> Result<Vec<WhitespaceNameTest>, CompileFailure> {
+    let mut tests = Vec::new();
     for lexical in elements.split_whitespace() {
-        if lexical == "*" || lexical.ends_with(":*") {
-            return Err(unsupported(
-                "FXST1043",
-                "namespace-wildcard whitespace name tests remain outside the private slice",
-                document.location(element),
-            ));
+        if lexical == "*" {
+            tests.push(WhitespaceNameTest::Wildcard);
+            continue;
+        }
+        if let Some(prefix) = lexical.strip_suffix(":*") {
+            if !is_ascii_ncname(prefix) {
+                return Err(invalid(
+                    "XTSE0020",
+                    format!("invalid namespace wildcard in xsl:strip-space elements: {lexical}"),
+                    document.location(element),
+                ));
+            }
+            let namespace = namespace_for_prefix(document, element, prefix)
+                .ok_or_else(|| {
+                    invalid(
+                        "XTSE0280",
+                        format!("unbound prefix in xsl:strip-space elements: {lexical}"),
+                        document.location(element),
+                    )
+                })?
+                .to_owned();
+            if !tests.iter().any(
+                |test| matches!(test, WhitespaceNameTest::Namespace(candidate) if candidate == &namespace),
+            ) {
+                tests.push(WhitespaceNameTest::Namespace(namespace));
+            }
+            continue;
         }
         let name = compile_expanded_qname(document, element, lexical, "xsl:strip-space elements")?;
-        if !names.contains(&name) {
-            names.push(name);
+        if !tests
+            .iter()
+            .any(|test| matches!(test, WhitespaceNameTest::Exact(candidate) if candidate == &name))
+        {
+            tests.push(WhitespaceNameTest::Exact(name));
         }
     }
-    if names.is_empty() {
+    if tests.is_empty() {
         return Err(invalid(
             "XTSE0280",
             "xsl:strip-space elements must contain at least one NameTest",
             document.location(element),
         ));
     }
-    Ok(names)
+    Ok(tests)
 }
 
 pub(super) fn finalize_decimal_formats(
@@ -1027,6 +1120,7 @@ fn compile_global_binding(
         name,
         required,
         default,
+        import_precedence: 0,
     })
 }
 
@@ -1058,6 +1152,10 @@ fn compile_global_default(
             .and_then(|value| value.strip_suffix('\''))
         {
             Ok(GlobalBindingDefault::Text(value.to_owned()))
+        } else if let Some(value) =
+            crate::xpath::static_string_experiment::fold_string_function(select)
+        {
+            Ok(GlobalBindingDefault::Text(value))
         } else if let Ok(value) = select.parse::<i64>() {
             Ok(GlobalBindingDefault::Integer(value))
         } else if let Some(boolean) = compile_untyped_boolean_global(select) {
@@ -1108,13 +1206,27 @@ fn compile_global_default(
                 false,
             );
         }
-        let value = document.string_value(element);
+        let value = text_only_global_constructor_value(document, element)?;
         if document.children(element).is_empty() {
             Ok(GlobalBindingDefault::Text(value))
         } else {
             Ok(GlobalBindingDefault::TemporaryText(value))
         }
     }
+}
+
+fn text_only_global_constructor_value(
+    document: &Document,
+    element: NodeId,
+) -> Result<String, CompileFailure> {
+    let preserve_whitespace = effective_xml_space_preserved(document, element)?;
+    Ok(document
+        .children(element)
+        .iter()
+        .filter(|child| document.kind(**child) == NodeKind::Text)
+        .map(|child| document.value(*child).unwrap_or_default())
+        .filter(|value| preserve_whitespace || !value.chars().all(char::is_whitespace))
+        .collect())
 }
 
 fn compile_xslt10_source_variable_path_global(
@@ -1193,6 +1305,13 @@ fn compile_content_global_default(
     }
     if let Some(temporary) = compile_parentless_temporary_node(document, element, declared_type)? {
         return Ok(temporary);
+    }
+    if let Some(tree) = xslt10_global_constructor_compiler::compile_source_value_tree(
+        document,
+        element,
+        declared_type,
+    )? {
+        return Ok(tree);
     }
     let nodes = compile_constructed_nodes(document, element)?;
     if declared_type.is_some_and(|declared| declared != "element()")
@@ -1310,11 +1429,15 @@ fn compile_xslt10_temporary_text_parts(
             .iter()
             .any(|child| is_xslt_element(document, *child, "value-of"))
         || !children.iter().all(|child| {
-            document.kind(*child) == NodeKind::Text || is_xslt_element(document, *child, "value-of")
+            document.kind(*child) == NodeKind::Text
+                || is_xslt_element(document, *child, "value-of")
+                || is_xslt_element(document, *child, "variable")
+                || is_xslt_element(document, *child, "text")
         })
     {
         return Ok(None);
     }
+    let mut locals = BTreeMap::new();
     let mut parts = Vec::with_capacity(children.len());
     for child in children {
         if document.kind(child) == NodeKind::Text {
@@ -1323,21 +1446,45 @@ fn compile_xslt10_temporary_text_parts(
             ));
             continue;
         }
+        if is_xslt_element(document, child, "text") {
+            parts.push(Xslt10TemporaryTextPart::Text(
+                instruction_compiler::compile_text_value(document, child)?,
+            ));
+            continue;
+        }
+        if is_xslt_element(document, child, "variable") {
+            let Some((name, value)) =
+                xslt10_global_constructor_compiler::compile_static_local(document, child)?
+            else {
+                return Ok(None);
+            };
+            if locals.insert(name.clone(), value).is_some() {
+                return Err(invalid(
+                    "FXST0017",
+                    format!("duplicate local variable binding: ${name}"),
+                    document.location(child),
+                ));
+            }
+            continue;
+        }
         ensure_only_attributes(document, child, &["select"], "xsl:value-of")?;
         ensure_no_meaningful_children(document, child, "xsl:value-of")?;
         let select = required_attribute(document, child, None, "select")?.trim();
         if let Some(value) = xpath_string_literal(select) {
             parts.push(Xslt10TemporaryTextPart::Text(value.to_owned()));
         } else if let Some(variable) = select.strip_prefix('$') {
-            parts.push(Xslt10TemporaryTextPart::Variable(
-                normalize_variable_qname(document, child, variable).map_err(|_| {
-                    invalid(
-                        "FXXP0002",
-                        format!("invalid variable reference: {select}"),
-                        document.location(child),
-                    )
-                })?,
-            ));
+            let variable = normalize_variable_qname(document, child, variable).map_err(|_| {
+                invalid(
+                    "FXXP0002",
+                    format!("invalid variable reference: {select}"),
+                    document.location(child),
+                )
+            })?;
+            if let Some(value) = locals.get(&variable) {
+                parts.push(Xslt10TemporaryTextPart::Text(value.clone()));
+            } else {
+                parts.push(Xslt10TemporaryTextPart::Variable(variable));
+            }
         } else if let Ok(path) = parse_location_path(select, document.location(child).clone()) {
             parts.push(Xslt10TemporaryTextPart::SourcePath(path));
         } else {

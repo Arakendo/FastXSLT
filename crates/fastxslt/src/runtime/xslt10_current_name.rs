@@ -63,6 +63,76 @@ pub(super) fn count_descendants_same_name(
         .count())
 }
 
+pub(super) fn first_descendant_same_name_with_attribute(
+    source: &Document,
+    context: NodeId,
+    attribute_local: &str,
+    expected_value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Option<NodeId>, ExecutionFailure> {
+    let mut all_elements = Vec::new();
+    collect_descendant_elements(
+        source,
+        source.document_node(),
+        request_id,
+        control,
+        &mut all_elements,
+    )?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    for candidate in all_elements {
+        if !same_lexical_name(source, context, candidate) {
+            continue;
+        }
+        for attribute in source.attributes(candidate).iter().copied() {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            if source
+                .name(attribute)
+                .is_some_and(|name| name.namespace.is_none() && name.local == attribute_local)
+                && source.value(attribute) == Some(expected_value)
+            {
+                return Ok(Some(candidate));
+            }
+        }
+    }
+    Ok(None)
+}
+
+pub(super) fn retain_attribute_equal_to_current_name(
+    source: &Document,
+    current: NodeId,
+    candidates: Vec<NodeId>,
+    attribute_local: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let expected_value = lexical_name(source, current);
+    let mut selected = Vec::new();
+    for candidate in candidates {
+        for attribute in source.attributes(candidate).iter().copied() {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            if source
+                .name(attribute)
+                .is_some_and(|name| name.namespace.is_none() && name.local == attribute_local)
+                && source.value(attribute) == Some(expected_value.as_str())
+            {
+                selected.push(candidate);
+                break;
+            }
+        }
+    }
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(selected)
+}
+
 pub(super) fn has_prior_descendant_same_name(
     source: &Document,
     context: NodeId,
@@ -154,19 +224,37 @@ pub(super) fn has_prior_child_of_named_elements_same_name(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
-    let selected = select_children_of_named_elements(source, parent_name, request_id, control)?;
+    let mut all_elements = Vec::new();
+    collect_descendant_elements(
+        source,
+        source.document_node(),
+        request_id,
+        control,
+        &mut all_elements,
+    )?;
+    let mut selected = Vec::new();
+    for matching in all_elements
+        .into_iter()
+        .filter(|candidate| lexical_name(source, *candidate) == parent_name)
+    {
+        let mut child_position = 0.0_f64;
+        for child in source.children(matching).iter().copied() {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            if source.kind(child) == NodeKind::Element {
+                child_position += 1.0;
+                selected.push((child_position, child));
+            }
+        }
+    }
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
-    let mut candidate_position = 1.0;
-    for candidate in selected {
-        if candidate_position >= position {
-            break;
-        }
-        if same_lexical_name(source, context, candidate) {
+    for (candidate_position, candidate) in selected {
+        if candidate_position < position && same_lexical_name(source, context, candidate) {
             return Ok(true);
         }
-        candidate_position += 1.0;
     }
     Ok(false)
 }

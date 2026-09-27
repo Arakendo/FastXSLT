@@ -4,7 +4,7 @@
 - Date: 2026-08-30
 - Related reviews: AR-0007, AR-0009, AR-0013, AR-0016
 - Related ADRs: ADR-0001, ADR-0002, ADR-0004, ADR-0007
-- Related evidence: `docs/Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `docs/Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, `docs/Evidence/peer-ar-0016-decision-readiness-monday-2026-08-30.md`, `docs/Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md`, `docs/Evidence/oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md`, and pinned XSLT30 case `mode-1301`
+- Related evidence: `docs/Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `docs/Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, `docs/Evidence/peer-ar-0016-decision-readiness-monday-2026-08-30.md`, `docs/Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md`, `docs/Evidence/oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md`, `docs/Evidence/oasis-xslt10-exact-name-whitespace-stripping-2026-09-23.md`, `docs/Evidence/oasis-xslt10-exact-preserve-and-first-text-length-2026-09-24.md`, `docs/Evidence/oasis-xslt10-same-module-mixed-whitespace-policy-2026-09-24.md`, `docs/Evidence/oasis-xslt10-namespace-wildcard-whitespace-2026-09-24.md`, and pinned XSLT30 case `mode-1301`
 - Supersedes: None
 
 ## Context
@@ -31,9 +31,16 @@ bytes were 32,408 for the view and 3,214,912 for the clone.
 
 ## Decision
 
-For the admitted `xsl:strip-space elements="*"` policy and exact expanded-name
-strip policies, compose the immutable prepared source with a private
-invocation-owned visibility view.
+For the admitted `xsl:strip-space elements="*"` policy, exact expanded-name
+strip policies, namespace-wildcard policies, and same-module mixed policy,
+compose the immutable prepared source with a private invocation-owned
+visibility view.
+
+When a stylesheet contains only exact expanded-name or preserve-all
+`xsl:preserve-space` declarations, retain those declarations in compiled state
+but build no source view. This distinguishes explicit preservation from an
+absent declaration so module composition cannot silently erase a future
+strip/preserve conflict.
 
 The view must:
 
@@ -64,8 +71,7 @@ before admission.
 
 This ADR does not admit:
 
-- namespace-wildcard `xsl:strip-space` name tests or declaration precedence;
-- `xsl:preserve-space`;
+- mixed whitespace-policy composition across include/import precedence;
 - invalid `xml:space` recovery, CDATA lexical-origin compatibility, or
   schema-aware typed whitespace semantics;
 - a public or universal source-provider/view trait;
@@ -130,3 +136,20 @@ construction, execution, memory, or concurrency result.
   owns QName expansion, both safe representations apply the same parent-name
   predicate, and namespace wildcards, selective preservation, and precedence
   remain unselected.
+- 2026-09-24 -- Admitted exact expanded-name and preserve-all declarations when
+  no stripping rule competes. The declarations remain compiled for safe module
+  composition but require no invocation view. Mixed rules, wildcards, and
+  precedence remain explicit unsupported boundaries.
+- 2026-09-24 -- Admitted same-module composition of exact expanded-name
+  strip/preserve rules with the `*` wildcard. The compiler retains a private
+  wildcard default and disjoint exact overrides; exact NameTests outrank the
+  wildcard and later same-priority declarations win. Both safe representations
+  apply the same predicate. A mixed policy may pass unchanged through a module
+  that contributes no competing rule. Namespace wildcards and general
+  cross-module import precedence remain unselected.
+- 2026-09-24 -- Admitted namespace-wildcard whitespace NameTests after the
+  final `FXST1043` corpus case exercised them. Prefixes resolve to namespace
+  identity at compile time; exact names outrank namespace wildcards, which
+  outrank the general wildcard. The complete reference and visibility view
+  share the same private predicate. General cross-module import precedence
+  remains unselected.

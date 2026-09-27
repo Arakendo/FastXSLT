@@ -56,8 +56,23 @@ impl StylesheetProgram {
 
 fn source_whitespace_owned(value: &SourceWhitespacePolicy) -> usize {
     match value {
-        SourceWhitespacePolicy::Preserve | SourceWhitespacePolicy::StripAllElementWhitespace => 0,
-        SourceWhitespacePolicy::StripExpandedNames(names) => vec_owned(names, name_owned),
+        SourceWhitespacePolicy::Preserve
+        | SourceWhitespacePolicy::PreserveAllDeclared
+        | SourceWhitespacePolicy::StripAllElementWhitespace => 0,
+        SourceWhitespacePolicy::PreserveExpandedNames(names)
+        | SourceWhitespacePolicy::StripExpandedNames(names) => vec_owned(names, name_owned),
+        SourceWhitespacePolicy::Mixed {
+            stripped_names,
+            preserved_names,
+            stripped_namespaces,
+            preserved_namespaces,
+            ..
+        } => {
+            vec_owned(stripped_names, name_owned)
+                + vec_owned(preserved_names, name_owned)
+                + vec_owned(stripped_namespaces, String::capacity)
+                + vec_owned(preserved_namespaces, String::capacity)
+        }
     }
 }
 
@@ -254,7 +269,11 @@ fn constructed_attribute_owned(value: &ConstructedAttribute) -> usize {
 fn constructed_node_owned(value: &ConstructedNode) -> usize {
     match value {
         ConstructedNode::Element(element) => constructed_element_owned(element),
-        ConstructedNode::Text(text) => text.capacity(),
+        ConstructedNode::Text(text) | ConstructedNode::Comment(text) => text.capacity(),
+        ConstructedNode::Xslt10SourcePathString(path) => path.known_owned_capacity_bytes(),
+        ConstructedNode::Xslt10ForEachText { select, value } => {
+            select.known_owned_capacity_bytes() + value.capacity()
+        }
     }
 }
 
@@ -405,6 +424,13 @@ fn variable_filtered_path_owned(value: &VariableFilteredElementPath) -> usize {
 fn apply_selection_owned(value: &ApplySelection) -> usize {
     match value {
         ApplySelection::LocationPath(path) => path.known_owned_capacity_bytes(),
+        ApplySelection::LiteralDocumentRoot(reference) => document_root_reference_owned(reference),
+        ApplySelection::LiteralDocumentChildren { reference, name } => {
+            document_root_reference_owned(reference) + name.as_ref().map_or(0, name_owned)
+        }
+        ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path } => argument_path
+            .as_ref()
+            .map_or(0, LocationPath::known_owned_capacity_bytes),
         ApplySelection::Xslt10KeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
         ApplySelection::Xslt10KeyUnion(lookups) => vec_owned(lookups, xslt10_key_lookup_owned),
         ApplySelection::Xslt10MixedUnion(alternatives) => {
@@ -577,6 +603,7 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => name.capacity() + xslt10_key_lookup_owned(select) + location_owned(location),
         instruction @ (Instruction::SourceNodeVariable { .. }
+        | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { .. }
         | Instruction::SourceVariablePathVariable { .. }
         | Instruction::Xslt10ForEachTextTreeVariable { .. }) => path_binding_owned(instruction),
         instruction @ Instruction::SourceNodeUnionVariable { .. } => {
@@ -591,7 +618,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         instruction @ Instruction::Xslt10ValueOfTreeVariable { .. } => {
             xslt10_value_of_tree_variable_owned(instruction)
         }
-        Instruction::Xslt10SequenceTreeVariable {
+        Instruction::SequenceTreeVariable {
             name,
             body,
             location,
@@ -618,6 +645,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfDocument { .. }
         | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfStaticAtomicText { .. }
@@ -789,6 +817,17 @@ fn path_binding_owned(instruction: &Instruction) -> usize {
             select,
             location,
         } => name.capacity() + select.known_owned_capacity_bytes() + location_owned(location),
+        Instruction::Xslt10SourceNodesAttributeEqualsCurrentName {
+            name,
+            select,
+            attribute,
+            location,
+        } => {
+            name.capacity()
+                + select.known_owned_capacity_bytes()
+                + attribute.capacity()
+                + location_owned(location)
+        }
         Instruction::SourceVariablePathVariable {
             name,
             source,
@@ -879,6 +918,7 @@ fn number_value_owned(value: Option<&super::NumberValue>) -> usize {
     value.map_or(0, |value| match value {
         super::NumberValue::Literal(value) => value.capacity(),
         super::NumberValue::ContextPosition | super::NumberValue::ContextItem => 0,
+        super::NumberValue::Xslt10FirstNodePath(path) => path.known_owned_capacity_bytes(),
         super::NumberValue::BinaryNumeric(expression) => expression.known_owned_capacity_bytes(),
     })
 }
@@ -906,7 +946,8 @@ fn number_instruction_owned(instruction: &Instruction) -> usize {
                     + vec_owned(&format.separators, String::capacity)
                     + format.suffix.capacity()
             }
-            super::NumberFormatPlan::Xslt10Variable(variable) => variable.capacity(),
+            super::NumberFormatPlan::Xslt10Variable(variable)
+            | super::NumberFormatPlan::Variable(variable) => variable.capacity(),
         }
         + location_owned(location)
 }
@@ -962,6 +1003,14 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
         Instruction::CopyOfLocationPath {
             select, location, ..
         } => select.known_owned_capacity_bytes() + location_owned(location),
+        Instruction::CopyOfDocument {
+            select, location, ..
+        } => {
+            select.base.capacity()
+                + select.reference.capacity()
+                + select.descendant_local.as_ref().map_or(0, String::capacity)
+                + location_owned(location)
+        }
         Instruction::CopyOfXslt10KeyLookup {
             select, location, ..
         } => xslt10_key_lookup_owned(select) + location_owned(location),
@@ -1052,7 +1101,14 @@ fn sort_key_owned(sort: &SortKey) -> usize {
             path.known_owned_capacity_bytes() + variable.capacity()
         }
         SortSelect::Xslt10ChildNameEqualsVariable { variable } => variable.capacity(),
+        SortSelect::Xslt10PathStringLiteralComparison { path, literal, .. } => path
+            .known_owned_capacity_bytes()
+            .checked_add(literal.capacity())
+            .expect("live sort comparison capacity is representable"),
         SortSelect::Xslt10KeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
+        SortSelect::Xslt10PathSubstring(expression) => {
+            size_of_val(expression.as_ref()) + expression.path.known_owned_capacity_bytes()
+        }
         SortSelect::PathUnion(alternatives) => vec_owned(
             alternatives,
             crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
@@ -1061,6 +1117,7 @@ fn sort_key_owned(sort: &SortKey) -> usize {
         SortSelect::ContextPosition
         | SortSelect::ContextSize
         | SortSelect::ContextNodeName
+        | SortSelect::ContextNodeLocalName
         | SortSelect::ContextStringLength => 0,
     };
     let data_type = match &sort.data_type {
@@ -1115,11 +1172,11 @@ fn call_template_owned(
 }
 
 fn copy_owned(
-    attributes: &Vec<LiteralAttribute>,
+    attributes: &Vec<ComputedAttribute>,
     body: &Vec<Instruction>,
     location: &SourceLocation,
 ) -> usize {
-    vec_owned(attributes, literal_attribute_owned)
+    vec_owned(attributes, computed_attribute_owned)
         + vec_owned(body, instruction_owned)
         + location_owned(location)
 }
@@ -1170,19 +1227,24 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::Xslt10FirstNodeNormalizedStringPath(path)
         | ValueExpression::StringPath(path)
         | ValueExpression::Xslt10FirstNodeStringPath(path)
+        | ValueExpression::Xslt10FirstNodeStringLengthPath(path)
         | ValueExpression::GeneratedNodeIdentity(path)
         | ValueExpression::GeneratedRootIdentity(path)
         | ValueExpression::EmptyLocationPath(path)
         | ValueExpression::NumberPath(path)
         | ValueExpression::Xslt10SumPath(path)
         | ValueExpression::IntegralFunctionPath { path, .. } => path.known_owned_capacity_bytes(),
-        ValueExpression::Xslt10NodeNamePathUnionLast(alternatives)
+        ValueExpression::Xslt10FirstNodePathUnion(alternatives)
+        | ValueExpression::Xslt10NodeNamePathUnionLast(alternatives)
         | ValueExpression::Xslt10CountPathUnion(alternatives) => {
             vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
         }
         ValueExpression::BinaryNumeric(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }
+        ValueExpression::Xslt10IdLookupWithoutTypedIds { argument_path } => argument_path
+            .as_ref()
+            .map_or(0, LocationPath::known_owned_capacity_bytes),
         ValueExpression::ContextNodeName
         | ValueExpression::ContextNodeLocalName
         | ValueExpression::ContextNodeNamespaceUri
@@ -1191,6 +1253,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::Xslt10CountDescendantsSameNameAsCurrent
         | ValueExpression::UpperCaseContextString => 0,
         ValueExpression::ContextLanguageMatches(language) => language.capacity(),
+        ValueExpression::Xslt10FirstDescendantSameNameAttribute { attribute, value } => {
+            attribute.capacity() + value.capacity()
+        }
         ValueExpression::ContextNodeStringLength(location)
         | ValueExpression::ContextPosition(location)
         | ValueExpression::ContextSize(location)
@@ -1202,12 +1267,26 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Variable(name)
         | ValueExpression::RootVariable(name)
         | ValueExpression::VariableEffectiveBooleanValue(name)
+        | ValueExpression::VariableIsEmpty(name)
+        | ValueExpression::VariableIsString(name)
+        | ValueExpression::TemporaryDescendantNames(name)
         | ValueExpression::CountSourceNodeVariable(name)
         | ValueExpression::Xslt10NormalizedVariable(name)
         | ValueExpression::Xslt10VariableString(name)
         | ValueExpression::Xslt10VariableStringLength(name)
         | ValueExpression::Xslt10VariableNumber(name)
         | ValueExpression::Xslt10VariableSum(name) => name.capacity(),
+        ValueExpression::VariableNumber { variable, location } => {
+            variable.capacity() + location_owned(location)
+        }
+        ValueExpression::TemporaryDescendantIsUntypedElement { variable, name } => {
+            variable.capacity()
+                + name.namespace.as_ref().map_or(0, String::capacity)
+                + name.local.capacity()
+        }
+        ValueExpression::VariableStringValueEquals { variable, value } => {
+            variable.capacity() + value.capacity()
+        }
         ValueExpression::Xslt10VariableDivisionString {
             numerator,
             denominator,
@@ -1274,6 +1353,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Xslt10PathSubstring(expression) => {
             size_of_val(expression.as_ref()) + expression.path.known_owned_capacity_bytes()
         }
+        ValueExpression::Xslt10VariableSubstring(expression) => {
+            size_of_val(expression.as_ref()) + expression.variable.capacity()
+        }
         ValueExpression::Xslt10PathTranslate(expression) => {
             size_of_val(expression.as_ref())
                 + expression.path.known_owned_capacity_bytes()
@@ -1298,17 +1380,20 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::LiteralVariableConcat { literal, variable } => {
             literal.capacity() + variable.capacity()
         }
+        ValueExpression::VariableLiteralConcat {
+            variable,
+            literal,
+            location,
+        } => variable.capacity() + literal.capacity() + location_owned(location),
         ValueExpression::GeneratedTemporaryRootIdentity {
             variable,
             descendant_local,
         } => variable.capacity() + descendant_local.as_ref().map_or(0, String::capacity),
         ValueExpression::GeneratedDocumentRootIdentity(reference) => {
-            reference.base.capacity()
-                + reference.reference.capacity()
-                + reference
-                    .descendant_local
-                    .as_ref()
-                    .map_or(0, String::capacity)
+            document_root_reference_owned(reference)
+        }
+        ValueExpression::Xslt10LiteralDocumentPath { reference, path } => {
+            document_root_reference_owned(reference) + path.known_owned_capacity_bytes()
         }
         ValueExpression::NodeIdentityEqual { left, right } => path_pair_owned(left, right),
         ValueExpression::IntegerFor(expression) => {
@@ -1396,7 +1481,8 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
         BooleanExpression::VariableEqualsEmptySequence(variable)
         | BooleanExpression::VariableEffectiveBooleanValue(variable)
-        | BooleanExpression::Xslt10VariableStringLength(variable) => {
+        | BooleanExpression::Xslt10VariableStringLength(variable)
+        | BooleanExpression::Xslt10VariableNumericLiteralComparison { variable, .. } => {
             variable.capacity()
         }
         name_expression @ (BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(_)
@@ -1431,11 +1517,10 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::Xslt10SourcePathStringComparison { left, right, .. } => {
             path_pair_owned(left, right) + size_of_val(right.as_ref())
         }
-        BooleanExpression::Xslt10ChildAttributeVariableEquals {
-            child,
-            attribute,
-            variable,
-        } => name_owned(child) + name_owned(attribute) + variable.capacity(),
+        child_attribute @ (BooleanExpression::Xslt10ChildAttributeVariableEquals { .. }
+        | BooleanExpression::ChildAttributeVariableStringEquals { .. }) => {
+            child_attribute_variable_owned(child_attribute)
+        }
         BooleanExpression::Xslt10ContextNodeSetEqualsVariable { variable, location } => {
             variable.capacity() + location_owned(location)
         }
@@ -1492,6 +1577,22 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
     }
 }
 
+fn child_attribute_variable_owned(value: &BooleanExpression) -> usize {
+    match value {
+        BooleanExpression::Xslt10ChildAttributeVariableEquals {
+            child,
+            attribute,
+            variable,
+        }
+        | BooleanExpression::ChildAttributeVariableStringEquals {
+            child,
+            attribute,
+            variable,
+        } => name_owned(child) + name_owned(attribute) + variable.capacity(),
+        _ => unreachable!("child-attribute accounting receives only its two typed variants"),
+    }
+}
+
 fn xslt10_name_boolean_owned(value: &BooleanExpression) -> usize {
     match value {
         BooleanExpression::Xslt10PriorDescendantSameNameAsCurrent(variable) => variable.capacity(),
@@ -1528,12 +1629,18 @@ fn document_pair_owned(
     left: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
     right: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
 ) -> usize {
-    left.base.capacity()
-        + left.reference.capacity()
-        + left.descendant_local.as_ref().map_or(0, String::capacity)
-        + right.base.capacity()
-        + right.reference.capacity()
-        + right.descendant_local.as_ref().map_or(0, String::capacity)
+    document_root_reference_owned(left) + document_root_reference_owned(right)
+}
+
+fn document_root_reference_owned(
+    reference: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
+) -> usize {
+    reference.base.capacity()
+        + reference.reference.capacity()
+        + reference
+            .descendant_local
+            .as_ref()
+            .map_or(0, String::capacity)
 }
 
 fn path_pair_owned(
@@ -1596,19 +1703,21 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             TemplateArgumentValue::SourceVariablePath { variable, path } => {
                 variable.capacity() + path.known_owned_capacity_bytes()
             }
-            TemplateArgumentValue::Xslt10BinaryNumeric(expression) => {
+            TemplateArgumentValue::BinaryNumeric(expression) => {
                 size_of::<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>()
                     + expression.known_owned_capacity_bytes()
             }
-            TemplateArgumentValue::Integer(_)
+            TemplateArgumentValue::EmptySequence
+            | TemplateArgumentValue::Integer(_)
             | TemplateArgumentValue::Boolean(_)
             | TemplateArgumentValue::ContextPosition
             | TemplateArgumentValue::ContextSize
             | TemplateArgumentValue::ContextNodeName
             | TemplateArgumentValue::CurrentSourceNode => 0,
+            TemplateArgumentValue::ContextNodeStringLength(location) => location_owned(location),
             TemplateArgumentValue::SourcePath(path)
             | TemplateArgumentValue::Xslt10SumPath(path)
-            | TemplateArgumentValue::Xslt10ForEachPathStringContent(path) => {
+            | TemplateArgumentValue::ForEachPathStringContent(path) => {
                 path.known_owned_capacity_bytes()
             }
             TemplateArgumentValue::Xslt10CountPathUnion(alternatives) => vec_owned(
@@ -1623,7 +1732,8 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
                     + size_of_val(content.value.as_ref())
                     + value_expression_owned(&content.value)
             }
-            TemplateArgumentValue::Xslt10ConstructedContent(nodes) => {
+            TemplateArgumentValue::ConstructedString(nodes)
+            | TemplateArgumentValue::Xslt10ConstructedContent(nodes) => {
                 vec_owned(nodes, constructed_node_owned)
             }
             TemplateArgumentValue::Xslt10SequenceConstructor(instructions) => {
@@ -1772,6 +1882,9 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
             lookup,
             suffix,
         } => prefix.capacity() + xslt10_key_lookup_owned(lookup) + suffix.capacity(),
+        LiteralAttributeValue::TextAndContextIdentity { prefix, suffix } => {
+            prefix.capacity() + suffix.capacity()
+        }
         LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
             prefix,
             name,
@@ -1808,6 +1921,7 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         | LiteralAttributeValue::ContextSize
         | LiteralAttributeValue::ContextLocalName
         | LiteralAttributeValue::ContextLexicalName
+        | LiteralAttributeValue::Xslt10ContextNamespaceCount
         | LiteralAttributeValue::ContextStringValue
         | LiteralAttributeValue::ContextNormalizedStringLength
         | LiteralAttributeValue::ContextIntegerIncrement(_) => 0,

@@ -1129,6 +1129,16 @@ pub(crate) fn parse_qualified_child_path(
             steps.push(parsed);
             continue;
         }
+        if let Some(parsed) = match step {
+            "node()" => Some(PathStep::ChildAnyNode),
+            "text()" => Some(PathStep::ChildText),
+            "comment()" => Some(PathStep::ChildComment),
+            "processing-instruction()" => Some(PathStep::ChildProcessingInstruction),
+            _ => None,
+        } {
+            steps.push(parsed);
+            continue;
+        }
         let (attribute, name_test) = step
             .strip_prefix('@')
             .map_or((false, step), |name| (true, name));

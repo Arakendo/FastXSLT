@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
-use crate::xdm::owned_tree_experiment::{Document, NodeId};
+use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::{
     LocationPath, evaluate_location_path_controlled, evaluate_location_path_union_controlled,
@@ -18,7 +18,9 @@ use super::value_evaluator::{
     evaluate_binary_numeric_value, evaluate_xslt10_concat, normalized_node_string,
     normalized_node_string_length, xslt10_variable_string_value,
 };
-use super::{ExecutionFailure, FailureCategory, SequenceContext, control_failure, failure_at};
+use super::{
+    ExecutionFailure, FailureCategory, SequenceContext, control_failure, failure, failure_at,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ResultNode {
@@ -571,6 +573,7 @@ fn materialize_attribute(
         value @ (LiteralAttributeValue::Xslt10TextAndPath { .. }
         | LiteralAttributeValue::Xslt10TextAndNormalizedPath { .. }
         | LiteralAttributeValue::Xslt10TextAndGeneratedKeyIdentity { .. }
+        | LiteralAttributeValue::TextAndContextIdentity { .. }
         | LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset { .. }
         | LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat { .. }
         | LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith { .. }
@@ -591,6 +594,9 @@ fn materialize_attribute(
         LiteralAttributeValue::ContextSize => context.focus_size.to_string(),
         LiteralAttributeValue::ContextLocalName => context_local_name(context),
         LiteralAttributeValue::ContextLexicalName => context_lexical_name(context, control)?,
+        LiteralAttributeValue::Xslt10ContextNamespaceCount => {
+            xslt10_context_namespace_count(context, control)?.to_string()
+        }
         LiteralAttributeValue::ContextStringValue => context_string_attribute(location, context)?,
         LiteralAttributeValue::ContextIntegerIncrement(increment) => {
             materialize_context_integer_increment(*increment, location, context)?
@@ -600,6 +606,38 @@ fn materialize_attribute(
         name: name.clone(),
         value,
     })
+}
+
+fn xslt10_context_namespace_count(
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            "namespace-axis count requires a source-node focus",
+        ));
+    };
+    if source.kind(node) != NodeKind::Element {
+        return Ok(0);
+    }
+    let namespaces = source.in_scope_namespaces(node);
+    let mut count = namespaces
+        .iter()
+        .filter(|binding| !binding.namespace.is_empty())
+        .count();
+    if !namespaces
+        .iter()
+        .any(|binding| binding.prefix.as_deref() == Some("xml"))
+    {
+        count += 1;
+    }
+    Ok(count)
 }
 
 fn materialize_text_avt(
@@ -628,6 +666,9 @@ fn materialize_text_avt(
         } => materialize_generated_key_identity_avt(
             prefix, lookup, suffix, location, context, control,
         ),
+        LiteralAttributeValue::TextAndContextIdentity { prefix, suffix } => {
+            materialize_context_identity_avt(prefix, suffix, location, context, control)
+        }
         LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
             prefix,
             name,
@@ -668,6 +709,33 @@ fn materialize_text_avt(
         ),
         _ => unreachable!("text AVT dispatch admits only text-composition values"),
     }
+}
+
+fn materialize_context_identity_avt(
+    prefix: &str,
+    suffix: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let Some((_, node)) = context.source_focus else {
+        return Err(failure_at(
+            "FXRT1001",
+            FailureCategory::Unsupported,
+            Some(context.request_id),
+            location.clone(),
+            "generate-id() in an attribute value template currently requires a source-node context",
+        ));
+    };
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let identity = super::runtime_context::source_node_identity(node);
+    let mut value = String::with_capacity(prefix.len() + identity.len() + suffix.len());
+    value.push_str(prefix);
+    value.push_str(&identity);
+    value.push_str(suffix);
+    Ok(value)
 }
 
 fn materialize_generated_key_identity_avt(

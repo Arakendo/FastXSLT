@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-25
+- Last amended: 2026-09-26
 - Related decisions: ADR-0001, ADR-0002, ADR-0003
 - Source precedent: Tokimu ADR-0015, reframed for FastXSLT
 - Supersedes: None
@@ -36,6 +37,8 @@ unit no longer communicates one coherent implementation responsibility.
 
 > File size triggers review; responsibility boundaries justify decomposition.
 
+> Directory density triggers review; named subjects justify subdirectories.
+
 > Split by meaning, not by line count.
 
 ## Decision
@@ -67,6 +70,44 @@ contribute to the same navigation and review burden. These thresholds are review
 signals, not quality scores, merge failures, or automatic commands to create
 more files. CI may report crossings but must not fail solely on physical line
 count unless a later decision demonstrates value for a mechanical gate.
+
+### Directory-density review triggers
+
+A large number of directly adjacent hand-maintained implementation or test
+files is a second inexpensive navigation signal. Count direct file children,
+not all recursive descendants:
+
+| Direct hand-maintained files | Required treatment |
+| --- | --- |
+| Up to 10 files | Ordinary. No density justification required; subject boundaries may still require review. |
+| 11–15 files | Inspect whether one or more named subsubjects would improve navigation during a substantive modification. |
+| More than 15 files | Perform and retain an explicit directory-cohesion review. |
+
+These thresholds do not require a subdirectory. A flat directory may remain
+the clearest representation when it owns one navigable subject, no stable
+subsubject has emerged, or moving files would obscure rather than clarify
+relationships. Conversely, fewer than 10 files may still justify subdirectories
+when distinct subjects or ownership boundaries are already evident.
+
+Subdirectories follow named, relatable subjects or responsibilities. Useful
+seams may include a semantic or execution phase, language-feature family,
+reference/optimized/adapter boundary, ownership and dependency direction,
+host or protocol boundary, or a cohesive test family organized by invariant.
+Do not create alphabetical buckets, numbered groups, file-count partitions, or
+generic `common`, `helpers`, `misc`, or `utils` directories merely to reduce a
+sibling count.
+
+Moving files into a subdirectory does not create an architectural layer, public
+module, crate, or ownership change. Apply the same post-extraction coupling
+test: the new directory should make a real subject easier to find and reason
+about, not reproduce the old flat collection one level lower.
+
+This density signal primarily governs implementation and test code. Numbered
+ADR, Architectural Review, Change Request, evidence, and similar documentation
+collections; generated or vendored trees; corpus fixtures; and externally
+defined catalogs are not mechanically governed by sibling count. Those
+collections should use stable naming, indexes, manifests, provenance, or
+generation boundaries unless their content develops a genuine subject split.
 
 ### Responsibility review triggers
 
@@ -297,7 +338,8 @@ generated content must not be edited manually merely to satisfy a size report.
 
 An explicit cohesion/decomposition review records:
 
-- current line count and responsibility inventory;
+- current line count, direct sibling-file count where applicable, and
+  responsibility inventory;
 - thresholds and triggers that caused review;
 - proposed subjects, responsibilities, ownership, inputs, outputs, exclusions,
   and dependency direction;
@@ -313,21 +355,28 @@ An explicit cohesion/decomposition review records:
 A multi-step campaign belongs in a plan. It distinguishes behavior-preserving
 moves from subsequent fixes, optimizations, and API changes.
 
-## Initial application
+## Initial application and recalibration
 
-No current FastXSLT implementation unit crosses the numeric thresholds. The
-project is at scaffold stage, so this ADR prevents pressure rather than
-retrofitting an existing monolith.
+At acceptance, FastXSLT was still at scaffold stage and no implementation unit
+crossed the numeric thresholds. The first source-unit calibration was defined
+as 2,000 lines, more than 1,000 lines plus one responsibility trigger, or two
+responsibility triggers regardless of size. Subsequent implementation and
+checkpointed private extraction have exercised that policy repeatedly.
 
-The first mandatory review will occur when a hand-maintained unit crosses the
-2,000-line threshold, exceeds 1,000 lines while satisfying a responsibility
-trigger, or satisfies two responsibility triggers at any size. That review is
-the initial calibration pilot and may revise the thresholds if FastXSLT's real
-language/compiler code demonstrates materially different pressure.
+At the 2026-09-26 directory-density amendment, observed direct source-file
+counts include 51 files under `crates/fastxslt/src/runtime`, 49 under
+`crates/fastxslt/src/xpath`, 25 under the ASP.NET workbench, 15 under
+`crates/fastxslt/src/compile`, and 11 under `scripts`. These observations trigger
+the graduated reviews above. They do not prove that every listed directory
+needs another level, invalidate existing private decomposition, or authorize a
+large restructuring campaign during active standards work.
 
-This ADR does not require ceremonial pre-splitting of empty modules or immediate
-automation. Early vertical slices may remain concrete and local until actual
-responsibilities become visible.
+Directory reviews should occur at coherent checkpoints or when substantive
+work next touches the pressured subject. They may conclude that existing
+filenames and module ownership remain clearer than additional nesting, identify
+one or more evidence-backed subsubjects for checkpointed extraction, or defer a
+move until a named responsibility becomes stable. This ADR does not require
+ceremonial folders or immediate automation.
 
 ## Alternatives considered
 
@@ -342,6 +391,14 @@ review point.
 Fail CI whenever a source file exceeds a fixed size. This mistakes size for
 cohesion, encourages arbitrary fragmentation, and mishandles generated,
 vendored, corpus, and declarative content.
+
+### Hard maximum directory file count
+
+Fail CI or require a subdirectory whenever a directory exceeds a fixed sibling
+count. This substitutes nesting for subject design, encourages arbitrary
+buckets, and misclassifies numbered documentation, corpus, generated, and
+vendored collections whose scale is better handled through indexes, manifests,
+or provenance.
 
 ### Tooling report without a decision rule
 
@@ -359,6 +416,8 @@ preserve semantics and attribution.
 ### Positive
 
 - Large or contested units receive review before change isolation degrades.
+- Dense implementation directories receive a navigation and subject-ownership
+  review before flat sibling lists become the accidental permanent structure.
 - Conformance and regression evidence can grow without forcing all logic into
   one production file.
 - Private decomposition improves navigation without manufacturing public APIs,
@@ -376,6 +435,8 @@ preserve semantics and attribution.
   disposition.
 - Numeric signals can be misread as quality scores unless reviewers continue to
   prioritize responsibility.
+- Extra directory levels can increase path length and scatter related work when
+  file-count pressure is mistaken for a mandatory move.
 
 ## Reopening triggers
 
@@ -383,6 +444,8 @@ Revisit this decision when:
 
 - reviews become ritual justifications with no useful outcome;
 - thresholds cause arbitrary fragmentation or disproportionate churn;
+- directory-density reviews repeatedly produce ceremonial nesting, unstable
+  subject names, or longer navigation without clearer ownership;
 - compiler/evaluator hot paths materially regress because responsibility seams
   introduced avoidable costs;
 - compile-time observations repeatedly justify a different trigger or show that

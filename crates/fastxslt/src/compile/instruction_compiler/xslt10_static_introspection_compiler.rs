@@ -120,7 +120,13 @@ fn fold_system_property(
 ) -> Option<StaticIntrospectionValue> {
     let (namespace, local) = expanded_name(document, element, lexical_name, false)?;
     let value = match (namespace.as_deref(), local) {
-        (Some(XSLT_NAMESPACE), "version") => "1",
+        (Some(XSLT_NAMESPACE), "version") => {
+            if super::uses_xslt10_compatibility(document, element) {
+                "1"
+            } else {
+                "3.0"
+            }
+        }
         (Some(XSLT_NAMESPACE), "vendor") => "FastXSLT",
         (Some(XSLT_NAMESPACE), "vendor-url") => "https://github.com/Arakendo/FastXSLT",
         _ => "",

@@ -363,10 +363,43 @@ impl Document {
     }
 
     #[cfg(test)]
+    pub(crate) fn derive_stripping_mixed_element_whitespace(
+        &self,
+        strip_all: bool,
+        stripped_names: &[ExpandedName],
+        preserved_names: &[ExpandedName],
+        stripped_namespaces: &[String],
+        preserved_namespaces: &[String],
+        control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
+        self.derive_stripping_element_whitespace_by(control, |name| {
+            whitespace_view::whitespace_name_test_strips(
+                name,
+                strip_all,
+                stripped_names,
+                preserved_names,
+                stripped_namespaces,
+                preserved_namespaces,
+            )
+        })
+    }
+
+    #[cfg(test)]
     fn derive_stripping_element_whitespace(
         &self,
         names: &[ExpandedName],
         control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
+        self.derive_stripping_element_whitespace_by(control, |name| {
+            names.is_empty() || names.contains(name)
+        })
+    }
+
+    #[cfg(test)]
+    fn derive_stripping_element_whitespace_by(
+        &self,
+        control: &mut InvocationControl,
+        should_strip: impl Fn(&ExpandedName) -> bool,
     ) -> Result<Self, ControlFailure> {
         let mut nodes = Vec::new();
         for node in self.nodes.iter() {
@@ -389,11 +422,10 @@ impl Document {
             preserves_space[index] =
                 self.element_preserves_xml_space(NodeId(index), parent_preserves);
             if preserves_space[index]
-                || (!names.is_empty()
-                    && self.nodes[index]
-                        .name
-                        .as_ref()
-                        .is_none_or(|name| !names.iter().any(|candidate| candidate == name)))
+                || self.nodes[index]
+                    .name
+                    .as_ref()
+                    .is_none_or(|name| !should_strip(name))
             {
                 continue;
             }

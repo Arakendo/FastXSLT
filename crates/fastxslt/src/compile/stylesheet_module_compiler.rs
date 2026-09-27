@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
+use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{
     Instruction, MatchPattern, MatchedTemplate, SourceWhitespacePolicy, StylesheetProgram,
     Template, TemplatePriority,
@@ -127,7 +128,8 @@ fn merge_included_program(
     merge_source_whitespace_policy(
         &mut program.source_whitespace,
         &included_program.source_whitespace,
-    );
+        location,
+    )?;
     program
         .typed_mode_requirements
         .append(&mut included_program.typed_mode_requirements);
@@ -177,19 +179,26 @@ fn merge_included_program(
         program.named_templates.push(named);
     }
     for binding in included_program.global_bindings {
-        if program
+        if let Some(index) = program
             .global_bindings
             .iter()
-            .any(|existing| existing.name == binding.name)
+            .position(|existing| existing.name == binding.name)
         {
-            return Err(invalid(
-                "FXST0029",
-                format!(
-                    "duplicate global binding across included modules: ${}",
-                    binding.name
-                ),
-                location,
-            ));
+            let existing_precedence = program.global_bindings[index].import_precedence;
+            if existing_precedence == binding.import_precedence {
+                return Err(invalid(
+                    "FXST0029",
+                    format!(
+                        "duplicate global binding across included modules: ${}",
+                        binding.name
+                    ),
+                    location,
+                ));
+            }
+            if binding.import_precedence > existing_precedence {
+                program.global_bindings[index] = binding;
+            }
+            continue;
         }
         program.global_bindings.push(binding);
     }
@@ -200,25 +209,106 @@ fn merge_included_program(
 fn merge_source_whitespace_policy(
     principal: &mut SourceWhitespacePolicy,
     included: &SourceWhitespacePolicy,
-) {
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    if matches!(included, SourceWhitespacePolicy::Preserve) {
+        return Ok(());
+    }
+    if matches!(principal, SourceWhitespacePolicy::Preserve)
+        && matches!(included, SourceWhitespacePolicy::Mixed { .. })
+    {
+        *principal = included.clone();
+        return Ok(());
+    }
+    if matches!(principal, SourceWhitespacePolicy::Mixed { .. })
+        || matches!(included, SourceWhitespacePolicy::Mixed { .. })
+    {
+        return Err(unsupported(
+            "FXST1043",
+            "composing mixed whitespace declarations across stylesheet modules remains outside the private slice",
+            location,
+        ));
+    }
     match included {
         SourceWhitespacePolicy::Preserve => {}
-        SourceWhitespacePolicy::StripAllElementWhitespace => {
-            *principal = SourceWhitespacePolicy::StripAllElementWhitespace;
-        }
+        SourceWhitespacePolicy::PreserveAllDeclared => match principal {
+            SourceWhitespacePolicy::Preserve
+            | SourceWhitespacePolicy::PreserveAllDeclared
+            | SourceWhitespacePolicy::PreserveExpandedNames(_) => {
+                *principal = SourceWhitespacePolicy::PreserveAllDeclared;
+            }
+            SourceWhitespacePolicy::StripAllElementWhitespace
+            | SourceWhitespacePolicy::StripExpandedNames(_) => {
+                return Err(unsupported(
+                    "FXST1043",
+                    "composing included xsl:preserve-space with xsl:strip-space is outside the private whitespace-policy slice",
+                    location,
+                ));
+            }
+            SourceWhitespacePolicy::Mixed { .. } => unreachable!("mixed policies return above"),
+        },
+        SourceWhitespacePolicy::PreserveExpandedNames(included_names) => match principal {
+            SourceWhitespacePolicy::Preserve => {
+                *principal = SourceWhitespacePolicy::PreserveExpandedNames(included_names.clone());
+            }
+            SourceWhitespacePolicy::PreserveAllDeclared => {}
+            SourceWhitespacePolicy::PreserveExpandedNames(names) => {
+                append_distinct_expanded_names(names, included_names);
+            }
+            SourceWhitespacePolicy::StripAllElementWhitespace
+            | SourceWhitespacePolicy::StripExpandedNames(_) => {
+                return Err(unsupported(
+                    "FXST1043",
+                    "composing included xsl:preserve-space with xsl:strip-space is outside the private whitespace-policy slice",
+                    location,
+                ));
+            }
+            SourceWhitespacePolicy::Mixed { .. } => unreachable!("mixed policies return above"),
+        },
+        SourceWhitespacePolicy::StripAllElementWhitespace => match principal {
+            SourceWhitespacePolicy::PreserveAllDeclared
+            | SourceWhitespacePolicy::PreserveExpandedNames(_) => {
+                return Err(unsupported(
+                    "FXST1043",
+                    "composing included xsl:strip-space with xsl:preserve-space is outside the private whitespace-policy slice",
+                    location,
+                ));
+            }
+            SourceWhitespacePolicy::Preserve
+            | SourceWhitespacePolicy::StripAllElementWhitespace
+            | SourceWhitespacePolicy::StripExpandedNames(_) => {
+                *principal = SourceWhitespacePolicy::StripAllElementWhitespace;
+            }
+            SourceWhitespacePolicy::Mixed { .. } => unreachable!("mixed policies return above"),
+        },
         SourceWhitespacePolicy::StripExpandedNames(included_names) => match principal {
             SourceWhitespacePolicy::Preserve => {
                 *principal = SourceWhitespacePolicy::StripExpandedNames(included_names.clone());
             }
+            SourceWhitespacePolicy::PreserveAllDeclared
+            | SourceWhitespacePolicy::PreserveExpandedNames(_) => {
+                return Err(unsupported(
+                    "FXST1043",
+                    "composing included xsl:strip-space with xsl:preserve-space is outside the private whitespace-policy slice",
+                    location,
+                ));
+            }
             SourceWhitespacePolicy::StripAllElementWhitespace => {}
             SourceWhitespacePolicy::StripExpandedNames(names) => {
-                for name in included_names {
-                    if !names.contains(name) {
-                        names.push(name.clone());
-                    }
-                }
+                append_distinct_expanded_names(names, included_names);
             }
+            SourceWhitespacePolicy::Mixed { .. } => unreachable!("mixed policies return above"),
         },
+        SourceWhitespacePolicy::Mixed { .. } => unreachable!("mixed policies return above"),
+    }
+    Ok(())
+}
+
+fn append_distinct_expanded_names(names: &mut Vec<ExpandedName>, additions: &[ExpandedName]) {
+    for name in additions {
+        if !names.contains(name) {
+            names.push(name.clone());
+        }
     }
 }
 
@@ -342,6 +432,7 @@ fn clear_inherited_output_property(
         "method" => settings.method = None,
         "encoding" => settings.encoding = None,
         "indent" => settings.indent = None,
+        "omit-xml-declaration" => settings.omit_xml_declaration = false,
         _ => {
             return Err(unsupported(
                 "FXST1024",
@@ -360,11 +451,27 @@ pub(crate) fn compile_stylesheet_with_two_included_programs_at(
     principal_root: NodeId,
     included_programs: [StylesheetProgram; 2],
 ) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_with_included_programs_at(
+        principal,
+        principal_root,
+        included_programs.into_iter().collect(),
+    )
+}
+
+pub(crate) fn compile_stylesheet_with_included_programs_at(
+    principal: &Document,
+    principal_root: NodeId,
+    included_programs: Vec<StylesheetProgram>,
+) -> Result<StylesheetProgram, CompileFailure> {
     let include_declarations = include_nodes_at(principal, principal_root)?;
     if include_declarations.len() != included_programs.len() {
         return Err(invalid(
             "FXST0034",
-            "two-include compilation requires exactly two supplied included modules",
+            format!(
+                "include compilation requires {} supplied included modules, received {}",
+                include_declarations.len(),
+                included_programs.len()
+            ),
             principal.location(principal_root),
         ));
     }
@@ -668,9 +775,37 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
         &import_declarations,
     )?;
     let mut imported_programs = imported_programs;
-    for (program, shift) in imported_programs.iter_mut().zip([-3, -1]) {
-        rebase_imported_program(program, shift, principal.location(principal_root))?;
-    }
+    let second_shift = import_shift_for_maximum(
+        &imported_programs[1],
+        -1,
+        principal.location(principal_root),
+    )?;
+    let second_floor = imported_programs[1]
+        .matched_templates
+        .iter()
+        .map(|template| template.import_precedence)
+        .min()
+        .unwrap_or(0)
+        .checked_add(second_shift)
+        .ok_or_else(|| import_precedence_overflow(principal.location(principal_root)))?;
+    let first_maximum = second_floor
+        .checked_sub(1)
+        .ok_or_else(|| import_precedence_overflow(principal.location(principal_root)))?;
+    let first_shift = import_shift_for_maximum(
+        &imported_programs[0],
+        first_maximum,
+        principal.location(principal_root),
+    )?;
+    rebase_imported_program(
+        &mut imported_programs[0],
+        first_shift,
+        principal.location(principal_root),
+    )?;
+    rebase_imported_program(
+        &mut imported_programs[1],
+        second_shift,
+        principal.location(principal_root),
+    )?;
     for program in &mut imported_programs {
         merge_attribute_set_declarations(
             &mut principal_program,
@@ -809,7 +944,7 @@ fn contains_apply_imports(instructions: &[Instruction]) -> bool {
         | Instruction::ForEachVariable { body, .. }
         | Instruction::ForEachStaticIntegerRange { body, .. }
         | Instruction::ForEachNodes { body, .. }
-        | Instruction::Xslt10SequenceTreeVariable { body, .. }
+        | Instruction::SequenceTreeVariable { body, .. }
         | Instruction::If { body, .. } => contains_apply_imports(body),
         Instruction::Xslt10ProcessingInstructionNode { body, .. }
         | Instruction::Xslt10CommentNode { body, .. } => contains_apply_imports(body.as_ref()),
@@ -832,38 +967,43 @@ fn rebase_imported_program(
     shift: i32,
     location: &SourceLocation,
 ) -> Result<(), CompileFailure> {
-    if program
-        .matched_templates
-        .iter()
-        .any(|template| !matches!(template.import_precedence, -1 | 0))
-    {
-        return Err(unsupported(
-            "FXST1030",
-            "the private nested-import slice requires one precedence level below each imported branch",
-            location,
-        ));
-    }
     let local_import_floor = program
         .matched_templates
         .iter()
         .map(|template| template.import_precedence)
         .min()
         .unwrap_or(0);
+    for template in &program.matched_templates {
+        template
+            .import_precedence
+            .checked_add(shift)
+            .and_then(|_| template.apply_imports_min_precedence.checked_add(shift))
+            .ok_or_else(|| import_precedence_overflow(location))?;
+    }
+    for declaration in &program.attribute_set_declarations {
+        declaration
+            .import_precedence
+            .checked_add(shift)
+            .ok_or_else(|| import_precedence_overflow(location))?;
+    }
+    for binding in &program.global_bindings {
+        binding
+            .import_precedence
+            .checked_add(shift)
+            .ok_or_else(|| import_precedence_overflow(location))?;
+    }
+    local_import_floor
+        .checked_add(shift)
+        .ok_or_else(|| import_precedence_overflow(location))?;
     for template in &mut program.matched_templates {
         template.import_precedence += shift;
         template.apply_imports_min_precedence += shift;
     }
     for declaration in &mut program.attribute_set_declarations {
-        declaration.import_precedence = declaration
-            .import_precedence
-            .checked_add(shift)
-            .ok_or_else(|| {
-                invalid(
-                    "FXST0037",
-                    "attribute-set import precedence exceeds the private integer domain",
-                    location,
-                )
-            })?;
+        declaration.import_precedence += shift;
+    }
+    for binding in &mut program.global_bindings {
+        binding.import_precedence += shift;
     }
     if let Some(template) = program.root_template.take() {
         program.matched_templates.insert(
@@ -879,6 +1019,31 @@ fn rebase_imported_program(
         );
     }
     Ok(())
+}
+
+fn import_shift_for_maximum(
+    program: &StylesheetProgram,
+    target_maximum: i32,
+    location: &SourceLocation,
+) -> Result<i32, CompileFailure> {
+    let current_maximum = program
+        .matched_templates
+        .iter()
+        .map(|template| template.import_precedence)
+        .max()
+        .unwrap_or(0)
+        .max(0);
+    target_maximum
+        .checked_sub(current_maximum)
+        .ok_or_else(|| import_precedence_overflow(location))
+}
+
+fn import_precedence_overflow(location: &SourceLocation) -> CompileFailure {
+    invalid(
+        "FXST0037",
+        "stylesheet import precedence exceeds the private integer domain",
+        location,
+    )
 }
 
 fn compile_imported_program_excluding(
@@ -911,6 +1076,9 @@ fn compile_imported_program_excluding(
     }
     for declaration in &mut imported_program.attribute_set_declarations {
         declaration.import_precedence = import_precedence;
+    }
+    for binding in &mut imported_program.global_bindings {
+        binding.import_precedence = import_precedence;
     }
     Ok(imported_program)
 }
@@ -986,10 +1154,12 @@ fn merge_single_imported_output(
         .filter(|property| !principal.output_specified_properties.contains(property))
         .cloned()
         .collect::<Vec<_>>();
-    if unshadowed
-        .iter()
-        .any(|property| !matches!(property.as_str(), "method" | "encoding" | "indent"))
-    {
+    if unshadowed.iter().any(|property| {
+        !matches!(
+            property.as_str(),
+            "method" | "encoding" | "indent" | "omit-xml-declaration"
+        )
+    }) {
         return validate_fully_shadowed_imported_output(principal, imported, location);
     }
     for property in unshadowed {
@@ -1000,6 +1170,9 @@ fn merge_single_imported_output(
                 .encoding
                 .clone_from(&imported.output.encoding),
             "indent" => principal.output.indent = imported.output.indent,
+            "omit-xml-declaration" => {
+                principal.output.omit_xml_declaration = imported.output.omit_xml_declaration;
+            }
             _ => unreachable!("unadmitted output properties were rejected"),
         }
         principal.output_specified_properties.push(property);
@@ -1355,6 +1528,83 @@ mod tests {
                 if names.iter().map(|name| name.local.as_str()).collect::<Vec<_>>()
                     == ["principal", "included"]
         ));
+    }
+
+    #[test]
+    fn retains_exact_preserve_names_and_rejects_include_strip_conflicts() {
+        let principal = stylesheet(
+            "urn:fastxslt:preserve-include:principal",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="included.xsl"/><xsl:preserve-space elements="principal"/><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+        let included = stylesheet(
+            "urn:fastxslt:preserve-include:included",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:preserve-space elements="included"/></xsl:stylesheet>"#,
+        );
+        let root = included
+            .children(included.document_node())
+            .iter()
+            .copied()
+            .find(|node| included.name(*node).is_some())
+            .expect("included stylesheet root");
+
+        let program = compile_stylesheet_with_single_include(&principal, &included, root)
+            .expect("exact preserve names should compose additively across includes");
+        assert!(matches!(
+            program.source_whitespace,
+            SourceWhitespacePolicy::PreserveExpandedNames(ref names)
+                if names.iter().map(|name| name.local.as_str()).collect::<Vec<_>>()
+                    == ["principal", "included"]
+        ));
+
+        let stripping_principal = stylesheet(
+            "urn:fastxslt:preserve-include:conflict",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="included.xsl"/><xsl:strip-space elements="*"/><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet_with_single_include(&stripping_principal, &included, root)
+            .expect_err("mixed include whitespace declarations remain explicit");
+        assert_eq!(failure.code, "FXST1043");
+    }
+
+    #[test]
+    fn carries_a_mixed_policy_through_a_declaration_free_include_only() {
+        let principal = stylesheet(
+            "urn:fastxslt:mixed-whitespace-include:principal",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="included.xsl"/><xsl:strip-space elements="*"/><xsl:preserve-space elements="kept"/><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+        let declaration_free = stylesheet(
+            "urn:fastxslt:mixed-whitespace-include:empty",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"/>"#,
+        );
+        let root = declaration_free
+            .children(declaration_free.document_node())
+            .iter()
+            .copied()
+            .find(|node| declaration_free.name(*node).is_some())
+            .expect("included stylesheet root");
+
+        let program = compile_stylesheet_with_single_include(&principal, &declaration_free, root)
+            .expect("a declaration-free include must not erase a mixed policy");
+        assert!(matches!(
+            program.source_whitespace,
+            SourceWhitespacePolicy::Mixed {
+                strip_all: true,
+                ..
+            }
+        ));
+
+        let competing = stylesheet(
+            "urn:fastxslt:mixed-whitespace-include:competing",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:strip-space elements="other"/></xsl:stylesheet>"#,
+        );
+        let root = competing
+            .children(competing.document_node())
+            .iter()
+            .copied()
+            .find(|node| competing.name(*node).is_some())
+            .expect("competing stylesheet root");
+        let failure = compile_stylesheet_with_single_include(&principal, &competing, root)
+            .expect_err("cross-module mixed policy composition remains explicit");
+        assert_eq!(failure.code, "FXST1043");
     }
 
     #[test]

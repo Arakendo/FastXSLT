@@ -9,7 +9,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::instruction_compiler::retain_computed_attribute_namespace_bindings;
-use super::{CompileFailure, invalid, unsupported};
+use super::{CompileFailure, invalid};
 
 pub(super) fn link(program: &mut StylesheetProgram) -> Result<(), CompileFailure> {
     let mut declarations = program.attribute_set_declarations.clone();
@@ -224,7 +224,7 @@ fn link_instructions(
             Instruction::ForEachVariable { body, .. }
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }
-            | Instruction::Xslt10SequenceTreeVariable { body, .. }
+            | Instruction::SequenceTreeVariable { body, .. }
             | Instruction::Xslt10Message { body, .. }
             | Instruction::If { body, .. } => link_instructions(body, declarations)?,
             Instruction::Xslt10ProcessingInstructionNode { body, .. }
@@ -305,26 +305,24 @@ fn link_dynamic_constructor(
 }
 
 fn link_copy_constructor(
-    attributes: &mut Vec<LiteralAttribute>,
+    attributes: &mut Vec<ComputedAttribute>,
     attribute_set_names: &mut Vec<ExpandedName>,
     body: &mut [Instruction],
     location: &SourceLocation,
     declarations: &[AttributeSetDeclaration],
 ) -> Result<(), CompileFailure> {
-    let set_values = resolved_use(attribute_set_names, declarations, location)?;
-    let mut linked = set_values
-        .into_iter()
-        .map(computed_to_literal)
-        .collect::<Result<Vec<_>, _>>()?;
+    let mut linked = resolved_use(attribute_set_names, declarations, location)?;
     linked.retain(|set_attribute| {
-        !attributes
-            .iter()
-            .any(|attribute| attribute.name == set_attribute.name)
+        !attributes.iter().any(|attribute| {
+            attribute.dynamic_name.is_none()
+                && set_attribute.dynamic_name.is_none()
+                && attribute.name == set_attribute.name
+        })
     });
     linked.append(attributes);
     *attributes = linked;
     attribute_set_names.clear();
-    link_literal_attributes(attributes, declarations)?;
+    link_computed_attributes(attributes, declarations)?;
     link_instructions(body, declarations)
 }
 
@@ -337,33 +335,8 @@ fn retain_namespaces(
     *namespaces = owned.into();
 }
 
-fn computed_to_literal(attribute: ComputedAttribute) -> Result<LiteralAttribute, CompileFailure> {
-    if attribute.dynamic_name.is_some() {
-        return Err(unsupported(
-            "FXST1065",
-            "dynamic attribute-set names on xsl:copy remain outside the linked attribute-set slice",
-            &attribute.location,
-        ));
-    }
-    Ok(LiteralAttribute {
-        name: attribute.name,
-        value: attribute.value,
-        location: attribute.location,
-    })
-}
-
 fn link_computed_attributes(
     attributes: &mut [ComputedAttribute],
-    declarations: &[AttributeSetDeclaration],
-) -> Result<(), CompileFailure> {
-    for attribute in attributes {
-        link_attribute_value(&mut attribute.value, declarations)?;
-    }
-    Ok(())
-}
-
-fn link_literal_attributes(
-    attributes: &mut [LiteralAttribute],
     declarations: &[AttributeSetDeclaration],
 ) -> Result<(), CompileFailure> {
     for attribute in attributes {

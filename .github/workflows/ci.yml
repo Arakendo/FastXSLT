@@ -48,3 +48,20 @@ jobs:
 
       - name: Check workspace
         run: cargo check --workspace --all-features
+
+  wasm:
+    name: WebAssembly build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Install Rust toolchain and WASM target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Build official WASM target
+        run: cargo build --release -p fastxslt-wasm-workbench --target wasm32-unknown-unknown

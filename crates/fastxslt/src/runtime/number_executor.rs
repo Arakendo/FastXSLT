@@ -2,6 +2,7 @@
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
+use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     Instruction, NumberFormat, NumberFormatPlan, NumberGrouping, NumberLevel, NumberPattern,
     NumberPositionPredicate, NumberTokenStyle, NumberValue, parse_admitted_number_format,
@@ -53,6 +54,18 @@ pub(super) fn evaluate(
             let lexical = value_evaluator::xslt10_variable_string_value(
                 inputs, variable, variables, control,
             )?;
+            owned_format = parse_admitted_number_format(&lexical).ok_or_else(|| {
+                failure(
+                    "FXRT1017",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    format!("unsupported dynamic xsl:number format token: {lexical}"),
+                )
+            })?;
+            &owned_format
+        }
+        NumberFormatPlan::Variable(variable) => {
+            let lexical = dynamic_variable_string_value(inputs, variable, variables, control)?;
             owned_format = parse_admitted_number_format(&lexical).ok_or_else(|| {
                 failure(
                     "FXRT1017",
@@ -116,6 +129,72 @@ pub(super) fn evaluate(
         }
     };
     Ok(formatted)
+}
+
+fn dynamic_variable_string_value(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    if let Some(value) = variables.atomics.get(variable).or_else(|| {
+        variables
+            .allows_global_fallback(variable)
+            .then(|| inputs.globals.atomics.get(variable))
+            .flatten()
+    }) {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        return Ok(value.lexical().to_owned());
+    }
+    if let Some(values) = variables.atomic_sequences.get(variable) {
+        control
+            .charge(WorkDomain::XPathOperation, values.len())
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        return Ok(values
+            .iter()
+            .map(crate::xdm::atomic_value_experiment::AtomicValue::lexical)
+            .collect::<Vec<_>>()
+            .join(" "));
+    }
+    if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
+        let source = inputs.source.ok_or_else(|| {
+            failure(
+                "FXRT1004",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                "a source-node number format requires a principal source",
+            )
+        })?;
+        let mut values = Vec::with_capacity(nodes.len());
+        for node in nodes {
+            values.push(
+                source
+                    .string_value_controlled(*node, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?,
+            );
+        }
+        return Ok(values.join(" "));
+    }
+    if let Some(tree) = variables.temporary_tree(inputs.globals, variable) {
+        return super::runtime_context::temporary_tree_string_value(
+            tree,
+            inputs.request_id,
+            control,
+        );
+    }
+    if variables.allows_global_fallback(variable)
+        && inputs.globals.empty_sequences.contains(variable)
+    {
+        return Ok(String::new());
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(inputs.request_id),
+        format!("unbound variable: ${variable}"),
+    ))
 }
 
 fn apply_format(value: &str, format: &NumberFormat) -> String {
@@ -295,6 +374,24 @@ fn evaluate_value(
         NumberValue::ContextItem => {
             let lexical =
                 execution_context_string_value(inputs, execution, control)?.unwrap_or_default();
+            (
+                lexical.trim().parse::<f64>().unwrap_or(f64::NAN),
+                Some(lexical),
+            )
+        }
+        NumberValue::Xslt10FirstNodePath(path) => {
+            let (source, context) = required_source_context(inputs, execution.node)?;
+            let selected = evaluate_location_path_controlled(source, context, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let lexical = selected
+                .first()
+                .map(|node| {
+                    source
+                        .string_value_controlled(*node, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))
+                })
+                .transpose()?
+                .unwrap_or_default();
             (
                 lexical.trim().parse::<f64>().unwrap_or(f64::NAN),
                 Some(lexical),

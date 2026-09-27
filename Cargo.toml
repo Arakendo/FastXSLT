@@ -2,6 +2,7 @@
 members = [
     "crates/fastxslt",
     "crates/fastxslt-dotnet-workbench",
+    "crates/fastxslt-wasm-workbench",
     "crates/fastxslt-worker",
 ]
 resolver = "3"

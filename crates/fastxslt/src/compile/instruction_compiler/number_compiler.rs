@@ -2,6 +2,7 @@
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xml::quick_xml_experiment::ExpandedName;
+use crate::xpath::path_experiment::parse_xslt10_location_path;
 use crate::xslt::golden_semantics_experiment::{
     Instruction, NumberFormatPlan, NumberGrouping, NumberLevel, NumberPattern,
     NumberPositionPredicate, NumberTokenStyle, NumberValue, default_number_format,
@@ -61,14 +62,16 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
     let grouping = compile_grouping(document, element)?;
     match &mut format {
         NumberFormatPlan::Static(format) => format.grouping = grouping,
-        NumberFormatPlan::Xslt10Variable(_) if grouping.is_some() => {
+        NumberFormatPlan::Xslt10Variable(_) | NumberFormatPlan::Variable(_)
+            if grouping.is_some() =>
+        {
             return Err(unsupported(
                 "FXST1051",
                 "dynamic xsl:number format with grouping is outside the admitted slice",
                 document.location(element),
             ));
         }
-        NumberFormatPlan::Xslt10Variable(_) => {}
+        NumberFormatPlan::Xslt10Variable(_) | NumberFormatPlan::Variable(_) => {}
     }
     Ok(Instruction::Number {
         value,
@@ -337,14 +340,17 @@ fn compile_format_plan(
     element: NodeId,
     format: &str,
 ) -> Result<NumberFormatPlan, CompileFailure> {
-    if uses_xslt10_compatibility(document, element)
-        && let Some(variable) = format
-            .strip_prefix("{$")
-            .and_then(|value| value.strip_suffix('}'))
-            .map(str::trim)
-            .filter(|value| is_ascii_ncname(value))
+    if let Some(variable) = format
+        .strip_prefix("{$")
+        .and_then(|value| value.strip_suffix('}'))
+        .map(str::trim)
+        .filter(|value| is_ascii_ncname(value))
     {
-        return Ok(NumberFormatPlan::Xslt10Variable(variable.to_owned()));
+        return Ok(if uses_xslt10_compatibility(document, element) {
+            NumberFormatPlan::Xslt10Variable(variable.to_owned())
+        } else {
+            NumberFormatPlan::Variable(variable.to_owned())
+        });
     }
     parse_admitted_number_format(format)
         .map(NumberFormatPlan::Static)
@@ -411,6 +417,11 @@ fn compile_value(
         document.location(element),
     ) {
         return Ok(NumberValue::BinaryNumeric(Box::new(expression)));
+    }
+    if uses_xslt10_compatibility(document, element)
+        && let Ok(path) = parse_xslt10_location_path(expression, document.location(element).clone())
+    {
+        return Ok(NumberValue::Xslt10FirstNodePath(path));
     }
     Err(unsupported(
         "FXXP1022",

@@ -11,7 +11,7 @@ use crate::xslt::golden_semantics_experiment::{
     Xslt10ComposedPathTranslate, Xslt10ConcatExpression, Xslt10ConcatPart,
     Xslt10NormalizedVariableTranslate, Xslt10PathStringFunction, Xslt10PathStringFunctionKind,
     Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand,
-    Xslt10VariableStringFunction,
+    Xslt10VariableStringFunction, Xslt10VariableSubstring,
 };
 
 use super::super::{
@@ -603,6 +603,25 @@ pub(super) fn append_path_substring(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let value = first_path_string(inputs, context, &expression.path, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = crate::xpath::static_string_experiment::evaluate_substring(
+        &value,
+        f64::from_bits(expression.start_bits),
+        expression.length_bits.map(f64::from_bits),
+    );
+    append_text(result, &value, inputs.request_id, control)
+}
+
+pub(super) fn append_variable_substring(
+    inputs: &SequenceInputs<'_>,
+    expression: &Xslt10VariableSubstring,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = variable_string_value(inputs, &expression.variable, variables, control)?;
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;

@@ -9,7 +9,7 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::{
     CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, parse_xslt10_normalize_space_path,
-    split_top_level_union, unsupported,
+    split_top_level_union, unsupported, uses_xslt10_compatibility,
 };
 
 pub(crate) fn compile_literal_result_attributes(
@@ -56,6 +56,12 @@ fn parse_literal_attribute_value_with_context(
     if matches!(lexical, "{name()}" | "{name(.)}") {
         return Ok(LiteralAttributeValue::ContextLexicalName);
     }
+    if lexical == "{count(namespace::*)}"
+        && static_context
+            .is_some_and(|(document, element)| uses_xslt10_compatibility(document, element))
+    {
+        return Ok(LiteralAttributeValue::Xslt10ContextNamespaceCount);
+    }
     if lexical == "{.}" {
         return Ok(LiteralAttributeValue::ContextStringValue);
     }
@@ -95,6 +101,9 @@ fn parse_literal_attribute_value_with_context(
         if let Some(value) = parse_variable_and_path(lexical, location) {
             return Ok(value);
         }
+        if let Some(value) = parse_context_identity_avt(lexical) {
+            return Ok(value);
+        }
         if let Some(value) =
             parse_xslt10_generated_key_identity_avt(lexical, location, static_context)?
         {
@@ -113,6 +122,14 @@ fn parse_literal_attribute_value_with_context(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn parse_context_identity_avt(lexical: &str) -> Option<LiteralAttributeValue> {
+    let (prefix, expression, suffix) = single_dynamic_expression(lexical)?;
+    (expression.trim() == "generate-id()").then(|| LiteralAttributeValue::TextAndContextIdentity {
+        prefix: prefix.to_owned(),
+        suffix: suffix.to_owned(),
+    })
 }
 
 fn parse_xslt10_generated_key_identity_avt(
@@ -584,6 +601,18 @@ mod tests {
         let failure = parse_literal_attribute_value("{concat('{', '}')}", &location())
             .expect_err("the valid but unsupported expression should remain unsupported");
         assert_eq!(failure.code, "FXST1031");
+    }
+
+    #[test]
+    fn compiles_zero_argument_context_identity_inside_literal_text() {
+        assert_eq!(
+            parse_literal_attribute_value("before-{ generate-id() }-after", &location())
+                .expect("the shared context-identity AVT should compile"),
+            LiteralAttributeValue::TextAndContextIdentity {
+                prefix: "before-".to_owned(),
+                suffix: "-after".to_owned(),
+            }
+        );
     }
 
     #[test]

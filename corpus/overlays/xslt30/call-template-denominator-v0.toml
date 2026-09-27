@@ -87,6 +87,24 @@ execution = "passed"
 rationale = "The unchanged case passes the current doc element's child node into a named template; match, mode, and priority on that declaration do not affect named invocation."
 
 [[case_override]]
+case_name = "call-template-0501"
+selection = "selected"
+execution = "passed"
+rationale = "An ordinary source-matched template passes a constructed temporary-tree value to a named template while a second optional parameter uses its sequence-constructor default."
+
+[[case_override]]
+case_name = "call-template-0601"
+selection = "selected"
+execution = "passed"
+rationale = "A declaration carrying both name and match retains the caller's source focus under named invocation and independently participates in matched child dispatch."
+
+[[case_override]]
+case_name = "call-template-0701"
+selection = "selected"
+execution = "passed"
+rationale = "Named and matched template recursion preserves source focus while passing an inherited atomic name and using a sequence-constructor parameter default."
+
+[[case_override]]
 case_name = "call-template-0801"
 selection = "selected"
 execution = "passed"
@@ -105,10 +123,34 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case performs six bounded nested named-template calls and supplies integer select arguments to each declared parameter."
 
 [[case_override]]
+case_name = "call-template-1102"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case passes a locally constructed value through variable and parameter names beginning with an underscore."
+
+[[case_override]]
+case_name = "call-template-1301"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case constructs a named-template argument by iterating a source path and appending each selected node's string value."
+
+[[case_override]]
+case_name = "call-template-1401"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case supplies a constructed numbering format to a named template and uses it through a modern dynamic xsl:number format AVT while preserving source focus."
+
+[[case_override]]
 case_name = "call-template-1501"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case combines descendant-existence choices with three named calls, proving supplied literal content and omitted default parameters remain isolated per call."
+
+[[case_override]]
+case_name = "call-template-1601"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case supplies one constructed parameter and evaluates the second parameter's string-select default inside the named template."
 
 [[case_override]]
 case_name = "call-template-1701"
@@ -133,3 +175,21 @@ case_name = "call-template-1803"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case selects a named template from one admitted imported module."
+
+[[case_override]]
+case_name = "call-template-1901"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case repeatedly supplies a constructed parameter and evaluates a source-child attribute predicate against its string value without leaking prior-call state."
+
+[[case_override]]
+case_name = "call-template-2001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case carries constructed and numeric values through three nested named templates with modern number conversion and arithmetic."
+
+[[case_override]]
+case_name = "call-template-2101"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 negative case reports XTSE0690 because a named call omits one required non-tunnel template parameter."

@@ -3,14 +3,17 @@ use std::collections::BTreeMap;
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{
-    ChildPresenceTest, Instruction, LiteralAttribute, MatchNodeTest, MatchPattern,
+    ChildPresenceTest, ComputedAttribute, Instruction, MatchNodeTest, MatchPattern,
     MatchStringPredicate, MatchedTemplate, NamedSiblingBoundary, OnNoMatchPolicy,
 };
 
 use super::match_sequence_predicate::{
     evaluate as evaluate_sequence_predicate, required_attribute,
 };
-use super::result_tree::ResultNode;
+use super::result_tree::{
+    ResultAttribute, ResultNode, computed_attributes_require_context_string,
+    materialize_computed_attributes, retain_dynamic_attribute_namespace_bindings,
+};
 use super::runtime_context::{
     InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryNodeKind, TemporaryTree,
     bind_template_parameters,
@@ -21,7 +24,7 @@ use super::runtime_failure::{
 use super::template_selector::accepts_mode as template_accepts_mode;
 use super::{
     LiteralAttributeFocus, SequenceContext, SequenceFocus, TemporaryFocus, charge_xslt_instruction,
-    execute_sequence, literal_attributes_require_context_string, materialize_literal_attributes,
+    execute_sequence,
 };
 
 pub(super) fn apply_temporary_template(
@@ -337,6 +340,14 @@ pub(super) fn apply_temporary_builtin(
         .find(|policy| policy.name.as_deref() == mode && policy.on_no_match.is_some());
     if let Some(on_no_match) = mode_policy.and_then(|policy| policy.on_no_match) {
         match on_no_match {
+            OnNoMatchPolicy::DeepSkip => {
+                return match focus {
+                    TemporaryFocus::Document(_) => {
+                        apply_temporary_children(inputs, focus, mode, parameters, control)
+                    }
+                    TemporaryFocus::Node(_, _) => Ok(Vec::new()),
+                };
+            }
             OnNoMatchPolicy::Fail => {
                 return Err(failure_at(
                     "XTDE0555",
@@ -415,7 +426,7 @@ fn apply_temporary_descendants(
     Ok(result)
 }
 
-fn apply_temporary_children(
+pub(super) fn apply_temporary_children(
     inputs: &SequenceInputs<'_>,
     focus: TemporaryFocus<'_>,
     mode: Option<&str>,
@@ -653,7 +664,7 @@ fn shallow_copy_temporary_attributes(
 
 pub(super) fn execute_temporary_copy(
     inputs: &SequenceInputs<'_>,
-    attributes: &[LiteralAttribute],
+    attributes: &[ComputedAttribute],
     body: &[Instruction],
     recover_unattached_attributes: bool,
     execution: SequenceContext<'_>,
@@ -678,7 +689,7 @@ pub(super) fn execute_temporary_copy(
         TemporaryNodeKind::Element {
             name, namespaces, ..
         } => {
-            let context_string = literal_attributes_require_context_string(attributes)
+            let context_string = computed_attributes_require_context_string(attributes)
                 .then(|| {
                     super::runtime_context::temporary_node_string_value(
                         tree,
@@ -691,7 +702,7 @@ pub(super) fn execute_temporary_copy(
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            let mut result_attributes = materialize_literal_attributes(
+            let materialized_attributes = materialize_computed_attributes(
                 inputs,
                 attributes,
                 variables,
@@ -706,15 +717,27 @@ pub(super) fn execute_temporary_copy(
                 inputs.request_id,
                 control,
             )?;
+            let mut result_attributes = Vec::with_capacity(materialized_attributes.len());
+            for (definition, attribute) in attributes.iter().zip(materialized_attributes) {
+                if definition.recover_duplicate {
+                    result_attributes
+                        .retain(|existing: &ResultAttribute| existing.name != attribute.name);
+                }
+                result_attributes.push(attribute);
+            }
             let body = execute_sequence(inputs, body, execution, variables, control)?;
             let children = super::result_tree::assemble_element_content(
                 &mut result_attributes,
                 body,
                 inputs.request_id,
             )?;
+            let namespaces = retain_dynamic_attribute_namespace_bindings(
+                namespaces.clone().into(),
+                &result_attributes,
+            );
             Ok(vec![ResultNode::Element {
                 name: name.clone(),
-                namespaces: namespaces.clone().into(),
+                namespaces,
                 attributes: result_attributes,
                 children,
             }])

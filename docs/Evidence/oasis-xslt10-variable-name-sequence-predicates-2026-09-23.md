@@ -1,8 +1,14 @@
 # OASIS XSLT 1.0 Variable-Name Sequence Predicates
 
 Date: 2026-09-23  
-Status: Verified semantic and compatibility evidence  
+Status: Superseded interpretation; implementation slice retained
 Corpus: OASIS XSLT/XPath Conformance Test Suite CD04, locally acquired and not redistributed
+
+> Correction, 2026-09-24: the mismatch described below was caused by FastXSLT
+> applying predicate `position()` over a merged sequence rather than the local
+> child-step focus for each selected parent. The corrected evaluator makes the
+> case exact. See
+> [OASIS XSLT 1.0 Per-Parent Step Predicate Focus](oasis-xslt10-per-parent-step-predicate-focus-2026-09-24.md).
 
 ## Question
 
@@ -26,12 +32,10 @@ to reject these private compatibility forms.
 
 ## Corpus result
 
-Unchanged `Microsoft/Miscellaneous__84425#1` advances from initialization
-rejection to successful execution. It remains a visible XML mismatch and gains
-no pass credit. The case is listed in the suite's own `doubts.xml`: for the two
-`AAA` source elements, the stylesheet expression selects children `BBB`, `EEE`,
-and `CCC`, which FastXSLT reports, while the legacy expected file reports only
-`BBB`.
+Unchanged `Microsoft/Miscellaneous__84425#1` advanced from initialization
+rejection to successful execution. At this checkpoint it remained a visible
+XML mismatch and gained no pass credit. The original interpretation below was
+later disproved by the per-parent predicate-focus correction linked above.
 
 | Measurement | Before | After | Delta |
 | --- | ---: | ---: | ---: |
@@ -45,8 +49,8 @@ and `CCC`, which FastXSLT reports, while the legacy expected file reports only
 
 The strict complete-catalog lower bound remains
 `1,999 / 3,173 = 63.00%`. Generic `FXXP1001` initialization failures fall from
-15 to 14. The mismatch is retained rather than changing correct execution to
-imitate a questionable legacy expectation.
+15 to 14. These are the measured checkpoint counts, but the mismatch was later
+shown to be an engine defect rather than a questionable legacy expectation.
 
 ## Boundaries
 

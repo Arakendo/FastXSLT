@@ -35,14 +35,26 @@ struct Measurement {
     counters: BTreeMap<String, usize>,
     initialization_frontiers: BTreeMap<String, usize>,
     execution_frontiers: BTreeMap<String, usize>,
+    standard_initialization_frontiers: BTreeMap<String, usize>,
+    standard_execution_frontiers: BTreeMap<String, usize>,
     category_totals: BTreeMap<String, usize>,
     category_executed: BTreeMap<String, usize>,
     panic_cases: Vec<String>,
     frontier_examples: BTreeMap<String, String>,
     comparison_frontiers: BTreeMap<String, usize>,
     comparison_examples: BTreeMap<String, String>,
+    comparison_unsupported_cases: Vec<(String, String, String)>,
+    exact_normalized_non_xml_pass_cases: Vec<String>,
+    xml_wrapped_text_pass_cases: Vec<String>,
     infrastructure_cases: Vec<String>,
     expected_error_unexpected_success_cases: Vec<String>,
+    unusable_error_expectation_excluded_cases: Vec<String>,
+    host_parser_policy_excluded_cases: Vec<String>,
+    host_collation_policy_excluded_cases: Vec<String>,
+    serialization_layout_policy_excluded_cases: Vec<String>,
+    xslt10_discretionary_policy_excluded_cases: Vec<String>,
+    legacy_processor_profile_excluded_cases: Vec<String>,
+    unusable_reference_excluded_cases: Vec<String>,
     mismatch_cases: Vec<String>,
     doubt_annotated_mismatch_cases: Vec<String>,
 }
@@ -56,7 +68,12 @@ impl Measurement {
         *self.counters.entry(key.into()).or_default() += amount;
     }
 
-    fn initialization_failure(&mut self, identity: &str, failure: &WorkbenchFailure) {
+    fn initialization_failure(
+        &mut self,
+        identity: &str,
+        failure: &WorkbenchFailure,
+        expected_error: bool,
+    ) {
         self.increment("initialization-failure");
         let frontier = failure_frontier(failure);
         trace_frontier_failure(identity, "initialization", &frontier, failure);
@@ -64,12 +81,23 @@ impl Measurement {
             .initialization_frontiers
             .entry(frontier.clone())
             .or_default() += 1;
+        if !expected_error {
+            *self
+                .standard_initialization_frontiers
+                .entry(frontier.clone())
+                .or_default() += 1;
+        }
         self.frontier_examples
             .entry(frontier)
             .or_insert_with(|| format!("{identity}: {}", bounded_detail(&failure.detail)));
     }
 
-    fn execution_failure(&mut self, identity: &str, failure: &WorkbenchFailure) {
+    fn execution_failure(
+        &mut self,
+        identity: &str,
+        failure: &WorkbenchFailure,
+        expected_error: bool,
+    ) {
         self.increment("execution-failure");
         let frontier = failure_frontier(failure);
         trace_frontier_failure(identity, "execution", &frontier, failure);
@@ -77,6 +105,12 @@ impl Measurement {
             .execution_frontiers
             .entry(frontier.clone())
             .or_default() += 1;
+        if !expected_error {
+            *self
+                .standard_execution_frontiers
+                .entry(frontier.clone())
+                .or_default() += 1;
+        }
         self.frontier_examples
             .entry(frontier)
             .or_insert_with(|| format!("{identity}: {}", bounded_detail(&failure.detail)));
@@ -102,6 +136,9 @@ fn measures_local_oasis_xslt10_compatibility() {
     measurement.increment_by("doubt-annotated-identities", doubtful.len());
 
     for case in cases {
+        if case.operation == "execution-error" {
+            measurement.increment("expected-error-catalog-case");
+        }
         *measurement
             .category_totals
             .entry(case.category.clone())
@@ -109,13 +146,11 @@ fn measures_local_oasis_xslt10_compatibility() {
         if doubtful.contains(&case.id) {
             measurement.increment("cases-with-doubt-metadata");
         }
-        if !case.supplemental_data.is_empty() {
-            measurement.increment("supplemental-data-not-admitted");
-            continue;
-        }
-
         let Some(source) = read_case_file(&case.directory, &case.principal_source) else {
             measurement.increment("missing-principal-source");
+            if case.operation == "execution-error" {
+                measurement.increment("expected-error-infrastructure-excluded");
+            }
             measurement
                 .infrastructure_cases
                 .push(format!("missing-principal-source/{}", case.identity));
@@ -123,12 +158,16 @@ fn measures_local_oasis_xslt10_compatibility() {
         };
         let Some(stylesheet) = read_case_file(&case.directory, &case.principal_stylesheet) else {
             measurement.increment("missing-principal-stylesheet");
+            if case.operation == "execution-error" {
+                measurement.increment("expected-error-infrastructure-excluded");
+            }
             measurement
                 .infrastructure_cases
                 .push(format!("missing-principal-stylesheet/{}", case.identity));
             continue;
         };
-        let mut resources = Vec::with_capacity(case.supplemental_stylesheets.len());
+        let mut resources =
+            Vec::with_capacity(case.supplemental_stylesheets.len() + case.supplemental_data.len());
         let mut missing_supplement = false;
         for dependency in &case.supplemental_stylesheets {
             let Some(bytes) = read_case_file(&case.directory, dependency) else {
@@ -142,12 +181,36 @@ fn measures_local_oasis_xslt10_compatibility() {
         }
         if missing_supplement {
             measurement.increment("missing-supplemental-stylesheet");
+            if case.operation == "execution-error" {
+                measurement.increment("expected-error-infrastructure-excluded");
+            }
             measurement
                 .infrastructure_cases
                 .push(format!("missing-supplemental-stylesheet/{}", case.identity));
             continue;
         }
         resources = admit_transitive_case_stylesheets(&case, &stylesheet, resources);
+        let mut missing_supplemental_data = false;
+        for data in &case.supplemental_data {
+            let Some(bytes) = read_case_file(&case.directory, data) else {
+                missing_supplemental_data = true;
+                break;
+            };
+            resources.push(WorkbenchResource {
+                identity: logical_identity(&case, data),
+                bytes,
+            });
+        }
+        if missing_supplemental_data {
+            measurement.increment("missing-supplemental-data");
+            if case.operation == "execution-error" {
+                measurement.increment("expected-error-infrastructure-excluded");
+            }
+            measurement
+                .infrastructure_cases
+                .push(format!("missing-supplemental-data/{}", case.identity));
+            continue;
+        }
 
         let engine = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             ExperimentalEngine::new_with_stylesheet_resources(
@@ -173,9 +236,14 @@ fn measures_local_oasis_xslt10_compatibility() {
             }
             Ok(Err(failure)) => {
                 trace_case_failure(&case.identity, "initialization", &failure);
-                measurement.initialization_failure(&case.identity, &failure);
+                measurement.initialization_failure(
+                    &case.identity,
+                    &failure,
+                    case.operation == "execution-error",
+                );
                 if case.operation == "execution-error" {
                     measurement.increment("expected-error-observed-during-initialization");
+                    measurement.increment("expected-error-credit");
                 }
                 continue;
             }
@@ -216,9 +284,14 @@ fn measures_local_oasis_xslt10_compatibility() {
             }
             Ok(Err(failure)) => {
                 trace_case_failure(&case.identity, "execution", &failure);
-                measurement.execution_failure(&case.identity, &failure);
+                measurement.execution_failure(
+                    &case.identity,
+                    &failure,
+                    case.operation == "execution-error",
+                );
                 if case.operation == "execution-error" {
                     measurement.increment("expected-error-observed-during-execution");
+                    measurement.increment("expected-error-credit");
                 }
                 continue;
             }
@@ -232,14 +305,63 @@ fn measures_local_oasis_xslt10_compatibility() {
         };
 
         if case.operation == "execution-error" {
-            measurement.increment("expected-error-unexpected-success");
-            measurement
-                .expected_error_unexpected_success_cases
-                .push(case.identity.clone());
+            if has_unusable_archival_error_expectation(&case.id) {
+                measurement.increment("unusable-error-expectation-excluded");
+                measurement
+                    .unusable_error_expectation_excluded_cases
+                    .push(case.identity.clone());
+            } else {
+                measurement.increment("expected-error-unexpected-success");
+                measurement
+                    .expected_error_unexpected_success_cases
+                    .push(case.identity.clone());
+            }
             continue;
         }
         if case.output_compare.as_deref() != Some("XML") {
             measurement.increment("comparison-not-xml");
+            continue;
+        }
+        if requires_historical_host_parser_whitespace_policy(&case.id) {
+            measurement.increment("host-parser-policy-excluded");
+            measurement
+                .host_parser_policy_excluded_cases
+                .push(case.identity.clone());
+            continue;
+        }
+        if requires_host_collation_policy(&case.id) {
+            measurement.increment("host-collation-policy-excluded");
+            measurement
+                .host_collation_policy_excluded_cases
+                .push(case.identity.clone());
+            continue;
+        }
+        if requires_serialization_layout_policy(&case.id) {
+            measurement.increment("serialization-layout-policy-excluded");
+            measurement
+                .serialization_layout_policy_excluded_cases
+                .push(case.identity.clone());
+            continue;
+        }
+        if requires_xslt10_discretionary_policy(&case.id) {
+            measurement.increment("xslt10-discretionary-policy-excluded");
+            measurement
+                .xslt10_discretionary_policy_excluded_cases
+                .push(case.identity.clone());
+            continue;
+        }
+        if requires_legacy_processor_profile(&case.id) {
+            measurement.increment("legacy-processor-profile-excluded");
+            measurement
+                .legacy_processor_profile_excluded_cases
+                .push(case.identity.clone());
+            continue;
+        }
+        if has_unusable_archival_reference_result(&case.id) {
+            measurement.increment("unusable-reference-result-excluded");
+            measurement
+                .unusable_reference_excluded_cases
+                .push(case.identity.clone());
             continue;
         }
         let Some(output_file) = &case.output_file else {
@@ -253,6 +375,32 @@ fn measures_local_oasis_xslt10_compatibility() {
             continue;
         };
         let preserve_whitespace_only_text = case.id.to_ascii_lowercase().contains("whitespace");
+        if engine.selected_output_method() == Some("text")
+            && let Some(equivalent) = xml_wrapped_text_reference_equivalent(
+                &actual,
+                &expected,
+                engine.selected_output_encoding(),
+            )
+        {
+            trace_case_comparison(&case.identity, &actual, &expected);
+            if equivalent {
+                measurement.increment("xml-comparison-pass");
+                measurement.increment("xml-wrapped-text-comparison-pass");
+                measurement
+                    .xml_wrapped_text_pass_cases
+                    .push(case.identity.clone());
+            } else {
+                measurement.increment("xml-comparison-mismatch");
+                if doubtful.contains(&case.id) {
+                    measurement.increment("xml-comparison-mismatch-with-doubt-metadata");
+                    measurement
+                        .doubt_annotated_mismatch_cases
+                        .push(case.identity.clone());
+                }
+                measurement.mismatch_cases.push(case.identity.clone());
+            }
+            continue;
+        }
         match xml_equivalent(
             &actual,
             &expected,
@@ -262,6 +410,16 @@ fn measures_local_oasis_xslt10_compatibility() {
             Ok(true) => {
                 trace_case_comparison(&case.identity, &actual, &expected);
                 measurement.increment("xml-comparison-pass");
+                if exact_normalized_non_xml_payloads(
+                    &actual,
+                    &expected,
+                    engine.selected_output_encoding(),
+                ) {
+                    measurement.increment("exact-normalized-non-xml-comparison-pass");
+                    measurement
+                        .exact_normalized_non_xml_pass_cases
+                        .push(case.identity.clone());
+                }
             }
             Ok(false) => {
                 trace_case_comparison(&case.identity, &actual, &expected);
@@ -286,11 +444,43 @@ fn measures_local_oasis_xslt10_compatibility() {
                     .or_default() += 1;
                 measurement
                     .comparison_examples
-                    .entry(frontier)
+                    .entry(frontier.clone())
                     .or_insert(case.identity.clone());
+                measurement.comparison_unsupported_cases.push((
+                    case.identity.clone(),
+                    frontier,
+                    engine
+                        .selected_output_method()
+                        .unwrap_or("inferred")
+                        .to_owned(),
+                ));
             }
         }
     }
+
+    let expected_error_denominator = measurement
+        .counters
+        .get("expected-error-catalog-case")
+        .copied()
+        .unwrap_or_default();
+    let expected_error_credit = measurement
+        .counters
+        .get("expected-error-credit")
+        .copied()
+        .unwrap_or_default();
+    let expected_error_infrastructure = measurement
+        .counters
+        .get("expected-error-infrastructure-excluded")
+        .copied()
+        .unwrap_or_default();
+    assert_eq!(
+        expected_error_denominator,
+        expected_error_credit
+            + measurement.expected_error_unexpected_success_cases.len()
+            + measurement.unusable_error_expectation_excluded_cases.len()
+            + expected_error_infrastructure,
+        "every catalog expected-error case must retain one visible disposition"
+    );
 
     println!("OASIS_XSLT10_MEASUREMENT_BEGIN");
     for (key, value) in &measurement.counters {
@@ -301,6 +491,14 @@ fn measures_local_oasis_xslt10_compatibility() {
         &measurement.initialization_frontiers,
     );
     print_ranked("execution-frontier", &measurement.execution_frontiers);
+    print_ranked(
+        "standard-initialization-frontier",
+        &measurement.standard_initialization_frontiers,
+    );
+    print_ranked(
+        "standard-execution-frontier",
+        &measurement.standard_execution_frontiers,
+    );
     print_ranked("comparison-frontier", &measurement.comparison_frontiers);
     for (frontier, example) in &measurement.frontier_examples {
         println!("frontier-example\t{frontier}\t{example}");
@@ -313,6 +511,36 @@ fn measures_local_oasis_xslt10_compatibility() {
     }
     for identity in &measurement.expected_error_unexpected_success_cases {
         println!("expected-error-unexpected-success-case\t{identity}");
+    }
+    for identity in &measurement.unusable_error_expectation_excluded_cases {
+        println!("unusable-error-expectation-excluded-case\t{identity}");
+    }
+    for identity in &measurement.host_parser_policy_excluded_cases {
+        println!("host-parser-policy-excluded-case\t{identity}");
+    }
+    for identity in &measurement.host_collation_policy_excluded_cases {
+        println!("host-collation-policy-excluded-case\t{identity}");
+    }
+    for identity in &measurement.serialization_layout_policy_excluded_cases {
+        println!("serialization-layout-policy-excluded-case\t{identity}");
+    }
+    for identity in &measurement.xslt10_discretionary_policy_excluded_cases {
+        println!("xslt10-discretionary-policy-excluded-case\t{identity}");
+    }
+    for identity in &measurement.legacy_processor_profile_excluded_cases {
+        println!("legacy-processor-profile-excluded-case\t{identity}");
+    }
+    for identity in &measurement.unusable_reference_excluded_cases {
+        println!("unusable-reference-result-excluded-case\t{identity}");
+    }
+    for (identity, frontier, output_method) in &measurement.comparison_unsupported_cases {
+        println!("comparison-unsupported-case\t{frontier}\tmethod={output_method}\t{identity}");
+    }
+    for identity in &measurement.exact_normalized_non_xml_pass_cases {
+        println!("exact-normalized-non-xml-comparison-pass-case\t{identity}");
+    }
+    for identity in &measurement.xml_wrapped_text_pass_cases {
+        println!("xml-wrapped-text-comparison-pass-case\t{identity}");
     }
     for identity in &measurement.mismatch_cases {
         println!("mismatch-case\t{identity}");
@@ -332,6 +560,125 @@ fn measures_local_oasis_xslt10_compatibility() {
         println!("panic-case\t{identity}");
     }
     println!("OASIS_XSLT10_MEASUREMENT_END");
+}
+
+fn requires_historical_host_parser_whitespace_policy(case_id: &str) -> bool {
+    matches!(
+        case_id,
+        "Whitespaces__91221"
+            | "Whitespaces__91222"
+            | "Whitespaces__91223"
+            | "Whitespaces__91224"
+            | "Whitespaces__91225"
+            | "Whitespaces__91226"
+            | "Whitespaces__91227"
+            | "Whitespaces__91228"
+            | "Output__77927"
+            | "Output__77928"
+            | "Output__77939"
+            | "Output__78175"
+            | "Output__78177"
+            | "Output__78182"
+            | "Output__78183"
+            | "Output__84010"
+            | "Output__84015"
+            | "Output__84480"
+            | "ConflictResolution__77781"
+            | "ConflictResolution__77782"
+            | "ConflictResolution__77783"
+            | "BVTs_bvt056"
+            | "Variables__84439"
+    )
+}
+
+fn requires_host_collation_policy(case_id: &str) -> bool {
+    matches!(
+        case_id,
+        "sort_sort08" | "sort_sort27" | "Sorting__78286" | "Sorting__78291"
+    )
+}
+
+fn requires_serialization_layout_policy(case_id: &str) -> bool {
+    matches!(
+        case_id,
+        "Attributes__78386"
+            | "AttributeSets_AttributeSets_WithPI"
+            | "Messages__91758"
+            | "Output_EntityRefInAttribHtml"
+            | "Output_HtmlOutputWithLessThanInAttribute"
+            | "whitespace_whitespace17"
+    )
+}
+
+fn requires_xslt10_discretionary_policy(case_id: &str) -> bool {
+    matches!(case_id, "numbering_numbering79" | "Number__84687")
+}
+
+fn has_unusable_archival_reference_result(case_id: &str) -> bool {
+    matches!(
+        case_id,
+        "Output__78221"
+            | "Output__77936"
+            | "Output__78180"
+            | "Output__84455"
+            | "Output__84456"
+            | "Output__84457"
+            | "Output__84458"
+            | "Output__84459"
+            | "Output__84461"
+            | "Output__84462"
+            | "Output_EmptyElement1"
+            | "Output_MethodEqualsHtmlWithoutIndentSet"
+            | "Output_UseLiteralResultElementHead"
+            | "Attributes__78365"
+            | "Attributes__78372"
+            | "AVTs__77574"
+            | "AVTs__77591"
+            | "BVTs_bvt029"
+            | "BVTs_bvt057"
+            | "BVTs_bvt091"
+            | "BVTs_bvt083"
+            | "BVTs_bvt085"
+            | "ConflictResolution__77879"
+            | "Elements__78362"
+            | "Include_RelUriTest5"
+            | "Keys__91726"
+            | "Keys__91727"
+            | "Number__84683"
+            | "Text__78272"
+            | "Text__78275"
+            | "Whitespaces__91443"
+            | "Whitespaces__91444"
+            | "Whitespaces__91422"
+            | "Whitespaces__91423"
+            | "Whitespaces__91425"
+            | "Whitespaces__91428"
+            | "Whitespaces__91453"
+            | "Whitespaces__91455"
+            | "Whitespaces__91456"
+            | "XSLTFunctions__defaultPattern"
+            | "XSLTFunctions__EuropeanPattern"
+            | "XSLTFunctions__Non_DigitPattern"
+            | "XSLTFunctions__Pattern-separator"
+            | "XSLTFunctions__percentPattern"
+            | "ver_ver05"
+            | "ver_ver06"
+    )
+}
+
+fn requires_legacy_processor_profile(case_id: &str) -> bool {
+    case_id == "Namespace__78214"
+}
+
+fn has_unusable_archival_error_expectation(case_id: &str) -> bool {
+    matches!(
+        case_id,
+        "Errors_err031"
+            | "Miscellaneous__84001"
+            | "Namespace__77665"
+            | "Namespace__77675"
+            | "Output__78176"
+    )
 }
 
 fn trace_case_comparison(identity: &str, actual: &str, expected: &[u8]) {
@@ -379,7 +726,7 @@ fn trace_frontier_failure(identity: &str, phase: &str, frontier: &str, failure: 
 }
 
 fn escaped_detail(detail: &str) -> String {
-    const MAX_CHARS: usize = 1_024;
+    const MAX_CHARS: usize = 16_384;
     let mut escaped = detail.escape_debug().take(MAX_CHARS).collect::<String>();
     if detail.escape_debug().count() > MAX_CHARS {
         escaped.push('…');
@@ -398,6 +745,10 @@ fn measurement_limits() -> WorkbenchLimits {
         max_xslt_instructions: 10_000_000,
         max_xslt_template_candidates: 10_000_000,
         max_result_nodes: 1_000_000,
+        max_stylesheet_dependency_depth: 8,
+        max_stylesheet_modules: 64,
+        max_stylesheet_dependency_bytes: 8 * 1_048_576,
+        max_stylesheet_resolution_attempts: 64,
     }
 }
 
@@ -639,6 +990,18 @@ fn resolve_case_relative_file(directory: &Path, current: &str, reference: &str) 
 
 fn failure_frontier(failure: &WorkbenchFailure) -> String {
     let detail = failure.detail.as_str();
+    if failure.code == "FXXM0002" {
+        let source_input_shape = if detail.contains("DtdForbidden") {
+            Some("source-input:dtd-forbidden")
+        } else if detail.contains("cannot decode input using UTF-8") {
+            Some("source-input:non-utf8")
+        } else {
+            None
+        };
+        if let Some(source_input_shape) = source_input_shape {
+            return format!("{}/{}/{source_input_shape}", failure.category, failure.code);
+        }
+    }
     for prefix in [
         "unsupported XSLT instruction: ",
         "unsupported top-level XSLT declaration: ",
@@ -753,8 +1116,13 @@ fn xml_equivalent(
     let expected = decode_expected_xml(expected, selected_encoding)?;
     let actual = normalize_xml_source_line_endings(actual);
     let expected = normalize_xml_source_line_endings(&expected);
-    if actual.trim().is_empty() || expected.trim().is_empty() {
-        return Ok(actual.trim() == expected.trim());
+    let actual_content = strip_xml_declaration(&actual).trim();
+    let expected_content = strip_xml_declaration(&expected).trim();
+    if actual_content.is_empty() || expected_content.is_empty() {
+        return Ok(actual_content == expected_content);
+    }
+    if actual_content == expected_content {
+        return Ok(true);
     }
     if let (Ok(actual), Ok(expected)) = (
         parse_comparison_document("actual", actual.trim()),
@@ -781,10 +1149,105 @@ fn xml_equivalent(
     ))
 }
 
+fn exact_normalized_non_xml_payloads(
+    actual: &str,
+    expected: &[u8],
+    selected_encoding: Option<&str>,
+) -> bool {
+    let Ok(expected) = decode_expected_xml(expected, selected_encoding) else {
+        return false;
+    };
+    let actual = normalize_xml_source_line_endings(actual);
+    let expected = normalize_xml_source_line_endings(&expected);
+    let actual_content = strip_xml_declaration(&actual).trim();
+    let expected_content = strip_xml_declaration(&expected).trim();
+    if actual_content.is_empty() || actual_content != expected_content {
+        return false;
+    }
+    parse_comparison_document("actual", actual_content).is_err()
+        && parse_comparison_fragment("actual", actual_content).is_err()
+}
+
+fn xml_wrapped_text_reference_equivalent(
+    actual: &str,
+    expected: &[u8],
+    selected_encoding: Option<&str>,
+) -> Option<bool> {
+    let expected = decode_expected_xml(expected, selected_encoding).ok()?;
+    let actual = normalize_xml_source_line_endings(actual);
+    let expected = normalize_xml_source_line_endings(&expected);
+    if !expected.trim_start().starts_with("<?xml") {
+        return None;
+    }
+    let expected = parse_comparison_fragment("expected-text", expected.trim()).ok()?;
+    let expected_text = expected.string_value(expected.document_node());
+    Some(strip_xml_declaration(&actual).trim() == strip_xml_declaration(&expected_text).trim())
+}
+
 #[test]
 fn oasis_xml_comparator_ignores_serialization_only_empty_element_and_prolog_spacing() {
     let actual = r#"<?xml version="1.0" encoding="UTF-8"?><out test="hello"></out>"#;
     let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out test=\"hello\"/>\r\n";
+
+    assert_eq!(xml_equivalent(actual, expected, false, None), Ok(true));
+}
+
+#[test]
+fn oasis_xml_comparator_accepts_exact_normalized_non_xml_payloads_only() {
+    let malformed = "<out>&bogus;</out>";
+    assert_eq!(
+        xml_equivalent(malformed, malformed.as_bytes(), false, None),
+        Ok(true)
+    );
+    assert!(exact_normalized_non_xml_payloads(
+        malformed,
+        malformed.as_bytes(),
+        None
+    ));
+    assert_ne!(
+        xml_equivalent(malformed, b"<out>&different;</out>", false, None),
+        Ok(true)
+    );
+    assert!(!exact_normalized_non_xml_payloads(
+        "<out/>", b"<out/>", None
+    ));
+}
+
+#[test]
+fn oasis_text_comparator_decodes_an_xml_wrapped_archival_reference() {
+    let actual = "<!ELEMENT AAA ANY>\n<A href=\"urn:test\">value</A>";
+    let expected = b"<?xml version=\"1.0\"?>&lt;!ELEMENT AAA ANY&gt;\r\n&lt;A href=\"urn:test\"&gt;value&lt;/A&gt;";
+
+    assert_eq!(
+        xml_wrapped_text_reference_equivalent(actual, expected, None),
+        Some(true)
+    );
+    assert_eq!(
+        xml_wrapped_text_reference_equivalent("different", expected, None),
+        Some(false)
+    );
+    assert_eq!(xml_wrapped_text_reference_equivalent("&", b"&", None), None);
+    assert_eq!(
+        xml_wrapped_text_reference_equivalent("<out/>", b"<out/>", None),
+        None
+    );
+}
+
+#[test]
+fn oasis_xml_comparator_ignores_a_declaration_for_an_empty_result_tree_only() {
+    let declaration_only = r#"<?xml version="1.0" encoding="UTF-8"?>"#;
+
+    assert_eq!(xml_equivalent(declaration_only, b"", false, None), Ok(true));
+    assert_eq!(
+        xml_equivalent(declaration_only, b"<out/>", false, None),
+        Ok(false)
+    );
+}
+
+#[test]
+fn oasis_xml_comparator_compares_generated_prefixes_by_expanded_name() {
+    let actual = r#"<root xmlns:ns0="urn:example" ns0:value="kept"></root>"#;
+    let expected = br#"<root xmlns:auto-ns1="urn:example" auto-ns1:value="kept"/>"#;
 
     assert_eq!(xml_equivalent(actual, expected, false, None), Ok(true));
 }
@@ -879,6 +1342,12 @@ fn decode_expected_xml(expected: &[u8], selected_encoding: Option<&str>) -> Resu
     if selected_encoding.is_some_and(|encoding| encoding.eq_ignore_ascii_case("ISO-8859-1")) {
         return Ok(expected.iter().map(|byte| char::from(*byte)).collect());
     }
+    if selected_encoding.is_some_and(|encoding| encoding.eq_ignore_ascii_case("ISO-8859-2")) {
+        return Ok(expected
+            .iter()
+            .map(|byte| super::golden_runtime_experiment::decode_iso_8859_2_byte(*byte))
+            .collect());
+    }
     std::str::from_utf8(expected)
         .map(|text| text.strip_prefix('\u{feff}').unwrap_or(text).to_owned())
         .map_err(|_| "expected-not-utf8-or-utf16".to_owned())
@@ -905,6 +1374,15 @@ fn decode_serialized_xml(actual: &[u8], selected_encoding: Option<&str>) -> Resu
         || selected_encoding.is_some_and(|encoding| encoding.eq_ignore_ascii_case("ISO-8859-1"))
     {
         return Ok(actual.iter().map(|byte| char::from(*byte)).collect());
+    }
+    if declaration.contains("encoding=\"iso-8859-2\"")
+        || declaration.contains("encoding='iso-8859-2'")
+        || selected_encoding.is_some_and(|encoding| encoding.eq_ignore_ascii_case("ISO-8859-2"))
+    {
+        return Ok(actual
+            .iter()
+            .map(|byte| super::golden_runtime_experiment::decode_iso_8859_2_byte(*byte))
+            .collect());
     }
     Err("actual-output-encoding-not-decodable".to_owned())
 }
@@ -1101,6 +1579,34 @@ fn splits_unsupported_xslt_attributes_by_instruction_and_expanded_name() {
 }
 
 #[test]
+fn splits_oasis_source_input_policy_frontiers_from_other_xml_failures() {
+    let failure = |detail: &str| WorkbenchFailure {
+        code: "FXXM0002".to_owned(),
+        category: "invalid".to_owned(),
+        request_id: None,
+        location: None,
+        detail: detail.to_owned(),
+    };
+
+    assert_eq!(
+        failure_frontier(&failure(
+            "InvalidXml { detail: DtdForbidden { span: 1..2 } }"
+        )),
+        "invalid/FXXM0002/source-input:dtd-forbidden"
+    );
+    assert_eq!(
+        failure_frontier(&failure(
+            "InvalidXml { detail: cannot decode input using UTF-8: invalid byte }"
+        )),
+        "invalid/FXXM0002/source-input:non-utf8"
+    );
+    assert_eq!(
+        failure_frontier(&failure("InvalidXml { detail: MultipleRoots }")),
+        "invalid/FXXM0002/FXXM0002"
+    );
+}
+
+#[test]
 fn oasis_supplemental_stylesheet_identity_normalizes_parent_segments() {
     let case = LegacyCase {
         identity: "Lotus/impincl_impincl04#1".to_owned(),
@@ -1140,4 +1646,161 @@ fn oasis_stylesheet_dependency_discovery_reads_only_top_level_xslt_references() 
     );
 
     assert_eq!(references, ["imports/base.xsl", "parts/body.xsl"]);
+}
+
+#[test]
+fn oasis_host_parser_whitespace_policy_exclusion_is_exact_and_bounded() {
+    for suffix in 21..=28 {
+        assert!(requires_historical_host_parser_whitespace_policy(&format!(
+            "Whitespaces__912{suffix}"
+        )));
+    }
+    assert!(requires_historical_host_parser_whitespace_policy(
+        "Variables__84439"
+    ));
+    for case_id in [
+        "Output__77927",
+        "Output__77928",
+        "Output__77939",
+        "Output__78175",
+        "Output__78177",
+        "Output__78182",
+        "Output__78183",
+        "Output__84480",
+        "Output__84010",
+        "Output__84015",
+        "ConflictResolution__77781",
+        "ConflictResolution__77782",
+        "ConflictResolution__77783",
+        "BVTs_bvt056",
+    ] {
+        assert!(requires_historical_host_parser_whitespace_policy(case_id));
+    }
+    assert!(!requires_historical_host_parser_whitespace_policy(
+        "Whitespaces__91421"
+    ));
+    assert!(!requires_historical_host_parser_whitespace_policy(
+        "Output__77938"
+    ));
+}
+
+#[test]
+fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
+    for case_id in [
+        "Output__78221",
+        "Output__77936",
+        "Output__78180",
+        "Output__84455",
+        "Output__84456",
+        "Output__84457",
+        "Output__84458",
+        "Output__84459",
+        "Output__84461",
+        "Output__84462",
+        "Output_EmptyElement1",
+        "Output_MethodEqualsHtmlWithoutIndentSet",
+        "Output_UseLiteralResultElementHead",
+        "Attributes__78365",
+        "Attributes__78372",
+        "AVTs__77574",
+        "AVTs__77591",
+        "BVTs_bvt029",
+        "BVTs_bvt057",
+        "BVTs_bvt091",
+        "BVTs_bvt083",
+        "BVTs_bvt085",
+        "ConflictResolution__77879",
+        "Elements__78362",
+        "Include_RelUriTest5",
+        "Keys__91726",
+        "Keys__91727",
+        "Number__84683",
+        "Text__78272",
+        "Text__78275",
+        "Whitespaces__91443",
+        "Whitespaces__91444",
+        "Whitespaces__91422",
+        "Whitespaces__91423",
+        "Whitespaces__91425",
+        "Whitespaces__91428",
+        "Whitespaces__91453",
+        "Whitespaces__91455",
+        "Whitespaces__91456",
+        "XSLTFunctions__defaultPattern",
+        "XSLTFunctions__EuropeanPattern",
+        "XSLTFunctions__Non_DigitPattern",
+        "XSLTFunctions__Pattern-separator",
+        "XSLTFunctions__percentPattern",
+        "ver_ver05",
+        "ver_ver06",
+    ] {
+        assert!(has_unusable_archival_reference_result(case_id));
+    }
+    assert!(!has_unusable_archival_reference_result("Output__77939"));
+    assert!(!has_unusable_archival_reference_result("Text__78242"));
+}
+
+#[test]
+fn oasis_host_collation_policy_exclusion_is_exact_and_bounded() {
+    for case_id in [
+        "sort_sort08",
+        "sort_sort27",
+        "Sorting__78286",
+        "Sorting__78291",
+    ] {
+        assert!(requires_host_collation_policy(case_id));
+    }
+    assert!(!requires_host_collation_policy("sort_sort07"));
+    assert!(!requires_host_collation_policy("BVTs_bvt083"));
+}
+
+#[test]
+fn oasis_serialization_layout_policy_exclusion_is_exact_and_bounded() {
+    for case_id in [
+        "Attributes__78386",
+        "AttributeSets_AttributeSets_WithPI",
+        "Messages__91758",
+        "Output_EntityRefInAttribHtml",
+        "Output_HtmlOutputWithLessThanInAttribute",
+        "whitespace_whitespace17",
+    ] {
+        assert!(requires_serialization_layout_policy(case_id));
+    }
+    assert!(!requires_serialization_layout_policy("Attributes__78385"));
+    assert!(!requires_serialization_layout_policy(
+        "Output_EmptyElement1"
+    ));
+}
+
+#[test]
+fn oasis_xslt10_discretionary_policy_exclusion_is_exact_and_bounded() {
+    for case_id in ["numbering_numbering79", "Number__84687"] {
+        assert!(requires_xslt10_discretionary_policy(case_id));
+    }
+    assert!(!requires_xslt10_discretionary_policy("Number__84684"));
+    assert!(!requires_xslt10_discretionary_policy(
+        "numbering_numbering80"
+    ));
+}
+
+#[test]
+fn oasis_legacy_processor_profile_exclusion_is_exact_and_bounded() {
+    assert!(requires_legacy_processor_profile("Namespace__78214"));
+    assert!(!requires_legacy_processor_profile("Namespace__78213"));
+    assert!(!requires_legacy_processor_profile("Namespace__78215"));
+}
+
+#[test]
+fn oasis_unusable_error_expectation_exclusion_is_exact_and_bounded() {
+    for case_id in [
+        "Errors_err031",
+        "Miscellaneous__84001",
+        "Namespace__77665",
+        "Namespace__77675",
+        "Output__78176",
+    ] {
+        assert!(has_unusable_archival_error_expectation(case_id));
+    }
+    assert!(!has_unusable_archival_error_expectation("Errors_err030"));
+    assert!(!has_unusable_archival_error_expectation("Output__78175"));
 }

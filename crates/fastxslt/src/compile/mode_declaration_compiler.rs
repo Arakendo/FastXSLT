@@ -241,6 +241,7 @@ fn compile_mode_policy(
 ) -> Result<Option<ModePolicy>, CompileFailure> {
     let on_no_match = optional_attribute(document, element, None, "on-no-match")
         .map(|value| match value {
+            "deep-skip" => Ok(OnNoMatchPolicy::DeepSkip),
             "fail" => Ok(OnNoMatchPolicy::Fail),
             "shallow-copy" => Ok(OnNoMatchPolicy::ShallowCopy),
             "shallow-skip" => Ok(OnNoMatchPolicy::ShallowSkip),
@@ -471,6 +472,16 @@ mod tests {
         assert_eq!(
             unnamed.mode_policies[0].on_no_match,
             Some(OnNoMatchPolicy::TextOnlyCopy)
+        );
+    }
+
+    #[test]
+    fn retains_deep_skip_as_a_built_in_mode_policy() {
+        let program =
+            compile("on-no-match", "deep-skip").expect("deep-skip mode declaration should compile");
+        assert_eq!(
+            program.mode_policies[0].on_no_match,
+            Some(OnNoMatchPolicy::DeepSkip)
         );
     }
 

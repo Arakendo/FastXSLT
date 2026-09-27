@@ -2,7 +2,7 @@
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::ExpandedName;
-use crate::xpath::path_experiment::parse_location_path;
+use crate::xpath::path_experiment::{parse_location_path, parse_xslt10_location_path};
 use crate::xslt::golden_semantics_experiment::{
     ComputedAttribute, DynamicAttributeName, DynamicAttributeNamePart, DynamicNamespaceValue,
     LiteralAttributeValue,
@@ -109,9 +109,9 @@ pub(super) fn compile_computed_attribute(
         && uses_xslt10_compatibility(document, *for_each)
         && is_xslt10_for_each_string_value_shape(document, *for_each)
     {
-        LiteralAttributeValue::Xslt10ForEachPathStringValue(
-            compile_xslt10_for_each_string_value_path(document, *for_each)?,
-        )
+        LiteralAttributeValue::Xslt10ForEachPathStringValue(compile_for_each_string_value_path(
+            document, *for_each,
+        )?)
     } else if let [copy_of] = children.as_slice()
         && is_xslt_element(document, *copy_of, "copy-of")
         && uses_xslt10_compatibility(document, *copy_of)
@@ -364,7 +364,7 @@ fn compile_xslt10_local_source_path_count(
     Ok(LiteralAttributeValue::Xslt10LocalSourcePathCount(path))
 }
 
-pub(super) fn compile_xslt10_for_each_string_value_path(
+pub(super) fn compile_for_each_string_value_path(
     document: &Document,
     for_each: NodeId,
 ) -> Result<crate::xpath::path_experiment::LocationPath, CompileFailure> {
@@ -374,14 +374,14 @@ pub(super) fn compile_xslt10_for_each_string_value_path(
     let [value_of] = children.as_slice() else {
         return Err(unsupported(
             "FXST1033",
-            "the private XSLT 1.0 computed-attribute for-each slice requires exactly one xsl:value-of child",
+            "the private for-each string-value constructor requires exactly one xsl:value-of child",
             document.location(for_each),
         ));
     };
     if !is_xslt_element(document, *value_of, "value-of") {
         return Err(unsupported(
             "FXST1033",
-            "the private XSLT 1.0 computed-attribute for-each slice requires exactly one xsl:value-of child",
+            "the private for-each string-value constructor requires exactly one xsl:value-of child",
             document.location(for_each),
         ));
     }
@@ -390,7 +390,7 @@ pub(super) fn compile_xslt10_for_each_string_value_path(
     if required_attribute(document, *value_of, None, "select")?.trim() != "." {
         return Err(unsupported(
             "FXST1033",
-            "the private XSLT 1.0 computed-attribute for-each slice requires xsl:value-of select=\".\"",
+            "the private for-each string-value constructor requires xsl:value-of select=\".\"",
             document.location(*value_of),
         ));
     }
@@ -539,6 +539,15 @@ fn compile_computed_attribute_value(
             compile_xslt10_concat(document, value_of, select, document.location(value_of))?
     {
         LiteralAttributeValue::Xslt10Concat(Box::new(expression))
+    } else if uses_xslt10_compatibility(document, value_of)
+        && let Ok(path) =
+            parse_xslt10_location_path(select.trim(), document.location(value_of).clone())
+    {
+        LiteralAttributeValue::Xslt10TextAndPath {
+            prefix: String::new(),
+            path,
+            suffix: String::new(),
+        }
     } else {
         let value = xpath_string_literal(select)
             .map(str::to_owned)

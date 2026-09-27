@@ -220,7 +220,7 @@ pub(super) fn compile_sequence_excluding_with_bindings(
                     child,
                     preserve_whitespace
                         || text_run_contains_non_whitespace(document, &children, index),
-                ) {
+                )? {
                     instructions.push(instruction);
                 }
             }
@@ -393,12 +393,64 @@ fn compile_literal_text_node(
     document: &Document,
     node: NodeId,
     preserve_whitespace: bool,
-) -> Option<Instruction> {
+) -> Result<Option<Instruction>, CompileFailure> {
     let value = document.value(node).unwrap_or_default();
-    (preserve_whitespace || !value.chars().all(char::is_whitespace)).then(|| Instruction::Text {
+    if !preserve_whitespace && value.chars().all(char::is_whitespace) {
+        return Ok(None);
+    }
+    if effective_expand_text(document, node)? {
+        let expression = value
+            .strip_prefix('{')
+            .and_then(|value| value.strip_suffix('}'));
+        if let Some(expression) = expression
+            && expression.contains(" instance of element(")
+            && expression.contains("//")
+        {
+            let parent = document.parent(node).expect("stylesheet text has a parent");
+            return Ok(Some(Instruction::ValueOf {
+                select: compile_value_expression(
+                    document,
+                    parent,
+                    expression,
+                    document.location(node),
+                )?,
+                separator: " ".to_owned(),
+                location: document.location(node).clone(),
+            }));
+        }
+    }
+    Ok(Some(Instruction::Text {
         value: value.to_owned(),
         location: document.location(node).clone(),
-    })
+    }))
+}
+
+fn effective_expand_text(document: &Document, node: NodeId) -> Result<bool, CompileFailure> {
+    let mut current = document.parent(node);
+    while let Some(element) = current {
+        let is_stylesheet_root = document.name(element).is_some_and(|name| {
+            name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                && matches!(name.local.as_str(), "stylesheet" | "transform")
+        });
+        let value = if is_stylesheet_root {
+            optional_attribute(document, element, None, "expand-text")
+        } else {
+            optional_attribute(document, element, Some(XSLT_NAMESPACE), "expand-text")
+        };
+        if let Some(value) = value {
+            return match value {
+                "yes" => Ok(true),
+                "no" => Ok(false),
+                _ => Err(invalid(
+                    "XTSE0020",
+                    "expand-text must be 'yes' or 'no'",
+                    document.location(element),
+                )),
+            };
+        }
+        current = document.parent(element);
+    }
+    Ok(false)
 }
 
 fn text_run_contains_non_whitespace(
@@ -443,6 +495,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::Xslt10ConcatVariable { name, .. }
     | Instruction::Xslt10KeyVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
+    | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { name, .. }
     | Instruction::SourceVariablePathVariable { name, .. }
     | Instruction::SourceNodeUnionVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
@@ -450,7 +503,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::Xslt10TextTreeVariable { name, .. }
     | Instruction::Xslt10ValueOfTreeVariable { name, .. }
     | Instruction::Xslt10ForEachTextTreeVariable { name, .. }
-    | Instruction::Xslt10SequenceTreeVariable { name, .. }) = variable
+    | Instruction::SequenceTreeVariable { name, .. }) = variable
     else {
         unreachable!("compile_variable returns a variable instruction")
     };
@@ -960,6 +1013,17 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     ensure_no_meaningful_children(document, element, "xsl:copy-of")?;
     let select = required_attribute(document, element, None, "select")?;
     let recover_unattached_attributes = uses_xslt10_compatibility(document, element);
+    if let Some((reference, descendant_local)) = parse_literal_document_call(select.trim()) {
+        return Ok(Instruction::CopyOfDocument {
+            select: crate::xslt::golden_semantics_experiment::DocumentRootReference {
+                base: document.location(element).resource.clone(),
+                reference: reference.to_owned(),
+                descendant_local: descendant_local.map(str::to_owned),
+            },
+            recover_unattached_attributes,
+            location: document.location(element).clone(),
+        });
+    }
     if uses_xslt10_compatibility(document, element) && select.trim_start().starts_with("key(") {
         return value_expression_compiler::compile_xslt10_literal_key_lookup(
             document,
@@ -1043,6 +1107,30 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
             }
         }),
     }
+}
+
+fn parse_literal_document_call(expression: &str) -> Option<(&str, Option<&str>)> {
+    let argument_and_tail = expression.strip_prefix("document(")?;
+    let quote = *argument_and_tail.as_bytes().first()?;
+    if !matches!(quote, b'\'' | b'"') {
+        return None;
+    }
+    let closing_quote = argument_and_tail.as_bytes()[1..]
+        .iter()
+        .position(|byte| *byte == quote)?
+        + 1;
+    let reference = &argument_and_tail[1..closing_quote];
+    if reference.is_empty() {
+        return None;
+    }
+    let tail = argument_and_tail[closing_quote + 1..].strip_prefix(')')?;
+    let descendant_local = if tail.is_empty() {
+        None
+    } else {
+        let name = tail.strip_prefix("//")?;
+        Some(is_ascii_ncname(name).then_some(name)?)
+    };
+    Some((reference, descendant_local))
 }
 
 pub(super) fn split_top_level_union(expression: &str) -> Option<Vec<&str>> {
@@ -1303,6 +1391,13 @@ fn compile_sort_select(
             )?,
         )));
     }
+    if xslt10_compatibility
+        && let Some(expression) = value_expression_compiler::compile_xslt10_path_substring(
+            document, sort, select, location,
+        )?
+    {
+        return Ok(SortSelect::Xslt10PathSubstring(Box::new(expression)));
+    }
     if let Some(alternatives) = split_top_level_union(select) {
         let alternatives = alternatives
             .into_iter()
@@ -1343,10 +1438,22 @@ fn compile_sort_select(
     if xslt10_compatibility && let Some(variable) = parse_xslt10_child_name_variable_sort(select) {
         return Ok(SortSelect::Xslt10ChildNameEqualsVariable { variable });
     }
+    if xslt10_compatibility
+        && let Some((path, literal, equal)) =
+            boolean_expression_compiler::parse_xslt10_source_path_comparison(select)
+        && let Some(literal) = xpath_string_literal(literal)
+    {
+        return Ok(SortSelect::Xslt10PathStringLiteralComparison {
+            path: compile_sort_path(document, sort, path, location)?,
+            literal: literal.to_owned(),
+            equal,
+        });
+    }
     match select.trim() {
         "position()" => Ok(SortSelect::ContextPosition),
         "last()" => Ok(SortSelect::ContextSize),
         "name()" | "name(.)" => Ok(SortSelect::ContextNodeName),
+        "local-name()" | "local-name(.)" => Ok(SortSelect::ContextNodeLocalName),
         "string-length()" | "string-length(.)" => Ok(SortSelect::ContextStringLength),
         _ => {
             if let Some(path) =
@@ -2215,18 +2322,8 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             location,
         });
     }
-    if let Some(path) = expression
-        .trim()
-        .strip_prefix("count(")
-        .and_then(|path| path.strip_suffix(')'))
-    {
-        if let Ok(select) = parse_location_path(path.trim(), location.clone()) {
-            return Ok(Instruction::ContextCountPathVariable {
-                name: name.clone(),
-                select,
-                location,
-            });
-        }
+    if let Some(variable) = compile_context_count_path_variable(&name, expression, &location) {
+        return Ok(variable);
     }
     if let Some(variable) = compile_source_node_union_variable(&name, expression, &location)? {
         return Ok(variable);
@@ -2276,7 +2373,77 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
     {
         return Ok(variable);
     }
+    if let Some(variable) = compile_xslt10_current_name_lookup_variable(
+        document, element, &name, expression, &location,
+    )? {
+        return Ok(variable);
+    }
     compile_local_node_or_cast_variable(document, element, &name, expression, location)
+}
+
+fn compile_context_count_path_variable(
+    name: &str,
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<Instruction> {
+    let path = expression
+        .trim()
+        .strip_prefix("count(")?
+        .strip_suffix(')')?;
+    let select = parse_location_path(path.trim(), location.clone()).ok()?;
+    Some(Instruction::ContextCountPathVariable {
+        name: name.to_owned(),
+        select,
+        location: location.clone(),
+    })
+}
+
+fn compile_xslt10_current_name_lookup_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<Instruction>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let Some((select, attribute)) =
+        compile_xslt10_attribute_equals_current_name_path(expression, location)?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(
+        Instruction::Xslt10SourceNodesAttributeEqualsCurrentName {
+            name: name.to_owned(),
+            select,
+            attribute,
+            location: location.clone(),
+        },
+    ))
+}
+
+fn compile_xslt10_attribute_equals_current_name_path(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<(LocationPath, String)>, CompileFailure> {
+    let Some((path, predicate)) = expression.trim().rsplit_once('[') else {
+        return Ok(None);
+    };
+    let Some(predicate) = predicate.strip_suffix(']') else {
+        return Ok(None);
+    };
+    let compact = predicate.split_whitespace().collect::<String>();
+    let Some(attribute) = compact
+        .strip_prefix('@')
+        .and_then(|value| value.strip_suffix("=name(current())"))
+        .filter(|value| is_ascii_ncname(value))
+    else {
+        return Ok(None);
+    };
+    let select =
+        parse_xslt10_location_path(path.trim(), location.clone()).map_err(map_path_failure)?;
+    Ok(Some((select, attribute.to_owned())))
 }
 
 fn parse_context_position_offset(expression: &str) -> Option<usize> {
@@ -2425,20 +2592,16 @@ fn compile_content_variable(
                     location,
                 });
             }
-            Err(failure)
-                if failure.code == "FXST1015" && uses_xslt10_compatibility(document, element) =>
-            {
-                // The compact static constructor is an optimization. XSLT 1.0
-                // content variables may contain the ordinary instruction
+            Err(failure) if failure.code == "FXST1015" => {
+                // The compact static constructor is an optimization. A local
+                // sequence constructor may contain the ordinary instruction
                 // sequence, so fall through to the complete runtime path.
             }
             Err(failure) => return Err(failure),
         }
     }
-    if optional_attribute(document, element, None, "as").is_none()
-        && uses_xslt10_compatibility(document, element)
-    {
-        return Ok(Instruction::Xslt10SequenceTreeVariable {
+    if optional_attribute(document, element, None, "as").is_none() {
+        return Ok(Instruction::SequenceTreeVariable {
             name: name.to_owned(),
             body: compile_sequence(document, element)?,
             location,
@@ -2879,10 +3042,15 @@ pub(super) fn compile_choose(
                 "xsl:when",
             )?;
             let expression = required_conditional_test(document, child)?;
-            branches.push(ChooseBranch {
-                test: compile_boolean_test(document, child, expression, document.location(child))?,
-                body: compile_sequence(document, child)?,
-            });
+            let test = compile_boolean_test(document, child, expression, document.location(child))?;
+            let body = if is_forward_compatible_processing(document, child)
+                && matches!(test, BooleanExpression::Constant(false))
+            {
+                Vec::new()
+            } else {
+                compile_sequence(document, child)?
+            };
+            branches.push(ChooseBranch { test, body });
         } else if is_xslt_element(document, child, "otherwise") {
             ensure_only_attributes(
                 document,
@@ -2908,10 +3076,8 @@ fn compile_boolean_test(
     expression: &str,
     location: &crate::xdm::owned_tree_experiment::SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
-    if uses_xslt10_compatibility(document, element)
-        && let Some(value) = xslt10_static_introspection_compiler::fold_effective_boolean(
-            document, element, expression,
-        )
+    if let Some(value) =
+        xslt10_static_introspection_compiler::fold_effective_boolean(document, element, expression)
     {
         return Ok(BooleanExpression::Constant(value));
     }
@@ -2923,6 +3089,25 @@ fn compile_boolean_test(
         effective_string_comparison(document, element)?,
         uses_xslt10_compatibility(document, element),
     )
+}
+
+fn is_forward_compatible_processing(document: &Document, element: NodeId) -> bool {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(version) = optional_attribute(document, node, Some(XSLT_NAMESPACE), "version") {
+            return version.parse::<f64>().is_ok_and(|version| version > 3.0);
+        }
+        if document.name(node).is_some_and(|name| {
+            name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                && matches!(name.local.as_str(), "stylesheet" | "transform")
+        }) {
+            return optional_attribute(document, node, None, "version")
+                .and_then(|version| version.parse::<f64>().ok())
+                .is_some_and(|version| version > 3.0);
+        }
+        current = document.parent(node);
+    }
+    false
 }
 
 fn ensure_choose_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
@@ -2990,7 +3175,7 @@ fn effective_string_comparison(
     Ok(StringComparison::Codepoint)
 }
 
-fn effective_xml_space_preserved(
+pub(super) fn effective_xml_space_preserved(
     document: &Document,
     element: NodeId,
 ) -> Result<bool, CompileFailure> {

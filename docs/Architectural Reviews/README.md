@@ -96,8 +96,9 @@ and add the record to this index. Never reuse a retired number.
   -- Incubating; preserve exact sealed-snapshot lookup while corpus and consumer
   evidence determine base identity, catalogs, live authority, and bounded policy.
 - [AR-0015: WASM Embedding Profile and Host Boundary](AR-0015-wasm-embedding-profile-and-host-boundary.md)
-  -- Incubating; preserve a presealed memory-resident parity experiment while a
-  real consumer identifies the target runtime, boundary, limits, and workload.
+  -- Accepted through ADR-0020; `wasm32-unknown-unknown` is an official build
+  target for the shared safe engine and private presealed adapter, while public
+  binding, packaging, runtime, and broader operational profiles remain deferred.
 - [AR-0016: Stylesheet-Dependent Source Views and Whitespace Stripping](AR-0016-stylesheet-dependent-source-views-and-whitespace-stripping.md)
   -- Accepted through ADR-0012; exact strip-all semantics use an
   invocation-owned visibility view over immutable prepared XDM, with the

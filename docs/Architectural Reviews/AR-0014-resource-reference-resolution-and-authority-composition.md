@@ -265,3 +265,23 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   sealed-snapshot bytes under invocation work control, and reuses one
   invocation-local document identity. No computed reference, fragment, live
   acquisition, cross-invocation cache, or public resolver contract was selected.
+- 2026-09-24 -- The unstable workbench now accepts independent host-supplied
+  dependency depth, module, aggregate-byte, and resolution-attempt ceilings
+  while retaining its previous narrow defaults. A reviewed OASIS measurement
+  host uses a larger bounded sealed closure to move 21 cases beyond hidden
+  `FXRS0006` ceilings; eight become exact and the rest retain later explicit
+  dispositions. This does not select public resolver policy or add live
+  acquisition.
+- 2026-09-24 -- Include-only module graphs now preserve every ordered
+  declaration occurrence, including repeated references to one admitted
+  logical identity. Repeated occurrences remain independently resolved,
+  parsed, and charged against host-supplied module, byte, depth, and attempt
+  ceilings; this adds no hidden sharing, live acquisition, or general mixed
+  dependency-graph contract.
+  [Evidence](../Evidence/oasis-xslt10-repeated-include-composition-2026-09-24.md)
+- 2026-09-24 -- Decimal-format references now remain unlinked until the sealed
+  include/import graph has been assembled, allowing principal and dependency
+  modules to use declarations from the composed stylesheet package. This is a
+  compile-time link-order correction only; it introduces no live resolution or
+  additional host authority.
+  [Evidence](../Evidence/oasis-xslt10-cross-module-decimal-format-linking-2026-09-24.md)

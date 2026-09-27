@@ -16,14 +16,14 @@ use crate::xpath::for_distinct_values_experiment::{
     ForDistinctValuesExpression, evaluate as evaluate_for_distinct_values,
 };
 use crate::xpath::path_experiment::{
-    evaluate_location_path_controlled, evaluate_location_path_union_controlled,
+    LocationPath, evaluate_location_path_controlled, evaluate_location_path_union_controlled,
 };
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, ComputedAttribute, FocusComparison, FocusEqualityOperand,
-    Instruction, LiteralAttribute, NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy,
-    SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, SourceWhitespacePolicy,
-    StringComparison, StylesheetProgram, TemplateArgument, Xslt10AncestorFilter,
-    Xslt10ApplyUnionPart, Xslt10KeyLookup,
+    ApplySelection, BooleanExpression, ComputedAttribute, DocumentRootReference, FocusComparison,
+    FocusEqualityOperand, Instruction, LiteralAttribute, NodeTest, OnMultipleMatchPolicy,
+    OnNoMatchPolicy, SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect,
+    SourceWhitespacePolicy, StringComparison, StylesheetProgram, TemplateArgument,
+    Xslt10AncestorFilter, Xslt10ApplyUnionPart, Xslt10KeyLookup,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -31,6 +31,8 @@ mod atomic_template_executor;
 #[cfg(any(test, feature = "workbench"))]
 #[path = "golden_runtime_experiment/byte_encoding.rs"]
 mod byte_encoding;
+#[cfg(test)]
+pub(super) use byte_encoding::decode_iso_8859_2_byte;
 #[path = "dynamic_attribute_name.rs"]
 mod dynamic_attribute_name;
 #[path = "dynamic_document.rs"]
@@ -83,15 +85,16 @@ use dynamic_element_name::{
 use number_executor::execute as execute_number_instruction;
 #[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
-pub(super) use resource_compiler::compile_resource_with_denied;
+pub(super) use resource_compiler::compile_resource_with_denied_and_limits;
 use result_tree::{
     LiteralAttributeFocus, ResultAttribute, ResultNode, literal_attributes_require_context_string,
     materialize_computed_attributes, materialize_literal_attributes,
 };
 use runtime_context::{
-    InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryNodeKind, TemporaryTree,
-    bind_template_parameters, evaluate_template_arguments, materialize_global_defaults,
-    materialize_result_nodes, materialize_temporary_tree, required_source_context,
+    InvocationParameter, InvocationParameterValue, RuntimeVariables, SequenceInputs,
+    TemporaryNodeKind, TemporaryTree, bind_template_parameters, evaluate_template_arguments,
+    materialize_global_defaults, materialize_result_nodes, materialize_temporary_tree,
+    required_source_context,
 };
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
@@ -128,6 +131,7 @@ pub(super) struct SemanticResult {
     children: Vec<ResultNode>,
 }
 
+#[cfg(test)]
 pub(super) fn execute_program(
     program: &StylesheetProgram,
     source: &Document,
@@ -140,6 +144,26 @@ pub(super) fn execute_program(
         &BTreeMap::new(),
         MultipleMatchPolicy::UseLast,
         request_id,
+        control,
+    )
+}
+
+pub(super) fn execute_program_with_resources(
+    program: &StylesheetProgram,
+    source: &Document,
+    resource_snapshot: &ResourceSnapshot,
+    denied_resources: Option<&HashSet<String>>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<SemanticResult, ExecutionFailure> {
+    execute_program_with_parameters_and_resources(
+        program,
+        source,
+        &BTreeMap::new(),
+        MultipleMatchPolicy::UseLast,
+        request_id,
+        Some(resource_snapshot),
+        denied_resources,
         control,
     )
 }
@@ -189,6 +213,7 @@ pub(crate) fn execute_compiled_initial_template_without_source_for_test(
     .map_err(|failure| format!("{failure:?}"))
 }
 
+#[cfg(test)]
 fn execute_program_with_parameters(
     program: &StylesheetProgram,
     source: &Document,
@@ -240,6 +265,79 @@ enum WhitespaceRepresentation {
     CompleteReference,
 }
 
+fn derive_effective_source(
+    policy: &SourceWhitespacePolicy,
+    source: &Document,
+    representation: WhitespaceRepresentation,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Option<Document>, ExecutionFailure> {
+    let derived = match (policy, representation) {
+        (
+            SourceWhitespacePolicy::Preserve
+            | SourceWhitespacePolicy::PreserveAllDeclared
+            | SourceWhitespacePolicy::PreserveExpandedNames(_),
+            _,
+        ) => None,
+        (
+            SourceWhitespacePolicy::StripAllElementWhitespace,
+            WhitespaceRepresentation::VisibilityView,
+        ) => Some(source.view_stripping_all_element_whitespace(control)),
+        (
+            SourceWhitespacePolicy::StripExpandedNames(names),
+            WhitespaceRepresentation::VisibilityView,
+        ) => Some(source.view_stripping_named_element_whitespace(names, control)),
+        (
+            SourceWhitespacePolicy::Mixed {
+                strip_all,
+                stripped_names,
+                preserved_names,
+                stripped_namespaces,
+                preserved_namespaces,
+            },
+            WhitespaceRepresentation::VisibilityView,
+        ) => Some(source.view_stripping_mixed_element_whitespace(
+            *strip_all,
+            stripped_names,
+            preserved_names,
+            stripped_namespaces,
+            preserved_namespaces,
+            control,
+        )),
+        #[cfg(test)]
+        (
+            SourceWhitespacePolicy::StripAllElementWhitespace,
+            WhitespaceRepresentation::CompleteReference,
+        ) => Some(source.derive_stripping_all_element_whitespace(control)),
+        #[cfg(test)]
+        (
+            SourceWhitespacePolicy::StripExpandedNames(names),
+            WhitespaceRepresentation::CompleteReference,
+        ) => Some(source.derive_stripping_named_element_whitespace(names, control)),
+        #[cfg(test)]
+        (
+            SourceWhitespacePolicy::Mixed {
+                strip_all,
+                stripped_names,
+                preserved_names,
+                stripped_namespaces,
+                preserved_namespaces,
+            },
+            WhitespaceRepresentation::CompleteReference,
+        ) => Some(source.derive_stripping_mixed_element_whitespace(
+            *strip_all,
+            stripped_names,
+            preserved_names,
+            stripped_namespaces,
+            preserved_namespaces,
+            control,
+        )),
+    };
+    derived
+        .transpose()
+        .map_err(|failure| control_failure(failure, request_id))
+}
+
 #[allow(
     clippy::too_many_arguments,
     reason = "the test-only representation choice preserves the complete runtime invocation contract"
@@ -269,46 +367,17 @@ fn execute_program_with_parameters_using(
             control,
         );
     }
-    let effective_source = match (&program.source_whitespace, representation) {
-        (SourceWhitespacePolicy::Preserve, _) => None,
-        (
-            SourceWhitespacePolicy::StripAllElementWhitespace,
-            WhitespaceRepresentation::VisibilityView,
-        ) => Some(
-            source
-                .view_stripping_all_element_whitespace(control)
-                .map_err(|failure| control_failure(failure, request_id))?,
-        ),
-        (
-            SourceWhitespacePolicy::StripExpandedNames(names),
-            WhitespaceRepresentation::VisibilityView,
-        ) => Some(
-            source
-                .view_stripping_named_element_whitespace(names, control)
-                .map_err(|failure| control_failure(failure, request_id))?,
-        ),
-        #[cfg(test)]
-        (
-            SourceWhitespacePolicy::StripAllElementWhitespace,
-            WhitespaceRepresentation::CompleteReference,
-        ) => Some(
-            source
-                .derive_stripping_all_element_whitespace(control)
-                .map_err(|failure| control_failure(failure, request_id))?,
-        ),
-        #[cfg(test)]
-        (
-            SourceWhitespacePolicy::StripExpandedNames(names),
-            WhitespaceRepresentation::CompleteReference,
-        ) => Some(
-            source
-                .derive_stripping_named_element_whitespace(names, control)
-                .map_err(|failure| control_failure(failure, request_id))?,
-        ),
-    };
+    let effective_source = derive_effective_source(
+        &program.source_whitespace,
+        source,
+        representation,
+        request_id,
+        control,
+    )?;
     let source = effective_source.as_ref().unwrap_or(source);
     let globals =
         materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
+    let dynamic_documents = RefCell::default();
     let inputs = SequenceInputs {
         program,
         source: Some(source),
@@ -319,7 +388,7 @@ fn execute_program_with_parameters_using(
         complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
         resource_snapshot,
         denied_resources,
-        dynamic_documents: RefCell::default(),
+        dynamic_documents: &dynamic_documents,
     };
     let children = if let Some(root_template) = program
         .root_template
@@ -397,22 +466,17 @@ fn execute_initial_mode(
             "the requested typed mode cannot accept an untyped source node",
         ));
     }
-    let effective_source = match &program.source_whitespace {
-        SourceWhitespacePolicy::Preserve => None,
-        SourceWhitespacePolicy::StripAllElementWhitespace => Some(
-            source
-                .view_stripping_all_element_whitespace(control)
-                .map_err(|failure| control_failure(failure, request_id))?,
-        ),
-        SourceWhitespacePolicy::StripExpandedNames(names) => Some(
-            source
-                .view_stripping_named_element_whitespace(names, control)
-                .map_err(|failure| control_failure(failure, request_id))?,
-        ),
-    };
+    let effective_source = derive_effective_source(
+        &program.source_whitespace,
+        source,
+        WhitespaceRepresentation::VisibilityView,
+        request_id,
+        control,
+    )?;
     let source = effective_source.as_ref().unwrap_or(source);
     let globals =
         materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
+    let dynamic_documents = RefCell::default();
     let inputs = SequenceInputs {
         program,
         source: Some(source),
@@ -423,7 +487,7 @@ fn execute_initial_mode(
         complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
         resource_snapshot: None,
         denied_resources: None,
-        dynamic_documents: RefCell::default(),
+        dynamic_documents: &dynamic_documents,
     };
     let children = if initial_node == source.document_node()
         && program.root_template_modes.iter().any(|mode| mode == name)
@@ -558,6 +622,7 @@ fn execute_initial_template_with_optional_source(
         .find(|template| template.name == name)
         .expect("initial-template entries are validated during request admission");
     let globals = materialize_global_defaults(program, source, parameters, request_id, control)?;
+    let dynamic_documents = RefCell::default();
     let inputs = SequenceInputs {
         program,
         source,
@@ -568,7 +633,7 @@ fn execute_initial_template_with_optional_source(
         complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
         resource_snapshot: None,
         denied_resources: None,
-        dynamic_documents: RefCell::default(),
+        dynamic_documents: &dynamic_documents,
     };
     let variables = bind_template_parameters(
         &template.template,
@@ -780,6 +845,7 @@ fn execute_instruction(
         | Instruction::Xslt10ConcatVariable { .. }
         | Instruction::Xslt10KeyVariable { .. }
         | Instruction::SourceNodeVariable { .. }
+        | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { .. }
         | Instruction::SourceVariablePathVariable { .. }
         | Instruction::SourceNodeUnionVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
@@ -787,7 +853,7 @@ fn execute_instruction(
         | Instruction::Xslt10TextTreeVariable { .. }
         | Instruction::Xslt10ValueOfTreeVariable { .. }
         | Instruction::Xslt10ForEachTextTreeVariable { .. }
-        | Instruction::Xslt10SequenceTreeVariable { .. } => {
+        | Instruction::SequenceTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution, scope, control)?;
         }
         Instruction::ApplyTemplates { .. } => result.extend(execute_apply_instruction(
@@ -810,6 +876,7 @@ fn execute_instruction(
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfDocument { .. }
         | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfVariable { .. }
@@ -1054,6 +1121,7 @@ fn execute_result_instruction<'a>(
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfDocument { .. }
         | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfVariable { .. } => {
@@ -1124,6 +1192,13 @@ fn execute_copy_of_instruction<'a>(
             *recover_unattached_attributes,
             control,
         ),
+        Instruction::CopyOfDocument {
+            select,
+            recover_unattached_attributes,
+            ..
+        } => {
+            dynamic_document::copy_document(inputs, select, *recover_unattached_attributes, control)
+        }
         Instruction::CopyOfXslt10KeyLookup {
             select,
             recover_unattached_attributes,
@@ -1535,6 +1610,31 @@ fn execute_for_each_nodes<'a>(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let ApplySelection::LiteralDocumentRoot(reference) = select {
+        return execute_for_each_literal_document_root(
+            inputs,
+            LiteralDocumentTarget::Root(reference),
+            sorts,
+            body,
+            execution,
+            variables,
+            control,
+        );
+    }
+    if let ApplySelection::LiteralDocumentChildren { reference, name } = select {
+        return execute_for_each_literal_document_root(
+            inputs,
+            LiteralDocumentTarget::Children {
+                reference,
+                name: name.as_ref(),
+            },
+            sorts,
+            body,
+            execution,
+            variables,
+            control,
+        );
+    }
     let (_, context) = required_source_context(inputs, execution.node)?;
     let selected = if let ApplySelection::TemporaryPath { variable, steps } = select
         && let Some(selected) =
@@ -1550,6 +1650,62 @@ fn execute_for_each_nodes<'a>(
     for (index, node) in selected.into_iter().enumerate() {
         result.extend(execute_sequence(
             inputs,
+            body,
+            SequenceContext {
+                node: Some(node),
+                temporary_focus: None,
+                atomic_focus: None,
+                focus_position: index + 1,
+                focus_size,
+                ..execution
+            },
+            variables,
+            control,
+        )?);
+    }
+    Ok(result)
+}
+
+fn execute_for_each_literal_document_root<'a>(
+    inputs: &SequenceInputs<'a>,
+    target: LiteralDocumentTarget<'_>,
+    sorts: &[SortKey],
+    body: &[Instruction],
+    execution: SequenceContext<'a>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    validate_literal_document_context(inputs, variables.has_source_node_values())?;
+    let dynamic = dynamic_document::prepare_document(inputs, target.reference(), control)?;
+    let effective_document = derive_effective_source(
+        &inputs.program.source_whitespace,
+        dynamic.document.as_ref(),
+        WhitespaceRepresentation::VisibilityView,
+        inputs.request_id,
+        control,
+    )?;
+    let document = effective_document
+        .as_ref()
+        .unwrap_or(dynamic.document.as_ref());
+    let external_inputs = SequenceInputs {
+        program: inputs.program,
+        source: Some(document),
+        request_id: inputs.request_id,
+        globals: inputs.globals,
+        multiple_match_policy: inputs.multiple_match_policy,
+        document_rooted_matches: RefCell::default(),
+        complete_atomic_frame_clones: inputs.complete_atomic_frame_clones,
+        resource_snapshot: inputs.resource_snapshot,
+        denied_resources: inputs.denied_resources,
+        dynamic_documents: inputs.dynamic_documents,
+    };
+    let selected = select_literal_document_nodes(&external_inputs, document, target, control)?;
+    let selected = sort_selected_nodes(&external_inputs, selected, sorts, variables, control)?;
+    let focus_size = selected.len();
+    let mut result = Vec::new();
+    for (index, node) in selected.into_iter().enumerate() {
+        result.extend(execute_sequence(
+            &external_inputs,
             body,
             SequenceContext {
                 node: Some(node),
@@ -1687,43 +1843,36 @@ fn evaluate_sort_key_value(
             path,
             variable,
             explicit_position_comparison,
-        } => {
-            let nodes = evaluate_location_path_controlled(source, node, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            if !explicit_position_comparison
-                && variables.temporary_tree(inputs.globals, variable).is_some()
-            {
-                control
-                    .charge(WorkDomain::XPathOperation, 1)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                return Ok(nodes
-                    .first()
-                    .map_or_else(String::new, |selected| source.string_value(*selected)));
-            }
-            let position = sort_variable(inputs, variable, variables, control)?;
-            control
-                .charge(WorkDomain::XPathOperation, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            let selected =
-                crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
-                    .filter(|position| {
-                        position.is_finite() && *position >= 1.0 && position.fract() == 0.0
-                    })
-                    .and_then(|position| position.to_string().parse::<usize>().ok())
-                    .and_then(|position| nodes.get(position.saturating_sub(1)).copied());
-            Ok(selected.map_or_else(String::new, |selected| source.string_value(selected)))
-        }
+        } => evaluate_xslt10_variable_position_sort(
+            inputs,
+            focus,
+            path,
+            variable,
+            *explicit_position_comparison,
+            variables,
+            control,
+        ),
         SortSelect::Xslt10ChildNameEqualsVariable { variable } => {
             evaluate_xslt10_child_name_variable_sort(
                 inputs, source, node, variable, variables, control,
             )
         }
+        SortSelect::Xslt10PathStringLiteralComparison {
+            path,
+            literal,
+            equal,
+        } => evaluate_xslt10_path_string_literal_sort(
+            inputs, source, node, path, literal, *equal, control,
+        ),
         SortSelect::Xslt10KeyLookup(lookup) => {
             Ok(
                 key_lookup::select(inputs, lookup, Some(node), variables, control)?
                     .first()
                     .map_or_else(String::new, |selected| source.string_value(*selected)),
             )
+        }
+        SortSelect::Xslt10PathSubstring(expression) => {
+            evaluate_xslt10_substring_sort_key(inputs, source, node, expression, control)
         }
         SortSelect::PathUnion(alternatives) => {
             Ok(
@@ -1737,15 +1886,10 @@ fn evaluate_sort_key_value(
         SortSelect::ContextPosition => Ok(focus.position.to_string()),
         SortSelect::ContextSize => Ok(focus.size.to_string()),
         SortSelect::ContextNodeName => {
-            control
-                .charge(WorkDomain::XPathNodeVisit, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            Ok(source.name(node).map_or_else(String::new, |name| {
-                source.prefix(node).map_or_else(
-                    || name.local.clone(),
-                    |prefix| format!("{prefix}:{}", name.local),
-                )
-            }))
+            evaluate_sort_context_node_name(source, node, inputs.request_id, control)
+        }
+        SortSelect::ContextNodeLocalName => {
+            evaluate_sort_context_node_local_name(source, node, inputs.request_id, control)
         }
         SortSelect::ContextStringLength => Ok(evaluate_sort_context_string_length(
             source,
@@ -1773,6 +1917,115 @@ fn evaluate_sort_key_value(
             control,
         ),
     }
+}
+
+fn evaluate_xslt10_variable_position_sort(
+    inputs: &SequenceInputs<'_>,
+    focus: SortFocus<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    variable: &str,
+    explicit_position_comparison: bool,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let nodes = evaluate_location_path_controlled(focus.source, focus.node, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if !explicit_position_comparison && variables.temporary_tree(inputs.globals, variable).is_some()
+    {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        return Ok(nodes
+            .first()
+            .map_or_else(String::new, |selected| focus.source.string_value(*selected)));
+    }
+    let position = sort_variable(inputs, variable, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let selected = crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
+        .filter(|position| position.is_finite() && *position >= 1.0 && position.fract() == 0.0)
+        .and_then(|position| position.to_string().parse::<usize>().ok())
+        .and_then(|position| nodes.get(position.saturating_sub(1)).copied());
+    Ok(selected.map_or_else(String::new, |selected| focus.source.string_value(selected)))
+}
+
+fn evaluate_xslt10_path_string_literal_sort(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    node: NodeId,
+    path: &crate::xpath::path_experiment::LocationPath,
+    literal: &str,
+    equal: bool,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let selected = evaluate_location_path_controlled(source, node, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    for selected in selected {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        let value = source
+            .string_value_controlled(selected, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if (value == literal) == equal {
+            return Ok("true".to_owned());
+        }
+    }
+    Ok("false".to_owned())
+}
+
+fn evaluate_sort_context_node_name(
+    source: &Document,
+    node: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(source.name(node).map_or_else(String::new, |name| {
+        source.prefix(node).map_or_else(
+            || name.local.clone(),
+            |prefix| format!("{prefix}:{}", name.local),
+        )
+    }))
+}
+
+fn evaluate_sort_context_node_local_name(
+    source: &Document,
+    node: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(source
+        .name(node)
+        .map_or_else(String::new, |name| name.local.clone()))
+}
+
+fn evaluate_xslt10_substring_sort_key(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    node: NodeId,
+    expression: &crate::xslt::golden_semantics_experiment::Xslt10PathSubstring,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let nodes = evaluate_location_path_controlled(source, node, &expression.path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = nodes
+        .first()
+        .map_or_else(String::new, |selected| source.string_value(*selected));
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(crate::xpath::static_string_experiment::evaluate_substring(
+        &value,
+        f64::from_bits(expression.start_bits),
+        expression.length_bits.map(f64::from_bits),
+    ))
 }
 
 fn evaluate_xslt10_child_name_variable_sort(
@@ -2062,6 +2315,15 @@ fn execute_binding(
         Instruction::SourceNodeVariable { name, select, .. } => {
             bind_source_node_variable(inputs, execution, name, select, scope, control)?;
         }
+        instruction @ Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { .. } => {
+            bind_xslt10_source_nodes_attribute_equals_current_name(
+                inputs,
+                execution,
+                instruction,
+                scope,
+                control,
+            )?;
+        }
         instruction @ Instruction::SourceVariablePathVariable { .. } => {
             bind_source_variable_path_variable(inputs, instruction, scope, control)?;
         }
@@ -2087,7 +2349,7 @@ fn execute_binding(
         Instruction::Xslt10ForEachTextTreeVariable { name, select, .. } => {
             bind_xslt10_for_each_text_tree(inputs, scope, name, select, execution.node, control)?;
         }
-        Instruction::Xslt10SequenceTreeVariable { name, body, .. } => {
+        Instruction::SequenceTreeVariable { name, body, .. } => {
             let nodes = execute_sequence(inputs, body, execution, scope, control)?;
             let tree = materialize_result_nodes(&nodes, inputs.request_id, control)?;
             scope.bind_temporary_tree(name.clone(), tree);
@@ -2149,6 +2411,37 @@ fn bind_source_node_variable(
     let nodes = evaluate_location_path_controlled(source, context, select, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     scope.bind_source_nodes(name.to_owned(), nodes);
+    Ok(())
+}
+
+fn bind_xslt10_source_nodes_attribute_equals_current_name(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    instruction: &Instruction,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let Instruction::Xslt10SourceNodesAttributeEqualsCurrentName {
+        name,
+        select,
+        attribute,
+        ..
+    } = instruction
+    else {
+        unreachable!("current-name lookup binder receives one matching binding")
+    };
+    let (source, current) = required_source_context(inputs, execution.node)?;
+    let candidates = evaluate_location_path_controlled(source, current, select, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let selected = xslt10_current_name::retain_attribute_equal_to_current_name(
+        source,
+        current,
+        candidates,
+        attribute,
+        inputs.request_id,
+        control,
+    )?;
+    scope.bind_source_nodes(name.to_owned(), selected);
     Ok(())
 }
 
@@ -2388,7 +2681,7 @@ fn execute_copy(
 
 fn execute_source_element_copy(
     inputs: &SequenceInputs<'_>,
-    attributes: &[crate::xslt::golden_semantics_experiment::LiteralAttribute],
+    attributes: &[ComputedAttribute],
     body: &[Instruction],
     recover_unattached_attributes: bool,
     execution: SequenceContext<'_>,
@@ -2398,11 +2691,12 @@ fn execute_source_element_copy(
     let (source, node) = required_source_context(inputs, execution.node)?;
     match source.kind(node) {
         NodeKind::Document => {
-            let context_string = literal_attributes_require_context_string(attributes)
-                .then(|| source.string_value_controlled(node, control))
-                .transpose()
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            let mut copied = materialize_literal_attributes(
+            let context_string =
+                result_tree::computed_attributes_require_context_string(attributes)
+                    .then(|| source.string_value_controlled(node, control))
+                    .transpose()
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let mut copied = materialize_computed_attributes(
                 inputs,
                 attributes,
                 variables,
@@ -2477,20 +2771,20 @@ fn execute_source_element_copy_element(
     inputs: &SequenceInputs<'_>,
     source: &Document,
     node: NodeId,
-    attributes: &[crate::xslt::golden_semantics_experiment::LiteralAttribute],
+    attributes: &[ComputedAttribute],
     body: &[Instruction],
     execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let context_string = literal_attributes_require_context_string(attributes)
+    let context_string = result_tree::computed_attributes_require_context_string(attributes)
         .then(|| source.string_value_controlled(node, control))
         .transpose()
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     control
         .charge(WorkDomain::ResultNode, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let mut result_attributes = materialize_literal_attributes(
+    let materialized_attributes = materialize_computed_attributes(
         inputs,
         attributes,
         variables,
@@ -2505,15 +2799,26 @@ fn execute_source_element_copy_element(
         inputs.request_id,
         control,
     )?;
+    let mut result_attributes = Vec::with_capacity(materialized_attributes.len());
+    for (definition, attribute) in attributes.iter().zip(materialized_attributes) {
+        if definition.recover_duplicate {
+            result_attributes.retain(|existing: &ResultAttribute| existing.name != attribute.name);
+        }
+        result_attributes.push(attribute);
+    }
     let body = execute_sequence(inputs, body, execution, variables, control)?;
     let children =
         result_tree::assemble_element_content(&mut result_attributes, body, inputs.request_id)?;
+    let namespaces = result_tree::retain_dynamic_attribute_namespace_bindings(
+        source.in_scope_namespaces(node).into(),
+        &result_attributes,
+    );
     Ok(vec![ResultNode::Element {
         name: source
             .name(node)
             .expect("element context has a name")
             .clone(),
-        namespaces: source.in_scope_namespaces(node).into(),
+        namespaces,
         attributes: result_attributes,
         children,
     }])
@@ -3024,6 +3329,10 @@ fn execute_special_apply_selection(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Option<Vec<ResultNode>>, ExecutionFailure> {
+    if let Some(target) = literal_document_target(select) {
+        return execute_apply_literal_document_root(inputs, target, mode, parameters, control)
+            .map(Some);
+    }
     if let Some(ApplySelection::AtomicIntegerRange { start, end }) = select {
         return atomic_template_executor::apply_integer_range(
             inputs, *start, *end, mode, parameters, control,
@@ -3099,12 +3408,138 @@ fn execute_special_apply_selection(
     if select.is_none()
         && let Some(focus) = execution.temporary_focus
     {
-        return temporary_tree_executor::apply_temporary_builtin(
+        return temporary_tree_executor::apply_temporary_children(
             inputs, focus, mode, parameters, control,
         )
         .map(Some);
     }
     Ok(None)
+}
+
+fn execute_apply_literal_document_root(
+    inputs: &SequenceInputs<'_>,
+    target: LiteralDocumentTarget<'_>,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let has_source_node_parameters = parameters.values().any(|parameter| {
+        matches!(
+            &parameter.value,
+            InvocationParameterValue::SourceNodes(nodes) if !nodes.is_empty()
+        )
+    });
+    validate_literal_document_context(inputs, has_source_node_parameters)?;
+    let dynamic = dynamic_document::prepare_document(inputs, target.reference(), control)?;
+    let effective_document = derive_effective_source(
+        &inputs.program.source_whitespace,
+        dynamic.document.as_ref(),
+        WhitespaceRepresentation::VisibilityView,
+        inputs.request_id,
+        control,
+    )?;
+    let document = effective_document
+        .as_ref()
+        .unwrap_or(dynamic.document.as_ref());
+    let external_inputs = SequenceInputs {
+        program: inputs.program,
+        source: Some(document),
+        request_id: inputs.request_id,
+        globals: inputs.globals,
+        multiple_match_policy: inputs.multiple_match_policy,
+        document_rooted_matches: RefCell::default(),
+        complete_atomic_frame_clones: inputs.complete_atomic_frame_clones,
+        resource_snapshot: inputs.resource_snapshot,
+        denied_resources: inputs.denied_resources,
+        dynamic_documents: inputs.dynamic_documents,
+    };
+    let selected = select_literal_document_nodes(&external_inputs, document, target, control)?;
+    let focus_size = selected.len();
+    let mut result = Vec::new();
+    for (index, node) in selected.into_iter().enumerate() {
+        result.extend(apply_template_at(
+            &external_inputs,
+            node,
+            mode,
+            parameters,
+            index + 1,
+            focus_size,
+            control,
+        )?);
+    }
+    Ok(result)
+}
+
+fn select_literal_document_nodes(
+    inputs: &SequenceInputs<'_>,
+    document: &Document,
+    target: LiteralDocumentTarget<'_>,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let LiteralDocumentTarget::Children { name, .. } = target else {
+        return Ok(vec![document.document_node()]);
+    };
+    let mut selected = Vec::new();
+    for child in document.children(document.document_node()) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if document.kind(*child) == NodeKind::Element
+            && name.is_none_or(|expected| document.name(*child) == Some(expected))
+        {
+            selected.push(*child);
+        }
+    }
+    Ok(selected)
+}
+
+#[derive(Clone, Copy)]
+enum LiteralDocumentTarget<'a> {
+    Root(&'a DocumentRootReference),
+    Children {
+        reference: &'a DocumentRootReference,
+        name: Option<&'a ExpandedName>,
+    },
+}
+
+fn literal_document_target(
+    selection: Option<&ApplySelection>,
+) -> Option<LiteralDocumentTarget<'_>> {
+    match selection? {
+        ApplySelection::LiteralDocumentRoot(reference) => {
+            Some(LiteralDocumentTarget::Root(reference))
+        }
+        ApplySelection::LiteralDocumentChildren { reference, name } => {
+            Some(LiteralDocumentTarget::Children {
+                reference,
+                name: name.as_ref(),
+            })
+        }
+        _ => None,
+    }
+}
+
+impl LiteralDocumentTarget<'_> {
+    fn reference(&self) -> &DocumentRootReference {
+        match self {
+            Self::Root(reference) | Self::Children { reference, .. } => reference,
+        }
+    }
+}
+
+fn validate_literal_document_context(
+    inputs: &SequenceInputs<'_>,
+    has_unqualified_source_node_values: bool,
+) -> Result<(), ExecutionFailure> {
+    if !inputs.globals.nodes.is_empty() || has_unqualified_source_node_values {
+        return Err(failure(
+            "FXRT1017",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "document-root execution with source-node variables or parameters is outside the admitted multi-document slice",
+        ));
+    }
+    Ok(())
 }
 
 fn select_source_variable_path(
@@ -3441,15 +3876,8 @@ fn evaluate_boolean(
             control,
         );
     }
-    if let BooleanExpression::Xslt10VariableNumericComparison {
-        left,
-        operator,
-        right,
-    } = expression
-    {
-        return evaluate_xslt10_variable_numeric_comparison(
-            inputs, left, *operator, right, variables, control,
-        );
+    if let Some(result) = evaluate_xslt10_numeric_boolean(inputs, expression, variables, control) {
+        return result;
     }
     if let BooleanExpression::Xslt10VariableLessThanNodeCount {
         numeric_variable,
@@ -3479,15 +3907,10 @@ fn evaluate_boolean(
         )
         .map(|length| length != 0);
     }
-    if let BooleanExpression::Xslt10ChildAttributeVariableEquals {
-        child,
-        attribute,
-        variable,
-    } = expression
+    if let Some(value) =
+        evaluate_child_attribute_variable_boolean(inputs, expression, context, variables, control)
     {
-        return evaluate_xslt10_child_attribute_variable_equals(
-            inputs, context, child, attribute, variable, variables, control,
-        );
+        return value;
     }
     if let BooleanExpression::Xslt10ContextNodeSetEqualsVariable { variable, location } = expression
     {
@@ -3734,11 +4157,13 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::DocumentRootIdentityEqual { .. }
         | BooleanExpression::Xslt10VariableStringLengthComparison { .. }
         | BooleanExpression::Xslt10VariableNumericComparison { .. }
+        | BooleanExpression::Xslt10VariableNumericLiteralComparison { .. }
         | BooleanExpression::Xslt10VariableLessThanNodeCount { .. }
         | BooleanExpression::Xslt10ContextTranslateStartsWith(_)
         | BooleanExpression::Xslt10ContextPositionModuloVariable { .. }
         | BooleanExpression::Xslt10VariableStringLength(_)
         | BooleanExpression::Xslt10ChildAttributeVariableEquals { .. }
+        | BooleanExpression::ChildAttributeVariableStringEquals { .. }
         | BooleanExpression::Xslt10ContextNodeSetEqualsVariable { .. }
         | BooleanExpression::Xslt10AncestorFilter(_)
         | BooleanExpression::Xslt10KeyLookupEffectiveBooleanValue(_)
@@ -3908,17 +4333,51 @@ fn ancestor_has_text_child(
     Ok(false)
 }
 
-fn evaluate_xslt10_child_attribute_variable_equals(
+fn evaluate_child_attribute_variable_boolean(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    context: Option<NodeId>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Option<Result<bool, ExecutionFailure>> {
+    let (child_name, attribute_name, variable, xslt10) = match expression {
+        BooleanExpression::Xslt10ChildAttributeVariableEquals {
+            child,
+            attribute,
+            variable,
+        } => (child, attribute, variable, true),
+        BooleanExpression::ChildAttributeVariableStringEquals {
+            child,
+            attribute,
+            variable,
+        } => (child, attribute, variable, false),
+        _ => return None,
+    };
+    let expected = if xslt10 {
+        value_evaluator::xslt10_variable_string_value(inputs, variable, variables, control)
+    } else {
+        value_evaluator::variable_string_function_value(inputs, variable, variables, control)
+    };
+    Some(expected.and_then(|expected| {
+        evaluate_child_attribute_equals(
+            inputs,
+            context,
+            child_name,
+            attribute_name,
+            &expected,
+            control,
+        )
+    }))
+}
+
+fn evaluate_child_attribute_equals(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     child_name: &ExpandedName,
     attribute_name: &ExpandedName,
-    variable: &str,
-    variables: &RuntimeVariables,
+    expected: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
-    let expected =
-        value_evaluator::xslt10_variable_string_value(inputs, variable, variables, control)?;
     let (source, context) = required_source_context(inputs, context)?;
     for child in source.children(context) {
         control
@@ -4043,6 +4502,33 @@ fn evaluate_xslt10_variable_numeric_comparison(
     let left = value_evaluator::xslt10_variable_number(inputs, left, variables, control)?;
     let right = value_evaluator::xslt10_variable_number(inputs, right, variables, control)?;
     Ok(compare_xpath_numbers(left, operator, right))
+}
+
+fn evaluate_xslt10_numeric_boolean(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Option<Result<bool, ExecutionFailure>> {
+    match expression {
+        BooleanExpression::Xslt10VariableNumericComparison {
+            left,
+            operator,
+            right,
+        } => Some(evaluate_xslt10_variable_numeric_comparison(
+            inputs, left, *operator, right, variables, control,
+        )),
+        BooleanExpression::Xslt10VariableNumericLiteralComparison {
+            variable,
+            operator,
+            value_bits,
+        } => Some(
+            value_evaluator::xslt10_variable_number(inputs, variable, variables, control).map(
+                |variable| compare_xpath_numbers(variable, *operator, f64::from_bits(*value_bits)),
+            ),
+        ),
+        _ => None,
+    }
 }
 
 fn evaluate_identity_boolean(
@@ -4868,6 +5354,12 @@ fn select_apply_nodes(
             evaluate_location_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
+        ApplySelection::LiteralDocumentRoot(_) | ApplySelection::LiteralDocumentChildren { .. } => {
+            unreachable!("literal document selection is dispatched before source selection")
+        }
+        ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path } => {
+            select_xslt10_id_without_typed_ids(inputs, context, argument_path.as_ref(), control)
+        }
         ApplySelection::Xslt10KeyLookup(lookup) => {
             key_lookup::select(inputs, lookup, Some(context), variables, control)
         }
@@ -4951,6 +5443,23 @@ fn select_apply_nodes(
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }
+}
+
+fn select_xslt10_id_without_typed_ids(
+    inputs: &SequenceInputs<'_>,
+    context: NodeId,
+    argument_path: Option<&LocationPath>,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    if let Some(argument_path) = argument_path {
+        let source = inputs.source.expect("ID lookup requires a source");
+        evaluate_location_path_controlled(source, context, argument_path, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    }
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(Vec::new())
 }
 
 fn select_xslt10_children_of_named_elements(
@@ -5531,6 +6040,9 @@ fn apply_builtin_template(
     {
         if let Some(on_no_match) = mode_policy.on_no_match {
             match on_no_match {
+                OnNoMatchPolicy::DeepSkip => {
+                    return apply_deep_skip_template(inputs, node, mode, parameters, control);
+                }
                 OnNoMatchPolicy::Fail => {
                     return Err(failure_at(
                         "XTDE0555",
@@ -5553,6 +6065,23 @@ fn apply_builtin_template(
         }
     }
     apply_text_only_copy_template(inputs, node, mode, parameters, control)
+}
+
+fn apply_deep_skip_template(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let source = inputs
+        .source
+        .expect("deep-skip built-in templates require a source document");
+    if source.kind(node) == NodeKind::Document {
+        apply_child_templates(inputs, node, mode, parameters, control)
+    } else {
+        Ok(Vec::new())
+    }
 }
 
 fn apply_shallow_skip_template(

@@ -1149,6 +1149,15 @@ fn compile_template_priority(
     };
     let lexical = lexical.trim();
     if is_decimal_lexical(lexical) {
+        if super::instruction_compiler::uses_xslt10_compatibility(document, element) {
+            return parse_xslt10_template_priority(lexical).ok_or_else(|| {
+                unsupported(
+                    "FXST1025",
+                    "explicit XSLT 1.0 template priority exceeds the private numeric domain",
+                    document.location(element),
+                )
+            });
+        }
         return parse_bounded_template_priority(lexical).ok_or_else(|| {
             unsupported(
                 "FXST1025",
@@ -1162,6 +1171,14 @@ fn compile_template_priority(
         format!("invalid template priority: {lexical}"),
         document.location(element),
     ))
+}
+
+fn parse_xslt10_template_priority(value: &str) -> Option<TemplatePriority> {
+    let number = value.parse::<f64>().ok()?;
+    if !number.is_finite() {
+        return None;
+    }
+    parse_bounded_template_priority(&format!("{number:.18}"))
 }
 
 fn parse_atomic_integer_threshold(pattern: &str) -> Option<i64> {

@@ -923,6 +923,25 @@ fn backward_global_dependencies_remain_in_the_admitted_slice() {
 }
 
 #[test]
+fn folds_static_string_function_global_defaults() {
+    let document = parse_stylesheet(
+        "memory:static-string-global.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:param name="single" select="string('kept')"/><xsl:variable name="double" select='string("also kept")'/><xsl:template match="/"/></xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("static string globals should compile");
+
+    assert_eq!(
+        program.global_bindings[0].default,
+        GlobalBindingDefault::Text("kept".to_owned())
+    );
+    assert_eq!(
+        program.global_bindings[1].default,
+        GlobalBindingDefault::Text("also kept".to_owned())
+    );
+}
+
+#[test]
 fn typed_string_globals_resolve_the_schema_namespace_not_the_prefix_spelling() {
     let valid = parse_stylesheet(
             "memory:typed-string-global.xsl",
@@ -1176,6 +1195,23 @@ fn retains_xml_10_serialization_version_and_rejects_unadmitted_versions() {
 }
 
 #[test]
+fn xslt10_empty_html_version_uses_the_unspecified_legacy_default() {
+    let legacy = parse_stylesheet(
+        "memory:xslt10-empty-html-version.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="html" version=""/><xsl:template match="/"><html/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&legacy).expect("legacy empty HTML version should compile");
+    assert_eq!(program.output.version, None);
+
+    let modern = parse_stylesheet(
+        "memory:modern-empty-html-version.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="html" version=""/><xsl:template match="/"><html/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&modern).expect("modern value remains serializer metadata");
+    assert_eq!(program.output.version.as_deref(), Some(""));
+}
+
+#[test]
 fn retains_doctype_identifiers_as_owned_serialization_metadata() {
     let stylesheet = parse_stylesheet(
             "memory:doctype-output.xsl",
@@ -1256,6 +1292,24 @@ fn retains_requested_encoding_for_serializer_capability_selection() {
     let program = compile_stylesheet(&utf_16)
         .expect("the compiler should retain rather than implement the requested encoding");
     assert_eq!(program.output.encoding.as_deref(), Some("UTF-16"));
+}
+
+#[test]
+fn xslt10_normalizes_the_historical_unicode_output_encoding_alias_only() {
+    let xslt10 = parse_stylesheet(
+        "memory:xslt10-unicode-output.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" encoding=" unicode "/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+    );
+    let modern = parse_stylesheet(
+        "memory:modern-unicode-output.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" encoding="unicode"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+    );
+
+    let xslt10 = compile_stylesheet(&xslt10).expect("the XSLT 1.0 alias should compile");
+    let modern = compile_stylesheet(&modern).expect("modern encoding metadata should compile");
+
+    assert_eq!(xslt10.output.encoding.as_deref(), Some("UTF-16"));
+    assert_eq!(modern.output.encoding.as_deref(), Some("unicode"));
 }
 
 #[test]
@@ -1587,6 +1641,21 @@ fn retains_bounded_exact_template_priority_and_classifies_other_lexicals() {
     assert!(
         extended_program.matched_templates[1].priority
             > extended_program.matched_templates[2].priority
+    );
+
+    let xslt10_rounded = parse_stylesheet(
+            "memory:xslt10-rounded-priority.xsl",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item" priority="222222222222222222222222222222222222"><large/></xsl:template><xsl:template match="other" priority="222222222222222222222222222222222221"><same-large/></xsl:template><xsl:template match="item" priority="1.222222222222222222"><fraction/></xsl:template><xsl:template match="other" priority="1.222222222222222221"><same-fraction/></xsl:template></xsl:stylesheet>"#,
+        );
+    let xslt10_rounded_program = compile_stylesheet(&xslt10_rounded)
+        .expect("XSLT 1.0 priorities should use its double-precision number domain");
+    assert_eq!(
+        xslt10_rounded_program.matched_templates[0].priority,
+        xslt10_rounded_program.matched_templates[1].priority
+    );
+    assert_eq!(
+        xslt10_rounded_program.matched_templates[2].priority,
+        xslt10_rounded_program.matched_templates[3].priority
     );
 
     let overprecision = parse_stylesheet(
@@ -2390,6 +2459,15 @@ fn distinguishes_invalid_stylesheet_from_unsupported_instruction() {
         .expect_err("unknown named-template references are statically invalid");
     assert_eq!(failure.category, CompileCategory::Invalid);
     assert_eq!(failure.code, "FXST0014");
+
+    let missing_required_parameter = parse_stylesheet(
+        "memory:missing-required-template-parameter.xsl",
+        br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:call-template name="worker"/></xsl:template><xsl:template name="worker"><xsl:param name="required" required="yes"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&missing_required_parameter)
+        .expect_err("omitted required non-tunnel parameters are statically invalid");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+    assert_eq!(failure.code, "XTSE0690");
 }
 
 #[test]
@@ -2502,14 +2580,21 @@ fn compiles_strip_all_and_exact_expanded_name_whitespace_policies() {
             ]
     ));
 
-    let unsupported = parse_stylesheet(
+    let namespace_wildcard = parse_stylesheet(
         "memory:namespace-wildcard-strip.xsl",
         br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:n="urn:n"><xsl:strip-space elements="n:*"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&unsupported)
-        .expect_err("namespace-wildcard whitespace rules remain outside the reference slice");
-    assert_eq!(failure.code, "FXST1043");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    let namespace_wildcard = compile_stylesheet(&namespace_wildcard)
+        .expect("namespace-wildcard whitespace rules should compile");
+    assert!(matches!(
+        namespace_wildcard.source_whitespace,
+        crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::Mixed {
+            strip_all: false,
+            ref stripped_namespaces,
+            ref preserved_namespaces,
+            ..
+        } if stripped_namespaces == &["urn:n"] && preserved_namespaces.is_empty()
+    ));
 }
 
 #[test]
@@ -2522,26 +2607,51 @@ fn compiles_exact_preserve_all_as_the_default_whitespace_policy() {
         compile_stylesheet(&stylesheet).expect("exact preserve-all policy should compile");
     assert_eq!(
         program.source_whitespace,
-        crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::Preserve
+        crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::PreserveAllDeclared
     );
 
     let selective = parse_stylesheet(
         "memory:selective-preserve.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:preserve-space elements="item"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:n="urn:n"><xsl:preserve-space elements="item n:item item"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&selective)
-        .expect_err("selective whitespace rules remain outside the private slice");
-    assert_eq!(failure.code, "FXST1043");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    let selective = compile_stylesheet(&selective)
+        .expect("exact preserve declarations should retain their expanded names");
+    assert!(matches!(
+        selective.source_whitespace,
+        crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::PreserveExpandedNames(ref names)
+            if names == &[
+                crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: "item".to_owned(),
+                },
+                crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: Some("urn:n".to_owned()),
+                    local: "item".to_owned(),
+                },
+            ]
+    ));
 
     let composed = parse_stylesheet(
         "memory:composed-whitespace.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:preserve-space elements="*"/><xsl:strip-space elements="*"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:strip-space elements="*"/><xsl:preserve-space elements="kept"/><xsl:strip-space elements="reset"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&composed)
-        .expect_err("mixed whitespace declarations remain outside the private slice");
-    assert_eq!(failure.code, "FXST1043");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    let composed = compile_stylesheet(&composed)
+        .expect("same-module exact strip/preserve rules should compose");
+    assert!(matches!(
+        composed.source_whitespace,
+        crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::Mixed {
+            strip_all: true,
+            ref stripped_names,
+            ref preserved_names,
+            ..
+        } if stripped_names == &[crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: "reset".to_owned(),
+        }] && preserved_names == &[crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: "kept".to_owned(),
+        }]
+    ));
 }
 
 #[test]
@@ -3034,10 +3144,8 @@ fn number_admits_static_letter_values_only_when_existing_tokens_are_equivalent()
         "memory:modern-dynamic-number-format.xsl",
         br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:param name="format" select="'1'"/><xsl:template match="/"><xsl:number value="1" format="{$format}"/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&modern_dynamic)
-        .expect_err("the XSLT 1.0 compatibility slice must not widen modern formats");
-    assert_eq!(failure.code, "FXST1049");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    compile_stylesheet(&modern_dynamic)
+        .expect("a modern single-variable number format AVT should compile separately");
 }
 
 #[test]
@@ -3226,4 +3334,33 @@ fn top_level_union_splitter_ignores_nested_and_quoted_separators() {
         split_top_level_union("(a|b)/c | d[e='x|y']"),
         Some(vec!["(a|b)/c ", " d[e='x|y']"])
     );
+}
+
+#[test]
+fn forward_compatible_choose_defers_an_unselected_future_instruction() {
+    let stylesheet = parse_stylesheet(
+        "memory:forward-compatible-choose.xsl",
+        br#"<xsl:stylesheet version="17.1" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:choose><xsl:when test="system-property('xsl:version') &gt;= 17.1"><xsl:future/></xsl:when><xsl:otherwise><out/></xsl:otherwise></xsl:choose></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("an unselected future-version instruction should be deferred");
+    let root = program.root_template.expect("root template");
+    assert!(matches!(
+        root.body.as_slice(),
+        [Instruction::Choose { branches, .. }]
+            if matches!(branches.as_slice(), [branch]
+                if branch.test == BooleanExpression::Constant(false) && branch.body.is_empty())
+    ));
+}
+
+#[test]
+fn supported_version_choose_still_validates_its_selected_instruction_body() {
+    let stylesheet = parse_stylesheet(
+        "memory:supported-version-choose.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:choose><xsl:when test="system-property('xsl:version') &gt;= 3.0"><xsl:future/></xsl:when><xsl:otherwise><out/></xsl:otherwise></xsl:choose></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&stylesheet)
+        .expect_err("a selected unknown instruction remains unsupported");
+    assert_eq!(failure.code, "FXST1006");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
 }

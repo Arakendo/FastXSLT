@@ -9,7 +9,7 @@
 | Trigger | XSLT30 `mode-1301` requires `xsl:strip-space` over a reusable prepared source |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0004, ADR-0007, ADR-0012 |
 | Related reviews | AR-0007, AR-0008, AR-0009, AR-0013 |
-| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, `../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, `../Evidence/peer-ar-0016-decision-readiness-monday-2026-08-30.md`, `../Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md`, `../Evidence/oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md`, `../Evidence/oasis-xslt10-exact-name-whitespace-stripping-2026-09-23.md`, and the pinned XSLT30 `mode-1301` case |
+| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, `../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, `../Evidence/peer-ar-0016-decision-readiness-monday-2026-08-30.md`, `../Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md`, `../Evidence/oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md`, `../Evidence/oasis-xslt10-exact-name-whitespace-stripping-2026-09-23.md`, `../Evidence/oasis-xslt10-exact-preserve-and-first-text-length-2026-09-24.md`, `../Evidence/oasis-xslt10-same-module-mixed-whitespace-policy-2026-09-24.md`, and the pinned XSLT30 `mode-1301` case |
 
 ## Architectural question
 
@@ -177,13 +177,26 @@ conformance shortcut.
   matrix and allocator-requested probe supersede that preliminary result for
   representation selection while remaining non-product benchmark evidence.
 - Exact expanded-name `xsl:strip-space` tests now use the same reference and
-  view after eight unchanged OASIS cases became exact. Namespace wildcards,
-  selective `xsl:preserve-space`, import precedence, conflicts, schema-aware
+  view after eight unchanged OASIS cases became exact. Exact preserve-only
+  declarations are retained without constructing a view and one further OASIS
+  case is exact. Namespace wildcards, mixed preservation/stripping, import
+  precedence, conflicts, schema-aware
   whitespace, and CDATA lexical-origin compatibility remain outside the
   admitted decision. Inherited
   source `xml:space` preserve/default state was later admitted by ADR-0012's
   2026-09-23 amendment after twelve unchanged OASIS cases activated the
   reopening trigger.
+- Same-module exact strip/preserve declarations now compose with a wildcard
+  default in both safe representations. Eight unchanged OASIS cases enter
+  execution and five become exact. Namespace wildcards and general
+  cross-module import precedence remain unadmitted; three newly visible cases
+  retain later namespace-alias or CDATA/indentation mismatches.
+- Namespace-wildcard whitespace NameTests now resolve their prefix to a static
+  namespace URI and use the same complete-reference/visibility-view predicate.
+  Exact names outrank namespace wildcards, which outrank `*`; later
+  declarations win equal-priority conflicts. The final unchanged `FXST1043`
+  case initializes, executes, and compares exactly. General cross-module import
+  precedence remains unadmitted.
 - The required private seam may also inform future physical source strategies,
   but this evidence does not reopen XSLT streaming or justify a universal
   navigation provider.
@@ -244,9 +257,19 @@ performance guarantee.
 - [x] Revisit exact expanded-name declaration matching when corpus cases enter
   selection. Seventeen cases leave `FXST1043`; eight become exact and nine
   expose independent later frontiers.
-- [ ] Revisit namespace wildcards, selective preservation, declaration
-  precedence, CDATA lexical origin, and typed whitespace only when exact corpus
-  cases enter selection.
+- [x] Retain exact expanded-name preserve-only declarations without building a
+  source view. Five cases leave `FXST1043`; one becomes exact after its typed
+  first-text string-length composition is admitted and four expose the global
+  temporary-tree constructor boundary.
+- [x] Revisit same-module mixed preservation/stripping when exact corpus cases
+  enter selection. Exact names and the `*` wildcard now compose with standard
+  NameTest priority and same-priority declaration order.
+- [x] Revisit namespace wildcards when an exact corpus case enters selection.
+  Prefixes now resolve to namespace identity during compilation; exact names
+  outrank namespace wildcards, which outrank `*`, in both safe whitespace
+  representations. Unchanged Lotus `whitespace07` eliminates `FXST1043`.
+- [ ] Revisit cross-module import precedence, CDATA lexical origin, and typed
+  whitespace only when exact corpus cases enter selection.
 
 ## Reopening triggers
 
@@ -299,3 +322,8 @@ effective-document inspection contract.
   Admitted compiled expanded-name strip tests through both safe
   representations; eight cases become exact and nine expose later independent
   frontiers. Wildcards, selective preservation, and precedence remain open.
+- 2026-09-24 -- Five unchanged OASIS cases activated exact preserve-only
+  declaration retention. No view is constructed, included declarations remain
+  visible to conflict checks, one case becomes exact, and four expose the
+  independent global temporary-tree constructor boundary. Mixed rules,
+  wildcards, and precedence remain open.

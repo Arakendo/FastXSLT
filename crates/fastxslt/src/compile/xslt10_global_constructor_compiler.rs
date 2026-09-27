@@ -8,18 +8,192 @@ use std::collections::BTreeMap;
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xslt::golden_semantics_experiment::{
-    ConstructedAttribute, ConstructedElement, ConstructedNode, GlobalBindingDefault,
+    ConstructedAttribute, ConstructedElement, ConstructedNode, GlobalBindingDefault, Instruction,
     LiteralAttributeValue,
 };
 
 use super::instruction_compiler::{
-    compile_literal_result_attributes, compile_text_value, literal_result_namespaces,
+    compile_literal_result_attributes, compile_text_value, effective_xml_space_preserved,
+    literal_result_namespaces,
 };
 use super::{
     CompileFailure, XSLT_NAMESPACE, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    is_xslt_element, meaningful_children, normalize_variable_qname, optional_attribute,
-    required_attribute, xpath_string_literal,
+    is_xslt_element, map_path_failure, meaningful_children, normalize_variable_qname,
+    optional_attribute, required_attribute, xpath_string_literal,
 };
+use crate::xpath::path_experiment::parse_location_path;
+
+pub(super) fn compile_source_value_tree(
+    document: &Document,
+    binding: NodeId,
+    declared_type: Option<&str>,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    let Some(stylesheet) = document.parent(binding) else {
+        return Ok(None);
+    };
+    if declared_type.is_some()
+        || optional_attribute(document, stylesheet, None, "version") != Some("1.0")
+    {
+        return Ok(None);
+    }
+    let mut nodes = Vec::new();
+    for child in constructor_children(document, binding)? {
+        let Some(node) = compile_source_value_node(document, child)? else {
+            return Ok(None);
+        };
+        nodes.push(node);
+    }
+    if nodes.is_empty() || !nodes.iter().any(constructed_node_uses_source_value) {
+        return Ok(None);
+    }
+    Ok(Some(GlobalBindingDefault::TemporaryTree(nodes)))
+}
+
+fn constructed_node_uses_source_value(node: &ConstructedNode) -> bool {
+    match node {
+        ConstructedNode::Element(element) => element
+            .children
+            .iter()
+            .any(constructed_node_uses_source_value),
+        ConstructedNode::Xslt10SourcePathString(_) | ConstructedNode::Xslt10ForEachText { .. } => {
+            true
+        }
+        ConstructedNode::Text(_) | ConstructedNode::Comment(_) => false,
+    }
+}
+
+fn compile_source_value_node(
+    document: &Document,
+    node: NodeId,
+) -> Result<Option<ConstructedNode>, CompileFailure> {
+    match document.kind(node) {
+        NodeKind::Text => Ok(Some(ConstructedNode::Text(
+            document.value(node).unwrap_or_default().to_owned(),
+        ))),
+        NodeKind::Element if is_xslt_element(document, node, "value-of") => {
+            ensure_only_attributes(document, node, &["select"], "xsl:value-of")?;
+            ensure_no_meaningful_children(document, node, "xsl:value-of")?;
+            let select = required_attribute(document, node, None, "select")?;
+            parse_location_path(select, document.location(node).clone())
+                .map(ConstructedNode::Xslt10SourcePathString)
+                .map(Some)
+                .map_err(map_path_failure)
+        }
+        NodeKind::Element if is_xslt_element(document, node, "text") => {
+            compile_text_value(document, node).map(|value| Some(ConstructedNode::Text(value)))
+        }
+        NodeKind::Element if is_xslt_element(document, node, "comment") => {
+            compile_static_comment(document, node)
+        }
+        NodeKind::Element if is_xslt_element(document, node, "for-each") => {
+            compile_static_for_each_text(document, node)
+        }
+        NodeKind::Element
+            if document
+                .name(node)
+                .is_some_and(|name| name.namespace.as_deref() == Some(XSLT_NAMESPACE)) =>
+        {
+            Ok(None)
+        }
+        NodeKind::Element => compile_source_value_element(document, node)
+            .map(|element| element.map(ConstructedNode::Element)),
+        NodeKind::Comment | NodeKind::ProcessingInstruction => {
+            unreachable!("meaningful_children excludes comments and processing instructions")
+        }
+        NodeKind::Document | NodeKind::Attribute => Err(invalid(
+            "FXST0006",
+            "unexpected node kind in a temporary-tree constructor",
+            document.location(node),
+        )),
+    }
+}
+
+fn compile_static_comment(
+    document: &Document,
+    element: NodeId,
+) -> Result<Option<ConstructedNode>, CompileFailure> {
+    Ok(
+        match super::instruction_compiler::compile_comment(document, element)? {
+            Instruction::CommentNode { value, .. } => Some(ConstructedNode::Comment(value)),
+            _ => None,
+        },
+    )
+}
+
+fn compile_static_for_each_text(
+    document: &Document,
+    element: NodeId,
+) -> Result<Option<ConstructedNode>, CompileFailure> {
+    ensure_only_attributes(document, element, &["select"], "xsl:for-each")?;
+    let mut value = String::new();
+    for child in constructor_children(document, element)? {
+        match document.kind(child) {
+            NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
+            NodeKind::Element if is_xslt_element(document, child, "text") => {
+                value.push_str(&compile_text_value(document, child)?);
+            }
+            _ => return Ok(None),
+        }
+    }
+    let select = required_attribute(document, element, None, "select")?;
+    parse_location_path(select, document.location(element).clone())
+        .map(|select| Some(ConstructedNode::Xslt10ForEachText { select, value }))
+        .map_err(map_path_failure)
+}
+
+fn compile_source_value_element(
+    document: &Document,
+    element: NodeId,
+) -> Result<Option<ConstructedElement>, CompileFailure> {
+    let name = document.name(element).expect("element nodes have names");
+    let mut attributes = Vec::new();
+    for attribute in compile_literal_result_attributes(document, element)? {
+        let LiteralAttributeValue::Text(value) = attribute.value else {
+            return Ok(None);
+        };
+        attributes.push(ConstructedAttribute {
+            name: attribute.name,
+            value,
+        });
+    }
+    let mut children = Vec::new();
+    for child in constructor_children(document, element)? {
+        let Some(child) = compile_source_value_node(document, child)? else {
+            return Ok(None);
+        };
+        children.push(child);
+    }
+    Ok(Some(ConstructedElement {
+        name: name.clone(),
+        namespaces: literal_result_namespaces(document, element),
+        attributes,
+        children,
+    }))
+}
+
+fn constructor_children(
+    document: &Document,
+    parent: NodeId,
+) -> Result<Vec<NodeId>, CompileFailure> {
+    let preserve_whitespace = effective_xml_space_preserved(document, parent)?;
+    Ok(document
+        .children(parent)
+        .iter()
+        .copied()
+        .filter(|child| match document.kind(*child) {
+            NodeKind::Comment | NodeKind::ProcessingInstruction => false,
+            NodeKind::Text => {
+                preserve_whitespace
+                    || !document
+                        .value(*child)
+                        .unwrap_or_default()
+                        .chars()
+                        .all(char::is_whitespace)
+            }
+            _ => true,
+        })
+        .collect())
+}
 
 pub(super) fn compile_static_local_tree(
     document: &Document,
@@ -69,7 +243,7 @@ pub(super) fn compile_static_local_tree(
     Ok(Some(GlobalBindingDefault::TemporaryTree(nodes)))
 }
 
-fn compile_static_local(
+pub(super) fn compile_static_local(
     document: &Document,
     variable: NodeId,
 ) -> Result<Option<(String, String)>, CompileFailure> {

@@ -42,7 +42,7 @@ pub(super) struct SequenceInputs<'a> {
     pub(super) complete_atomic_frame_clones: bool,
     pub(super) resource_snapshot: Option<&'a ResourceSnapshot>,
     pub(super) denied_resources: Option<&'a HashSet<String>>,
-    pub(super) dynamic_documents: RefCell<BTreeMap<String, DynamicDocument>>,
+    pub(super) dynamic_documents: &'a RefCell<BTreeMap<String, DynamicDocument>>,
 }
 
 #[derive(Debug, Default)]
@@ -104,6 +104,7 @@ pub(super) struct InvocationParameter {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum InvocationParameterValue {
     Atomic(AtomicValue),
+    AtomicSequence(Vec<AtomicValue>),
     SourceNodes(Vec<NodeId>),
     TemporaryTree(TemporaryTree),
 }
@@ -147,7 +148,16 @@ fn evaluate_template_argument(
     let context = execution.node;
     let focus_position = execution.focus_position;
     let focus_size = execution.focus_size;
+    if let Some(value) = evaluate_context_argument(argument, inputs, execution, control)? {
+        return Ok(value);
+    }
     Ok(match &argument.value {
+        TemplateArgumentValue::EmptySequence => {
+            InvocationParameterValue::AtomicSequence(Vec::new())
+        }
+        TemplateArgumentValue::ConstructedString(nodes) => {
+            evaluate_constructed_string_argument(nodes, inputs, control)?
+        }
         TemplateArgumentValue::Text(value) => {
             InvocationParameterValue::Atomic(AtomicValue::string(value.clone()))
         }
@@ -157,11 +167,10 @@ fn evaluate_template_argument(
         TemplateArgumentValue::Boolean(value) => InvocationParameterValue::Atomic(
             AtomicValue::from_validated_lexical(BuiltinAtomicType::Boolean, value.to_string()),
         ),
-        TemplateArgumentValue::ContextPosition => integer_parameter(focus_position),
-        TemplateArgumentValue::ContextSize => integer_parameter(focus_size),
-        TemplateArgumentValue::ContextNodeName => {
-            evaluate_context_name_argument(inputs, context, &argument.location, control)?
-        }
+        TemplateArgumentValue::ContextPosition
+        | TemplateArgumentValue::ContextSize
+        | TemplateArgumentValue::ContextNodeName
+        | TemplateArgumentValue::ContextNodeStringLength(_) => unreachable!(),
         TemplateArgumentValue::CurrentSourceNode => {
             let (_, context) = required_source_context(inputs, context)?;
             InvocationParameterValue::SourceNodes(vec![context])
@@ -182,14 +191,11 @@ fn evaluate_template_argument(
         TemplateArgumentValue::SourceVariablePath { variable, path } => {
             evaluate_source_variable_path_argument(inputs, variable, path, variables, control)?
         }
-        TemplateArgumentValue::Xslt10BinaryNumeric(expression) => {
+        TemplateArgumentValue::BinaryNumeric(expression) => {
             evaluate_numeric_template_argument(inputs, execution, expression, variables, control)?
         }
         TemplateArgumentValue::SourcePath(path) => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let nodes = evaluate_location_path_controlled(source, context, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            InvocationParameterValue::SourceNodes(nodes)
+            evaluate_source_path_argument(inputs, context, path, control)?
         }
         TemplateArgumentValue::Xslt10CountPathUnion(alternatives) => {
             let (source, context) = required_source_context(inputs, context)?;
@@ -214,15 +220,11 @@ fn evaluate_template_argument(
             focus_size,
             control,
         )?,
-        TemplateArgumentValue::Xslt10ForEachPathStringContent(path) => {
-            evaluate_xslt10_for_each_path_string_content(inputs, context, path, control)?
+        TemplateArgumentValue::ForEachPathStringContent(path) => {
+            evaluate_for_each_path_string_content(inputs, context, path, control)?
         }
         TemplateArgumentValue::Xslt10ConstructedContent(nodes) => {
-            InvocationParameterValue::TemporaryTree(materialize_temporary_nodes(
-                nodes,
-                inputs.request_id,
-                control,
-            )?)
+            evaluate_constructed_template_argument(nodes, inputs, control)?
         }
         TemplateArgumentValue::Xslt10SequenceConstructor(instructions) => {
             let nodes =
@@ -245,6 +247,64 @@ fn evaluate_template_argument(
     })
 }
 
+fn evaluate_context_argument(
+    argument: &TemplateArgument,
+    inputs: &SequenceInputs<'_>,
+    execution: super::SequenceContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<Option<InvocationParameterValue>, ExecutionFailure> {
+    let value = match &argument.value {
+        TemplateArgumentValue::ContextPosition => integer_parameter(execution.focus_position),
+        TemplateArgumentValue::ContextSize => integer_parameter(execution.focus_size),
+        TemplateArgumentValue::ContextNodeName => {
+            evaluate_context_name_argument(inputs, execution.node, &argument.location, control)?
+        }
+        TemplateArgumentValue::ContextNodeStringLength(location) => {
+            integer_parameter(super::value_evaluator::context_node_string_length(
+                inputs,
+                execution.node,
+                location,
+                control,
+            )?)
+        }
+        _ => return Ok(None),
+    };
+    Ok(Some(value))
+}
+
+fn evaluate_constructed_template_argument(
+    nodes: &[ConstructedNode],
+    inputs: &SequenceInputs<'_>,
+    control: &mut InvocationControl,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    Ok(InvocationParameterValue::TemporaryTree(
+        materialize_temporary_nodes(nodes, inputs.source, inputs.request_id, control)?,
+    ))
+}
+
+fn evaluate_source_path_argument(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    control: &mut InvocationControl,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let nodes = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(InvocationParameterValue::SourceNodes(nodes))
+}
+
+fn evaluate_constructed_string_argument(
+    nodes: &[ConstructedNode],
+    inputs: &SequenceInputs<'_>,
+    control: &mut InvocationControl,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    let tree = materialize_temporary_nodes(nodes, inputs.source, inputs.request_id, control)?;
+    Ok(InvocationParameterValue::Atomic(AtomicValue::string(
+        temporary_tree_string_value(&tree, inputs.request_id, control)?,
+    )))
+}
+
 fn evaluate_variable_template_argument(
     inputs: &SequenceInputs<'_>,
     variables: &RuntimeVariables,
@@ -253,6 +313,9 @@ fn evaluate_variable_template_argument(
 ) -> Result<InvocationParameterValue, ExecutionFailure> {
     if let Some(value) = variables.atomics.get(name) {
         return Ok(InvocationParameterValue::Atomic(value.clone()));
+    }
+    if let Some(values) = variables.atomic_sequences.get(name) {
+        return Ok(InvocationParameterValue::AtomicSequence(values.clone()));
     }
     if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
         return Ok(InvocationParameterValue::SourceNodes(nodes.clone()));
@@ -269,7 +332,7 @@ fn evaluate_variable_template_argument(
     ))
 }
 
-fn evaluate_xslt10_for_each_path_string_content(
+fn evaluate_for_each_path_string_content(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     path: &crate::xpath::path_experiment::LocationPath,
@@ -558,6 +621,10 @@ impl RuntimeVariables {
         })
     }
 
+    pub(super) fn has_source_node_values(&self) -> bool {
+        self.source_nodes.values().any(|nodes| !nodes.is_empty())
+    }
+
     pub(super) fn temporary_tree<'a>(
         &'a self,
         globals: &'a RuntimeGlobals,
@@ -614,7 +681,8 @@ pub(super) fn materialize_global_defaults(
                     binding.name.clone(),
                     match &parameter.value {
                         InvocationParameterValue::Atomic(value) => value.clone(),
-                        InvocationParameterValue::SourceNodes(_)
+                        InvocationParameterValue::AtomicSequence(_)
+                        | InvocationParameterValue::SourceNodes(_)
                         | InvocationParameterValue::TemporaryTree(_) => {
                             return Err(failure(
                                 "XTTE0590",
@@ -695,7 +763,7 @@ fn materialize_global_default(
             )?;
         }
         GlobalBindingDefault::TemporaryTree(nodes) => {
-            let tree = materialize_temporary_nodes(nodes, request_id, control)?;
+            let tree = materialize_temporary_nodes(nodes, source, request_id, control)?;
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
         GlobalBindingDefault::TemporaryText(value) => {
@@ -1514,7 +1582,8 @@ pub(super) fn materialize_temporary_tree(
         nodes: Vec::new(),
     };
     for element in elements {
-        let root = materialize_temporary_element(element, None, &mut tree, request_id, control)?;
+        let root =
+            materialize_temporary_element(element, None, None, &mut tree, request_id, control)?;
         tree.roots.push(root);
     }
     Ok(tree)
@@ -1522,6 +1591,7 @@ pub(super) fn materialize_temporary_tree(
 
 pub(super) fn materialize_temporary_nodes(
     nodes: &[ConstructedNode],
+    source: Option<&Document>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<TemporaryTree, ExecutionFailure> {
@@ -1531,7 +1601,7 @@ pub(super) fn materialize_temporary_nodes(
         nodes: Vec::new(),
     };
     for node in nodes {
-        let root = materialize_temporary_node(node, None, &mut tree, request_id, control)?;
+        let root = materialize_temporary_node(node, source, None, &mut tree, request_id, control)?;
         tree.roots.push(root);
     }
     Ok(tree)
@@ -1658,6 +1728,7 @@ fn allocate_temporary_tree_identity(
 
 fn materialize_temporary_element(
     element: &ConstructedElement,
+    source: Option<&Document>,
     parent: Option<usize>,
     tree: &mut TemporaryTree,
     request_id: &str,
@@ -1701,7 +1772,8 @@ fn materialize_temporary_element(
     };
     *node_attributes = attributes;
     for child in &element.children {
-        let child = materialize_temporary_node(child, Some(node), tree, request_id, control)?;
+        let child =
+            materialize_temporary_node(child, source, Some(node), tree, request_id, control)?;
         tree.nodes[node].children.push(child);
     }
     Ok(node)
@@ -1709,6 +1781,7 @@ fn materialize_temporary_element(
 
 fn materialize_temporary_node(
     constructed: &ConstructedNode,
+    source: Option<&Document>,
     parent: Option<usize>,
     tree: &mut TemporaryTree,
     request_id: &str,
@@ -1716,7 +1789,7 @@ fn materialize_temporary_node(
 ) -> Result<usize, ExecutionFailure> {
     match constructed {
         ConstructedNode::Element(element) => {
-            materialize_temporary_element(element, parent, tree, request_id, control)
+            materialize_temporary_element(element, source, parent, tree, request_id, control)
         }
         ConstructedNode::Text(value) => {
             control
@@ -1725,6 +1798,55 @@ fn materialize_temporary_node(
             let node = tree.nodes.len();
             tree.nodes.push(TemporaryNode {
                 kind: TemporaryNodeKind::Text(value.clone()),
+                parent,
+                children: Vec::new(),
+            });
+            Ok(node)
+        }
+        ConstructedNode::Comment(value) => {
+            control
+                .charge(WorkDomain::XdmNode, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            let node = tree.nodes.len();
+            tree.nodes.push(TemporaryNode {
+                kind: TemporaryNodeKind::Comment(value.clone()),
+                parent,
+                children: Vec::new(),
+            });
+            Ok(node)
+        }
+        ConstructedNode::Xslt10SourcePathString(path) => {
+            let value = source_path_string_value(path, source, request_id, control)?;
+            control
+                .charge(WorkDomain::XdmNode, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            let node = tree.nodes.len();
+            tree.nodes.push(TemporaryNode {
+                kind: TemporaryNodeKind::Text(value),
+                parent,
+                children: Vec::new(),
+            });
+            Ok(node)
+        }
+        ConstructedNode::Xslt10ForEachText { select, value } => {
+            let source = source.ok_or_else(|| {
+                failure(
+                    "FXRT1004",
+                    FailureCategory::Unsupported,
+                    Some(request_id),
+                    "an XSLT 1.0 source-dependent temporary tree requires a principal source",
+                )
+            })?;
+            let selected =
+                evaluate_location_path_controlled(source, source.document_node(), select, control)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+            let repeated = value.repeat(selected.len());
+            control
+                .charge(WorkDomain::XdmNode, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            let node = tree.nodes.len();
+            tree.nodes.push(TemporaryNode {
+                kind: TemporaryNodeKind::Text(repeated),
                 parent,
                 children: Vec::new(),
             });
@@ -1766,6 +1888,9 @@ pub(super) fn bind_template_parameters(
         match supplied.map(|supplied| &supplied.value) {
             Some(InvocationParameterValue::Atomic(value)) => {
                 frame.bind_atomic(parameter.name.clone(), value.clone());
+            }
+            Some(InvocationParameterValue::AtomicSequence(values)) => {
+                frame.bind_atomic_sequence(parameter.name.clone(), values.clone());
             }
             Some(InvocationParameterValue::SourceNodes(nodes)) => {
                 frame.bind_source_nodes(parameter.name.clone(), nodes.clone());

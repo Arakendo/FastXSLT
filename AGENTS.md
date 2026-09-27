@@ -117,6 +117,11 @@ contract.
   Do not treat them as a public metrics API or extend them to layout, capacity,
   enumeration, mutation, engine-byte estimates, or quota control without a new
   accepted decision.
+- Follow ADR-0020: `wasm32-unknown-unknown` is an official build target for the
+  shared safe engine and private presealed adapter. Keep resource admission
+  owned and memory-resident, preserve the single-instance sequential reference,
+  and do not treat the current `wasm-bindgen` exports, generated glue, packaging,
+  browser/runtime behavior, or other WASM targets as stable public contracts.
 
 ## Design habits
 
@@ -183,6 +188,8 @@ keep relative links valid.
 - `crates/fastxslt` -- public facade and initially private engine layers
 - `crates/fastxslt-dotnet-workbench` -- unpublished ADR-0008 native experiment;
   its exact unsafe surface is enforced by `scripts/verify.ps1`
+- `crates/fastxslt-wasm-workbench` -- unpublished ADR-0020 adapter for the
+  official `wasm32-unknown-unknown` build target
 - `crates/fastxslt-worker` -- unpublished isolated-process host experiment
 - `corpus/golden` -- small reviewed source/stylesheet/expected triples
 - `vendor/qt3tests` and `vendor/xslt30-test` -- pinned upstream W3C suites

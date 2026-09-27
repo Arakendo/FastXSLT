@@ -349,6 +349,7 @@ fn local_variable_body(instruction: &Instruction) -> LocalVariableBody<'_> {
         | Instruction::Xslt10ConcatVariable { .. }
         | Instruction::Xslt10KeyVariable { .. }
         | Instruction::SourceNodeVariable { .. }
+        | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { .. }
         | Instruction::SourceVariablePathVariable { .. }
         | Instruction::SourceNodeUnionVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
@@ -356,7 +357,7 @@ fn local_variable_body(instruction: &Instruction) -> LocalVariableBody<'_> {
         | Instruction::Xslt10TextTreeVariable { .. }
         | Instruction::Xslt10ValueOfTreeVariable { .. }
         | Instruction::Xslt10ForEachTextTreeVariable { .. } => LocalVariableBody::Leaf,
-        Instruction::Xslt10SequenceTreeVariable { body, .. } => LocalVariableBody::Body(body),
+        Instruction::SequenceTreeVariable { body, .. } => LocalVariableBody::Body(body),
         _ => LocalVariableBody::NotVariable,
     }
 }

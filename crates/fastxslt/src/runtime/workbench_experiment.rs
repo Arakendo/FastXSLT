@@ -4,11 +4,13 @@ use crate::execution_control_experiment::{
     CancellationToken, ControlFailure, InvocationControl, WorkLimits,
 };
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
-#[cfg(test)]
-use crate::runtime::golden_runtime_experiment::serialize_xml_complete_namespace_reference;
 use crate::runtime::golden_runtime_experiment::{
-    ExecutionFailure, compile_resource_with_denied, execute_program, serialize_xml,
-    serialize_xml_bytes,
+    ExecutionFailure, compile_resource_with_denied_and_limits, execute_program_with_resources,
+    serialize_xml, serialize_xml_bytes,
+};
+#[cfg(test)]
+use crate::runtime::golden_runtime_experiment::{
+    execute_program, serialize_xml_complete_namespace_reference,
 };
 use crate::runtime::prepared_input_experiment::{
     PreparationFailure, PreparedInputBuilder, PreparedInputSet,
@@ -36,6 +38,14 @@ pub struct WorkbenchLimits {
     pub max_xslt_template_candidates: usize,
     /// Maximum result nodes charged during one transformation.
     pub max_result_nodes: usize,
+    /// Maximum include/import edges along one stylesheet dependency path.
+    pub max_stylesheet_dependency_depth: usize,
+    /// Maximum stylesheet modules, including the principal module.
+    pub max_stylesheet_modules: usize,
+    /// Maximum aggregate stylesheet bytes loaded while compiling dependencies.
+    pub max_stylesheet_dependency_bytes: usize,
+    /// Maximum sealed-snapshot resolution attempts during stylesheet compilation.
+    pub max_stylesheet_resolution_attempts: usize,
 }
 
 impl Default for WorkbenchLimits {
@@ -50,6 +60,10 @@ impl Default for WorkbenchLimits {
             max_xslt_instructions: 1_000_000,
             max_xslt_template_candidates: 1_000_000,
             max_result_nodes: 100_000,
+            max_stylesheet_dependency_depth: 2,
+            max_stylesheet_modules: 5,
+            max_stylesheet_dependency_bytes: 1_048_576,
+            max_stylesheet_resolution_attempts: 5,
         }
     }
 }
@@ -110,6 +124,8 @@ pub struct WorkbenchRetentionEstimate {
     pub engine_inline_bytes: usize,
     /// Heap capacity of the retained source identity string.
     pub source_identity_capacity_bytes: usize,
+    /// Known map, identity, and admitted-byte capacity of the sealed snapshot.
+    pub snapshot_known_capacity_bytes: usize,
     /// Known prepared-map header, entry payload, and identity capacities.
     pub prepared_map_known_capacity_bytes: usize,
     /// Capacity bytes owned by retained immutable XDM documents.
@@ -167,6 +183,7 @@ pub struct ExperimentalEngine {
     prepared: PreparedInputSet,
     source_id: String,
     program: crate::xslt::golden_semantics_experiment::StylesheetProgram,
+    denied_resources: std::collections::HashSet<String>,
     limits: WorkbenchLimits,
 }
 
@@ -214,6 +231,11 @@ impl ExperimentalEngine {
     ) -> Result<Self, WorkbenchFailure> {
         let source_id = source_id.into();
         let stylesheet_id = stylesheet_id.into();
+        let denied_resources = stylesheet_resources
+            .denied_identities
+            .iter()
+            .cloned()
+            .collect();
         let entry_limit = stylesheet_resources
             .dependencies
             .len()
@@ -258,10 +280,14 @@ impl ExperimentalEngine {
                 })?;
         }
         let snapshot = resources.seal();
-        let program = compile_resource_with_denied(
+        let program = compile_resource_with_denied_and_limits(
             &snapshot,
             &stylesheet_id,
             stylesheet_resources.denied_identities,
+            limits.max_stylesheet_dependency_depth,
+            limits.max_stylesheet_modules,
+            limits.max_stylesheet_dependency_bytes,
+            limits.max_stylesheet_resolution_attempts,
         )
         .map_err(|failure| project_execution(&failure))?;
         let mut builder = PreparedInputBuilder::with_parse_limits(
@@ -279,6 +305,7 @@ impl ExperimentalEngine {
             prepared: builder.seal(),
             source_id,
             program,
+            denied_resources,
             limits,
         })
     }
@@ -316,8 +343,15 @@ impl ExperimentalEngine {
         })?;
         let mut control =
             InvocationControl::new(WorkbenchCancellation::new().0, work_limits(self.limits));
-        let semantic = execute_program(&self.program, &document, request_id, &mut control)
-            .map_err(|failure| project_execution(&failure))?;
+        let semantic = execute_program_with_resources(
+            &self.program,
+            &document,
+            self.prepared.snapshot(),
+            Some(&self.denied_resources),
+            request_id,
+            &mut control,
+        )
+        .map_err(|failure| project_execution(&failure))?;
         serialize_xml_bytes(
             &semantic,
             &self.program.output,
@@ -331,6 +365,11 @@ impl ExperimentalEngine {
     #[cfg(test)]
     pub(crate) fn selected_output_encoding(&self) -> Option<&str> {
         self.program.output.encoding.as_deref()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn selected_output_method(&self) -> Option<&str> {
+        self.program.output.method.as_deref()
     }
 
     /// Reports a private compositional lower bound over known retained capacity.
@@ -353,6 +392,7 @@ impl ExperimentalEngine {
         let known_retained_capacity_bytes = [
             engine_inline_bytes,
             source_identity_capacity_bytes,
+            prepared.snapshot_known_capacity_bytes,
             prepared.prepared_map_known_capacity_bytes,
             prepared.xdm_owned_capacity_bytes,
             compiled_known_capacity_bytes,
@@ -363,6 +403,7 @@ impl ExperimentalEngine {
         WorkbenchRetentionEstimate {
             engine_inline_bytes,
             source_identity_capacity_bytes,
+            snapshot_known_capacity_bytes: prepared.snapshot_known_capacity_bytes,
             prepared_map_known_capacity_bytes: prepared.prepared_map_known_capacity_bytes,
             prepared_xdm_capacity_bytes: prepared.xdm_owned_capacity_bytes,
             compiled_known_capacity_bytes,
@@ -370,11 +411,6 @@ impl ExperimentalEngine {
             prepared_xdm_node_count: prepared.xdm_node_count,
             known_retained_capacity_bytes,
         }
-    }
-
-    #[cfg(test)]
-    fn test_only_snapshot_known_capacity_bytes(&self) -> usize {
-        self.prepared.test_only_snapshot_known_capacity_bytes()
     }
 
     /// Executes one request with explicitly supplied cooperative cancellation.
@@ -448,8 +484,15 @@ impl ExperimentalEngine {
             workbench_failure("FXWB0004", "internal", "prepared source is unavailable")
         })?;
         let mut control = InvocationControl::new(cancellation.0, work_limits(limits));
-        let semantic = execute_program(&self.program, &document, request_id, &mut control)
-            .map_err(|failure| project_execution(&failure))?;
+        let semantic = execute_program_with_resources(
+            &self.program,
+            &document,
+            self.prepared.snapshot(),
+            Some(&self.denied_resources),
+            request_id,
+            &mut control,
+        )
+        .map_err(|failure| project_execution(&failure))?;
         serialize_xml(
             &semantic,
             &self.program.output,
@@ -920,6 +963,7 @@ mod tests {
             estimate.known_retained_capacity_bytes,
             estimate.engine_inline_bytes
                 + estimate.source_identity_capacity_bytes
+                + estimate.snapshot_known_capacity_bytes
                 + estimate.prepared_map_known_capacity_bytes
                 + estimate.prepared_xdm_capacity_bytes
                 + estimate.compiled_known_capacity_bytes
@@ -951,14 +995,11 @@ mod tests {
         });
         let exact_engine = exact_retained.as_ref().expect("retain exact engine");
         let exact_estimate = exact_engine.retention_estimate();
-        let exact_test_snapshot = exact_engine.test_only_snapshot_known_capacity_bytes();
         let exact_denominator = usize::try_from(exact_allocations.bytes_current)
-            .expect("positive allocator-retained bytes fit usize")
-            .checked_sub(exact_test_snapshot)
-            .expect("test-only snapshot must be part of measured retained allocation");
+            .expect("positive allocator-retained bytes fit usize");
         assert!(exact_estimate.known_retained_capacity_bytes <= exact_denominator);
         println!(
-            "shape=exact-for-004 estimate={exact_estimate:?} allocator_requested={exact_allocations:?} test_snapshot_known_bytes={exact_test_snapshot} estimator_numerator={} production_like_allocator_denominator={exact_denominator}",
+            "shape=exact-for-004 estimate={exact_estimate:?} allocator_requested={exact_allocations:?} estimator_numerator={} allocator_denominator={exact_denominator}",
             exact_estimate.known_retained_capacity_bytes,
         );
 
@@ -970,15 +1011,11 @@ mod tests {
             let engine = retained.as_ref().expect("retain measured engine");
             let estimate = engine.retention_estimate();
             assert_estimate_conserves(estimate);
-            let allocator_retained_with_test_snapshot = usize::try_from(allocations.bytes_current)
+            let allocator_retained = usize::try_from(allocations.bytes_current)
                 .expect("positive allocator-retained bytes fit usize");
-            let test_snapshot = engine.test_only_snapshot_known_capacity_bytes();
-            let production_like_allocator_retained = allocator_retained_with_test_snapshot
-                .checked_sub(test_snapshot)
-                .expect("test-only snapshot must be part of measured retained allocation");
-            assert!(estimate.known_retained_capacity_bytes <= production_like_allocator_retained);
+            assert!(estimate.known_retained_capacity_bytes <= allocator_retained);
             println!(
-                "items={items} estimate={estimate:?} allocator_requested={allocations:?} test_snapshot_known_bytes={test_snapshot} estimator_numerator={} production_like_allocator_denominator={production_like_allocator_retained}",
+                "items={items} estimate={estimate:?} allocator_requested={allocations:?} estimator_numerator={} allocator_denominator={allocator_retained}",
                 estimate.known_retained_capacity_bytes,
             );
         }
@@ -994,15 +1031,11 @@ mod tests {
             let engine = retained.as_ref().expect("retain measured shape engine");
             let estimate = engine.retention_estimate();
             assert_estimate_conserves(estimate);
-            let allocator_retained_with_test_snapshot = usize::try_from(allocations.bytes_current)
+            let allocator_retained = usize::try_from(allocations.bytes_current)
                 .expect("positive allocator-retained bytes fit usize");
-            let test_snapshot = engine.test_only_snapshot_known_capacity_bytes();
-            let production_like_allocator_retained = allocator_retained_with_test_snapshot
-                .checked_sub(test_snapshot)
-                .expect("test-only snapshot must be part of measured retained allocation");
-            assert!(estimate.known_retained_capacity_bytes <= production_like_allocator_retained);
+            assert!(estimate.known_retained_capacity_bytes <= allocator_retained);
             println!(
-                "shape={label} estimate={estimate:?} allocator_requested={allocations:?} test_snapshot_known_bytes={test_snapshot} estimator_numerator={} production_like_allocator_denominator={production_like_allocator_retained}",
+                "shape={label} estimate={estimate:?} allocator_requested={allocations:?} estimator_numerator={} allocator_denominator={allocator_retained}",
                 estimate.known_retained_capacity_bytes,
             );
         }
@@ -1025,15 +1058,11 @@ mod tests {
             let engine = retained.as_ref().expect("retain measured compiled shape");
             let estimate = engine.retention_estimate();
             assert_estimate_conserves(estimate);
-            let allocator_retained_with_test_snapshot = usize::try_from(allocations.bytes_current)
+            let allocator_retained = usize::try_from(allocations.bytes_current)
                 .expect("positive allocator-retained bytes fit usize");
-            let test_snapshot = engine.test_only_snapshot_known_capacity_bytes();
-            let production_like_allocator_retained = allocator_retained_with_test_snapshot
-                .checked_sub(test_snapshot)
-                .expect("test-only snapshot must be part of measured retained allocation");
-            assert!(estimate.known_retained_capacity_bytes <= production_like_allocator_retained);
+            assert!(estimate.known_retained_capacity_bytes <= allocator_retained);
             println!(
-                "shape={label} estimate={estimate:?} allocator_requested={allocations:?} test_snapshot_known_bytes={test_snapshot} estimator_numerator={} production_like_allocator_denominator={production_like_allocator_retained}",
+                "shape={label} estimate={estimate:?} allocator_requested={allocations:?} estimator_numerator={} allocator_denominator={allocator_retained}",
                 estimate.known_retained_capacity_bytes,
             );
         }
@@ -1252,6 +1281,95 @@ mod tests {
         assert_eq!(
             engine.transform("dependency-transform").expect("transform"),
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>hello</out>"
+        );
+    }
+
+    #[test]
+    fn denied_sealed_document_resource_remains_denied_during_execution() {
+        const STYLESHEET: &str = "https://example.invalid/runtime/main.xsl";
+        const DENIED: &str = "https://example.invalid/runtime/denied.xml";
+        let engine = ExperimentalEngine::new_with_stylesheet_resources(
+            "https://example.invalid/runtime/source.xml",
+            b"<source/>".to_vec(),
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:copy-of select="document('denied.xml')"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchStylesheetResources {
+                dependencies: vec![WorkbenchResource {
+                    identity: DENIED.to_owned(),
+                    bytes: b"<secret/>".to_vec(),
+                }],
+                denied_identities: vec![DENIED.to_owned()],
+            },
+            WorkbenchLimits::default(),
+        )
+        .expect("denied runtime-only resource need not be acquired during compilation");
+
+        let failure = engine
+            .transform("denied-document")
+            .expect_err("runtime document resolution must preserve host denial");
+        assert_eq!(failure.code, "FXRS0003");
+        assert_eq!(failure.category, "denied");
+        assert_eq!(failure.request_id.as_deref(), Some("denied-document"));
+        assert!(failure.detail.contains(DENIED));
+    }
+
+    #[test]
+    fn host_supplied_stylesheet_depth_limit_controls_a_sealed_dependency_chain() {
+        const SOURCE_ID: &str = "urn:fastxslt:workbench-depth:source";
+        const STYLESHEET_ID: &str = "https://example.invalid/styles/main.xsl";
+        let resources = WorkbenchStylesheetResources {
+            dependencies: vec![
+                WorkbenchResource {
+                    identity: "https://example.invalid/styles/one.xsl".to_owned(),
+                    bytes: br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="two.xsl"/></xsl:stylesheet>"#.to_vec(),
+                },
+                WorkbenchResource {
+                    identity: "https://example.invalid/styles/two.xsl".to_owned(),
+                    bytes: br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="three.xsl"/></xsl:stylesheet>"#.to_vec(),
+                },
+                WorkbenchResource {
+                    identity: "https://example.invalid/styles/three.xsl".to_owned(),
+                    bytes: br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#.to_vec(),
+                },
+            ],
+            denied_identities: Vec::new(),
+        };
+        let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="one.xsl"/></xsl:stylesheet>"#;
+        let low_limits = WorkbenchLimits {
+            max_stylesheet_dependency_depth: 2,
+            ..WorkbenchLimits::default()
+        };
+
+        let Err(failure) = ExperimentalEngine::new_with_stylesheet_resources(
+            SOURCE_ID,
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            stylesheet.to_vec(),
+            resources.clone(),
+            low_limits,
+        ) else {
+            panic!("the host-supplied depth bound must reject the third edge");
+        };
+        assert_eq!(failure.code, "FXRS0006");
+        assert_eq!(failure.category, "limit");
+        assert_eq!(failure.detail, "stylesheet dependency depth limit is 2");
+
+        let admitted_limits = WorkbenchLimits {
+            max_stylesheet_dependency_depth: 3,
+            ..WorkbenchLimits::default()
+        };
+        let engine = ExperimentalEngine::new_with_stylesheet_resources(
+            SOURCE_ID,
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            stylesheet.to_vec(),
+            resources,
+            admitted_limits,
+        )
+        .expect("the host-supplied depth bound should admit the sealed chain");
+        assert_eq!(
+            engine.transform("depth-transform").expect("transform"),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out></out>"
         );
     }
 

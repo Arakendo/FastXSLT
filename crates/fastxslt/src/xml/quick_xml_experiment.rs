@@ -522,7 +522,9 @@ fn expanded_name(
 ) -> Result<ExpandedName, ParseFailure> {
     let namespace = match namespace {
         ResolveResult::Unbound => None,
-        ResolveResult::Bound(namespace) => Some(decode_name(namespace.as_ref(), offset)?),
+        ResolveResult::Bound(namespace) => {
+            Some(decode_resolved_namespace(namespace.as_ref(), offset)?)
+        }
         ResolveResult::Unknown(prefix) => {
             return Err(ParseFailure::UnknownNamespacePrefix { offset, prefix });
         }
@@ -531,6 +533,27 @@ fn expanded_name(
         namespace,
         local: decode_name(local, offset)?,
     })
+}
+
+fn decode_resolved_namespace(namespace: &[u8], offset: usize) -> Result<String, ParseFailure> {
+    let raw = std::str::from_utf8(namespace).map_err(|error| malformed(offset, error))?;
+    let mut normalized = String::with_capacity(raw.len());
+    let mut characters = raw.chars().peekable();
+    while let Some(character) = characters.next() {
+        match character {
+            '\r' => {
+                if characters.peek() == Some(&'\n') {
+                    characters.next();
+                }
+                normalized.push(' ');
+            }
+            '\n' | '\t' => normalized.push(' '),
+            _ => normalized.push(character),
+        }
+    }
+    quick_xml::escape::unescape(&normalized)
+        .map(std::borrow::Cow::into_owned)
+        .map_err(|error| malformed(offset, error))
 }
 
 fn decode_name(bytes: &[u8], offset: usize) -> Result<String, ParseFailure> {
@@ -618,6 +641,31 @@ mod tests {
             ]
         );
         assert_eq!(document.element_count, 2);
+    }
+
+    #[test]
+    fn normalizes_namespace_declaration_values_before_name_resolution() {
+        let document = parse_document(
+            "memory:namespace-normalization.xml",
+            b"<root xmlns=\"urn:a&amp;b\r\nc\"><child/></root>",
+            LIMITS,
+        )
+        .expect("namespace declaration should parse");
+
+        let expected = ExpandedName {
+            namespace: Some("urn:a&b c".to_owned()),
+            local: "root".to_owned(),
+        };
+        assert_eq!(document.root, expected);
+        assert!(document.events.iter().any(|event| {
+            matches!(
+                event,
+                OwnedXmlEvent::Start { name, .. } if name == &ExpandedName {
+                    namespace: Some("urn:a&b c".to_owned()),
+                    local: "child".to_owned(),
+                }
+            )
+        }));
     }
 
     #[test]

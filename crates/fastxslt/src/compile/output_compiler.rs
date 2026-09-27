@@ -6,6 +6,7 @@ use std::collections::BTreeSet;
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::OutputSettings;
 
+use super::instruction_compiler::uses_xslt10_compatibility;
 use super::{
     CompileFailure, compile_expanded_qname, ensure_no_meaningful_children, invalid,
     is_ignored_xslt10_extension_attribute, optional_attribute, unsupported,
@@ -83,7 +84,7 @@ pub(super) fn compile_output(
             document.location(element),
         ));
     }
-    let encoding = optional_attribute(document, element, None, "encoding");
+    let encoding = compile_output_encoding(document, element);
     let omit_xml_declaration = optional_attribute(document, element, None, "omit-xml-declaration")
         .map(|value| {
             parse_output_boolean(
@@ -166,6 +167,21 @@ pub(super) fn compile_output(
         specified,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_output_encoding(document: &Document, element: NodeId) -> Option<&str> {
+    let encoding = optional_attribute(document, element, None, "encoding").map(str::trim);
+    if uses_xslt10_compatibility(document, element)
+        && encoding.is_some_and(|value| value.eq_ignore_ascii_case("unicode"))
+    {
+        // The OASIS 1.0 corpus preserves the historical Microsoft/MSXML label
+        // for UTF-16. Keep this compatibility spelling out of modern output
+        // settings while routing the legacy profile through the existing
+        // bounded UTF-16 byte serializer.
+        Some("UTF-16")
+    } else {
+        encoding
+    }
 }
 
 fn compile_specified_properties(document: &Document, element: NodeId) -> BTreeSet<String> {
@@ -482,6 +498,12 @@ fn compile_serialization_version<'a>(
     admitted_inconsistent_error_path: bool,
 ) -> Result<Option<&'a str>, CompileFailure> {
     let version = optional_attribute(document, element, None, "version");
+    if uses_xslt10_compatibility(document, element)
+        && method == Some("html")
+        && version.is_some_and(|value| value.trim().is_empty())
+    {
+        return Ok(None);
+    }
     if version.is_some_and(|value| value != "1.0")
         && method != Some("html")
         && !admitted_inconsistent_error_path
