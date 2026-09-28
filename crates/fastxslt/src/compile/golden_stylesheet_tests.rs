@@ -3110,6 +3110,9 @@ fn number_admits_static_letter_values_only_when_existing_tokens_are_equivalent()
     for (format, letter_value) in [
         ("i.I.a.A", "traditional"),
         ("a.A", "alphabetic"),
+        ("α", "alphabetic"),
+        ("1", "alphabetic"),
+        ("א", "alphabetic"),
         ("1", "traditional"),
     ] {
         let stylesheet = parse_stylesheet(
@@ -3223,6 +3226,31 @@ fn local_concat_variable_is_selected_only_for_xslt10_compatibility() {
         .expect_err("the XSLT 1.0 binding must not silently select modern concat semantics");
     assert_eq!(failure.code, "FXXP1008");
     assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
+fn xslt10_local_numeric_literal_retains_double_value() {
+    let stylesheet = parse_stylesheet(
+        "memory:xslt10-local-tiny-double.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:variable name="tiny" select="0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000222"/><xsl:value-of select="$tiny"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet).expect("XSLT 1.0 tiny double should compile");
+    let root = program.root_template.expect("root template");
+    let [
+        Instruction::StaticAtomicVariable { value, .. },
+        Instruction::ValueOf { .. },
+    ] = root.body.as_slice()
+    else {
+        panic!("numeric literal should compile as one static atomic binding");
+    };
+
+    assert_eq!(value.atomic_type(), BuiltinAtomicType::Double);
+    assert!(
+        value
+            .lexical()
+            .parse::<f64>()
+            .is_ok_and(|number| number.is_finite() && number > 0.0)
+    );
 }
 
 #[test]
@@ -3351,6 +3379,124 @@ fn forward_compatible_choose_defers_an_unselected_future_instruction() {
             if matches!(branches.as_slice(), [branch]
                 if branch.test == BooleanExpression::Constant(false) && branch.body.is_empty())
     ));
+}
+
+#[test]
+fn xslt10_forward_compatible_processing_ignores_unknown_top_level_declarations() {
+    let stylesheet = parse_stylesheet(
+        "memory:forward-compatible-top-level.xsl",
+        br#"<xsl:stylesheet version="1.5" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:future declaration="ignored"><xsl:template match="/"><wrong/></xsl:template></xsl:future><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("an unknown XSLT 1.x top-level declaration should be ignored with its content");
+
+    assert!(program.root_template.is_some());
+    assert!(program.matched_templates.is_empty());
+}
+
+#[test]
+fn supported_versions_reject_unknown_top_level_xslt_declarations() {
+    for version in ["1.0", "2.0", "3.0"] {
+        let stylesheet = parse_stylesheet(
+            &format!("memory:unknown-top-level-{version}.xsl"),
+            format!(
+                r#"<xsl:stylesheet version="{version}" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:future/><xsl:template match="/"/></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        let failure = compile_stylesheet(&stylesheet)
+            .expect_err("a supported version must reject an unknown XSLT declaration");
+        assert_eq!(failure.code, "FXST1002");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+}
+
+#[test]
+fn xslt10_forward_compatible_instructions_compile_fallback_or_deferred_failure() {
+    let fallback = parse_stylesheet(
+        "memory:forward-compatible-instruction-fallback.xsl",
+        br#"<xsl:stylesheet version="1.5" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:future><ignored/><xsl:fallback><out/></xsl:fallback></xsl:future></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&fallback)
+        .expect("a future instruction should compile only its standard fallback");
+    let root = program.root_template.expect("root template");
+    assert!(
+        matches!(root.body.as_slice(), [Instruction::LiteralElement { name, .. }] if name.local == "out")
+    );
+
+    let deferred = parse_stylesheet(
+        "memory:forward-compatible-instruction-deferred.xsl",
+        br#"<xsl:stylesheet version="1.5" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="never"><xsl:future><ignored/></xsl:future></xsl:template><xsl:template match="/"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&deferred)
+        .expect("an uninstantiated future instruction must not fail statically");
+    assert!(program.matched_templates.iter().any(|template| matches!(
+        template.template.body.as_slice(),
+        [Instruction::Xslt10DeferredFailure { code, .. }] if *code == "XTDE1450"
+    )));
+}
+
+#[test]
+fn xslt10_standalone_fallback_is_an_empty_instruction() {
+    let stylesheet = parse_stylesheet(
+        "memory:xslt10-standalone-fallback.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><before/><xsl:fallback><must-not-compile><xsl:future/></must-not-compile></xsl:fallback><after/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("standalone XSLT 1.0 fallback must be an empty instruction");
+    let root = program.root_template.expect("root template");
+    assert!(matches!(
+        root.body.as_slice(),
+        [
+            Instruction::LiteralElement { name: before, .. },
+            Instruction::LiteralElement { name: after, .. }
+        ] if before.local == "before" && after.local == "after"
+    ));
+}
+
+#[test]
+fn xslt10_forward_compatible_processing_defers_invalid_xpath_until_instantiation() {
+    let stylesheet = parse_stylesheet(
+        "memory:forward-compatible-invalid-xpath.xsl",
+        br#"<xsl:stylesheet version="1.5" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="never"><xsl:value-of select="..."/></xsl:template><xsl:template match="/"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("an invalid expression in an uninstantiated template must be deferred");
+    assert!(program.matched_templates.iter().any(|template| matches!(
+        template.template.body.as_slice(),
+        [Instruction::Xslt10DeferredFailure { code, .. }] if *code == "XPST0003"
+    )));
+
+    let stylesheet = parse_stylesheet(
+        "memory:forward-compatible-invalid-introspection-type.xsl",
+        br#"<xsl:stylesheet version="1.5" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="never"><xsl:value-of select="system-property(123)"/></xsl:template><xsl:template match="/"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("an invalid introspection argument in a dormant template must be deferred");
+    assert!(program.matched_templates.iter().any(|template| matches!(
+        template.template.body.as_slice(),
+        [Instruction::Xslt10DeferredFailure { code, .. }] if *code == "XPTY0004"
+    )));
+}
+
+#[test]
+fn xslt10_forward_compatible_processing_ignores_unknown_and_invalid_optional_attributes() {
+    let stylesheet = parse_stylesheet(
+        "memory:forward-compatible-attributes.xsl",
+        br#"<xsl:stylesheet version="1.5" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output indent="future"/><xsl:template match="/" future="ignored"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("forward-compatible unknown and invalid optional attributes should be ignored");
+    assert_eq!(program.output.indent, None);
+    assert!(program.root_template.is_some());
+
+    let strict = parse_stylesheet(
+        "memory:strict-unknown-attribute.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/" future="rejected"/></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&strict)
+        .expect_err("an unknown attribute must remain explicit in a supported version");
+    assert_eq!(failure.code, "FXST1009");
 }
 
 #[test]

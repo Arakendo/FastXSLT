@@ -232,7 +232,7 @@ fn format_sequence_tokens(values: &[String], format: &NumberFormat) -> String {
     result.push_str(&format.prefix);
     for (index, value) in values.iter().enumerate() {
         if index != 0 {
-            if format.tokens.len() == 1 {
+            if format.separators.is_empty() {
                 result.push('.');
             } else {
                 let separator = &format.separators[index
@@ -267,6 +267,7 @@ fn append_number_token(
         NumberTokenStyle::AlphabeticLower => append_alphabetic_token(result, value, b'a'),
         NumberTokenStyle::RomanUpper => append_roman_token(result, value, false),
         NumberTokenStyle::RomanLower => append_roman_token(result, value, true),
+        NumberTokenStyle::GreekAlphabeticLower => append_greek_alphabetic_token(result, value),
     }
 }
 
@@ -312,6 +313,29 @@ fn append_alphabetic_token(result: &mut String, value: &str, first: u8) {
             first + u8::try_from(number % 26).expect("remainder is below 26"),
         ));
         number /= 26;
+    }
+    result.extend(reversed.into_iter().rev());
+}
+
+fn append_greek_alphabetic_token(result: &mut String, value: &str) {
+    const FIRST: u32 = 'α' as u32;
+    const ALPHABET_LENGTH: usize = 25;
+
+    let Ok(mut number) = value.parse::<usize>() else {
+        result.push_str(value);
+        return;
+    };
+    if number == 0 {
+        result.push_str(value);
+        return;
+    }
+    let mut reversed = Vec::new();
+    while number != 0 {
+        number -= 1;
+        let offset = u32::try_from(number % ALPHABET_LENGTH)
+            .expect("Greek alphabetic remainder is below 25");
+        reversed.push(char::from_u32(FIRST + offset).expect("Greek lowercase alphabet is scalar"));
+        number /= ALPHABET_LENGTH;
     }
     result.extend(reversed.into_iter().rev());
 }

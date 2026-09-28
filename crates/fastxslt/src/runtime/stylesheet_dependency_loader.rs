@@ -5,9 +5,7 @@ use crate::compile::golden_stylesheet_experiment::{
 };
 use crate::resources::{ResolutionFailure, SnapshotResolver, resolve_reference};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
-use crate::xml::quick_xml_experiment::parse_document;
-
-use super::XML_LIMITS;
+use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct DependencyLimits {
@@ -77,6 +75,11 @@ pub(super) enum DependencyFailure {
         detail: String,
         location: Option<SourceLocation>,
     },
+    XmlLimit {
+        identity: String,
+        detail: String,
+        location: Option<SourceLocation>,
+    },
     InvalidXdm {
         identity: String,
         detail: String,
@@ -89,12 +92,14 @@ pub(super) fn load_stylesheet_dependency_graph(
     resolver: &mut SnapshotResolver<'_>,
     principal_identity: &str,
     limits: DependencyLimits,
+    xml_limits: ParseLimits,
 ) -> Result<LoadedStylesheetModule, DependencyFailure> {
     let mut state = LoadState {
         limits,
         modules: 0,
         bytes: 0,
         active: Vec::new(),
+        xml_limits,
     };
     load_module(resolver, principal_identity, "", None, 0, None, &mut state)
 }
@@ -104,6 +109,7 @@ struct LoadState {
     modules: usize,
     bytes: usize,
     active: Vec<String>,
+    xml_limits: ParseLimits,
 }
 
 fn load_module(
@@ -157,11 +163,18 @@ fn load_module(
     state.bytes = attempted;
 
     let parsed =
-        parse_document(&resource.identity, resource.bytes, XML_LIMITS).map_err(|error| {
-            DependencyFailure::InvalidXml {
-                identity: resource.identity.clone(),
-                detail: format!("{error:?}"),
-                location: location.clone(),
+        parse_document(&resource.identity, resource.bytes, state.xml_limits).map_err(|error| {
+            match error.structural_limit_detail() {
+                Some(detail) => DependencyFailure::XmlLimit {
+                    identity: resource.identity.clone(),
+                    detail,
+                    location: location.clone(),
+                },
+                None => DependencyFailure::InvalidXml {
+                    identity: resource.identity.clone(),
+                    detail: format!("{error:?}"),
+                    location: location.clone(),
+                },
             }
         })?;
     let document =
@@ -329,10 +342,15 @@ mod tests {
     };
 
     use super::{DependencyFailure, DependencyLimits, load_stylesheet_dependency_graph};
+    use crate::xml::quick_xml_experiment::ParseLimits;
 
     const ROOT: &str = "https://example.invalid/styles/root.xsl";
     const CHILD: &str = "https://example.invalid/styles/child.xsl";
     const LEAF: &str = "https://example.invalid/styles/leaf.xsl";
+    const XML_LIMITS: ParseLimits = ParseLimits {
+        max_events: 1_024,
+        max_depth: 64,
+    };
 
     fn module(include: Option<&str>) -> Vec<u8> {
         format!(
@@ -366,6 +384,7 @@ mod tests {
             &mut resolver,
             ROOT,
             DependencyLimits::new(2, 3, 1_536),
+            XML_LIMITS,
         )
         .expect("bounded graph");
 
@@ -383,7 +402,8 @@ mod tests {
             load_stylesheet_dependency_graph(
                 &mut resolver,
                 ROOT,
-                DependencyLimits::new(1, 3, 1_536)
+                DependencyLimits::new(1, 3, 1_536),
+                XML_LIMITS,
             ),
             Err(DependencyFailure::DepthLimit {
                 maximum: 1,
@@ -396,7 +416,8 @@ mod tests {
             load_stylesheet_dependency_graph(
                 &mut resolver,
                 ROOT,
-                DependencyLimits::new(2, 2, 1_536)
+                DependencyLimits::new(2, 2, 1_536),
+                XML_LIMITS,
             ),
             Err(DependencyFailure::ModuleLimit {
                 maximum: 2,
@@ -410,7 +431,8 @@ mod tests {
             load_stylesheet_dependency_graph(
                 &mut resolver,
                 ROOT,
-                DependencyLimits::new(2, 3, root_bytes)
+                DependencyLimits::new(2, 3, root_bytes),
+                XML_LIMITS,
             ),
             Err(DependencyFailure::ByteLimit { maximum, .. }) if maximum == root_bytes
         ));
@@ -421,7 +443,8 @@ mod tests {
             load_stylesheet_dependency_graph(
                 &mut resolver,
                 ROOT,
-                DependencyLimits::new(3, 3, 1_536)
+                DependencyLimits::new(3, 3, 1_536),
+                XML_LIMITS,
             ),
             Err(DependencyFailure::Cycle {
                 identity,

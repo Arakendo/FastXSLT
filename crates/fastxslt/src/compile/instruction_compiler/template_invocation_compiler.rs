@@ -425,7 +425,7 @@ pub(super) fn parse_apply_selection(
             return Ok(selection);
         }
     }
-    if let Some(selection) = compile_literal_document_selection(document, element, expression) {
+    if let Some(selection) = compile_literal_document_selection(document, element, expression)? {
         return Ok(selection);
     }
     if let Some(selection) = parse_apply_union(document, element, expression, &location)? {
@@ -529,7 +529,7 @@ pub(super) fn parse_apply_selection(
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
 }
 
-fn parse_literal_document_selection(expression: &str) -> Option<(&str, Option<&str>)> {
+fn parse_literal_document_selection(expression: &str) -> Option<(&str, Option<&str>, bool)> {
     let argument_and_tail = expression.strip_prefix("document(")?;
     let quote = *argument_and_tail.as_bytes().first()?;
     if !matches!(quote, b'\'' | b'"') {
@@ -540,45 +540,65 @@ fn parse_literal_document_selection(expression: &str) -> Option<(&str, Option<&s
         .position(|byte| *byte == quote)?
         + 1;
     let reference = &argument_and_tail[1..closing_quote];
-    if reference.is_empty() {
-        return None;
-    }
     let tail = argument_and_tail[closing_quote + 1..].strip_prefix(')')?;
-    let child = if tail.is_empty() {
-        None
+    let (child, descendant) = if tail.is_empty() {
+        (None, false)
+    } else if let Some(descendant) = tail.strip_prefix("//") {
+        if !descendant.is_empty() && !descendant.contains('/') {
+            (Some(descendant), true)
+        } else {
+            return None;
+        }
     } else {
         let child = tail.strip_prefix('/')?;
         if child == "*" || is_ascii_ncname(child) {
-            Some(child)
+            (Some(child), false)
         } else {
             return None;
         }
     };
-    Some((reference, child))
+    Some((reference, child, descendant))
 }
 
 fn compile_literal_document_selection(
     document: &Document,
     element: NodeId,
     expression: &str,
-) -> Option<ApplySelection> {
-    let (reference, child) = parse_literal_document_selection(expression)?;
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    let Some((reference, child, descendant)) = parse_literal_document_selection(expression) else {
+        return Ok(None);
+    };
+    let descendant_name = descendant
+        .then(|| {
+            super::super::compile_expanded_qname(
+                document,
+                element,
+                child.expect("descendant has a name"),
+                "document() descendant name test",
+            )
+        })
+        .transpose()?;
     let reference = crate::xslt::golden_semantics_experiment::DocumentRootReference {
         base: document.location(element).resource.clone(),
         reference: reference.to_owned(),
-        descendant_local: None,
+        descendant_name: descendant_name.clone(),
     };
-    Some(match child {
-        None => ApplySelection::LiteralDocumentRoot(reference),
-        Some("*") => ApplySelection::LiteralDocumentChildren {
+    Ok(Some(match (child, descendant) {
+        (Some(_), true) => ApplySelection::LiteralDocumentDescendants {
+            reference,
+            name: descendant_name.expect("descendant selection has an expanded name"),
+        },
+        (None, false) => ApplySelection::LiteralDocumentRoot(reference),
+        (Some("*"), false) => ApplySelection::LiteralDocumentChildren {
             reference,
             name: None,
         },
-        Some(local) => ApplySelection::LiteralDocumentChildren {
+        (Some(local), false) => ApplySelection::LiteralDocumentChildren {
             reference,
             name: Some(expanded_name(None, local)),
         },
-    })
+        (None, true) => unreachable!("descendant selection requires a name"),
+    }))
 }
 
 fn parse_xslt10_children_of_variable_named_elements(expression: &str) -> Option<String> {

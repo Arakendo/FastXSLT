@@ -161,23 +161,7 @@ fn merge_included_program(
         insertion_index..insertion_index,
         included_program.matched_templates,
     );
-    for named in included_program.named_templates {
-        if program
-            .named_templates
-            .iter()
-            .any(|existing| existing.name == named.name)
-        {
-            return Err(invalid(
-                "FXST0028",
-                format!(
-                    "duplicate named template across included modules: {}",
-                    named.name
-                ),
-                &named.template.location,
-            ));
-        }
-        program.named_templates.push(named);
-    }
+    merge_included_named_templates(program, included_program.named_templates)?;
     for binding in included_program.global_bindings {
         if let Some(index) = program
             .global_bindings
@@ -203,6 +187,37 @@ fn merge_included_program(
         program.global_bindings.push(binding);
     }
     super::order_merged_global_dependencies(&mut program.global_bindings, location)?;
+    Ok(())
+}
+
+fn merge_included_named_templates(
+    program: &mut StylesheetProgram,
+    included: Vec<crate::xslt::golden_semantics_experiment::NamedTemplate>,
+) -> Result<(), CompileFailure> {
+    for named in included {
+        if let Some(index) = program
+            .named_templates
+            .iter()
+            .position(|existing| existing.name == named.name)
+        {
+            let existing_precedence = program.named_templates[index].import_precedence;
+            if existing_precedence == named.import_precedence {
+                return Err(invalid(
+                    "FXST0028",
+                    format!(
+                        "duplicate named template across included modules: {}",
+                        named.name
+                    ),
+                    &named.template.location,
+                ));
+            }
+            if named.import_precedence > existing_precedence {
+                program.named_templates[index] = named;
+            }
+            continue;
+        }
+        program.named_templates.push(named);
+    }
     Ok(())
 }
 
@@ -385,6 +400,9 @@ fn merge_included_output(
         .cloned()
         .collect::<Vec<_>>();
     for property in overlaps {
+        if property == "cdata-section-elements" {
+            continue;
+        }
         match (
             existing_same_precedence.contains(&property),
             included_same_precedence.contains(&property),
@@ -714,7 +732,7 @@ pub(crate) fn compile_stylesheet_with_imports(
         merge_attribute_set_declarations(&mut principal_program, program, principal.location(root));
     }
     if imported_programs.len() == 1 {
-        merge_single_imported_output(
+        merge_imported_output(
             &mut principal_program,
             &imported_programs[0],
             principal.location(root),
@@ -756,16 +774,16 @@ pub(crate) fn compile_stylesheet_with_imports(
     Ok(principal_program)
 }
 
-pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
+pub(crate) fn compile_stylesheet_with_imported_programs_at(
     principal: &Document,
     principal_root: NodeId,
-    imported_programs: [StylesheetProgram; 2],
+    imported_programs: Vec<StylesheetProgram>,
 ) -> Result<StylesheetProgram, CompileFailure> {
     let import_declarations = import_nodes_at(principal, principal_root)?;
-    if import_declarations.len() != imported_programs.len() {
+    if imported_programs.len() < 2 || import_declarations.len() != imported_programs.len() {
         return Err(invalid(
             "FXST0035",
-            "two-program import compilation requires exactly two xsl:import declarations",
+            "multi-program import compilation requires at least two supplied programs and one per xsl:import declaration",
             principal.location(principal_root),
         ));
     }
@@ -775,37 +793,41 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
         &import_declarations,
     )?;
     let mut imported_programs = imported_programs;
-    let second_shift = import_shift_for_maximum(
-        &imported_programs[1],
-        -1,
-        principal.location(principal_root),
-    )?;
-    let second_floor = imported_programs[1]
-        .matched_templates
-        .iter()
-        .map(|template| template.import_precedence)
-        .min()
-        .unwrap_or(0)
-        .checked_add(second_shift)
-        .ok_or_else(|| import_precedence_overflow(principal.location(principal_root)))?;
-    let first_maximum = second_floor
-        .checked_sub(1)
-        .ok_or_else(|| import_precedence_overflow(principal.location(principal_root)))?;
-    let first_shift = import_shift_for_maximum(
-        &imported_programs[0],
-        first_maximum,
-        principal.location(principal_root),
-    )?;
-    rebase_imported_program(
-        &mut imported_programs[0],
-        first_shift,
-        principal.location(principal_root),
-    )?;
-    rebase_imported_program(
-        &mut imported_programs[1],
-        second_shift,
-        principal.location(principal_root),
-    )?;
+    let mut next_maximum = -1;
+    for program in imported_programs.iter_mut().rev() {
+        let shift =
+            import_shift_for_maximum(program, next_maximum, principal.location(principal_root))?;
+        let rebased_floor = program
+            .matched_templates
+            .iter()
+            .map(|template| template.import_precedence)
+            .chain(
+                program
+                    .named_templates
+                    .iter()
+                    .map(|template| template.import_precedence),
+            )
+            .chain(
+                program
+                    .attribute_set_declarations
+                    .iter()
+                    .map(|declaration| declaration.import_precedence),
+            )
+            .chain(
+                program
+                    .global_bindings
+                    .iter()
+                    .map(|binding| binding.import_precedence),
+            )
+            .min()
+            .unwrap_or(0)
+            .checked_add(shift)
+            .ok_or_else(|| import_precedence_overflow(principal.location(principal_root)))?;
+        rebase_imported_program(program, shift, principal.location(principal_root))?;
+        next_maximum = rebased_floor
+            .checked_sub(1)
+            .ok_or_else(|| import_precedence_overflow(principal.location(principal_root)))?;
+    }
     for program in &mut imported_programs {
         merge_attribute_set_declarations(
             &mut principal_program,
@@ -813,9 +835,9 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
             principal.location(principal_root),
         );
     }
-    for program in &imported_programs {
-        validate_fully_shadowed_imported_output(
-            &principal_program,
+    for program in imported_programs.iter().rev() {
+        merge_imported_output(
+            &mut principal_program,
             program,
             principal.location(principal_root),
         )?;
@@ -876,7 +898,7 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
         &mut imported_program,
         principal.location(principal_root),
     );
-    merge_single_imported_output(
+    merge_imported_output(
         &mut principal_program,
         &imported_program,
         principal.location(principal_root),
@@ -992,6 +1014,12 @@ fn rebase_imported_program(
             .checked_add(shift)
             .ok_or_else(|| import_precedence_overflow(location))?;
     }
+    for named in &program.named_templates {
+        named
+            .import_precedence
+            .checked_add(shift)
+            .ok_or_else(|| import_precedence_overflow(location))?;
+    }
     local_import_floor
         .checked_add(shift)
         .ok_or_else(|| import_precedence_overflow(location))?;
@@ -1004,6 +1032,9 @@ fn rebase_imported_program(
     }
     for binding in &mut program.global_bindings {
         binding.import_precedence += shift;
+    }
+    for named in &mut program.named_templates {
+        named.import_precedence += shift;
     }
     if let Some(template) = program.root_template.take() {
         program.matched_templates.insert(
@@ -1030,6 +1061,24 @@ fn import_shift_for_maximum(
         .matched_templates
         .iter()
         .map(|template| template.import_precedence)
+        .chain(
+            program
+                .named_templates
+                .iter()
+                .map(|template| template.import_precedence),
+        )
+        .chain(
+            program
+                .attribute_set_declarations
+                .iter()
+                .map(|declaration| declaration.import_precedence),
+        )
+        .chain(
+            program
+                .global_bindings
+                .iter()
+                .map(|binding| binding.import_precedence),
+        )
         .max()
         .unwrap_or(0)
         .max(0);
@@ -1079,6 +1128,9 @@ fn compile_imported_program_excluding(
     }
     for binding in &mut imported_program.global_bindings {
         binding.import_precedence = import_precedence;
+    }
+    for named in &mut imported_program.named_templates {
+        named.import_precedence = import_precedence;
     }
     Ok(imported_program)
 }
@@ -1143,7 +1195,7 @@ fn validate_fully_shadowed_imported_output(
     ))
 }
 
-fn merge_single_imported_output(
+fn merge_imported_output(
     principal: &mut StylesheetProgram,
     imported: &StylesheetProgram,
     location: &SourceLocation,
@@ -1157,7 +1209,7 @@ fn merge_single_imported_output(
     if unshadowed.iter().any(|property| {
         !matches!(
             property.as_str(),
-            "method" | "encoding" | "indent" | "omit-xml-declaration"
+            "method" | "encoding" | "indent" | "omit-xml-declaration" | "cdata-section-elements"
         )
     }) {
         return validate_fully_shadowed_imported_output(principal, imported, location);
@@ -1173,9 +1225,21 @@ fn merge_single_imported_output(
             "omit-xml-declaration" => {
                 principal.output.omit_xml_declaration = imported.output.omit_xml_declaration;
             }
+            "cdata-section-elements" => {}
             _ => unreachable!("unadmitted output properties were rejected"),
         }
         principal.output_specified_properties.push(property);
+    }
+    if imported
+        .output_specified_properties
+        .iter()
+        .any(|property| property == "cdata-section-elements")
+    {
+        for name in &imported.output.cdata_section_elements {
+            if !principal.output.cdata_section_elements.contains(name) {
+                principal.output.cdata_section_elements.push(name.clone());
+            }
+        }
     }
     Ok(())
 }

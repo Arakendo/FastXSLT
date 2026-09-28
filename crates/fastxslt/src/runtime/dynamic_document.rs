@@ -5,6 +5,7 @@ use std::sync::Arc;
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::resources::{ResolutionFailure, ResolutionLimits, SnapshotResolver};
 use crate::xdm::owned_tree_experiment::{BuildFailure, Document, NodeId};
+use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::DocumentRootReference;
 
 use super::{ExecutionFailure, FailureCategory, SequenceInputs, control_failure, failure};
@@ -21,11 +22,11 @@ pub(super) fn document_root_identity(
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
     let dynamic = prepare_document(inputs, reference, control)?;
-    if let Some(local) = reference.descendant_local.as_deref()
+    if let Some(name) = reference.descendant_name.as_ref()
         && !contains_descendant_local(
             &dynamic.document,
             dynamic.document.document_node(),
-            local,
+            name,
             inputs.request_id,
             control,
         )?
@@ -38,11 +39,38 @@ pub(super) fn document_root_identity(
 pub(super) fn copy_document(
     inputs: &SequenceInputs<'_>,
     reference: &DocumentRootReference,
+    path: Option<&LocationPath>,
     recover_unattached_attributes: bool,
     control: &mut InvocationControl,
 ) -> Result<Vec<super::ResultNode>, ExecutionFailure> {
     let dynamic = prepare_document(inputs, reference, control)?;
-    let Some(descendant_local) = reference.descendant_local.as_deref() else {
+    if let Some(path) = path {
+        let effective_document = super::derive_effective_source(
+            &inputs.program.source_whitespace,
+            dynamic.document.as_ref(),
+            super::WhitespaceRepresentation::VisibilityView,
+            inputs.request_id,
+            control,
+        )?;
+        let document = effective_document
+            .as_ref()
+            .unwrap_or(dynamic.document.as_ref());
+        let selected =
+            evaluate_location_path_controlled(document, document.document_node(), path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        let mut copied = Vec::new();
+        for node in selected {
+            copied.extend(super::copy_source_node(
+                document,
+                inputs.request_id,
+                node,
+                recover_unattached_attributes,
+                control,
+            )?);
+        }
+        return Ok(copied);
+    }
+    let Some(descendant_name) = reference.descendant_name.as_ref() else {
         return super::copy_source_node(
             &dynamic.document,
             inputs.request_id,
@@ -54,7 +82,7 @@ pub(super) fn copy_document(
     copy_matching_descendants(
         &dynamic.document,
         dynamic.document.document_node(),
-        descendant_local,
+        descendant_name,
         inputs.request_id,
         recover_unattached_attributes,
         control,
@@ -64,7 +92,7 @@ pub(super) fn copy_document(
 fn copy_matching_descendants(
     document: &Document,
     parent: NodeId,
-    local: &str,
+    name: &crate::xml::quick_xml_experiment::ExpandedName,
     request_id: &str,
     recover_unattached_attributes: bool,
     control: &mut InvocationControl,
@@ -76,7 +104,7 @@ fn copy_matching_descendants(
             .map_err(|failure| control_failure(failure, request_id))?;
         if document
             .name(*child)
-            .is_some_and(|name| name.namespace.is_none() && name.local == local)
+            .is_some_and(|candidate| candidate == name)
         {
             copied.extend(super::copy_source_node(
                 document,
@@ -89,7 +117,7 @@ fn copy_matching_descendants(
         copied.extend(copy_matching_descendants(
             document,
             *child,
-            local,
+            name,
             request_id,
             recover_unattached_attributes,
             control,
@@ -187,7 +215,7 @@ pub(super) fn prepare_document(
 fn contains_descendant_local(
     document: &Document,
     parent: NodeId,
-    local: &str,
+    name: &crate::xml::quick_xml_experiment::ExpandedName,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
@@ -197,8 +225,8 @@ fn contains_descendant_local(
             .map_err(|failure| control_failure(failure, request_id))?;
         if document
             .name(*child)
-            .is_some_and(|name| name.local == local)
-            || contains_descendant_local(document, *child, local, request_id, control)?
+            .is_some_and(|candidate| candidate == name)
+            || contains_descendant_local(document, *child, name, request_id, control)?
         {
             return Ok(true);
         }

@@ -2,6 +2,8 @@
 
 use std::fmt::Write as _;
 
+use encoding_rs::{BIG5, Encoding, ISO_2022_JP, SHIFT_JIS};
+
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xslt::golden_semantics_experiment::OutputSettings;
 
@@ -261,6 +263,50 @@ pub(super) fn encode_iso_8859_2_text(
         .collect()
 }
 
+pub(super) fn encode_bounded_legacy(
+    value: &str,
+    request_id: &str,
+    encoding: &str,
+) -> Result<Vec<u8>, ExecutionFailure> {
+    let selected = bounded_legacy_encoding(encoding).ok_or_else(|| {
+        failure(
+            "SESU0007",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            format!("the requested output encoding is not supported: {encoding}"),
+        )
+    })?;
+    let (encoded, _, had_errors) = selected.encode(value);
+    if had_errors {
+        return Err(failure(
+            "FXSR1006",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            format!(
+                "{} cannot represent every character in the bounded serialized result",
+                selected.name()
+            ),
+        ));
+    }
+    Ok(encoded.into_owned())
+}
+
+pub(super) fn is_bounded_legacy_encoding(encoding: &str) -> bool {
+    bounded_legacy_encoding(encoding).is_some()
+}
+
+fn bounded_legacy_encoding(encoding: &str) -> Option<&'static Encoding> {
+    if encoding.eq_ignore_ascii_case("SHIFT_JIS") || encoding.eq_ignore_ascii_case("SHIFT-JIS") {
+        Some(SHIFT_JIS)
+    } else if encoding.eq_ignore_ascii_case("BIG5") {
+        Some(BIG5)
+    } else if encoding.eq_ignore_ascii_case("ISO-2022-JP") {
+        Some(ISO_2022_JP)
+    } else {
+        None
+    }
+}
+
 const ISO_8859_2_UPPER: [char; 96] = [
     '\u{00A0}', '\u{0104}', '\u{02D8}', '\u{0141}', '\u{00A4}', '\u{013D}', '\u{015A}', '\u{00A7}',
     '\u{00A8}', '\u{0160}', '\u{015E}', '\u{0164}', '\u{0179}', '\u{00AD}', '\u{017D}', '\u{017B}',
@@ -357,7 +403,26 @@ pub(super) fn serialize_utf16_be(
 
 #[cfg(test)]
 mod tests {
-    use super::{decode_iso_8859_2_byte, encode_iso_8859_2_text, encode_iso_8859_2_xml};
+    use super::{
+        decode_iso_8859_2_byte, encode_bounded_legacy, encode_iso_8859_2_text,
+        encode_iso_8859_2_xml,
+    };
+
+    #[test]
+    fn bounded_legacy_encoders_preserve_representable_text_and_reject_other_characters() {
+        let shift_jis = encode_bounded_legacy("日本語", "encoding-test", "SHIFT_JIS")
+            .expect("representative Japanese text should encode as Shift_JIS");
+        assert_eq!(
+            encoding_rs::SHIFT_JIS
+                .decode_without_bom_handling_and_without_replacement(&shift_jis)
+                .as_deref(),
+            Some("日本語")
+        );
+
+        let failure = encode_bounded_legacy("😀", "encoding-test", "SHIFT_JIS")
+            .expect_err("the bounded lane must reject unrepresentable characters");
+        assert_eq!(failure.code, "FXSR1006");
+    }
 
     #[test]
     fn iso_8859_2_round_trips_representative_central_european_characters() {

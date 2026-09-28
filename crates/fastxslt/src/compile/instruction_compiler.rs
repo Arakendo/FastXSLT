@@ -146,8 +146,9 @@ use super::{
     CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE, effective_default_mode,
     effective_xpath_default_namespace, ensure_no_meaningful_children, ensure_only_attributes,
     invalid, is_ascii_ncname, is_ignored_xslt10_extension_attribute, is_xslt_element,
-    map_path_failure, meaningful_children, normalize_named_template_name, normalize_variable_qname,
-    optional_attribute, required_attribute, unsupported,
+    is_xslt10_forward_compatible_version, map_path_failure, meaningful_children,
+    normalize_named_template_name, normalize_variable_qname, optional_attribute,
+    required_attribute, unsupported,
 };
 
 pub(super) fn compile_attribute_set_declaration(
@@ -228,12 +229,37 @@ pub(super) fn compile_sequence_excluding_with_bindings(
             NodeKind::Element => {
                 let name = document.name(child).expect("element nodes have names");
                 if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
-                    instructions.push(compile_xslt_instruction(
-                        document,
-                        child,
-                        &name.local,
-                        &mut local_variables,
-                    )?);
+                    if name.local == "fallback" && uses_xslt10_compatibility(document, child) {
+                        ensure_fallback_attributes(document, child)?;
+                    } else if uses_xslt10_forward_compatible_processing(document, child)
+                        && !is_xslt10_template_element(&name.local)
+                    {
+                        instructions.extend(compile_xslt10_forward_compatible_instruction(
+                            document,
+                            child,
+                            &name.local,
+                        )?);
+                    } else {
+                        match compile_xslt_instruction(
+                            document,
+                            child,
+                            &name.local,
+                            &mut local_variables,
+                        ) {
+                            Ok(instruction) => instructions.push(instruction),
+                            Err(failure)
+                                if uses_xslt10_forward_compatible_processing(document, child)
+                                    && matches!(failure.code, "XPST0003" | "XPTY0004") =>
+                            {
+                                instructions.push(Instruction::Xslt10DeferredFailure {
+                                    code: failure.code,
+                                    detail: failure.detail,
+                                    location: failure.location,
+                                });
+                            }
+                            Err(failure) => return Err(failure),
+                        }
+                    }
                 } else if is_declared_extension_element(document, child) {
                     instructions.extend(compile_extension_fallbacks(document, child)?);
                 } else {
@@ -248,6 +274,79 @@ pub(super) fn compile_sequence_excluding_with_bindings(
                 ));
             }
         }
+    }
+    Ok(instructions)
+}
+
+fn is_xslt10_template_element(local_name: &str) -> bool {
+    matches!(
+        local_name,
+        "apply-imports"
+            | "apply-templates"
+            | "attribute"
+            | "call-template"
+            | "choose"
+            | "comment"
+            | "copy"
+            | "copy-of"
+            | "element"
+            | "fallback"
+            | "for-each"
+            | "if"
+            | "message"
+            | "number"
+            | "otherwise"
+            | "processing-instruction"
+            | "sort"
+            | "text"
+            | "value-of"
+            | "variable"
+            | "when"
+            | "with-param"
+    )
+}
+
+pub(super) fn uses_xslt10_forward_compatible_processing(
+    document: &Document,
+    element: NodeId,
+) -> bool {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(version) = optional_attribute(document, node, Some(XSLT_NAMESPACE), "version") {
+            return is_xslt10_forward_compatible_version(version);
+        }
+        if document.name(node).is_some_and(|name| {
+            name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                && matches!(name.local.as_str(), "stylesheet" | "transform")
+        }) {
+            return optional_attribute(document, node, None, "version")
+                .is_some_and(is_xslt10_forward_compatible_version);
+        }
+        current = document.parent(node);
+    }
+    false
+}
+
+fn compile_xslt10_forward_compatible_instruction(
+    document: &Document,
+    element: NodeId,
+    local_name: &str,
+) -> Result<Vec<Instruction>, CompileFailure> {
+    let fallbacks = meaningful_children(document, element)
+        .into_iter()
+        .filter(|child| is_xslt_element(document, *child, "fallback"))
+        .collect::<Vec<_>>();
+    if fallbacks.is_empty() {
+        return Ok(vec![Instruction::Xslt10DeferredFailure {
+            code: "XTDE1450",
+            detail: format!("forward-compatible instruction has no xsl:fallback: xsl:{local_name}"),
+            location: document.location(element).clone(),
+        }]);
+    }
+    let mut instructions = Vec::new();
+    for fallback in fallbacks {
+        ensure_fallback_attributes(document, fallback)?;
+        instructions.extend(compile_sequence(document, fallback)?);
     }
     Ok(instructions)
 }
@@ -1013,16 +1112,13 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     ensure_no_meaningful_children(document, element, "xsl:copy-of")?;
     let select = required_attribute(document, element, None, "select")?;
     let recover_unattached_attributes = uses_xslt10_compatibility(document, element);
-    if let Some((reference, descendant_local)) = parse_literal_document_call(select.trim()) {
-        return Ok(Instruction::CopyOfDocument {
-            select: crate::xslt::golden_semantics_experiment::DocumentRootReference {
-                base: document.location(element).resource.clone(),
-                reference: reference.to_owned(),
-                descendant_local: descendant_local.map(str::to_owned),
-            },
-            recover_unattached_attributes,
-            location: document.location(element).clone(),
-        });
+    if let Some(instruction) = compile_copy_of_literal_document(
+        document,
+        element,
+        select.trim(),
+        recover_unattached_attributes,
+    )? {
+        return Ok(instruction);
     }
     if uses_xslt10_compatibility(document, element) && select.trim_start().starts_with("key(") {
         return value_expression_compiler::compile_xslt10_literal_key_lookup(
@@ -1109,7 +1205,48 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     }
 }
 
-fn parse_literal_document_call(expression: &str) -> Option<(&str, Option<&str>)> {
+fn compile_copy_of_literal_document(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    recover_unattached_attributes: bool,
+) -> Result<Option<Instruction>, CompileFailure> {
+    let Some((reference, tail)) = parse_literal_document_call(expression) else {
+        return Ok(None);
+    };
+    let (descendant_name, path) = if tail.is_empty() {
+        (None, None)
+    } else if let Some(name) = tail.strip_prefix("//").filter(|name| !name.contains('/')) {
+        let descendant_name = Some(super::compile_expanded_qname(
+            document,
+            element,
+            name,
+            "document() descendant name test",
+        )?);
+        (descendant_name, None)
+    } else if tail.starts_with('/') {
+        (
+            None,
+            Some(parse_copy_of_literal_document_path(
+                document, element, tail,
+            )?),
+        )
+    } else {
+        return Ok(None);
+    };
+    Ok(Some(Instruction::CopyOfDocument {
+        select: crate::xslt::golden_semantics_experiment::DocumentRootReference {
+            base: document.location(element).resource.clone(),
+            reference: reference.to_owned(),
+            descendant_name,
+        },
+        path,
+        recover_unattached_attributes,
+        location: document.location(element).clone(),
+    }))
+}
+
+fn parse_literal_document_call(expression: &str) -> Option<(&str, &str)> {
     let argument_and_tail = expression.strip_prefix("document(")?;
     let quote = *argument_and_tail.as_bytes().first()?;
     if !matches!(quote, b'\'' | b'"') {
@@ -1120,17 +1257,83 @@ fn parse_literal_document_call(expression: &str) -> Option<(&str, Option<&str>)>
         .position(|byte| *byte == quote)?
         + 1;
     let reference = &argument_and_tail[1..closing_quote];
-    if reference.is_empty() {
-        return None;
-    }
     let tail = argument_and_tail[closing_quote + 1..].strip_prefix(')')?;
-    let descendant_local = if tail.is_empty() {
-        None
-    } else {
-        let name = tail.strip_prefix("//")?;
-        Some(is_ascii_ncname(name).then_some(name)?)
-    };
-    Some((reference, descendant_local))
+    Some((reference, tail))
+}
+
+fn parse_copy_of_literal_document_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<LocationPath, CompileFailure> {
+    let location = document.location(element).clone();
+    match parse_xslt10_location_path(expression, location.clone()) {
+        Ok(path) => return Ok(path),
+        Err(PathFailure::Unsupported { .. } | PathFailure::Invalid { .. })
+            if expression.contains(':') => {}
+        Err(failure) => return Err(map_path_failure(failure)),
+    }
+
+    let mut rewritten = String::with_capacity(expression.len());
+    let mut qualified_names = Vec::new();
+    for (index, step) in expression.split('/').enumerate() {
+        if index > 0 {
+            rewritten.push('/');
+        }
+        if step.is_empty() {
+            continue;
+        }
+        let predicate_start = step.find('[').unwrap_or(step.len());
+        let (node_test, suffix) = step.split_at(predicate_start);
+        let (attribute, name_test) = node_test
+            .strip_prefix('@')
+            .map_or((false, node_test), |name| (true, name));
+        let Some((prefix, local)) = name_test.split_once(':') else {
+            rewritten.push_str(step);
+            continue;
+        };
+        if name_test.matches(':').count() != 1
+            || !is_ascii_ncname(prefix)
+            || !is_ascii_ncname(local)
+        {
+            return Err(invalid(
+                "XPST0003",
+                format!("invalid QName in document() location path: {name_test}"),
+                &location,
+            ));
+        }
+        let placeholder = format!("fastxsltQualifiedName{}", qualified_names.len());
+        let expanded = super::compile_expanded_qname(
+            document,
+            element,
+            name_test,
+            "document() path name test",
+        )?;
+        if attribute {
+            rewritten.push('@');
+        }
+        rewritten.push_str(&placeholder);
+        rewritten.push_str(suffix);
+        qualified_names.push((placeholder, expanded, attribute));
+    }
+    let mut path = parse_xslt10_location_path(&rewritten, location).map_err(map_path_failure)?;
+    for (placeholder, expanded, attribute) in qualified_names {
+        let Some(step) = path.steps.iter_mut().find(|step| {
+            matches!(step, PathStep::ChildNamed(name) | PathStep::AttributeNamed(name) if name == &placeholder)
+        }) else {
+            return Err(unsupported(
+                "FXXP1003",
+                "qualified name tests inside document() predicates are outside the admitted xsl:copy-of slice",
+                document.location(element),
+            ));
+        };
+        *step = if attribute {
+            PathStep::AttributeExpandedName(expanded)
+        } else {
+            PathStep::ChildExpandedName(expanded)
+        };
+    }
+    Ok(path)
 }
 
 pub(super) fn split_top_level_union(expression: &str) -> Option<Vec<&str>> {
@@ -2343,6 +2546,11 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         return Ok(variable);
     }
     if let Some(variable) =
+        compile_xslt10_numeric_literal_variable(document, element, &name, expression, &location)
+    {
+        return Ok(variable);
+    }
+    if let Some(variable) =
         compile_local_binary_numeric_variable(document, element, &name, expression, &location)
     {
         return Ok(variable);
@@ -2379,6 +2587,23 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         return Ok(variable);
     }
     compile_local_node_or_cast_variable(document, element, &name, expression, location)
+}
+
+fn compile_xslt10_numeric_literal_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<Instruction> {
+    uses_xslt10_compatibility(document, element)
+        .then(|| crate::xpath::constant_numeric_experiment::fold_xslt10_numeric_literal(expression))
+        .flatten()
+        .map(|value| Instruction::StaticAtomicVariable {
+            name: name.to_owned(),
+            value: AtomicValue::from_validated_lexical(BuiltinAtomicType::Double, value),
+            location: location.clone(),
+        })
 }
 
 fn compile_context_count_path_variable(

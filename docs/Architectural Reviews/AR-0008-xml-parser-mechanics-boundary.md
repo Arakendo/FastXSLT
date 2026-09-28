@@ -4,11 +4,11 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-08-25 |
-| Last reviewed | 2026-08-25 |
+| Last reviewed | 2026-09-27 |
 | Scope | XML byte decoding, tokenization, namespaces, provenance, limits, and XDM handoff |
 | Trigger | M1's private transform slice needs to turn admitted bytes into FastXSLT-owned document semantics |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0003 |
-| Related evidence | `docs/Evidence/rust-xml-parser-candidate-review-2026-08-25.md`, `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md`, and `docs/Evidence/w3c-xml-conformance-suite-candidate-review-2026-08-25.md` |
+| Related evidence | `docs/Evidence/rust-xml-parser-candidate-review-2026-08-25.md`, `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md`, `docs/Evidence/w3c-xml-conformance-suite-candidate-review-2026-08-25.md`, `docs/Evidence/oasis-xslt10-declared-legacy-input-encoding-2026-09-26.md`, and `docs/Evidence/oasis-xslt10-bom-utf16-input-2026-09-27.md` |
 
 ## Architectural question
 
@@ -105,6 +105,12 @@ evidence does not justify it.
 - Complete XML name and namespace validation, declaration rules, character and
   encoding support, source line mapping, entity policy, performance, and
   adversarial robustness remain uncertain.
+- A private `quick-xml` encoding-feature experiment decodes declared
+  ASCII-compatible single-byte input while retaining original-byte source
+  offsets. A private BOM-selected UTF-16LE/UTF-16BE adapter also preserves
+  original-byte offsets across strict transcoding. These experiments do not
+  settle the supported-encoding profile, transitive unsafe review,
+  vulnerability review, or production dependency admission.
 - The official W3C XML 20130923 archive supplies 2,586 catalog cases across XML
   editions, namespaces, validity, well-formedness, entity modes, and canonical
   output. It is suitable pressure but requires dependency-aware selection.
@@ -138,7 +144,9 @@ boundary and FastXSLT remains responsible for accepted XML behavior.
 - [ ] Decide local-only acquisition versus repository/CI admission after a
   focused rights review, preserving the exact archive digest.
 - [ ] Decide UTF-8-only versus explicit supported encodings and test declaration
-  mismatches and byte-order marks.
+  mismatches and byte-order marks. A focused ASCII-compatible single-byte
+  experiment and BOM-selected UTF-16LE/UTF-16BE experiment are complete; the
+  supported public profile remains open.
 - [ ] Define offset-to-line/column indexing without copying parser types or
   repeatedly scanning large resources.
 - [x] Build the first owned XDM document without retaining parser events or
@@ -159,6 +167,19 @@ or another physical input strategy requires a different event seam.
 
 ## Review history
 
+- 2026-09-27 -- Threaded the host-supplied XML event and depth envelope through
+  principal and dependency stylesheet parsing as well as source preparation.
+  Exhaustion is a structured limit outcome, and two unchanged large OASIS
+  stylesheets become exact under the measurement host's larger bounded policy.
+  Production defaults and parser admission remain open.
+  [Evidence](../Evidence/oasis-xslt10-host-owned-stylesheet-xml-limits-2026-09-27.md)
+- 2026-09-27 -- Added strict BOM-selected UTF-16LE and UTF-16BE decoding with
+  parser offsets mapped back to the immutable admitted bytes. Twenty-two OASIS
+  standard-operation cases leave the generic stylesheet-XML frontier, six
+  become exact, and the remainder expose named numbering/runtime/mismatch
+  frontiers. The public encoding profile and production parser admission remain
+  open.
+  [Evidence](../Evidence/oasis-xslt10-bom-utf16-input-2026-09-27.md)
 - 2026-08-25 -- Opened Under Review with a dev-only `quick-xml` experiment.
 - 2026-08-25 -- Confirmed the adapter can feed an owned private XDM tree after
   source bytes are released; production admission gates remain open.
@@ -171,3 +192,10 @@ or another physical input strategy requires a different event seam.
 - 2026-08-26 -- XSLT30 `template-002` exposed and verified adapter-owned PI
   target/data separator normalization. The parser remains private and
   production admission gates remain open.
+- 2026-09-26 -- Enabled the private parser candidate's encoding decoder for
+  declared ASCII-compatible single-byte XML while preserving raw-byte source
+  offsets. Seven OASIS cases initialize, three become exact, and two lossy
+  archival include references receive explicit exclusions. UTF-16 provenance,
+  the supported encoding profile, dependency audit, and production admission
+  remain open.
+  [Evidence](../Evidence/oasis-xslt10-declared-legacy-input-encoding-2026-09-26.md)

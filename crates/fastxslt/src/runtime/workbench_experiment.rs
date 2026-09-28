@@ -5,8 +5,8 @@ use crate::execution_control_experiment::{
 };
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::runtime::golden_runtime_experiment::{
-    ExecutionFailure, compile_resource_with_denied_and_limits, execute_program_with_resources,
-    serialize_xml, serialize_xml_bytes,
+    ExecutionFailure, StylesheetCompileLimits, compile_resource_with_denied_and_limits,
+    execute_program_with_resources, serialize_xml, serialize_xml_bytes,
 };
 #[cfg(test)]
 use crate::runtime::golden_runtime_experiment::{
@@ -24,9 +24,9 @@ pub struct WorkbenchLimits {
     pub max_resource_bytes: usize,
     /// Maximum serialized result bytes.
     pub max_result_bytes: usize,
-    /// Maximum XML events charged during source preparation.
+    /// Maximum XML events charged during stylesheet compilation and source preparation.
     pub max_xml_events: usize,
-    /// Maximum XML element nesting depth during source preparation.
+    /// Maximum XML element nesting depth during stylesheet compilation and source preparation.
     pub max_xml_depth: usize,
     /// Maximum XDM nodes charged during source preparation and execution.
     pub max_xdm_nodes: usize,
@@ -284,10 +284,16 @@ impl ExperimentalEngine {
             &snapshot,
             &stylesheet_id,
             stylesheet_resources.denied_identities,
-            limits.max_stylesheet_dependency_depth,
-            limits.max_stylesheet_modules,
-            limits.max_stylesheet_dependency_bytes,
-            limits.max_stylesheet_resolution_attempts,
+            StylesheetCompileLimits::new(
+                limits.max_stylesheet_dependency_depth,
+                limits.max_stylesheet_modules,
+                limits.max_stylesheet_dependency_bytes,
+                limits.max_stylesheet_resolution_attempts,
+                ParseLimits {
+                    max_events: limits.max_xml_events,
+                    max_depth: limits.max_xml_depth,
+                },
+            ),
         )
         .map_err(|failure| project_execution(&failure))?;
         let mut builder = PreparedInputBuilder::with_parse_limits(
@@ -1371,6 +1377,97 @@ mod tests {
             engine.transform("depth-transform").expect("transform"),
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out></out>"
         );
+    }
+
+    #[test]
+    fn host_supplied_xml_event_limit_applies_to_stylesheet_compilation() {
+        const SOURCE_ID: &str = "urn:fastxslt:workbench-xml-limit:source";
+        const STYLESHEET_ID: &str = "urn:fastxslt:workbench-xml-limit:stylesheet";
+        let stylesheet = format!(
+            "<xsl:stylesheet version='1.0' xmlns:xsl='http://www.w3.org/1999/XSL/Transform'><xsl:template match='/'><out>{}</out></xsl:template></xsl:stylesheet>",
+            "<item/>".repeat(1_100)
+        )
+        .into_bytes();
+        let low_limits = WorkbenchLimits {
+            max_xml_events: 1_024,
+            ..WorkbenchLimits::default()
+        };
+
+        let Err(failure) = ExperimentalEngine::new(
+            SOURCE_ID,
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            stylesheet.clone(),
+            low_limits,
+        ) else {
+            panic!("the host-supplied XML event bound must apply to the stylesheet");
+        };
+        assert_eq!(failure.code, "FXRS0006");
+        assert_eq!(failure.category, "limit");
+        assert!(failure.detail.contains("XML event limit is 1024"));
+
+        let admitted_limits = WorkbenchLimits {
+            max_xml_events: 5_000,
+            ..WorkbenchLimits::default()
+        };
+        let engine = ExperimentalEngine::new(
+            SOURCE_ID,
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            stylesheet,
+            admitted_limits,
+        )
+        .expect("the larger host-supplied XML event bound should admit the stylesheet");
+        let result = engine
+            .transform("xml-event-limit-transform")
+            .expect("transform the admitted stylesheet");
+        assert_eq!(result.matches("<item></item>").count(), 1_100);
+    }
+
+    #[test]
+    fn host_supplied_xml_depth_limit_applies_to_stylesheet_compilation() {
+        const SOURCE_ID: &str = "urn:fastxslt:workbench-xml-depth:source";
+        const STYLESHEET_ID: &str = "urn:fastxslt:workbench-xml-depth:stylesheet";
+        let stylesheet = format!(
+            "<xsl:stylesheet version='1.0' xmlns:xsl='http://www.w3.org/1999/XSL/Transform'><xsl:template match='/'><out>{}{}</out></xsl:template></xsl:stylesheet>",
+            "<item>".repeat(70),
+            "</item>".repeat(70)
+        )
+        .into_bytes();
+        let low_limits = WorkbenchLimits {
+            max_xml_depth: 64,
+            ..WorkbenchLimits::default()
+        };
+
+        let Err(failure) = ExperimentalEngine::new(
+            SOURCE_ID,
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            stylesheet.clone(),
+            low_limits,
+        ) else {
+            panic!("the host-supplied XML depth bound must apply to the stylesheet");
+        };
+        assert_eq!(failure.code, "FXRS0006");
+        assert_eq!(failure.category, "limit");
+        assert!(failure.detail.contains("XML depth limit is 64"));
+
+        let admitted_limits = WorkbenchLimits {
+            max_xml_depth: 128,
+            ..WorkbenchLimits::default()
+        };
+        let engine = ExperimentalEngine::new(
+            SOURCE_ID,
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            stylesheet,
+            admitted_limits,
+        )
+        .expect("the larger host-supplied XML depth bound should admit the stylesheet");
+        let result = engine
+            .transform("xml-depth-limit-transform")
+            .expect("transform the admitted stylesheet");
+        assert_eq!(result.matches("<item>").count(), 70);
     }
 
     #[test]

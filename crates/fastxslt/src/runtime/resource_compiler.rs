@@ -3,14 +3,15 @@
 use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
     compile_stylesheet_module_at_unlinked, compile_stylesheet_with_import_and_include,
-    compile_stylesheet_with_imported_and_included_programs_at, compile_stylesheet_with_imports,
+    compile_stylesheet_with_imported_and_included_programs_at,
+    compile_stylesheet_with_imported_programs_at, compile_stylesheet_with_imports,
     compile_stylesheet_with_included_programs_at,
     compile_stylesheet_with_single_imported_program_at, compile_stylesheet_with_single_include,
     compile_stylesheet_with_single_include_program_at,
-    compile_stylesheet_with_two_imported_programs_at,
     compile_stylesheet_with_two_included_programs_at, validate_import_order_at,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
+use crate::xml::quick_xml_experiment::ParseLimits;
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
 use super::stylesheet_dependency_loader::{
@@ -22,6 +23,33 @@ use super::{ExecutionFailure, FailureCategory, failure, failure_at};
 const DEFAULT_DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(2, 5, 1_048_576);
 #[cfg(test)]
 const DEFAULT_RESOLUTION_ATTEMPTS: usize = 5;
+
+#[derive(Clone, Copy)]
+pub(in crate::runtime) struct StylesheetCompileLimits {
+    dependency: DependencyLimits,
+    resolution_attempts: usize,
+    xml: ParseLimits,
+}
+
+impl StylesheetCompileLimits {
+    pub(in crate::runtime) const fn new(
+        max_dependency_depth: usize,
+        max_modules: usize,
+        max_dependency_bytes: usize,
+        max_resolution_attempts: usize,
+        xml: ParseLimits,
+    ) -> Self {
+        Self {
+            dependency: DependencyLimits::new(
+                max_dependency_depth,
+                max_modules,
+                max_dependency_bytes,
+            ),
+            resolution_attempts: max_resolution_attempts,
+            xml,
+        }
+    }
+}
 
 #[cfg(test)]
 pub(in crate::runtime) fn compile_resource(
@@ -41,10 +69,13 @@ pub(in crate::runtime) fn compile_resource_with_denied(
         snapshot,
         stylesheet_id,
         denied,
-        2,
-        5,
-        1_048_576,
-        DEFAULT_RESOLUTION_ATTEMPTS,
+        StylesheetCompileLimits::new(
+            2,
+            5,
+            1_048_576,
+            DEFAULT_RESOLUTION_ATTEMPTS,
+            super::XML_LIMITS,
+        ),
     )
 }
 
@@ -52,20 +83,18 @@ pub(in crate::runtime) fn compile_resource_with_denied_and_limits(
     snapshot: &ResourceSnapshot,
     stylesheet_id: &str,
     denied: impl IntoIterator<Item = String>,
-    max_dependency_depth: usize,
-    max_modules: usize,
-    max_dependency_bytes: usize,
-    max_resolution_attempts: usize,
+    limits: StylesheetCompileLimits,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
     let mut resolver = SnapshotResolver::new(
         snapshot,
         denied,
-        ResolutionLimits::new(max_resolution_attempts),
+        ResolutionLimits::new(limits.resolution_attempts),
     );
     compile_resource_with_resolver_and_limits(
         &mut resolver,
         stylesheet_id,
-        DependencyLimits::new(max_dependency_depth, max_modules, max_dependency_bytes),
+        limits.dependency,
+        limits.xml,
     )
 }
 
@@ -74,16 +103,23 @@ fn compile_resource_with_resolver(
     resolver: &mut SnapshotResolver<'_>,
     stylesheet_id: &str,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    compile_resource_with_resolver_and_limits(resolver, stylesheet_id, DEFAULT_DEPENDENCY_LIMITS)
+    compile_resource_with_resolver_and_limits(
+        resolver,
+        stylesheet_id,
+        DEFAULT_DEPENDENCY_LIMITS,
+        super::XML_LIMITS,
+    )
 }
 
 fn compile_resource_with_resolver_and_limits(
     resolver: &mut SnapshotResolver<'_>,
     stylesheet_id: &str,
     dependency_limits: DependencyLimits,
+    xml_limits: ParseLimits,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let graph = load_stylesheet_dependency_graph(resolver, stylesheet_id, dependency_limits)
-        .map_err(dependency_failure)?;
+    let graph =
+        load_stylesheet_dependency_graph(resolver, stylesheet_id, dependency_limits, xml_limits)
+            .map_err(dependency_failure)?;
     debug_assert_eq!(graph.identity, stylesheet_id);
     let mut program = compile_loaded_graph(&graph).map_err(compile_failure)?;
     crate::compile::golden_stylesheet_experiment::finalize_attribute_sets(&mut program)
@@ -305,10 +341,10 @@ fn compile_homogeneous_module(
                             )
                         }
                         StylesheetDependencyKind::Import => {
-                            compile_stylesheet_with_two_imported_programs_at(
+                            compile_stylesheet_with_imported_programs_at(
                                 &module.document,
                                 module.root,
-                                [first_program, second_program],
+                                vec![first_program, second_program],
                             )
                         }
                     }
@@ -337,8 +373,37 @@ fn compile_homogeneous_module(
                     }),
             )
         }
+        dependencies
+            if dependencies.iter().all(|dependency| {
+                dependency.dependency_kind == Some(StylesheetDependencyKind::Import)
+            }) =>
+        {
+            compile_homogeneous_import_siblings(module, dependencies)
+        }
         _ => None,
     }
+}
+
+fn compile_homogeneous_import_siblings(
+    module: &LoadedStylesheetModule,
+    dependencies: &[LoadedStylesheetModule],
+) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    let imported_programs = dependencies
+        .iter()
+        .map(compile_homogeneous_module)
+        .collect::<Option<Vec<_>>>()?;
+    Some(
+        imported_programs
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+            .and_then(|imported_programs| {
+                compile_stylesheet_with_imported_programs_at(
+                    &module.document,
+                    module.root,
+                    imported_programs,
+                )
+            }),
+    )
 }
 
 fn compile_linear_dependency_chain(
@@ -464,10 +529,10 @@ fn compile_two_import_leaf_import_graph(
             &second.document,
             &[(&second_import.document, second_import.root)],
         )?;
-        compile_stylesheet_with_two_imported_programs_at(
+        compile_stylesheet_with_imported_programs_at(
             &graph.document,
             graph.root,
-            [first_program, second_program],
+            vec![first_program, second_program],
         )
     })())
 }
@@ -610,6 +675,16 @@ fn dependency_failure(error: DependencyFailure) -> ExecutionFailure {
             location,
             format!("stylesheet XML is invalid at {identity}: {detail}"),
         ),
+        DependencyFailure::XmlLimit {
+            identity,
+            detail,
+            location,
+        } => dependency_failure_at(
+            "FXRS0006",
+            FailureCategory::Limit,
+            location,
+            format!("stylesheet XML limit at {identity}: {detail}"),
+        ),
         DependencyFailure::InvalidXdm {
             identity,
             detail,
@@ -706,9 +781,10 @@ mod tests {
     };
 
     use super::{
-        compile_resource, compile_resource_with_denied_and_limits, compile_resource_with_resolver,
+        StylesheetCompileLimits, compile_resource, compile_resource_with_denied_and_limits,
+        compile_resource_with_resolver,
     };
-    use crate::runtime::golden_runtime_experiment::FailureCategory;
+    use crate::runtime::golden_runtime_experiment::{FailureCategory, XML_LIMITS};
 
     const STYLESHEET_ID: &str = "urn:fastxslt:test:stylesheet";
     const STYLESHEET: &[u8] = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#;
@@ -862,10 +938,7 @@ mod tests {
             &snapshot,
             PRINCIPAL,
             std::iter::empty(),
-            2,
-            4,
-            8_192,
-            4,
+            StylesheetCompileLimits::new(2, 4, 8_192, 4, XML_LIMITS),
         )
         .expect("compile three ordered include occurrences");
 
@@ -883,10 +956,7 @@ mod tests {
             &snapshot,
             PRINCIPAL,
             std::iter::empty(),
-            2,
-            3,
-            8_192,
-            4,
+            StylesheetCompileLimits::new(2, 3, 8_192, 4, XML_LIMITS),
         )
         .expect_err("repeated references must each consume the module budget");
         assert_eq!(failure.code, "FXRS0006");

@@ -56,6 +56,19 @@ pub(crate) fn fold_xslt10_finite_arithmetic(expression: &str) -> Option<String> 
     rational_to_decimal(evaluate_xslt10(expression).ok()?)
 }
 
+pub(crate) fn fold_xslt10_numeric_literal(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    let normalized = expression
+        .strip_prefix("-.")
+        .map(|fraction| format!("-0.{fraction}"))
+        .or_else(|| {
+            expression
+                .strip_prefix('.')
+                .map(|fraction| format!("0.{fraction}"))
+        });
+    canonical_finite_double(normalized.as_deref().unwrap_or(expression))
+}
+
 pub(crate) fn fold_number_conversion(expression: &str) -> Option<String> {
     let argument = number_function_call(expression)?;
     if argument.is_empty() {
@@ -1007,7 +1020,8 @@ mod tests {
         fold_number_conversion, fold_xslt10_finite_arithmetic, fold_xslt10_finite_comparison,
         fold_xslt10_nan_composition, fold_xslt10_nested_string_number_equality,
         fold_xslt10_non_finite_comparison, fold_xslt10_non_finite_division,
-        fold_xslt10_static_string_number, integral_function_call, number_function_call,
+        fold_xslt10_numeric_literal, fold_xslt10_static_string_number, integral_function_call,
+        number_function_call,
     };
 
     #[test]
@@ -1212,6 +1226,21 @@ mod tests {
         for expression in ["1 div 3", "7", "source div 2", "'bad' div 2"] {
             assert_eq!(fold_xslt10_finite_arithmetic(expression), None);
         }
+    }
+
+    #[test]
+    fn folds_xpath10_numeric_literals_through_double_string_conversion() {
+        for (expression, expected) in [
+            ("-1", "-1"),
+            ("-.1", "-0.1"),
+            ("-123456789012345678", "-123456789012345680"),
+        ] {
+            assert_eq!(
+                fold_xslt10_numeric_literal(expression).as_deref(),
+                Some(expected)
+            );
+        }
+        assert_eq!(fold_xslt10_numeric_literal("name"), None);
     }
 
     #[test]

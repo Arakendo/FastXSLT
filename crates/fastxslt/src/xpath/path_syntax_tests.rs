@@ -1,7 +1,11 @@
 use std::ops::Range;
 
-use super::{PathFailure, PathOrigin, parse_location_path, parse_xslt10_location_path};
+use super::{
+    PathFailure, PathOrigin, PathStep, parse_location_path, parse_qualified_child_path,
+    parse_xslt10_location_path,
+};
 use crate::xdm::owned_tree_experiment::SourceLocation;
+use crate::xml::quick_xml_experiment::ExpandedName;
 
 fn location() -> SourceLocation {
     SourceLocation {
@@ -51,6 +55,24 @@ fn xslt10_outer_parentheses_reuse_the_typed_location_path() {
 
     assert_eq!(parenthesized, direct);
     assert!(parse_location_path("(.//last-name)", location()).is_err());
+}
+
+#[test]
+fn qualified_child_path_retains_ordinary_position_predicates() {
+    let path = parse_qualified_child_path("p:entry[2]", location(), |prefix| {
+        (prefix == "p").then(|| "urn:entries".to_owned())
+    })
+    .expect("qualified predicated child path");
+
+    assert_eq!(
+        path.steps,
+        [PathStep::ChildExpandedName(ExpandedName {
+            namespace: Some("urn:entries".to_owned()),
+            local: "entry".to_owned(),
+        })]
+    );
+    assert_eq!(path.step_position_predicates.len(), 1);
+    assert_eq!(path.step_position_predicates[0].len(), 1);
 }
 
 #[test]

@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::ops::Range;
 
 use quick_xml::XmlVersion;
+use quick_xml::encoding::Decoder;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::name::ResolveResult;
 use quick_xml::reader::NsReader;
@@ -195,6 +196,14 @@ impl LocatedFailure {
             ParseFailure::Control(_) => None,
         }
     }
+
+    pub(crate) fn structural_limit_detail(&self) -> Option<String> {
+        match &self.failure {
+            ParseFailure::EventLimit { limit, .. } => Some(format!("XML event limit is {limit}")),
+            ParseFailure::DepthLimit { limit, .. } => Some(format!("XML depth limit is {limit}")),
+            _ => None,
+        }
+    }
 }
 
 pub(crate) fn parse_document(
@@ -223,6 +232,84 @@ pub(crate) fn parse_document_controlled(
         })
 }
 
+enum ParserInput<'a> {
+    Original(&'a [u8]),
+    Utf16 {
+        utf8: Vec<u8>,
+        original_offsets: Vec<usize>,
+    },
+}
+
+impl<'a> ParserInput<'a> {
+    fn new(input: &'a [u8]) -> Result<Self, ParseFailure> {
+        let (endianness, content) = if let Some(content) = input.strip_prefix(&[0xff, 0xfe]) {
+            (Utf16Endianness::Little, content)
+        } else if let Some(content) = input.strip_prefix(&[0xfe, 0xff]) {
+            (Utf16Endianness::Big, content)
+        } else {
+            return Ok(Self::Original(input));
+        };
+        if content.len() % 2 != 0 {
+            return Err(ParseFailure::Malformed {
+                offset: input.len() - 1,
+                detail: "UTF-16 input ends with an incomplete code unit".to_owned(),
+            });
+        }
+
+        let code_units = content.chunks_exact(2).map(|bytes| match endianness {
+            Utf16Endianness::Little => u16::from_le_bytes([bytes[0], bytes[1]]),
+            Utf16Endianness::Big => u16::from_be_bytes([bytes[0], bytes[1]]),
+        });
+        let mut utf8 = Vec::with_capacity(content.len() / 2);
+        let mut original_offsets = vec![2];
+        let mut original_offset = 2usize;
+        for decoded in char::decode_utf16(code_units) {
+            let character = decoded.map_err(|error| ParseFailure::Malformed {
+                offset: original_offset,
+                detail: format!("invalid UTF-16 surrogate: {error}"),
+            })?;
+            let original_width = if character.len_utf16() == 2 { 4 } else { 2 };
+            let mut encoded = [0u8; 4];
+            let encoded = character.encode_utf8(&mut encoded).as_bytes();
+            utf8.extend_from_slice(encoded);
+            original_offsets.extend(
+                std::iter::repeat_n(original_offset, encoded.len().saturating_sub(1))
+                    .chain(std::iter::once(original_offset + original_width)),
+            );
+            original_offset += original_width;
+        }
+        Ok(Self::Utf16 {
+            utf8,
+            original_offsets,
+        })
+    }
+
+    fn bytes(&self) -> &[u8] {
+        match self {
+            Self::Original(bytes) => bytes,
+            Self::Utf16 { utf8, .. } => utf8,
+        }
+    }
+
+    fn original_offset(&self, parser_offset: usize) -> usize {
+        match self {
+            Self::Original(_) => parser_offset,
+            Self::Utf16 {
+                original_offsets, ..
+            } => original_offsets
+                .get(parser_offset)
+                .copied()
+                .unwrap_or_else(|| *original_offsets.last().unwrap_or(&usize::MAX)),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Utf16Endianness {
+    Little,
+    Big,
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "keeping the experimental event loop together makes parser behavior auditable"
@@ -232,7 +319,8 @@ fn parse_bytes(
     limits: ParseLimits,
     control: &mut InvocationControl,
 ) -> Result<ParsedDocument, ParseFailure> {
-    let mut reader = NsReader::from_reader(input);
+    let parser_input = ParserInput::new(input)?;
+    let mut reader = NsReader::from_reader(parser_input.bytes());
     reader.config_mut().enable_all_checks(true);
 
     let mut depth = 0_usize;
@@ -246,14 +334,18 @@ fn parse_bytes(
     let mut events = Vec::new();
 
     loop {
-        let start = usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX);
+        let parser_start = usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX);
         let event = reader
             .read_event()
             .map_err(|error| ParseFailure::Malformed {
-                offset: usize::try_from(reader.error_position()).unwrap_or(usize::MAX),
+                offset: parser_input.original_offset(
+                    usize::try_from(reader.error_position()).unwrap_or(usize::MAX),
+                ),
                 detail: error.to_string(),
             })?;
-        let end = usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX);
+        let parser_end = usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX);
+        let start = parser_input.original_offset(parser_start);
+        let end = parser_input.original_offset(parser_end);
         let span = start..end;
 
         if !matches!(event, Event::Eof) {
@@ -272,7 +364,7 @@ fn parse_bytes(
         match event {
             Event::Start(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
-                let prefix = lexical_prefix(element.name().as_ref(), start)?;
+                let prefix = lexical_prefix(reader.decoder(), element.name().as_ref(), start)?;
                 let attributes = resolve_attributes(&reader, &element, start)?;
                 let namespaces = resolve_namespace_declarations(&reader, &element, start)?;
                 if depth == 0 {
@@ -304,7 +396,7 @@ fn parse_bytes(
             }
             Event::Empty(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
-                let prefix = lexical_prefix(element.name().as_ref(), start)?;
+                let prefix = lexical_prefix(reader.decoder(), element.name().as_ref(), start)?;
                 let attributes = resolve_attributes(&reader, &element, start)?;
                 let namespaces = resolve_namespace_declarations(&reader, &element, start)?;
                 if depth == 0 {
@@ -389,8 +481,10 @@ fn parse_bytes(
                 events.push(OwnedXmlEvent::Comment { value, span });
             }
             Event::PI(instruction) => {
-                let target = decode_name(instruction.target(), start)?;
-                let value = std::str::from_utf8(instruction.content())
+                let target = decode_name(reader.decoder(), instruction.target(), start)?;
+                let value = reader
+                    .decoder()
+                    .decode(instruction.content())
                     .map_err(|error| malformed(start, error))?
                     .trim_start_matches([' ', '\t', '\r', '\n'])
                     .to_owned();
@@ -428,13 +522,17 @@ fn resolve_element_name(
     offset: usize,
 ) -> Result<ExpandedName, ParseFailure> {
     let (namespace, local) = reader.resolver().resolve_element(element.name());
-    expanded_name(namespace, local.as_ref(), offset)
+    expanded_name(reader.decoder(), namespace, local.as_ref(), offset)
 }
 
-fn lexical_prefix(name: &[u8], offset: usize) -> Result<Option<String>, ParseFailure> {
+fn lexical_prefix(
+    decoder: Decoder,
+    name: &[u8],
+    offset: usize,
+) -> Result<Option<String>, ParseFailure> {
     name.iter()
         .position(|byte| *byte == b':')
-        .map(|separator| decode_name(&name[..separator], offset))
+        .map(|separator| decode_name(decoder, &name[..separator], offset))
         .transpose()
 }
 
@@ -445,7 +543,7 @@ fn resolve_end_name(
 ) -> Result<ExpandedName, ParseFailure> {
     let qualified = quick_xml::name::QName(name);
     let (namespace, local) = reader.resolver().resolve_element(qualified);
-    expanded_name(namespace, local.as_ref(), offset)
+    expanded_name(reader.decoder(), namespace, local.as_ref(), offset)
 }
 
 fn resolve_attributes(
@@ -469,8 +567,8 @@ fn resolve_attributes(
             continue;
         }
         let (namespace, local) = reader.resolver().resolve_attribute(attribute.key);
-        let name = expanded_name(namespace, local.as_ref(), offset)?;
-        let prefix = lexical_prefix(attribute.key.as_ref(), offset)?;
+        let name = expanded_name(reader.decoder(), namespace, local.as_ref(), offset)?;
+        let prefix = lexical_prefix(reader.decoder(), attribute.key.as_ref(), offset)?;
         if !expanded_names.insert(name.clone()) {
             return Err(ParseFailure::Malformed {
                 offset,
@@ -502,7 +600,7 @@ fn resolve_namespace_declarations(
         let prefix = if key == b"xmlns" {
             None
         } else if let Some(prefix) = key.strip_prefix(b"xmlns:") {
-            Some(decode_name(prefix, offset)?)
+            Some(decode_name(reader.decoder(), prefix, offset)?)
         } else {
             continue;
         };
@@ -516,27 +614,36 @@ fn resolve_namespace_declarations(
 }
 
 fn expanded_name(
+    decoder: Decoder,
     namespace: ResolveResult<'_>,
     local: &[u8],
     offset: usize,
 ) -> Result<ExpandedName, ParseFailure> {
     let namespace = match namespace {
         ResolveResult::Unbound => None,
-        ResolveResult::Bound(namespace) => {
-            Some(decode_resolved_namespace(namespace.as_ref(), offset)?)
-        }
+        ResolveResult::Bound(namespace) => Some(decode_resolved_namespace(
+            decoder,
+            namespace.as_ref(),
+            offset,
+        )?),
         ResolveResult::Unknown(prefix) => {
             return Err(ParseFailure::UnknownNamespacePrefix { offset, prefix });
         }
     };
     Ok(ExpandedName {
         namespace,
-        local: decode_name(local, offset)?,
+        local: decode_name(decoder, local, offset)?,
     })
 }
 
-fn decode_resolved_namespace(namespace: &[u8], offset: usize) -> Result<String, ParseFailure> {
-    let raw = std::str::from_utf8(namespace).map_err(|error| malformed(offset, error))?;
+fn decode_resolved_namespace(
+    decoder: Decoder,
+    namespace: &[u8],
+    offset: usize,
+) -> Result<String, ParseFailure> {
+    let raw = decoder
+        .decode(namespace)
+        .map_err(|error| malformed(offset, error))?;
     let mut normalized = String::with_capacity(raw.len());
     let mut characters = raw.chars().peekable();
     while let Some(character) = characters.next() {
@@ -556,13 +663,11 @@ fn decode_resolved_namespace(namespace: &[u8], offset: usize) -> Result<String, 
         .map_err(|error| malformed(offset, error))
 }
 
-fn decode_name(bytes: &[u8], offset: usize) -> Result<String, ParseFailure> {
-    std::str::from_utf8(bytes)
-        .map(str::to_owned)
-        .map_err(|error| ParseFailure::Malformed {
-            offset,
-            detail: format!("the private XML experiment accepts UTF-8 names only: {error}"),
-        })
+fn decode_name(decoder: Decoder, bytes: &[u8], offset: usize) -> Result<String, ParseFailure> {
+    decoder
+        .decode(bytes)
+        .map(std::borrow::Cow::into_owned)
+        .map_err(|error| malformed(offset, error))
 }
 
 fn malformed(offset: usize, error: impl std::fmt::Display) -> ParseFailure {
@@ -666,6 +771,82 @@ mod tests {
                 }
             )
         }));
+    }
+
+    #[test]
+    fn decodes_declared_single_byte_xml_without_losing_names_or_offsets() {
+        let xml = b"<?xml version=\"1.0\" encoding=\"windows-1252\"?><r\xE9sum\xE9 attr=\"caf\xE9\">ol\xE9</r\xE9sum\xE9>";
+
+        let document = parse_document("memory:windows-1252.xml", xml, LIMITS)
+            .expect("declared Windows-1252 XML should parse");
+
+        assert_eq!(document.root.local, "résumé");
+        assert_eq!(document.root_span, 45..65);
+        assert!(document.events.iter().any(|event| {
+            matches!(
+                event,
+                OwnedXmlEvent::Start { attributes, .. }
+                    if attributes.iter().any(|attribute| {
+                        attribute.name.local == "attr" && attribute.value == "café"
+                    })
+            )
+        }));
+        assert!(document.events.iter().any(|event| {
+            matches!(event, OwnedXmlEvent::Text { value, .. } if value == "olé")
+        }));
+    }
+
+    #[test]
+    fn decodes_bom_selected_utf16_and_preserves_original_byte_offsets() {
+        let xml = "<?xml version=\"1.0\"?><résumé>olé</résumé>";
+        let root_start = xml[..xml.find("<résumé>").expect("root start")]
+            .encode_utf16()
+            .count();
+        let root_end = root_start + "<résumé>".encode_utf16().count();
+
+        for (bom, units) in [
+            (
+                [0xff, 0xfe],
+                xml.encode_utf16()
+                    .flat_map(u16::to_le_bytes)
+                    .collect::<Vec<_>>(),
+            ),
+            (
+                [0xfe, 0xff],
+                xml.encode_utf16()
+                    .flat_map(u16::to_be_bytes)
+                    .collect::<Vec<_>>(),
+            ),
+        ] {
+            let mut bytes = bom.to_vec();
+            bytes.extend(units);
+            let document = parse_document("memory:utf16.xml", &bytes, LIMITS)
+                .expect("BOM-selected UTF-16 XML should parse");
+
+            assert_eq!(document.root.local, "résumé");
+            assert_eq!(document.root_span, 2 + root_start * 2..2 + root_end * 2);
+            assert!(document.events.iter().any(|event| {
+                matches!(event, OwnedXmlEvent::Text { value, .. } if value == "olé")
+            }));
+        }
+    }
+
+    #[test]
+    fn rejects_truncated_or_unpaired_utf16_before_xml_parsing() {
+        assert!(matches!(
+            parse_document("memory:truncated.xml", &[0xff, 0xfe, b'<'], LIMITS),
+            Err(LocatedFailure {
+                failure: ParseFailure::Malformed { offset: 2, .. },
+                ..
+            })
+        ));
+        assert!(matches!(
+            parse_document("memory:surrogate.xml", &[0xff, 0xfe, 0x00, 0xd8], LIMITS),
+            Err(LocatedFailure {
+                failure: ParseFailure::Malformed { offset: 2, .. },
+                ..
+            })
+        ));
     }
 
     #[test]

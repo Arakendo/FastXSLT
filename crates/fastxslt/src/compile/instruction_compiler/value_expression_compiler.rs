@@ -135,6 +135,20 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             ))),
         });
     }
+    if super::uses_xslt10_forward_compatible_processing(document, element)
+        && let Some(function) =
+            super::xslt10_static_introspection_compiler::numeric_literal_argument_type_error(
+                expression,
+            )
+    {
+        return Err(invalid(
+            "XPTY0004",
+            format!(
+                "{function} requires a string argument in XSLT 1.x forward-compatible processing"
+            ),
+            location,
+        ));
+    }
     if let Some(literal) = crate::xpath::static_string_experiment::fold_concat_literals(expression)
     {
         return Ok(ValueExpression::LiteralString(literal));
@@ -186,6 +200,12 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(literal) =
             crate::xpath::constant_numeric_experiment::fold_xslt10_finite_arithmetic(expression)
+    {
+        return Ok(ValueExpression::LiteralString(literal));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(literal) =
+            crate::xpath::constant_numeric_experiment::fold_xslt10_numeric_literal(expression)
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
@@ -3171,7 +3191,7 @@ fn compile_xslt10_literal_document_path(
         reference: crate::xslt::golden_semantics_experiment::DocumentRootReference {
             base: location.resource.clone(),
             reference: reference.to_owned(),
-            descendant_local: None,
+            descendant_name: None,
         },
         path,
     }))
@@ -3359,7 +3379,10 @@ fn compile_root_value(
             crate::xslt::golden_semantics_experiment::DocumentRootReference {
                 base: location.resource.clone(),
                 reference: reference.to_owned(),
-                descendant_local: descendant_local.map(str::to_owned),
+                descendant_name: descendant_local.map(|local| ExpandedName {
+                    namespace: None,
+                    local: local.to_owned(),
+                }),
             },
         )));
     }

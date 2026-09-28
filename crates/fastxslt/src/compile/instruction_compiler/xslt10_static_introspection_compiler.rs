@@ -34,6 +34,14 @@ pub(super) fn fold(
     }
 }
 
+pub(super) fn numeric_literal_argument_type_error(expression: &str) -> Option<&str> {
+    let (function, argument) = parse_call(expression.trim())?;
+    if split_arguments(argument).is_some() || xpath_string_literal(argument.trim()).is_some() {
+        return None;
+    }
+    argument.trim().parse::<f64>().ok().map(|_| function)
+}
+
 pub(super) fn fold_effective_boolean(
     document: &Document,
     element: NodeId,
@@ -227,7 +235,7 @@ fn expanded_name<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::{StaticIntrospectionValue, fold};
+    use super::{StaticIntrospectionValue, fold, numeric_literal_argument_type_error};
     use crate::compile::golden_stylesheet_experiment::document_element;
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -294,6 +302,34 @@ mod tests {
         assert_eq!(
             super::fold_effective_boolean(&document, element, "element-available('xsl:value-of')"),
             Some(true)
+        );
+    }
+
+    #[test]
+    fn recognizes_only_numeric_literal_introspection_argument_type_errors() {
+        assert_eq!(
+            numeric_literal_argument_type_error("system-property(123)"),
+            Some("system-property")
+        );
+        assert_eq!(
+            numeric_literal_argument_type_error("function-available(1.5)"),
+            Some("function-available")
+        );
+        assert_eq!(
+            numeric_literal_argument_type_error("element-available(-2)"),
+            Some("element-available")
+        );
+        assert_eq!(
+            numeric_literal_argument_type_error("system-property('xsl:version')"),
+            None
+        );
+        assert_eq!(
+            numeric_literal_argument_type_error("system-property(concat('xsl:', 'version'))"),
+            None
+        );
+        assert_eq!(
+            numeric_literal_argument_type_error("system-property(1, 2)"),
+            None
         );
     }
 }

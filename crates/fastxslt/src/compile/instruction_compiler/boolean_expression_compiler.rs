@@ -767,12 +767,18 @@ fn compile_identity_test(
             left: DocumentRootReference {
                 base: location.resource.clone(),
                 reference: left.0.to_owned(),
-                descendant_local: left.1.map(str::to_owned),
+                descendant_name: left.1.map(|local| ExpandedName {
+                    namespace: None,
+                    local: local.to_owned(),
+                }),
             },
             right: DocumentRootReference {
                 base: location.resource.clone(),
                 reference: right.0.to_owned(),
-                descendant_local: right.1.map(str::to_owned),
+                descendant_name: right.1.map(|local| ExpandedName {
+                    namespace: None,
+                    local: local.to_owned(),
+                }),
             },
         }));
     }
@@ -1227,9 +1233,14 @@ fn parse_path_boolean_expression(
             })
             .map_err(map_path_failure);
     }
-    if let Some((path, value)) = parse_path_integer_less_than(expression) {
+    if let Some((path, value)) = parse_path_numeric_less_than(expression) {
         return parse_location_path(path, location.clone())
-            .map(|path| Some(BooleanExpression::NodeIntegerLessThan { path, value }))
+            .map(|path| {
+                Some(BooleanExpression::NodeNumericLessThan {
+                    path,
+                    value_bits: value.to_bits(),
+                })
+            })
             .map_err(map_path_failure);
     }
     Ok(None)
@@ -1304,13 +1315,16 @@ fn parse_path_context_string_predicate(expression: &str) -> Option<(&str, &str)>
         .map(|value| (path.trim(), value))
 }
 
-fn parse_path_integer_less_than(expression: &str) -> Option<(&str, i64)> {
+fn parse_path_numeric_less_than(expression: &str) -> Option<(&str, f64)> {
     let (path, value) = expression.split_once('<')?;
     let path = path.trim();
     if path.is_empty() || path.contains(['=', '>', '<']) {
         return None;
     }
-    Some((path, value.trim().parse().ok()?))
+    Some((
+        path,
+        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(value)?,
+    ))
 }
 
 fn parse_unqualified_name_equality(expression: &str) -> Option<(&str, &str)> {

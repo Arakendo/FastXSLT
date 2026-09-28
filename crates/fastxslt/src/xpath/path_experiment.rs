@@ -1114,6 +1114,16 @@ pub(crate) fn parse_qualified_child_path(
         });
     }
 
+    if expression.contains('[')
+        && let Some(path) = parse_predicated_qualified_child_path(
+            expression,
+            location.clone(),
+            &mut resolve_prefix,
+        )?
+    {
+        return Ok(path);
+    }
+
     let (origin, expression) = parse_qualified_path_origin(expression, &location)?;
     if expression.is_empty() {
         return Err(invalid_syntax(
@@ -1190,8 +1200,16 @@ pub(crate) fn parse_qualified_child_path(
             location,
         });
     }
+    Ok(qualified_location_path(steps, origin, location))
+}
+
+fn qualified_location_path(
+    steps: Vec<PathStep>,
+    origin: PathOrigin,
+    location: SourceLocation,
+) -> LocationPath {
     let step_count = steps.len();
-    Ok(LocationPath {
+    LocationPath {
         steps,
         origin,
         final_predicate: None,
@@ -1202,7 +1220,72 @@ pub(crate) fn parse_qualified_child_path(
         step_boolean_predicates: vec![None; step_count],
         step_position_predicates: vec![Vec::new(); step_count],
         location,
-    })
+    }
+}
+
+fn parse_predicated_qualified_child_path(
+    expression: &str,
+    location: SourceLocation,
+    resolve_prefix: &mut impl FnMut(&str) -> Option<String>,
+) -> Result<Option<LocationPath>, PathFailure> {
+    let mut rewritten = String::with_capacity(expression.len());
+    let mut qualified_names = Vec::new();
+    for (index, step) in expression.split('/').enumerate() {
+        if index > 0 {
+            rewritten.push('/');
+        }
+        if step.is_empty() {
+            continue;
+        }
+        let predicate_start = step.find('[').unwrap_or(step.len());
+        let (node_test, suffix) = step.split_at(predicate_start);
+        let (attribute, name_test) = node_test
+            .strip_prefix('@')
+            .map_or((false, node_test), |name| (true, name));
+        let Some((prefix, local)) = name_test.split_once(':') else {
+            rewritten.push_str(step);
+            continue;
+        };
+        if name_test.matches(':').count() != 1 || !is_ncname(prefix) || !is_ncname(local) {
+            return Ok(None);
+        }
+        let namespace = resolve_prefix(prefix).ok_or_else(|| PathFailure::Invalid {
+            standard_code: "XPST0081",
+            detail: format!("the XPath name test uses an unbound prefix: {prefix}"),
+            location: location.clone(),
+        })?;
+        let placeholder = format!("fastxsltQualifiedName{}", qualified_names.len());
+        if attribute {
+            rewritten.push('@');
+        }
+        rewritten.push_str(&placeholder);
+        rewritten.push_str(suffix);
+        qualified_names.push((
+            placeholder,
+            ExpandedName {
+                namespace: Some(namespace),
+                local: local.to_owned(),
+            },
+            attribute,
+        ));
+    }
+    if qualified_names.is_empty() {
+        return Ok(None);
+    }
+    let mut path = parse_location_path(&rewritten, location)?;
+    for (placeholder, expanded, attribute) in qualified_names {
+        let Some(step) = path.steps.iter_mut().find(|step| {
+            matches!(step, PathStep::ChildNamed(name) | PathStep::AttributeNamed(name) if name == &placeholder)
+        }) else {
+            return Ok(None);
+        };
+        *step = if attribute {
+            PathStep::AttributeExpandedName(expanded)
+        } else {
+            PathStep::ChildExpandedName(expanded)
+        };
+    }
+    Ok(Some(path))
 }
 
 fn has_unadmitted_name_test(step: &str) -> bool {

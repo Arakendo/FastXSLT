@@ -111,7 +111,10 @@ fn validate_letter_value(
             && format.tokens.iter().all(|token| {
                 matches!(
                     token.style,
-                    NumberTokenStyle::AlphabeticUpper | NumberTokenStyle::AlphabeticLower
+                    NumberTokenStyle::Decimal
+                        | NumberTokenStyle::AlphabeticUpper
+                        | NumberTokenStyle::AlphabeticLower
+                        | NumberTokenStyle::GreekAlphabeticLower
                 )
             }))
     {

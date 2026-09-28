@@ -428,6 +428,9 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         ApplySelection::LiteralDocumentChildren { reference, name } => {
             document_root_reference_owned(reference) + name.as_ref().map_or(0, name_owned)
         }
+        ApplySelection::LiteralDocumentDescendants { reference, name } => {
+            document_root_reference_owned(reference) + name_owned(name)
+        }
         ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path } => argument_path
             .as_ref()
             .map_or(0, LocationPath::known_owned_capacity_bytes),
@@ -570,6 +573,14 @@ fn instruction_owned(value: &Instruction) -> usize {
         instruction @ Instruction::Number { .. } => number_instruction_owned(instruction),
         Instruction::Xslt10Message { body, location, .. } => {
             vec_owned(body, instruction_owned) + location_owned(location)
+        }
+        Instruction::Xslt10DeferredFailure {
+            code,
+            detail,
+            location,
+        } => {
+            let _ = code;
+            detail.capacity() + location_owned(location)
         }
         Instruction::Variable {
             name,
@@ -1004,11 +1015,18 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
             select, location, ..
         } => select.known_owned_capacity_bytes() + location_owned(location),
         Instruction::CopyOfDocument {
-            select, location, ..
+            select,
+            path,
+            location,
+            ..
         } => {
             select.base.capacity()
                 + select.reference.capacity()
-                + select.descendant_local.as_ref().map_or(0, String::capacity)
+                + select.descendant_name.as_ref().map_or(0, name_owned)
+                + path.as_ref().map_or(
+                    0,
+                    crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+                )
                 + location_owned(location)
         }
         Instruction::CopyOfXslt10KeyLookup {
@@ -1540,7 +1558,7 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         }
         BooleanExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
         BooleanExpression::NodeExists(path)
-        | BooleanExpression::NodeIntegerLessThan { path, .. }
+        | BooleanExpression::NodeNumericLessThan { path, .. }
         | BooleanExpression::CountPathEquals { path, .. } => path.known_owned_capacity_bytes(),
         BooleanExpression::NodeStringEquals { path, value } => {
             path.known_owned_capacity_bytes() + value.capacity()
@@ -1637,10 +1655,7 @@ fn document_root_reference_owned(
 ) -> usize {
     reference.base.capacity()
         + reference.reference.capacity()
-        + reference
-            .descendant_local
-            .as_ref()
-            .map_or(0, String::capacity)
+        + reference.descendant_name.as_ref().map_or(0, name_owned)
 }
 
 fn path_pair_owned(

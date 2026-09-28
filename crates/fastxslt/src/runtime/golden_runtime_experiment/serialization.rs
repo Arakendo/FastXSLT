@@ -2,8 +2,8 @@
 
 #[cfg(any(test, feature = "workbench"))]
 use super::byte_encoding::{
-    encode_iso_8859_1_text, encode_iso_8859_1_xml, encode_iso_8859_2_text, encode_iso_8859_2_xml,
-    encode_us_ascii_cdata, serialize_utf16_be,
+    encode_bounded_legacy, encode_iso_8859_1_text, encode_iso_8859_1_xml, encode_iso_8859_2_text,
+    encode_iso_8859_2_xml, encode_us_ascii_cdata, is_bounded_legacy_encoding, serialize_utf16_be,
 };
 use super::{
     ExecutionFailure, FailureCategory, ResultAttribute, ResultNode, SemanticResult,
@@ -27,6 +27,7 @@ struct SerializationOptions<'a> {
     character_map: &'a [(char, String)],
     xhtml_mode: XhtmlMode,
     content_type_media_type: Option<&'a str>,
+    content_type_encoding: &'a str,
     html_mode: HtmlMode,
     escape_uri_attributes: bool,
     normalization_form: NormalizationForm,
@@ -91,6 +92,7 @@ pub(in crate::runtime) fn serialize_xml(
         byte_limit,
         control,
         NamespaceMode::ScopedStack,
+        None,
     )
 }
 
@@ -101,6 +103,7 @@ fn serialize_xml_with_namespace_mode(
     byte_limit: usize,
     control: &mut InvocationControl,
     namespace_mode: NamespaceMode,
+    physical_encoding: Option<&str>,
 ) -> Result<String, ExecutionFailure> {
     validate_serialization_preconditions(result, settings, request_id)?;
     let normalization_form = validate_normalization_form(settings, request_id)?;
@@ -175,6 +178,9 @@ fn serialize_xml_with_namespace_mode(
         character_map: &settings.character_map,
         xhtml_mode,
         content_type_media_type,
+        content_type_encoding: physical_encoding
+            .or(settings.encoding.as_deref())
+            .unwrap_or("UTF-8"),
         html_mode: select_html_mode(settings, html),
         escape_uri_attributes: (xhtml || html) && settings.escape_uri_attributes.unwrap_or(true),
         normalization_form,
@@ -224,6 +230,7 @@ pub(in crate::runtime) fn serialize_xml_complete_namespace_reference(
         byte_limit,
         control,
         NamespaceMode::CompleteClone,
+        None,
     )
 }
 
@@ -1101,7 +1108,12 @@ fn serialize_doctype(
         .doctype_system
         .as_deref()
         .filter(|value| !value.is_empty());
-    if system.is_none() && !automatic_xhtml5 && !html_doctype_required {
+    let public = settings
+        .doctype_public
+        .as_deref()
+        .filter(|value| !value.is_empty());
+    let html_public_only = settings.method.as_deref() == Some("html") && public.is_some();
+    if system.is_none() && !automatic_xhtml5 && !html_doctype_required && !html_public_only {
         return Ok(());
     }
     let document_element = result
@@ -1140,14 +1152,17 @@ fn serialize_doctype(
     let prefix = element_prefix(name.namespace.as_deref(), &in_scope, output)?;
     output.push_str("<!DOCTYPE ")?;
     write_name(prefix, &name.local, output)?;
-    if let Some(public) = settings.doctype_public.as_deref() {
+    if let Some(public) = public {
         output.push_str(" PUBLIC ")?;
         serialize_external_identifier(public, output)?;
-        output.push(' ')?;
+        if let Some(system) = system {
+            output.push(' ')?;
+            serialize_external_identifier(system, output)?;
+        }
     } else {
         output.push_str(" SYSTEM ")?;
+        serialize_external_identifier(system.expect("system identifier branch"), output)?;
     }
-    serialize_external_identifier(system.expect("system identifier branch"), output)?;
     output.push('>')
 }
 
@@ -1238,7 +1253,8 @@ fn serialize_single_byte_bytes(
 ) -> Result<Vec<u8>, ExecutionFailure> {
     let us_ascii = encoding.eq_ignore_ascii_case("US-ASCII");
     let iso_8859_2 = encoding.eq_ignore_ascii_case("ISO-8859-2");
-    if !us_ascii && !iso_8859_2 && !encoding.eq_ignore_ascii_case("ISO-8859-1") {
+    let bounded_legacy = is_bounded_legacy_encoding(encoding);
+    if !us_ascii && !iso_8859_2 && !encoding.eq_ignore_ascii_case("ISO-8859-1") && !bounded_legacy {
         return Err(failure(
             "SESU0007",
             FailureCategory::Unsupported,
@@ -1284,15 +1300,25 @@ fn serialize_single_byte_bytes(
     body_settings.omit_xml_declaration = true;
     body_settings.standalone = None;
     body_settings.version = Some("1.0".to_owned());
-    let body = serialize_xml(result, &body_settings, request_id, body_limit, control)?;
+    let body = serialize_xml_with_namespace_mode(
+        result,
+        &body_settings,
+        request_id,
+        body_limit,
+        control,
+        NamespaceMode::ScopedStack,
+        Some(encoding),
+    )?;
     let body_len = body.len();
-    let encoded_body = if us_ascii {
+    let encoded_body = if bounded_legacy {
+        encode_bounded_legacy(&body, request_id, encoding)?
+    } else if us_ascii {
         encode_us_ascii_cdata(&body, request_id)?.into_bytes()
-    } else if iso_8859_2 && matches!(settings.method.as_deref(), Some("text" | "html")) {
+    } else if iso_8859_2 && matches!(settings.method.as_deref(), Some("text")) {
         encode_iso_8859_2_text(&body, request_id)?
     } else if iso_8859_2 {
         encode_iso_8859_2_xml(&body, request_id)?
-    } else if matches!(settings.method.as_deref(), Some("text" | "html")) {
+    } else if matches!(settings.method.as_deref(), Some("text")) {
         encode_iso_8859_1_text(&body, request_id)?
     } else {
         encode_iso_8859_1_xml(&body, request_id)?
@@ -1344,9 +1370,12 @@ fn validate_serialization_preconditions(
             "undeclare-prefixes=yes is inconsistent with XML output version 1.0",
         ));
     }
-    let standalone_requires_declaration = settings.omit_xml_declaration
+    let xml_like_method = !matches!(settings.method.as_deref(), Some("text" | "html"));
+    let standalone_requires_declaration = xml_like_method
+        && settings.omit_xml_declaration
         && matches!(settings.standalone.as_deref(), Some("yes" | "no"));
-    let doctype_requires_xml_10 = settings.omit_xml_declaration
+    let doctype_requires_xml_10 = xml_like_method
+        && settings.omit_xml_declaration
         && settings
             .version
             .as_deref()
@@ -1360,8 +1389,9 @@ fn validate_serialization_preconditions(
             "the selected serialization parameters are internally inconsistent",
         ));
     }
-    let document_element_required = matches!(settings.standalone.as_deref(), Some("yes" | "no"))
-        || settings.doctype_system.is_some();
+    let document_element_required = xml_like_method
+        && (matches!(settings.standalone.as_deref(), Some("yes" | "no"))
+            || settings.doctype_system.is_some());
     let top_level_element_count = result
         .children
         .iter()
@@ -1677,14 +1707,19 @@ fn serialize_content_type_if_needed(
     if indent {
         write_indentation(depth + 1, output)?;
     }
-    serialize_content_type_meta(media_type, options.html_mode == HtmlMode::None, output)
+    serialize_content_type_meta(
+        media_type,
+        options.content_type_encoding,
+        options.html_mode == HtmlMode::None,
+        output,
+    )
 }
 
 fn is_html_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
     name.namespace.is_none()
         && [
-            "area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen",
-            "link", "meta", "param", "source", "track", "wbr",
+            "area", "base", "basefont", "br", "col", "command", "embed", "frame", "hr", "img",
+            "input", "isindex", "keygen", "link", "meta", "param", "source", "track", "wbr",
         ]
         .iter()
         .any(|local| name.local.eq_ignore_ascii_case(local))
@@ -1805,16 +1840,15 @@ fn is_content_type_head(
 
 fn serialize_content_type_meta(
     media_type: &str,
+    encoding: &str,
     xhtml: bool,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     output.push_str("<meta http-equiv=\"Content-Type\" content=\"")?;
     escape_attribute(media_type, output)?;
-    output.push_str(if xhtml {
-        "; charset=UTF-8\" />"
-    } else {
-        "; charset=UTF-8\">"
-    })
+    output.push_str("; charset=")?;
+    escape_attribute(encoding, output)?;
+    output.push_str(if xhtml { "\" />" } else { "\">" })
 }
 
 fn write_indentation(depth: usize, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
@@ -2335,6 +2369,7 @@ mod scaling_measurement_tests {
             4_096,
             &mut scoped_control,
             NamespaceMode::ScopedStack,
+            None,
         )
         .expect("scoped namespace serialization");
         let mut complete_control = InvocationControl::unbounded();
@@ -2345,6 +2380,7 @@ mod scaling_measurement_tests {
             4_096,
             &mut complete_control,
             NamespaceMode::CompleteClone,
+            None,
         )
         .expect("complete namespace serialization");
 
@@ -2371,6 +2407,7 @@ mod scaling_measurement_tests {
             71,
             &mut scoped_control,
             NamespaceMode::ScopedStack,
+            None,
         )
         .expect_err("scoped serialization should exceed the byte limit");
         let mut complete_control = InvocationControl::unbounded();
@@ -2381,6 +2418,7 @@ mod scaling_measurement_tests {
             71,
             &mut complete_control,
             NamespaceMode::CompleteClone,
+            None,
         )
         .expect_err("complete serialization should exceed the byte limit");
 
@@ -2404,6 +2442,7 @@ mod scaling_measurement_tests {
             4_096,
             &mut scoped_control,
             NamespaceMode::ScopedStack,
+            None,
         )
         .expect_err("scoped serialization should observe cancellation");
         let mut complete_control =
@@ -2415,6 +2454,7 @@ mod scaling_measurement_tests {
             4_096,
             &mut complete_control,
             NamespaceMode::CompleteClone,
+            None,
         )
         .expect_err("complete serialization should observe cancellation");
 

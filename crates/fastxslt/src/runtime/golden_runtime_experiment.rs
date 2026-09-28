@@ -85,7 +85,9 @@ use dynamic_element_name::{
 use number_executor::execute as execute_number_instruction;
 #[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
-pub(super) use resource_compiler::compile_resource_with_denied_and_limits;
+pub(super) use resource_compiler::{
+    StylesheetCompileLimits, compile_resource_with_denied_and_limits,
+};
 use result_tree::{
     LiteralAttributeFocus, ResultAttribute, ResultNode, literal_attributes_require_context_string,
     materialize_computed_attributes, materialize_literal_attributes,
@@ -832,6 +834,11 @@ fn execute_instruction(
         } => execute_xslt10_message(
             inputs, body, *terminate, location, execution, scope, control,
         )?,
+        Instruction::Xslt10DeferredFailure {
+            code,
+            detail,
+            location,
+        } => return Err(execute_deferred_failure(inputs, code, detail, location)),
         Instruction::SequenceNodes { .. } | Instruction::SequenceItems { .. } => result.extend(
             execute_sequence_instruction(inputs, instruction, execution, scope, control)?,
         ),
@@ -890,6 +897,21 @@ fn execute_instruction(
         )?),
     }
     Ok(())
+}
+
+fn execute_deferred_failure(
+    inputs: &SequenceInputs<'_>,
+    code: &'static str,
+    detail: &str,
+    location: &SourceLocation,
+) -> ExecutionFailure {
+    failure_at(
+        code,
+        FailureCategory::Invalid,
+        Some(inputs.request_id),
+        location.clone(),
+        detail.to_owned(),
+    )
 }
 
 fn execute_sequence_instruction(
@@ -1194,11 +1216,16 @@ fn execute_copy_of_instruction<'a>(
         ),
         Instruction::CopyOfDocument {
             select,
+            path,
             recover_unattached_attributes,
             ..
-        } => {
-            dynamic_document::copy_document(inputs, select, *recover_unattached_attributes, control)
-        }
+        } => dynamic_document::copy_document(
+            inputs,
+            select,
+            path.as_ref(),
+            *recover_unattached_attributes,
+            control,
+        ),
         Instruction::CopyOfXslt10KeyLookup {
             select,
             recover_unattached_attributes,
@@ -1610,29 +1637,9 @@ fn execute_for_each_nodes<'a>(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if let ApplySelection::LiteralDocumentRoot(reference) = select {
+    if let Some(target) = literal_document_target(Some(select)) {
         return execute_for_each_literal_document_root(
-            inputs,
-            LiteralDocumentTarget::Root(reference),
-            sorts,
-            body,
-            execution,
-            variables,
-            control,
-        );
-    }
-    if let ApplySelection::LiteralDocumentChildren { reference, name } = select {
-        return execute_for_each_literal_document_root(
-            inputs,
-            LiteralDocumentTarget::Children {
-                reference,
-                name: name.as_ref(),
-            },
-            sorts,
-            body,
-            execution,
-            variables,
-            control,
+            inputs, target, sorts, body, execution, variables, control,
         );
     }
     let (_, context) = required_source_context(inputs, execution.node)?;
@@ -3476,21 +3483,42 @@ fn select_literal_document_nodes(
     target: LiteralDocumentTarget<'_>,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
-    let LiteralDocumentTarget::Children { name, .. } = target else {
-        return Ok(vec![document.document_node()]);
-    };
-    let mut selected = Vec::new();
-    for child in document.children(document.document_node()) {
-        control
-            .charge(WorkDomain::XPathNodeVisit, 1)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        if document.kind(*child) == NodeKind::Element
-            && name.is_none_or(|expected| document.name(*child) == Some(expected))
-        {
-            selected.push(*child);
+    match target {
+        LiteralDocumentTarget::Root(_) => Ok(vec![document.document_node()]),
+        LiteralDocumentTarget::Children { name, .. } => {
+            let mut selected = Vec::new();
+            for child in document.children(document.document_node()) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                if document.kind(*child) == NodeKind::Element
+                    && name.is_none_or(|expected| document.name(*child) == Some(expected))
+                {
+                    selected.push(*child);
+                }
+            }
+            Ok(selected)
+        }
+        LiteralDocumentTarget::Descendants { name, .. } => {
+            let mut selected = Vec::new();
+            let mut pending = document
+                .children(document.document_node())
+                .iter()
+                .rev()
+                .copied()
+                .collect::<Vec<_>>();
+            while let Some(node) = pending.pop() {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                if document.kind(node) == NodeKind::Element && document.name(node) == Some(name) {
+                    selected.push(node);
+                }
+                pending.extend(document.children(node).iter().rev().copied());
+            }
+            Ok(selected)
         }
     }
-    Ok(selected)
 }
 
 #[derive(Clone, Copy)]
@@ -3499,6 +3527,10 @@ enum LiteralDocumentTarget<'a> {
     Children {
         reference: &'a DocumentRootReference,
         name: Option<&'a ExpandedName>,
+    },
+    Descendants {
+        reference: &'a DocumentRootReference,
+        name: &'a ExpandedName,
     },
 }
 
@@ -3515,6 +3547,9 @@ fn literal_document_target(
                 name: name.as_ref(),
             })
         }
+        ApplySelection::LiteralDocumentDescendants { reference, name } => {
+            Some(LiteralDocumentTarget::Descendants { reference, name })
+        }
         _ => None,
     }
 }
@@ -3522,7 +3557,9 @@ fn literal_document_target(
 impl LiteralDocumentTarget<'_> {
     fn reference(&self) -> &DocumentRootReference {
         match self {
-            Self::Root(reference) | Self::Children { reference, .. } => reference,
+            Self::Root(reference)
+            | Self::Children { reference, .. }
+            | Self::Descendants { reference, .. } => reference,
         }
     }
 }
@@ -4106,8 +4143,14 @@ fn evaluate_ordinary_boolean(
         BooleanExpression::NodeStringEquals { path, value } => {
             evaluate_node_string_equals(inputs, path, value, context, control)
         }
-        BooleanExpression::NodeIntegerLessThan { path, value } => {
-            evaluate_node_integer_less_than(inputs, path, *value, context, control)
+        BooleanExpression::NodeNumericLessThan { path, value_bits } => {
+            evaluate_node_numeric_less_than(
+                inputs,
+                path,
+                f64::from_bits(*value_bits),
+                context,
+                control,
+            )
         }
         BooleanExpression::CountPathEquals { path, expected } => {
             count_path_eq(inputs, path, *expected, context, control)
@@ -4758,10 +4801,10 @@ fn evaluate_context_language_matches(
         .map_err(|failure| control_failure(failure, inputs.request_id))
 }
 
-fn evaluate_node_integer_less_than(
+fn evaluate_node_numeric_less_than(
     inputs: &SequenceInputs<'_>,
     path: &crate::xpath::path_experiment::LocationPath,
-    expected: i64,
+    expected: f64,
     context: Option<NodeId>,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
@@ -4772,10 +4815,8 @@ fn evaluate_node_integer_less_than(
         let actual = source
             .string_value_controlled(node, control)
             .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        if actual
-            .trim()
-            .parse::<i64>()
-            .is_ok_and(|actual| actual < expected)
+        if crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&actual)
+            .is_some_and(|actual| actual < expected)
         {
             return Ok(true);
         }
@@ -5354,7 +5395,9 @@ fn select_apply_nodes(
             evaluate_location_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
-        ApplySelection::LiteralDocumentRoot(_) | ApplySelection::LiteralDocumentChildren { .. } => {
+        ApplySelection::LiteralDocumentRoot(_)
+        | ApplySelection::LiteralDocumentChildren { .. }
+        | ApplySelection::LiteralDocumentDescendants { .. } => {
             unreachable!("literal document selection is dispatched before source selection")
         }
         ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path } => {

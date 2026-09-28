@@ -9,7 +9,8 @@ use crate::xslt::golden_semantics_experiment::OutputSettings;
 use super::instruction_compiler::uses_xslt10_compatibility;
 use super::{
     CompileFailure, compile_expanded_qname, ensure_no_meaningful_children, invalid,
-    is_ignored_xslt10_extension_attribute, optional_attribute, unsupported,
+    is_ignored_xslt10_extension_attribute, is_xslt10_forward_compatible_version,
+    optional_attribute, unsupported,
 };
 
 const OUTPUT_ATTRIBUTES: &[&str] = &[
@@ -436,16 +437,19 @@ fn compile_output_boolean_attribute(
     local_name: &str,
     declared_version: &str,
 ) -> Result<Option<bool>, CompileFailure> {
-    optional_attribute(document, element, None, local_name)
-        .map(|value| {
-            parse_output_boolean(
-                value,
-                local_name,
-                declared_version,
-                document.location(element),
-            )
-        })
-        .transpose()
+    let Some(value) = optional_attribute(document, element, None, local_name) else {
+        return Ok(None);
+    };
+    match parse_output_boolean(
+        value,
+        local_name,
+        declared_version,
+        document.location(element),
+    ) {
+        Ok(value) => Ok(Some(value)),
+        Err(_) if is_xslt10_forward_compatible_version(declared_version) => Ok(None),
+        Err(failure) => Err(failure),
+    }
 }
 
 fn is_xml_public_identifier_char(value: char) -> bool {

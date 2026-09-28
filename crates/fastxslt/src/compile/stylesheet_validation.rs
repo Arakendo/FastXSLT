@@ -55,6 +55,7 @@ fn validate_named_calls(
                 location,
             } => validate_named_call(program, name, arguments, location)?,
             Instruction::Text { .. }
+            | Instruction::Xslt10DeferredFailure { .. }
             | Instruction::Number { .. }
             | Instruction::ProcessingInstructionNode { .. }
             | Instruction::CommentNode { .. }

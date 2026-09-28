@@ -40,11 +40,11 @@ mod xslt10_global_constructor_compiler;
 
 pub(crate) use stylesheet_module_compiler::{
     StylesheetDependencyKind, compile_stylesheet_with_import_and_include,
-    compile_stylesheet_with_imported_and_included_programs_at, compile_stylesheet_with_imports,
+    compile_stylesheet_with_imported_and_included_programs_at,
+    compile_stylesheet_with_imported_programs_at, compile_stylesheet_with_imports,
     compile_stylesheet_with_included_programs_at,
     compile_stylesheet_with_single_imported_program_at, compile_stylesheet_with_single_include,
     compile_stylesheet_with_single_include_program_at,
-    compile_stylesheet_with_two_imported_programs_at,
     compile_stylesheet_with_two_included_programs_at, discovered_stylesheet_dependencies_at,
     validate_import_order_at,
 };
@@ -280,6 +280,8 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                 global_binding_locations.push(document.location(child).clone());
                 global_bindings.push(binding);
             }
+            (Some(XSLT_NAMESPACE), _)
+                if is_xslt10_forward_compatible_version(&declared_version) => {}
             (Some(XSLT_NAMESPACE), local) => {
                 return Err(unsupported(
                     "FXST1002",
@@ -952,6 +954,13 @@ pub(super) fn validate_declared_version(
             document.location(root),
         ))
     }
+}
+
+pub(super) fn is_xslt10_forward_compatible_version(declared_version: &str) -> bool {
+    declared_version
+        .trim()
+        .parse::<f64>()
+        .is_ok_and(|version| version > 1.0 && version < 2.0)
 }
 
 fn validate_stylesheet_root_controls(
@@ -2302,6 +2311,7 @@ fn compile_named_template(
         .collect::<Vec<_>>();
     Ok(NamedTemplate {
         name: name.to_owned(),
+        import_precedence: 0,
         parameters: parameters
             .iter()
             .map(|parameter| parameter.name.clone())
@@ -2758,6 +2768,11 @@ pub(super) fn ensure_only_attributes(
             }
         }
         if is_ignored_xslt10_extension_attribute(document, element, *attribute) {
+            continue;
+        }
+        if instruction_compiler::uses_xslt10_forward_compatible_processing(document, element)
+            && (name.namespace.is_some() || !allowed.contains(&name.local.as_str()))
+        {
             continue;
         }
         if name.namespace.is_some() || !allowed.contains(&name.local.as_str()) {

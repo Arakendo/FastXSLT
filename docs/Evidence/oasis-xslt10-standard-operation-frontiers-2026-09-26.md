@@ -23,20 +23,42 @@ The local measurement now retains both views:
 - standard-operation frontiers omit catalog expected-error cases when ranking
   the remaining successful-transform backlog.
 
-The standard-operation view also separates source documents rejected because
-they contain a DTD, source documents not decodable as UTF-8, and other XML
-failures. These are distinct host input/profile questions and must not appear
-as one missing XSLT feature merely because they share `FXXM0002` at the adapter
-boundary.
+The standard-operation view also separates source and stylesheet documents
+rejected because they contain a DTD, documents not decodable as UTF-8, and
+other XML failures. These are distinct host input/profile questions and must
+not appear as one missing XSLT feature merely because they share an XML
+adapter diagnostic.
 
 ## First observation
 
-Before the source-input split, the largest standard initialization frontier was
-109 `FXXM0002` cases. Trace inspection showed that cluster was dominated by
-DTD-bearing inputs and included non-UTF-8 archival inputs. The largest actual
-XSLT/XPath implementation frontiers were therefore smaller and more specific,
-including `disable-output-escaping`, language/case collation, and typed
-location-path shapes involving functions.
+Before the input splits, two large standard initialization frontiers were 109
+`FXXM0002` source cases and 63 `FXXM0001` stylesheet cases. Trace inspection
+produced the following bounded families:
+
+- 85 DTD-bearing source documents;
+- 9 non-UTF-8 source documents;
+- 15 other source XML failures;
+- 30 DTD-bearing stylesheet modules;
+- 25 non-UTF-8 stylesheet modules; and
+- 8 other stylesheet XML failures in the initial observation.
+
+The later bounded historical-URI mapping exposed one previously unavailable
+local ASP stylesheet and raised the final other-stylesheet-XML frontier to 9;
+it did not change the DTD or non-UTF-8 families.
+
+The 2026-09-27 BOM-selected UTF-16 adapter then moved 22 standard-operation
+cases beyond the generic stylesheet-XML frontier. Eleven compile completely,
+nine execute, and six compare exactly. The cases that do not complete now
+report their actual numbering, runtime-formatting, or mismatch frontier rather
+than an encoding-shaped parser failure. See the
+[UTF-16 input evidence](oasis-xslt10-bom-utf16-input-2026-09-27.md).
+
+The last stylesheet family contains representation-limit, namespace
+well-formedness, and deliberately malformed-module pressure rather than one
+shared XSLT feature. The largest actual XSLT/XPath implementation frontiers
+are therefore smaller and more specific, including
+`disable-output-escaping`, language/case collation, and typed location-path
+shapes involving functions.
 
 This evidence does not classify DTD or legacy-encoding cases as conformance
 passes or exclusions. It only prevents their input-policy pressure from

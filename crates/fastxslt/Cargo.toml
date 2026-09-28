@@ -12,16 +12,18 @@ workspace = true
 
 [features]
 allocation-observation = ["dep:allocation-counter"]
-workbench = ["dep:iri-string", "dep:quick-xml"]
+workbench = ["dep:encoding_rs", "dep:iri-string", "dep:quick-xml"]
 
 [dependencies]
 allocation-counter = { version = "=0.8.1", optional = true }
+encoding_rs = { version = "=0.8.35", optional = true }
 iri-string = { version = "=0.7.14", optional = true }
-quick-xml = { version = "=0.40.1", optional = true }
+quick-xml = { version = "=0.40.1", features = ["encoding"], optional = true }
 unicode-normalization = "=0.1.25"
 
 [dev-dependencies]
+encoding_rs = "=0.8.35"
 iri-string = "=0.7.14"
-quick-xml = "=0.40.1"
+quick-xml = { version = "=0.40.1", features = ["encoding"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 toml = "=0.8.23"

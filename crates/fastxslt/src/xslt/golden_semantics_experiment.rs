@@ -373,6 +373,7 @@ impl Ord for TemplatePriority {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NamedTemplate {
     pub(crate) name: String,
+    pub(crate) import_precedence: i32,
     pub(crate) parameters: Vec<String>,
     pub(crate) template: Template,
 }
@@ -535,6 +536,10 @@ pub(crate) enum ApplySelection {
     LiteralDocumentChildren {
         reference: DocumentRootReference,
         name: Option<ExpandedName>,
+    },
+    LiteralDocumentDescendants {
+        reference: DocumentRootReference,
+        name: ExpandedName,
     },
     Xslt10IdLookupWithoutTypedIds {
         argument_path: Option<LocationPath>,
@@ -749,6 +754,11 @@ pub(crate) enum Instruction {
         body: Vec<Instruction>,
         location: SourceLocation,
     },
+    Xslt10DeferredFailure {
+        code: &'static str,
+        detail: String,
+        location: SourceLocation,
+    },
     Variable {
         name: String,
         select: Box<CastExpression>,
@@ -906,6 +916,7 @@ pub(crate) enum Instruction {
     },
     CopyOfDocument {
         select: DocumentRootReference,
+        path: Option<LocationPath>,
         recover_unattached_attributes: bool,
         location: SourceLocation,
     },
@@ -1016,10 +1027,16 @@ pub(crate) fn default_number_format() -> NumberFormat {
 }
 
 pub(crate) fn parse_admitted_number_format(format: &str) -> Option<NumberFormat> {
+    // XSLT 1.0 defines `1` as the format token when the format string is
+    // empty. Keep the default explicit here so static and dynamic formats use
+    // the same standards fallback.
+    if format.is_empty() {
+        return Some(default_number_format());
+    }
     let mut token_ranges = Vec::new();
     let mut token_start = None;
     for (index, character) in format.char_indices() {
-        if character.is_ascii_alphanumeric() {
+        if character.is_alphanumeric() {
             token_start.get_or_insert(index);
         } else if let Some(start) = token_start.take() {
             token_ranges.push((start, index));
@@ -1028,11 +1045,19 @@ pub(crate) fn parse_admitted_number_format(format: &str) -> Option<NumberFormat>
     if let Some(start) = token_start {
         token_ranges.push((start, format.len()));
     }
-    let &(first_start, _) = token_ranges.first()?;
+    let Some(&(first_start, _)) = token_ranges.first() else {
+        let mut fallback = default_number_format();
+        // With no alphanumeric formatting token, XSLT 1.0 supplies token `1`.
+        // A nonempty punctuation token is both the prefix and suffix around the
+        // resulting number list (for example `*` produces `*1*2*`).
+        format.clone_into(&mut fallback.prefix);
+        format.clone_into(&mut fallback.suffix);
+        return Some(fallback);
+    };
     let mut tokens = Vec::with_capacity(token_ranges.len());
     let mut separators = Vec::with_capacity(token_ranges.len().saturating_sub(1));
     for (index, &(start, end)) in token_ranges.iter().enumerate() {
-        tokens.push(parse_admitted_number_format_token(&format[start..end])?);
+        tokens.push(parse_admitted_number_format_token(&format[start..end]));
         if let Some(&(next_start, _)) = token_ranges.get(index + 1) {
             separators.push(format[end..next_start].to_owned());
         }
@@ -1047,12 +1072,13 @@ pub(crate) fn parse_admitted_number_format(format: &str) -> Option<NumberFormat>
     })
 }
 
-fn parse_admitted_number_format_token(token: &str) -> Option<NumberFormatToken> {
+fn parse_admitted_number_format_token(token: &str) -> NumberFormatToken {
     let (style, minimum_width) = match token {
         "A" => (NumberTokenStyle::AlphabeticUpper, 1),
         "a" => (NumberTokenStyle::AlphabeticLower, 1),
         "I" => (NumberTokenStyle::RomanUpper, 1),
         "i" => (NumberTokenStyle::RomanLower, 1),
+        "α" => (NumberTokenStyle::GreekAlphabeticLower, 1),
         _ if token.ends_with('1')
             && token[..token.len() - 1]
                 .chars()
@@ -1060,12 +1086,16 @@ fn parse_admitted_number_format_token(token: &str) -> Option<NumberFormatToken> 
         {
             (NumberTokenStyle::Decimal, token.len())
         }
-        _ => return None,
+        // XSLT 1.0 requires an unsupported numbering sequence token to be
+        // treated as the decimal format token `1`. This is deliberately a
+        // fallback, not an assertion that FastXSLT implements the token's
+        // language-specific numbering sequence.
+        _ => (NumberTokenStyle::Decimal, 1),
     };
-    Some(NumberFormatToken {
+    NumberFormatToken {
         minimum_width,
         style,
-    })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1087,6 +1117,7 @@ pub(crate) enum NumberTokenStyle {
     AlphabeticLower,
     RomanUpper,
     RomanLower,
+    GreekAlphabeticLower,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1646,9 +1677,9 @@ pub(crate) enum BooleanExpression {
         path: LocationPath,
         value: String,
     },
-    NodeIntegerLessThan {
+    NodeNumericLessThan {
         path: LocationPath,
-        value: i64,
+        value_bits: u64,
     },
     CountPathEquals {
         path: LocationPath,
@@ -1720,7 +1751,7 @@ pub(crate) enum BooleanExpression {
 pub(crate) struct DocumentRootReference {
     pub(crate) base: String,
     pub(crate) reference: String,
-    pub(crate) descendant_local: Option<String>,
+    pub(crate) descendant_name: Option<ExpandedName>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

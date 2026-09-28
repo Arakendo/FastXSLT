@@ -3,6 +3,8 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
 
+use encoding_rs::{BIG5, Encoding, ISO_2022_JP, SHIFT_JIS};
+
 use crate::runtime::workbench_experiment::{
     ExperimentalEngine, WorkbenchFailure, WorkbenchLimits, WorkbenchResource,
     WorkbenchStylesheetResources,
@@ -45,6 +47,8 @@ struct Measurement {
     comparison_examples: BTreeMap<String, String>,
     comparison_unsupported_cases: Vec<(String, String, String)>,
     exact_normalized_non_xml_pass_cases: Vec<String>,
+    bounded_doctype_pass_cases: Vec<String>,
+    bounded_doctype_mismatch_cases: Vec<String>,
     xml_wrapped_text_pass_cases: Vec<String>,
     infrastructure_cases: Vec<String>,
     expected_error_unexpected_success_cases: Vec<String>,
@@ -189,7 +193,13 @@ fn measures_local_oasis_xslt10_compatibility() {
                 .push(format!("missing-supplemental-stylesheet/{}", case.identity));
             continue;
         }
-        resources = admit_transitive_case_stylesheets(&case, &stylesheet, resources);
+        resources = admit_transitive_case_stylesheets(
+            &case,
+            &stylesheet,
+            resources,
+            case.operation == "standard" && !has_non_equivalent_historical_uri_alias(&case.id),
+        );
+        resources = admit_principal_literal_document_resources(&case, &stylesheet, resources);
         let mut missing_supplemental_data = false;
         for data in &case.supplemental_data {
             let Some(bytes) = read_case_file(&case.directory, data) else {
@@ -401,15 +411,24 @@ fn measures_local_oasis_xslt10_compatibility() {
             }
             continue;
         }
+        let bounded_doctype_pair =
+            has_matching_bounded_doctype(&actual, &expected, engine.selected_output_encoding());
         match xml_equivalent(
             &actual,
             &expected,
             preserve_whitespace_only_text,
             engine.selected_output_encoding(),
+            engine.selected_output_method(),
         ) {
             Ok(true) => {
                 trace_case_comparison(&case.identity, &actual, &expected);
                 measurement.increment("xml-comparison-pass");
+                if bounded_doctype_pair {
+                    measurement.increment("bounded-doctype-comparison-pass");
+                    measurement
+                        .bounded_doctype_pass_cases
+                        .push(case.identity.clone());
+                }
                 if exact_normalized_non_xml_payloads(
                     &actual,
                     &expected,
@@ -424,6 +443,12 @@ fn measures_local_oasis_xslt10_compatibility() {
             Ok(false) => {
                 trace_case_comparison(&case.identity, &actual, &expected);
                 measurement.increment("xml-comparison-mismatch");
+                if bounded_doctype_pair {
+                    measurement.increment("bounded-doctype-comparison-mismatch");
+                    measurement
+                        .bounded_doctype_mismatch_cases
+                        .push(case.identity.clone());
+                }
                 if doubtful.contains(&case.id) {
                     measurement.increment("xml-comparison-mismatch-with-doubt-metadata");
                     measurement
@@ -539,6 +564,12 @@ fn measures_local_oasis_xslt10_compatibility() {
     for identity in &measurement.exact_normalized_non_xml_pass_cases {
         println!("exact-normalized-non-xml-comparison-pass-case\t{identity}");
     }
+    for identity in &measurement.bounded_doctype_pass_cases {
+        println!("bounded-doctype-comparison-pass-case\t{identity}");
+    }
+    for identity in &measurement.bounded_doctype_mismatch_cases {
+        println!("bounded-doctype-comparison-mismatch-case\t{identity}");
+    }
     for identity in &measurement.xml_wrapped_text_pass_cases {
         println!("xml-wrapped-text-comparison-pass-case\t{identity}");
     }
@@ -614,6 +645,10 @@ fn requires_xslt10_discretionary_policy(case_id: &str) -> bool {
     matches!(case_id, "numbering_numbering79" | "Number__84687")
 }
 
+fn has_non_equivalent_historical_uri_alias(case_id: &str) -> bool {
+    matches!(case_id, "Include__77745")
+}
+
 fn has_unusable_archival_reference_result(case_id: &str) -> bool {
     matches!(
         case_id,
@@ -630,6 +665,12 @@ fn has_unusable_archival_reference_result(case_id: &str) -> bool {
             | "Output_EmptyElement1"
             | "Output_MethodEqualsHtmlWithoutIndentSet"
             | "Output_UseLiteralResultElementHead"
+            | "output_output40"
+            | "output_output48"
+            | "output_output59"
+            | "Output_DoctypePublicAndSystemAttribute"
+            | "Output_DoctypePublicAttribute"
+            | "Output_DoctypeSystemAttribute"
             | "Attributes__78365"
             | "Attributes__78372"
             | "AVTs__77574"
@@ -641,6 +682,8 @@ fn has_unusable_archival_reference_result(case_id: &str) -> bool {
             | "BVTs_bvt085"
             | "ConflictResolution__77879"
             | "Elements__78362"
+            | "Include__77515"
+            | "Include__77736"
             | "Include_RelUriTest5"
             | "Keys__91726"
             | "Keys__91727"
@@ -878,6 +921,7 @@ fn admit_transitive_case_stylesheets(
     case: &LegacyCase,
     principal_bytes: &[u8],
     explicit: Vec<WorkbenchResource>,
+    allow_historical_uri_alias: bool,
 ) -> Vec<WorkbenchResource> {
     const MAX_DISCOVERED_MODULES: usize = 64;
     const MAX_DISCOVERED_BYTES: usize = 8 * 1_048_576;
@@ -917,9 +961,12 @@ fn admit_transitive_case_stylesheets(
             {
                 continue;
             }
-            let Some(resolved_name) =
-                resolve_case_relative_file(&case.directory, &physical_name, &reference)
-            else {
+            let Some(resolved_name) = resolve_case_dependency_file(
+                &case.directory,
+                &physical_name,
+                &reference,
+                allow_historical_uri_alias,
+            ) else {
                 continue;
             };
             let Some(resolved_bytes) = read_case_file(&case.directory, &resolved_name) else {
@@ -940,6 +987,149 @@ fn admit_transitive_case_stylesheets(
         .into_iter()
         .map(|(identity, bytes)| WorkbenchResource { identity, bytes })
         .collect()
+}
+
+fn admit_principal_literal_document_resources(
+    case: &LegacyCase,
+    principal_bytes: &[u8],
+    mut resources: Vec<WorkbenchResource>,
+) -> Vec<WorkbenchResource> {
+    const MAX_DISCOVERED_DOCUMENTS: usize = 16;
+    const MAX_DISCOVERED_BYTES: usize = 8 * 1_048_576;
+
+    if case.operation != "standard" {
+        return resources;
+    }
+    let principal_identity = logical_identity(case, &case.principal_stylesheet);
+    let authority_root = case.directory.parent().unwrap_or(&case.directory);
+    let mut admitted = resources
+        .iter()
+        .map(|resource| resource.identity.clone())
+        .collect::<BTreeSet<_>>();
+    let mut discovered_documents = 0usize;
+    let mut discovered_bytes = 0usize;
+    for reference in stylesheet_literal_document_references(&principal_identity, principal_bytes) {
+        if !is_parent_relative_document_reference(&reference) {
+            continue;
+        }
+        if discovered_documents >= MAX_DISCOVERED_DOCUMENTS {
+            break;
+        }
+        let Ok((resolved_identity, fragment)) =
+            crate::resources::resolve_reference(&principal_identity, &reference)
+        else {
+            continue;
+        };
+        if fragment.is_some() || admitted.contains(&resolved_identity) {
+            continue;
+        }
+        let Some(resolved_path) = resolve_case_relative_resource_file(
+            &case.directory,
+            authority_root,
+            &case.principal_stylesheet,
+            &reference,
+        ) else {
+            continue;
+        };
+        let Ok(bytes) = std::fs::read(resolved_path) else {
+            continue;
+        };
+        let Some(next_bytes) = discovered_bytes.checked_add(bytes.len()) else {
+            continue;
+        };
+        if next_bytes > MAX_DISCOVERED_BYTES {
+            continue;
+        }
+        discovered_documents += 1;
+        discovered_bytes = next_bytes;
+        admitted.insert(resolved_identity.clone());
+        resources.push(WorkbenchResource {
+            identity: resolved_identity,
+            bytes,
+        });
+    }
+    resources
+}
+
+fn is_parent_relative_document_reference(reference: &str) -> bool {
+    reference.starts_with("../")
+}
+
+fn stylesheet_literal_document_references(identity: &str, bytes: &[u8]) -> Vec<String> {
+    let Ok(parsed) = parse_document(
+        identity,
+        bytes,
+        ParseLimits {
+            max_events: 100_000,
+            max_depth: 64,
+        },
+    ) else {
+        return Vec::new();
+    };
+    let Ok(document) = Document::from_parsed(parsed) else {
+        return Vec::new();
+    };
+    let mut references = BTreeSet::new();
+    let mut pending = vec![document.document_node()];
+    while let Some(node) = pending.pop() {
+        for attribute in document.attributes(node) {
+            if let Some(value) = document.value(*attribute) {
+                references.extend(literal_document_references(value));
+            }
+        }
+        pending.extend(document.children(node));
+    }
+    references.into_iter().collect()
+}
+
+fn literal_document_references(expression: &str) -> Vec<String> {
+    let mut remaining = expression;
+    let mut references = Vec::new();
+    while let Some((_, after_call)) = remaining.split_once("document(") {
+        let Some(quote) = after_call.as_bytes().first().copied() else {
+            break;
+        };
+        if !matches!(quote, b'\'' | b'"') {
+            remaining = after_call;
+            continue;
+        }
+        let Some(closing_quote) = after_call.as_bytes()[1..]
+            .iter()
+            .position(|byte| *byte == quote)
+            .map(|offset| offset + 1)
+        else {
+            break;
+        };
+        if after_call[closing_quote + 1..].starts_with(')') {
+            let reference = &after_call[1..closing_quote];
+            if !reference.is_empty() {
+                references.push(reference.to_owned());
+            }
+        }
+        remaining = &after_call[closing_quote + 1..];
+    }
+    references
+}
+
+fn resolve_case_relative_resource_file(
+    directory: &Path,
+    authority_root: &Path,
+    current: &str,
+    reference: &str,
+) -> Option<PathBuf> {
+    if reference.contains(['#', '?']) || reference.split('/').next()?.contains(':') {
+        return None;
+    }
+    let current = current.replace('/', std::path::MAIN_SEPARATOR_STR);
+    let reference = reference.replace('/', std::path::MAIN_SEPARATOR_STR);
+    let relative = Path::new(&current)
+        .parent()
+        .unwrap_or_else(|| Path::new(""))
+        .join(reference);
+    let authority_root = authority_root.canonicalize().ok()?;
+    let resolved = directory.join(relative).canonicalize().ok()?;
+    resolved.strip_prefix(authority_root).ok()?;
+    Some(resolved)
 }
 
 fn stylesheet_dependency_references(identity: &str, bytes: &[u8]) -> Vec<String> {
@@ -974,22 +1164,88 @@ fn stylesheet_dependency_references(identity: &str, bytes: &[u8]) -> Vec<String>
         .collect()
 }
 
-fn resolve_case_relative_file(directory: &Path, current: &str, reference: &str) -> Option<String> {
-    if reference.contains(['#', '?']) || reference.split('/').next()?.contains(':') {
-        return None;
-    }
-    let relative = Path::new(current.replace('/', std::path::MAIN_SEPARATOR_STR).as_str())
-        .parent()
-        .unwrap_or_else(|| Path::new(""))
-        .join(reference.replace('/', std::path::MAIN_SEPARATOR_STR));
+fn resolve_case_dependency_file(
+    directory: &Path,
+    current: &str,
+    reference: &str,
+    allow_historical_uri_alias: bool,
+) -> Option<String> {
+    let relative =
+        case_dependency_physical_reference(current, reference, allow_historical_uri_alias)?;
     let root = directory.canonicalize().ok()?;
     let resolved = directory.join(&relative).canonicalize().ok()?;
     let relative = resolved.strip_prefix(root).ok()?;
     Some(relative.to_string_lossy().replace('\\', "/"))
 }
 
+fn case_dependency_physical_reference(
+    current: &str,
+    reference: &str,
+    allow_historical_uri_alias: bool,
+) -> Option<PathBuf> {
+    if reference.contains(['#', '?']) {
+        return None;
+    }
+    let physical_reference =
+        if allow_historical_uri_alias && let Some(reference) = reference.strip_prefix("file:") {
+            if reference.starts_with("//") {
+                Path::new(reference).file_name()?.to_str()?.to_owned()
+            } else {
+                reference.to_owned()
+            }
+        } else if allow_historical_uri_alias
+            && let Some((scheme, authority_and_path)) = reference.split_once("://")
+        {
+            if scheme.is_empty()
+                || !scheme
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'-' | b'.'))
+            {
+                return None;
+            }
+            Path::new(
+                authority_and_path
+                    .replace('/', std::path::MAIN_SEPARATOR_STR)
+                    .as_str(),
+            )
+            .file_name()?
+            .to_str()?
+            .to_owned()
+        } else if reference.split('/').next()?.contains(':') {
+            return None;
+        } else {
+            return Some(
+                Path::new(current.replace('/', std::path::MAIN_SEPARATOR_STR).as_str())
+                    .parent()
+                    .unwrap_or_else(|| Path::new(""))
+                    .join(reference.replace('/', std::path::MAIN_SEPARATOR_STR)),
+            );
+        };
+    Some(
+        Path::new(current.replace('/', std::path::MAIN_SEPARATOR_STR).as_str())
+            .parent()
+            .unwrap_or_else(|| Path::new(""))
+            .join(physical_reference.replace('/', std::path::MAIN_SEPARATOR_STR)),
+    )
+}
+
 fn failure_frontier(failure: &WorkbenchFailure) -> String {
     let detail = failure.detail.as_str();
+    if failure.code == "FXXM0001" {
+        let stylesheet_input_shape = if detail.contains("DtdForbidden") {
+            Some("stylesheet-input:dtd-forbidden")
+        } else if detail.contains("cannot decode input using UTF-8") {
+            Some("stylesheet-input:non-utf8")
+        } else {
+            None
+        };
+        if let Some(stylesheet_input_shape) = stylesheet_input_shape {
+            return format!(
+                "{}/{}/{stylesheet_input_shape}",
+                failure.category, failure.code
+            );
+        }
+    }
     if failure.code == "FXXM0002" {
         let source_input_shape = if detail.contains("DtdForbidden") {
             Some("source-input:dtd-forbidden")
@@ -1112,6 +1368,7 @@ fn xml_equivalent(
     expected: &[u8],
     preserve_whitespace_only_text: bool,
     selected_encoding: Option<&str>,
+    selected_method: Option<&str>,
 ) -> Result<bool, String> {
     let expected = decode_expected_xml(expected, selected_encoding)?;
     let actual = normalize_xml_source_line_endings(actual);
@@ -1124,9 +1381,16 @@ fn xml_equivalent(
     if actual_content == expected_content {
         return Ok(true);
     }
+    let (actual_doctype, actual_content) = split_leading_doctype(actual_content)
+        .map_err(|()| "actual-doctype-not-bounded".to_owned())?;
+    let (expected_doctype, expected_content) = split_leading_doctype(expected_content)
+        .map_err(|()| "expected-doctype-not-bounded".to_owned())?;
+    if !bounded_doctypes_equivalent(actual_doctype, expected_doctype, selected_method) {
+        return Ok(false);
+    }
     if let (Ok(actual), Ok(expected)) = (
-        parse_comparison_document("actual", actual.trim()),
-        parse_comparison_document("expected", expected.trim()),
+        parse_comparison_document("actual", actual_content.trim()),
+        parse_comparison_document("expected", expected_content.trim()),
     ) {
         return Ok(xml_nodes_equal(
             &actual,
@@ -1136,9 +1400,9 @@ fn xml_equivalent(
             preserve_whitespace_only_text,
         ));
     }
-    let actual = parse_comparison_fragment("actual", actual.trim())
+    let actual = parse_comparison_fragment("actual", actual_content.trim())
         .map_err(|()| "actual-not-parseable-document-or-fragment".to_owned())?;
-    let expected = parse_comparison_fragment("expected", expected.trim())
+    let expected = parse_comparison_fragment("expected", expected_content.trim())
         .map_err(|()| "expected-not-parseable-document-or-fragment".to_owned())?;
     Ok(xml_nodes_equal(
         &actual,
@@ -1147,6 +1411,81 @@ fn xml_equivalent(
         expected.document_node(),
         preserve_whitespace_only_text,
     ))
+}
+
+fn bounded_doctypes_equivalent(
+    actual: Option<&str>,
+    expected: Option<&str>,
+    selected_method: Option<&str>,
+) -> bool {
+    if actual == expected {
+        return true;
+    }
+    if selected_method != Some("html") {
+        return false;
+    }
+    let Some((actual_name, actual_suffix)) = actual.and_then(split_doctype_name) else {
+        return false;
+    };
+    let Some((expected_name, expected_suffix)) = expected.and_then(split_doctype_name) else {
+        return false;
+    };
+    actual_name.eq_ignore_ascii_case(expected_name) && actual_suffix == expected_suffix
+}
+
+fn split_doctype_name(value: &str) -> Option<(&str, &str)> {
+    let remainder = value.strip_prefix("<!DOCTYPE")?;
+    let remainder = remainder.strip_prefix(char::is_whitespace)?;
+    let name_end = remainder
+        .find(|character: char| character.is_whitespace() || matches!(character, '[' | '>'))
+        .unwrap_or(remainder.len());
+    (name_end > 0).then(|| (&remainder[..name_end], &remainder[name_end..]))
+}
+
+fn split_leading_doctype(value: &str) -> Result<(Option<&str>, &str), ()> {
+    let value = value.trim_start();
+    if !value.starts_with("<!DOCTYPE") {
+        return Ok((None, value));
+    }
+    let mut quote = None;
+    let mut internal_subset_depth = 0usize;
+    for (offset, character) in value.char_indices() {
+        if let Some(delimiter) = quote {
+            if character == delimiter {
+                quote = None;
+            }
+            continue;
+        }
+        match character {
+            '\'' | '"' => quote = Some(character),
+            '[' => internal_subset_depth = internal_subset_depth.checked_add(1).ok_or(())?,
+            ']' => internal_subset_depth = internal_subset_depth.checked_sub(1).ok_or(())?,
+            '>' if internal_subset_depth == 0 => {
+                let end = offset + character.len_utf8();
+                return Ok((Some(&value[..end]), value[end..].trim_start()));
+            }
+            _ => {}
+        }
+    }
+    Err(())
+}
+
+fn has_matching_bounded_doctype(
+    actual: &str,
+    expected: &[u8],
+    selected_encoding: Option<&str>,
+) -> bool {
+    let Ok(expected) = decode_expected_xml(expected, selected_encoding) else {
+        return false;
+    };
+    let actual = normalize_xml_source_line_endings(actual);
+    let expected = normalize_xml_source_line_endings(&expected);
+    let actual = strip_xml_declaration(&actual).trim();
+    let expected = strip_xml_declaration(&expected).trim();
+    matches!(
+        (split_leading_doctype(actual), split_leading_doctype(expected)),
+        (Ok((Some(actual), _)), Ok((Some(expected), _))) if actual == expected
+    )
 }
 
 fn exact_normalized_non_xml_payloads(
@@ -1189,14 +1528,17 @@ fn oasis_xml_comparator_ignores_serialization_only_empty_element_and_prolog_spac
     let actual = r#"<?xml version="1.0" encoding="UTF-8"?><out test="hello"></out>"#;
     let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out test=\"hello\"/>\r\n";
 
-    assert_eq!(xml_equivalent(actual, expected, false, None), Ok(true));
+    assert_eq!(
+        xml_equivalent(actual, expected, false, None, None),
+        Ok(true)
+    );
 }
 
 #[test]
 fn oasis_xml_comparator_accepts_exact_normalized_non_xml_payloads_only() {
     let malformed = "<out>&bogus;</out>";
     assert_eq!(
-        xml_equivalent(malformed, malformed.as_bytes(), false, None),
+        xml_equivalent(malformed, malformed.as_bytes(), false, None, None),
         Ok(true)
     );
     assert!(exact_normalized_non_xml_payloads(
@@ -1205,7 +1547,7 @@ fn oasis_xml_comparator_accepts_exact_normalized_non_xml_payloads_only() {
         None
     ));
     assert_ne!(
-        xml_equivalent(malformed, b"<out>&different;</out>", false, None),
+        xml_equivalent(malformed, b"<out>&different;</out>", false, None, None),
         Ok(true)
     );
     assert!(!exact_normalized_non_xml_payloads(
@@ -1237,9 +1579,12 @@ fn oasis_text_comparator_decodes_an_xml_wrapped_archival_reference() {
 fn oasis_xml_comparator_ignores_a_declaration_for_an_empty_result_tree_only() {
     let declaration_only = r#"<?xml version="1.0" encoding="UTF-8"?>"#;
 
-    assert_eq!(xml_equivalent(declaration_only, b"", false, None), Ok(true));
     assert_eq!(
-        xml_equivalent(declaration_only, b"<out/>", false, None),
+        xml_equivalent(declaration_only, b"", false, None, None),
+        Ok(true)
+    );
+    assert_eq!(
+        xml_equivalent(declaration_only, b"<out/>", false, None, None),
         Ok(false)
     );
 }
@@ -1249,22 +1594,84 @@ fn oasis_xml_comparator_compares_generated_prefixes_by_expanded_name() {
     let actual = r#"<root xmlns:ns0="urn:example" ns0:value="kept"></root>"#;
     let expected = br#"<root xmlns:auto-ns1="urn:example" auto-ns1:value="kept"/>"#;
 
-    assert_eq!(xml_equivalent(actual, expected, false, None), Ok(true));
+    assert_eq!(
+        xml_equivalent(actual, expected, false, None, None),
+        Ok(true)
+    );
 }
 
 #[test]
 fn oasis_xml_comparator_normalizes_literal_xml_line_endings_before_parsing() {
     assert_eq!(
-        xml_equivalent("<out>a\nb</out>", b"<out>a\r\nb</out>", false, None),
+        xml_equivalent("<out>a\nb</out>", b"<out>a\r\nb</out>", false, None, None),
         Ok(true)
     );
     assert_eq!(
-        xml_equivalent("<out>&#13;</out>", b"<out>\r</out>", false, None),
+        xml_equivalent("<out>&#13;</out>", b"<out>\r</out>", false, None, None),
         Ok(false)
     );
     let actual = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>far-north north near-north far-west west near-west center\nnear-south south near-south-west near-east east far-east </out>";
     let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out>far-north north near-north far-west west near-west center\r\nnear-south south near-south-west near-east east far-east </out>";
-    assert_eq!(xml_equivalent(actual, expected, false, None), Ok(true));
+    assert_eq!(
+        xml_equivalent(actual, expected, false, None, None),
+        Ok(true)
+    );
+}
+
+#[test]
+fn oasis_xml_comparator_compares_a_bounded_doctype_before_parsing_the_document() {
+    let actual = "<?xml version=\"1.0\"?><!DOCTYPE out PUBLIC \"a>b\" \"out.dtd\"><out></out>";
+    let expected =
+        b"<?xml version=\"1.0\"?>\r\n<!DOCTYPE out PUBLIC \"a>b\" \"out.dtd\">\r\n<out/>";
+
+    assert_eq!(
+        xml_equivalent(actual, expected, false, None, None),
+        Ok(true)
+    );
+    assert_eq!(
+        xml_equivalent(
+            actual,
+            b"<!DOCTYPE out SYSTEM \"different.dtd\"><out/>",
+            false,
+            None,
+            None,
+        ),
+        Ok(false)
+    );
+    assert_eq!(
+        split_leading_doctype("<!DOCTYPE out [<!ELEMENT out ANY>]><out/>")
+            .map(|(doctype, body)| (doctype.map(str::to_owned), body.to_owned())),
+        Ok((
+            Some("<!DOCTYPE out [<!ELEMENT out ANY>]>".to_owned()),
+            "<out/>".to_owned(),
+        ))
+    );
+    assert!(split_leading_doctype("<!DOCTYPE out [<!ELEMENT out ANY><out/>").is_err());
+}
+
+#[test]
+fn oasis_html_comparator_treats_only_the_doctype_name_as_ascii_case_insensitive() {
+    let actual = "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.0\"><html/>";
+    let expected = b"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0\"><html/>";
+
+    assert_eq!(
+        xml_equivalent(actual, expected, false, None, Some("html")),
+        Ok(true)
+    );
+    assert_eq!(
+        xml_equivalent(actual, expected, false, None, Some("xml")),
+        Ok(false)
+    );
+    assert_eq!(
+        xml_equivalent(
+            "<!DOCTYPE root PUBLIC \"-//W3C//DTD HTML 4.0\"><root/>",
+            expected,
+            false,
+            None,
+            Some("html"),
+        ),
+        Ok(false)
+    );
 }
 
 #[test]
@@ -1272,10 +1679,16 @@ fn oasis_xml_comparator_switches_indentation_whitespace_for_whitespace_groups() 
     let actual = "<outer>\n  <inner></inner>\n</outer>";
     let expected = b"<outer>\r\n<inner/>\r\n</outer>";
 
-    assert_eq!(xml_equivalent(actual, expected, false, None), Ok(true));
-    assert_eq!(xml_equivalent(actual, expected, true, None), Ok(false));
     assert_eq!(
-        xml_equivalent("<out> </out>", b"<out>meaningful</out>", false, None,),
+        xml_equivalent(actual, expected, false, None, None),
+        Ok(true)
+    );
+    assert_eq!(
+        xml_equivalent(actual, expected, true, None, None),
+        Ok(false)
+    );
+    assert_eq!(
+        xml_equivalent("<out> </out>", b"<out>meaningful</out>", false, None, None,),
         Ok(false)
     );
 }
@@ -1295,6 +1708,26 @@ fn oasis_actual_decoder_admits_selected_iso_8859_1_bytes() {
         decode_expected_xml(b"\xFFtwo\xFF", Some("ISO-8859-1")),
         Ok("ÿtwoÿ".to_owned())
     );
+}
+
+#[test]
+fn oasis_actual_decoder_admits_selected_bounded_legacy_bytes() {
+    for (label, value, encoding) in [
+        ("SHIFT_JIS", "日本語", SHIFT_JIS),
+        ("BIG5", "中文", BIG5),
+        ("ISO-2022-JP", "日本語", ISO_2022_JP),
+    ] {
+        let (bytes, _, had_errors) = encoding.encode(value);
+        assert!(!had_errors);
+        assert_eq!(
+            decode_serialized_xml(&bytes, Some(label)),
+            Ok(value.to_owned())
+        );
+        assert_eq!(
+            decode_expected_xml(&bytes, Some(label)),
+            Ok(value.to_owned())
+        );
+    }
 }
 
 #[test]
@@ -1348,6 +1781,9 @@ fn decode_expected_xml(expected: &[u8], selected_encoding: Option<&str>) -> Resu
             .map(|byte| super::golden_runtime_experiment::decode_iso_8859_2_byte(*byte))
             .collect());
     }
+    if let Some(encoding) = selected_encoding.and_then(bounded_legacy_encoding) {
+        return decode_bounded_legacy(expected, encoding, "expected");
+    }
     std::str::from_utf8(expected)
         .map(|text| text.strip_prefix('\u{feff}').unwrap_or(text).to_owned())
         .map_err(|_| "expected-not-utf8-or-utf16".to_owned())
@@ -1356,6 +1792,9 @@ fn decode_expected_xml(expected: &[u8], selected_encoding: Option<&str>) -> Resu
 fn decode_serialized_xml(actual: &[u8], selected_encoding: Option<&str>) -> Result<String, String> {
     if let Some(decoded) = decode_bom_utf16(actual) {
         return decoded.map_err(|endian| format!("actual-output-invalid-utf16{endian}"));
+    }
+    if let Some(encoding) = selected_encoding.and_then(bounded_legacy_encoding) {
+        return decode_bounded_legacy(actual, encoding, "actual-output");
     }
     if let Ok(actual) = std::str::from_utf8(actual) {
         return Ok(actual.strip_prefix('\u{feff}').unwrap_or(actual).to_owned());
@@ -1385,6 +1824,29 @@ fn decode_serialized_xml(actual: &[u8], selected_encoding: Option<&str>) -> Resu
             .collect());
     }
     Err("actual-output-encoding-not-decodable".to_owned())
+}
+
+fn bounded_legacy_encoding(label: &str) -> Option<&'static Encoding> {
+    if label.eq_ignore_ascii_case("SHIFT_JIS") || label.eq_ignore_ascii_case("SHIFT-JIS") {
+        Some(SHIFT_JIS)
+    } else if label.eq_ignore_ascii_case("BIG5") {
+        Some(BIG5)
+    } else if label.eq_ignore_ascii_case("ISO-2022-JP") {
+        Some(ISO_2022_JP)
+    } else {
+        None
+    }
+}
+
+fn decode_bounded_legacy(
+    bytes: &[u8],
+    encoding: &'static Encoding,
+    label: &str,
+) -> Result<String, String> {
+    encoding
+        .decode_without_bom_handling_and_without_replacement(bytes)
+        .map(std::borrow::Cow::into_owned)
+        .ok_or_else(|| format!("{label}-invalid-{}", encoding.name().to_ascii_lowercase()))
 }
 
 fn decode_bom_utf16(bytes: &[u8]) -> Option<Result<String, &'static str>> {
@@ -1607,6 +2069,90 @@ fn splits_oasis_source_input_policy_frontiers_from_other_xml_failures() {
 }
 
 #[test]
+fn splits_oasis_stylesheet_input_policy_frontiers_from_other_xml_failures() {
+    let failure = |detail: &str| WorkbenchFailure {
+        code: "FXXM0001".to_owned(),
+        category: "invalid".to_owned(),
+        request_id: None,
+        location: None,
+        detail: detail.to_owned(),
+    };
+
+    assert_eq!(
+        failure_frontier(&failure(
+            "stylesheet XML is invalid: LocatedFailure { failure: DtdForbidden { span: 1..2 } }"
+        )),
+        "invalid/FXXM0001/stylesheet-input:dtd-forbidden"
+    );
+    assert_eq!(
+        failure_frontier(&failure(
+            "stylesheet XML is invalid: Malformed { detail: cannot decode input using UTF-8 }"
+        )),
+        "invalid/FXXM0001/stylesheet-input:non-utf8"
+    );
+    assert_eq!(
+        failure_frontier(&failure("stylesheet XML is invalid: MultipleRoots")),
+        "invalid/FXXM0001/FXXM0001"
+    );
+}
+
+#[test]
+fn maps_historical_oasis_dependency_uris_to_case_local_physical_files() {
+    assert_eq!(
+        case_dependency_physical_reference("principal.xsl", "file:fragments/included.xsl", true),
+        Some(PathBuf::from("fragments/included.xsl"))
+    );
+    assert_eq!(
+        case_dependency_physical_reference(
+            "principal.xsl",
+            "http://webxtest/testcases/included.xsl",
+            true
+        ),
+        Some(PathBuf::from("included.xsl"))
+    );
+    assert_eq!(
+        case_dependency_physical_reference(
+            "styles/principal.xsl",
+            "file://webxtest/testcases/included.xsl",
+            true
+        ),
+        Some(PathBuf::from("styles/included.xsl"))
+    );
+    assert_eq!(
+        case_dependency_physical_reference(
+            "principal.xsl",
+            "https://example.invalid/a.xsl#x",
+            true
+        ),
+        None
+    );
+    assert_eq!(
+        case_dependency_physical_reference(
+            "principal.xsl",
+            "http://webxtest/testcases/included.xsl",
+            false
+        ),
+        None
+    );
+}
+
+#[test]
+fn discovers_only_single_argument_literal_document_references() {
+    assert_eq!(
+        literal_document_references(
+            "document('a.xml')//body | document(\"b.xml\")/root | document($dynamic)"
+        ),
+        vec!["a.xml".to_owned(), "b.xml".to_owned()]
+    );
+    assert!(literal_document_references("document('a.xml', /)").is_empty());
+    assert!(is_parent_relative_document_reference("../shared/data.xml"));
+    assert!(!is_parent_relative_document_reference("local.xml"));
+    assert!(!is_parent_relative_document_reference(
+        "https://example.invalid/data.xml"
+    ));
+}
+
+#[test]
 fn oasis_supplemental_stylesheet_identity_normalizes_parent_segments() {
     let case = LegacyCase {
         identity: "Lotus/impincl_impincl04#1".to_owned(),
@@ -1700,6 +2246,12 @@ fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
         "Output_EmptyElement1",
         "Output_MethodEqualsHtmlWithoutIndentSet",
         "Output_UseLiteralResultElementHead",
+        "output_output40",
+        "output_output48",
+        "output_output59",
+        "Output_DoctypePublicAndSystemAttribute",
+        "Output_DoctypePublicAttribute",
+        "Output_DoctypeSystemAttribute",
         "Attributes__78365",
         "Attributes__78372",
         "AVTs__77574",
@@ -1711,6 +2263,8 @@ fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
         "BVTs_bvt085",
         "ConflictResolution__77879",
         "Elements__78362",
+        "Include__77515",
+        "Include__77736",
         "Include_RelUriTest5",
         "Keys__91726",
         "Keys__91727",
