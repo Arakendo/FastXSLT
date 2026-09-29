@@ -8,6 +8,7 @@ use quick_xml::name::ResolveResult;
 use quick_xml::reader::NsReader;
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
+use crate::xml::input_transcoding::ParserInput;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct ParseLimits {
@@ -232,84 +233,6 @@ pub(crate) fn parse_document_controlled(
         })
 }
 
-enum ParserInput<'a> {
-    Original(&'a [u8]),
-    Utf16 {
-        utf8: Vec<u8>,
-        original_offsets: Vec<usize>,
-    },
-}
-
-impl<'a> ParserInput<'a> {
-    fn new(input: &'a [u8]) -> Result<Self, ParseFailure> {
-        let (endianness, content) = if let Some(content) = input.strip_prefix(&[0xff, 0xfe]) {
-            (Utf16Endianness::Little, content)
-        } else if let Some(content) = input.strip_prefix(&[0xfe, 0xff]) {
-            (Utf16Endianness::Big, content)
-        } else {
-            return Ok(Self::Original(input));
-        };
-        if content.len() % 2 != 0 {
-            return Err(ParseFailure::Malformed {
-                offset: input.len() - 1,
-                detail: "UTF-16 input ends with an incomplete code unit".to_owned(),
-            });
-        }
-
-        let code_units = content.chunks_exact(2).map(|bytes| match endianness {
-            Utf16Endianness::Little => u16::from_le_bytes([bytes[0], bytes[1]]),
-            Utf16Endianness::Big => u16::from_be_bytes([bytes[0], bytes[1]]),
-        });
-        let mut utf8 = Vec::with_capacity(content.len() / 2);
-        let mut original_offsets = vec![2];
-        let mut original_offset = 2usize;
-        for decoded in char::decode_utf16(code_units) {
-            let character = decoded.map_err(|error| ParseFailure::Malformed {
-                offset: original_offset,
-                detail: format!("invalid UTF-16 surrogate: {error}"),
-            })?;
-            let original_width = if character.len_utf16() == 2 { 4 } else { 2 };
-            let mut encoded = [0u8; 4];
-            let encoded = character.encode_utf8(&mut encoded).as_bytes();
-            utf8.extend_from_slice(encoded);
-            original_offsets.extend(
-                std::iter::repeat_n(original_offset, encoded.len().saturating_sub(1))
-                    .chain(std::iter::once(original_offset + original_width)),
-            );
-            original_offset += original_width;
-        }
-        Ok(Self::Utf16 {
-            utf8,
-            original_offsets,
-        })
-    }
-
-    fn bytes(&self) -> &[u8] {
-        match self {
-            Self::Original(bytes) => bytes,
-            Self::Utf16 { utf8, .. } => utf8,
-        }
-    }
-
-    fn original_offset(&self, parser_offset: usize) -> usize {
-        match self {
-            Self::Original(_) => parser_offset,
-            Self::Utf16 {
-                original_offsets, ..
-            } => original_offsets
-                .get(parser_offset)
-                .copied()
-                .unwrap_or_else(|| *original_offsets.last().unwrap_or(&usize::MAX)),
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-enum Utf16Endianness {
-    Little,
-    Big,
-}
-
 #[allow(
     clippy::too_many_lines,
     reason = "keeping the experimental event loop together makes parser behavior auditable"
@@ -319,8 +242,18 @@ fn parse_bytes(
     limits: ParseLimits,
     control: &mut InvocationControl,
 ) -> Result<ParsedDocument, ParseFailure> {
-    let parser_input = ParserInput::new(input)?;
-    let mut reader = NsReader::from_reader(parser_input.bytes());
+    let parser_input = ParserInput::new(input).map_err(|failure| ParseFailure::Malformed {
+        offset: failure.offset,
+        detail: failure.detail,
+    })?;
+    // `from_str` fixes quick-xml's decoder to UTF-8 for the transcoded lane.
+    // Otherwise a retained `encoding="UTF-16"` XML declaration would make the
+    // reader reinterpret the already-transcoded buffer as UTF-16.
+    let mut reader = if let Some(utf8) = parser_input.transcoded_utf8() {
+        NsReader::from_str(utf8)
+    } else {
+        NsReader::from_reader(parser_input.bytes())
+    };
     reader.config_mut().enable_all_checks(true);
 
     let mut depth = 0_usize;
@@ -798,7 +731,7 @@ mod tests {
 
     #[test]
     fn decodes_bom_selected_utf16_and_preserves_original_byte_offsets() {
-        let xml = "<?xml version=\"1.0\"?><résumé>olé</résumé>";
+        let xml = "<?xml version=\"1.0\" encoding=\"UTF-16\"?><résumé>olé</résumé>";
         let root_start = xml[..xml.find("<résumé>").expect("root start")]
             .encode_utf16()
             .count();

@@ -223,6 +223,9 @@ pub(super) fn matches_pattern(
         MatchPattern::DocumentElement(required) => {
             matches_document_element(source, node, required.as_ref(), request_id, control)
         }
+        MatchPattern::DocumentChildElement(required) => {
+            matches_document_child_element(source, node, required.as_ref(), request_id, control)
+        }
         MatchPattern::Element(name) => Ok(source.name(node) == Some(name)),
         MatchPattern::ElementLocal(local) => Ok(source
             .name(node)
@@ -1009,6 +1012,25 @@ fn matches_document_element(
     Ok(false)
 }
 
+fn matches_document_child_element(
+    source: &Document,
+    node: NodeId,
+    required: Option<&crate::xml::quick_xml_experiment::ExpandedName>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.kind(node) != NodeKind::Element {
+        return Ok(false);
+    }
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(source
+        .parent(node)
+        .is_some_and(|parent| source.kind(parent) == NodeKind::Document)
+        && required.is_none_or(|name| source.name(node) == Some(name)))
+}
+
 fn match_path_pattern(
     source: &Document,
     node: NodeId,
@@ -1042,6 +1064,9 @@ fn match_path_pattern(
             control.observe_document_rooted_match_cache_build(retained_bytes);
         }
         return Ok(matches);
+    }
+    if path.is_plain_relative_child_path() {
+        return matches_plain_relative_child_path(source, node, path, request_id, control);
     }
     let descendant_pair = match path.steps.as_slice() {
         [
@@ -1098,6 +1123,41 @@ fn match_path_pattern(
     evaluate_location_path_controlled(source, context, path, control)
         .map(|selected| selected.contains(&node))
         .map_err(|failure| control_failure(failure, request_id))
+}
+
+fn matches_plain_relative_child_path(
+    source: &Document,
+    node: NodeId,
+    path: &crate::xpath::path_experiment::LocationPath,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let mut candidate = node;
+    for (index, step) in path.steps.iter().enumerate().rev() {
+        let matches = match step {
+            PathStep::ChildNamed(required) => source
+                .name(candidate)
+                .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str()),
+            PathStep::ChildLocalName(required) => source
+                .name(candidate)
+                .is_some_and(|name| name.local == required.as_str()),
+            PathStep::ChildExpandedName(required) => source.name(candidate) == Some(required),
+            _ => unreachable!("plain relative child path admitted only child-name steps"),
+        };
+        if !matches {
+            return Ok(false);
+        }
+        if index != 0 {
+            let Some(parent) = source.parent(candidate) else {
+                return Ok(false);
+            };
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            candidate = parent;
+        }
+    }
+    Ok(true)
 }
 
 #[cfg(test)]

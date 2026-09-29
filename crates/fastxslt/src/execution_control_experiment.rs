@@ -209,6 +209,10 @@ struct InvocationObservations {
     document_rooted_match_cache_builds: usize,
     document_rooted_match_cache_hits: usize,
     document_rooted_match_cache_bytes: usize,
+    skip_key_index_cache: bool,
+    key_index_cache_builds: usize,
+    key_index_cache_hits: usize,
+    key_index_cache_bytes: usize,
     complete_atomic_frame_clones: bool,
     complete_sequence_frame_clones: bool,
     complete_result_namespace_clones: bool,
@@ -497,6 +501,50 @@ impl InvocationControl {
             self.observations.document_rooted_match_cache_builds,
             self.observations.document_rooted_match_cache_hits,
             self.observations.document_rooted_match_cache_bytes,
+        )
+    }
+
+    pub(crate) fn key_index_cache_enabled(&self) -> bool {
+        #[cfg(not(test))]
+        let _ = self;
+        #[cfg(test)]
+        if self.observations.skip_key_index_cache {
+            return false;
+        }
+        true
+    }
+
+    pub(crate) fn observe_key_index_cache_build(&mut self, retained_bytes: usize) {
+        #[cfg(not(test))]
+        let _ = (self, retained_bytes);
+        #[cfg(test)]
+        {
+            self.observations.key_index_cache_builds += 1;
+            self.observations.key_index_cache_bytes += retained_bytes;
+        }
+    }
+
+    pub(crate) fn observe_key_index_cache_hit(&mut self) {
+        #[cfg(not(test))]
+        let _ = self;
+        #[cfg(test)]
+        {
+            self.observations.key_index_cache_hits += 1;
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn without_key_index_cache(mut self) -> Self {
+        self.observations.skip_key_index_cache = true;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn key_index_cache_observation(&self) -> (usize, usize, usize) {
+        (
+            self.observations.key_index_cache_builds,
+            self.observations.key_index_cache_hits,
+            self.observations.key_index_cache_bytes,
         )
     }
 

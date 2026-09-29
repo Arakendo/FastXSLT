@@ -86,6 +86,7 @@ pub(crate) enum KeyUseExpression {
     PathUnion(Vec<LocationPath>),
     LiteralString(String),
     NumberPath(LocationPath),
+    Xslt10Concat(Box<Xslt10ConcatExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -182,6 +183,7 @@ pub(crate) enum GlobalBindingDefault {
         variable: String,
         path: LocationPath,
     },
+    Xslt10Concat(Box<Xslt10ConcatExpression>),
     TemporaryTree(Vec<ConstructedNode>),
     TemporaryText(String),
     Xslt10TemporarySourceString(LocationPath),
@@ -208,6 +210,7 @@ pub(crate) enum GlobalBindingDefault {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Xslt10TemporaryTextPart {
     Text(String),
+    Message(String),
     Variable(String),
     SourcePath(LocationPath),
 }
@@ -383,6 +386,7 @@ pub(crate) enum MatchPattern {
     AtomicIntegerGreaterOrEqual(i64),
     Document,
     DocumentElement(Option<ExpandedName>),
+    DocumentChildElement(Option<ExpandedName>),
     Element(ExpandedName),
     ElementLocal(String),
     ElementNamespace(String),
@@ -545,6 +549,10 @@ pub(crate) enum ApplySelection {
         argument_path: Option<LocationPath>,
     },
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
+    Xslt10MuenchianKeyGroup {
+        selection: Xslt10MuenchianSelection,
+        first: Box<Xslt10KeyLookup>,
+    },
     Xslt10KeyUnion(Vec<Xslt10KeyLookup>),
     Xslt10MixedUnion(Vec<Xslt10ApplyUnionPart>),
     PathUnion(Vec<LocationPath>),
@@ -590,6 +598,12 @@ pub(crate) enum ApplySelection {
     VariableFilteredElementPath(VariableFilteredElementPath),
     Xslt10ChildrenOfSameNameElementsAsCurrent,
     Xslt10ChildrenOfSameNameElementsAsVariable(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10MuenchianSelection {
+    LocationPath(LocationPath),
+    KeyLookup(Box<Xslt10KeyLookup>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -652,6 +666,7 @@ pub(crate) struct SortKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SortSelect {
     LocationPath(LocationPath),
+    Xslt10BinaryNumeric(Box<BinaryNumericExpression>),
     Xslt10VariablePositionPath {
         path: LocationPath,
         variable: String,
@@ -746,6 +761,7 @@ pub(crate) enum Instruction {
         count: Option<NumberPattern>,
         from: Option<NumberPattern>,
         format: NumberFormatPlan,
+        grouping: Option<Box<NumberGroupingPlan>>,
         xslt10_compatibility: bool,
         location: SourceLocation,
     },
@@ -991,6 +1007,7 @@ pub(crate) enum DynamicNamespaceValue {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum NumberValue {
     Literal(String),
+    Xslt10Variable(String),
     ContextPosition,
     ContextItem,
     Xslt10FirstNodePath(LocationPath),
@@ -1098,10 +1115,29 @@ fn parse_admitted_number_format_token(token: &str) -> NumberFormatToken {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NumberGrouping {
     pub(crate) separator: char,
     pub(crate) size: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct NumberGroupingPlan {
+    pub(crate) separator: NumberGroupingSeparatorPlan,
+    pub(crate) size: NumberGroupingSizePlan,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum NumberGroupingSeparatorPlan {
+    Static(char),
+    Xslt10Variable(String),
+    Xslt10Concat(Xslt10ConcatExpression),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum NumberGroupingSizePlan {
+    Static(usize),
+    Xslt10Numeric(Box<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1408,6 +1444,7 @@ pub(crate) enum Xslt10KeyValue {
     Static(String),
     Variable(String),
     ContextPath(LocationPath),
+    Concat(Box<Xslt10ConcatExpression>),
     NestedLookup(Box<Xslt10KeyLookup>),
 }
 

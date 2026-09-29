@@ -51,21 +51,29 @@ Eight unchanged cases now compile, execute, and compare exactly:
 - `Microsoft/Number__84725#1`
 - `Microsoft/Number__84726#1`
 
-Three additional cases now execute but remain visible mismatches:
+Three additional cases now execute but did not receive pass credit in the
+initial tranche:
 
 - `Microsoft/Number__84692#1` has an archival doubt stating that its reference
-  output is missing sub-elements.
+  output is missing sub-elements. A later review assigns the incomplete empty-
+  table reference an exact, uncredited unusable-reference disposition.
 - `Microsoft/Number__84700#1` expects optional language-specific Arabic and
   full-width numbering sequences. FastXSLT permissibly falls back to decimal
-  rather than claiming those numbering systems.
+  rather than claiming those numbering systems. A later ledger refinement
+  gives this case an exact XSLT 1.0 discretionary-policy disposition; it still
+  receives no pass credit.
 - `Microsoft/Number__91027#1` expects punctuation-only/prefix punctuation to be
   reused as separators and emits punctuation for empty number lists. FastXSLT
   retains the already conserved empty-list behavior and the XSLT default period
-  separator where no between-format-token separator exists.
+  separator where no between-format-token separator exists. A later standards
+  check confirms that the archival expectation conflicts with the section
+  7.7.1 token rules; the case now has an exact unusable-reference-result
+  disposition and still receives no pass credit.
 
-Four related cases remain at the explicit unsupported `xsl:number @lang`
-boundary or the distinct Roman/alphabetic reinterpretation boundary. They are
-not admitted by this fallback slice.
+Four related cases initially remained at the explicit unsupported
+`xsl:number @lang` boundary. A later bounded language-hint tranche admits the
+three locale-invariant successes and exposes one malformed archival UTF-16LE
+reference. The distinct Roman/alphabetic reinterpretation boundary remains.
 
 | Measurement | Before | After | Delta |
 | --- | ---: | ---: | ---: |
@@ -83,8 +91,9 @@ gaps remain 52.
 ## Boundaries
 
 - Decimal fallback is not evidence of locale-specific numbering support.
-- No `lang` behavior, locale acquisition, ambient system-locale dependency, or
-  new public configuration was selected.
+- This tranche selected no `lang` behavior. The later language-hint tranche is
+  separately bounded and still selects no locale acquisition, ambient system-
+  locale dependency, or public configuration.
 - The two historical-reference differences and the explicitly doubt-annotated
   empty reference remain visible rather than being converted into pass credit.
 - Modern XPath/XSLT numeric typing and the existing specialized token behavior

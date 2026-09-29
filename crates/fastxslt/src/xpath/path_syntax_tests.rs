@@ -131,6 +131,24 @@ fn classifies_malformed_namespace_wildcards_and_axis_node_tests() {
 }
 
 #[test]
+fn classifies_lexically_impossible_location_paths_as_invalid() {
+    for expression in ["price;name", ";", r"/\/\/\/rtrtr", "{/}", "++__++- 1 1"] {
+        let failure = parse_location_path(expression, location())
+            .expect_err("lexically impossible XPath must fail as invalid input");
+        assert!(matches!(
+            failure,
+            PathFailure::Invalid {
+                standard_code: "XPST0003",
+                ..
+            }
+        ));
+    }
+
+    parse_location_path("item[@name='a;b\\c']", location())
+        .expect("punctuation inside an XPath string literal remains admissible");
+}
+
+#[test]
 fn accepts_xml_ncname_punctuation_and_unicode_names() {
     let path = parse_location_path("catalog/item.name/item-2/_value", location())
         .expect("NCName punctuation belongs to the private grammar");

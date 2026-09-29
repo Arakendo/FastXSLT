@@ -440,3 +440,12 @@ profiles or consumer workloads provide another concrete hypothesis to test.
   direction reversed between sequential and concurrent lanes and between short
   and longer samples. Every charge and control check was preserved during the
   experiment; the complete production implementation was restored.
+- 2026-09-28 -- A 3.5 MiB unchanged OASIS Muenchian-grouping case proved that
+  repeated complete key scans and generic relative-path pattern evaluation
+  exceeded the ten-million node-visit envelope. A safe lazy invocation-owned
+  key index plus direct ancestry matching made the case exact. The index is
+  source-derived, records known retained payload in test observations, retires
+  with the invocation, and remains differentially verified against the complete
+  charged scan; no prepared, worker, snapshot, or cross-generation cache was
+  admitted.
+  [Evidence](../Evidence/oasis-xslt10-invocation-key-index-and-muenchian-grouping-2026-09-28.md)

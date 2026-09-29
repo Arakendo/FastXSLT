@@ -218,6 +218,55 @@ fn source_dependent_global_count_uses_the_principal_document_focus() {
 }
 
 #[test]
+fn document_child_wildcard_pattern_matches_the_document_element() {
+    let source = parse_document(
+        "memory:document-child-wildcard.xml",
+        b"<root>built-in fallback</root>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:document-child-wildcard.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="/"><xsl:apply-templates select="/*"/></xsl:template>
+          <xsl:template match="/*"><selected/></xsl:template>
+          <xsl:template match="node()"/>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("document-child wildcard pattern should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "document-child-wildcard-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("document-child wildcard pattern should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "document-child-wildcard-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<selected></selected>");
+}
+
+#[test]
 fn xslt10_message_is_invocation_owned_and_does_not_enter_the_principal_result() {
     let source = parse_document(
         "memory:message.xml",
@@ -264,6 +313,60 @@ fn xslt10_message_is_invocation_owned_and_does_not_enter_the_principal_result() 
     let mut bounded = InvocationControl::new(CancellationToken::new(), limits);
     let failure = execute_program(&program, &source, "bounded-message-request", &mut bounded)
         .expect_err("message construction must remain inside result-text accounting");
+    assert_eq!(failure.category, FailureCategory::Limit);
+    assert!(failure.detail.contains("result-text-byte"));
+    assert!(bounded.messages().is_empty());
+}
+
+#[test]
+fn xslt10_static_global_message_is_invocation_owned_and_not_tree_content() {
+    let source = parse_document(
+        "memory:global-message.xml",
+        b"<docs><a>payload</a></docs>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:global-message.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output omit-xml-declaration="yes"/><xsl:param name="global"><xsl:message>global observation</xsl:message><xsl:value-of select="/docs/a"/></xsl:param><xsl:template match="docs"><out><xsl:value-of select="$global"/></out></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("static global message should compile");
+    let mut control = InvocationControl::unbounded();
+    let result = execute_program(&program, &source, "global-message-request", &mut control)
+        .expect("static global message should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "global-message-request",
+        4_096,
+        &mut control,
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>payload</out>");
+    assert_eq!(control.messages(), ["global observation"]);
+
+    let mut limits = WorkLimits::unbounded();
+    limits.result_text_bytes = 4;
+    let mut bounded = InvocationControl::new(CancellationToken::new(), limits);
+    let failure = execute_program(
+        &program,
+        &source,
+        "bounded-global-message-request",
+        &mut bounded,
+    )
+    .expect_err("global message construction must remain bounded");
     assert_eq!(failure.category, FailureCategory::Limit);
     assert!(failure.detail.contains("result-text-byte"));
     assert!(bounded.messages().is_empty());
@@ -602,6 +705,60 @@ fn xslt10_binary_numeric_tree_composes_round_and_modulo() {
 }
 
 #[test]
+fn xslt10_binary_numeric_tree_composes_count_operands() {
+    const SOURCE: &str = "urn:fastxslt:count-arithmetic:source";
+    const STYLESHEET: &str = "urn:fastxslt:count-arithmetic:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="count(/doc/*) - count(/doc/b)"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a/><a/><b/></doc>".to_vec())
+        .expect("admit count-arithmetic source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit count-arithmetic stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile count arithmetic");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("count-arithmetic", "result", SOURCE))
+        .expect("admit count-arithmetic request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute count arithmetic");
+
+    assert_eq!(results.by_request["count-arithmetic"].serialized, "2");
+}
+
+#[test]
+fn xslt10_binary_numeric_uses_lexical_context_for_wildcards_and_operator_names() {
+    const SOURCE: &str = "urn:fastxslt:xpath10-operator-context:source";
+    const STYLESHEET: &str = "urn:fastxslt:xpath10-operator-context:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><div>9</div></doc>".to_vec())
+        .expect("admit XPath 1.0 operator-context source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="doc"><xsl:value-of select="25-*"/>|<xsl:value-of select="54 div*"/>|<xsl:value-of select="' 6 '*div"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit XPath 1.0 operator-context stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile XPath 1.0 lexical-context arithmetic");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("xpath10-operator-context", "result", SOURCE))
+        .expect("admit XPath 1.0 operator-context request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute XPath 1.0 lexical-context arithmetic");
+    assert_eq!(
+        results.by_request["xpath10-operator-context"].serialized,
+        "16|6|54"
+    );
+}
+
+#[test]
 fn xslt10_untyped_global_boolean_retains_atomic_value() {
     let source = parse_document(
         "memory:global-boolean.xml",
@@ -687,6 +844,50 @@ fn forward_global_alias_executes_after_its_dependency() {
     .expect("result should serialize");
 
     assert_eq!(serialized, "<out>resolved</out>");
+}
+
+#[test]
+fn xslt10_global_concat_executes_after_forward_dependencies() {
+    let source = parse_document(
+        "memory:xslt10-global-concat.xml",
+        b"<doc/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:xslt10-global-concat.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="first" select="concat('first:', $later, ':', $middle)"/><xsl:variable name="middle" select="concat('middle:', $later)"/><xsl:variable name="later" select="'value'"/><xsl:template match="/"><out><xsl:value-of select="$first"/></out></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("global concat should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "xslt10-global-concat-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("global concat should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "xslt10-global-concat-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>first:value:middle:value</out>");
 }
 
 #[test]
@@ -4159,6 +4360,186 @@ fn xslt10_key_lookup_converts_static_numeric_values_and_key_use_numbers() {
 }
 
 #[test]
+fn xslt10_key_use_concat_indexes_each_matched_node_against_its_own_focus() {
+    const SOURCE: &str = "urn:fastxslt:key-concat:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-concat:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:key name="descriptions" match="item" use="concat(level, ':', team)"/><xsl:template match="/"><xsl:value-of select="key('descriptions', 'gold:west')/@name"/><xsl:text>|</xsl:text><xsl:value-of select="key('descriptions', 'silver:east')/@name"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item name='first'><level>gold</level><team>west</team></item><item name='second'><level>silver</level><team>east</team></item></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-concat", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(results.by_request["key-concat"].serialized, "first|second");
+}
+
+#[test]
+fn xslt10_muenchian_key_group_keeps_the_first_node_for_each_key_value() {
+    const SOURCE: &str = "urn:fastxslt:muenchian:source";
+    const STYLESHEET: &str = "urn:fastxslt:muenchian:stylesheet";
+    const SOURCE_XML: &[u8] =
+        b"<doc><town state='AZ'/><town state='CA'/><town state='AZ'/><town state='NY'/><town state='CA'/></doc>";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:key name="places" match="town" use="@state"/><xsl:template match="/"><xsl:for-each select="doc/town[count(. | key('places', @state)[1]) = 1]"><xsl:value-of select="@state"/><xsl:text>|</xsl:text></xsl:for-each></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, SOURCE_XML.to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let parsed = parse_document(
+        SOURCE,
+        SOURCE_XML,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 4,
+        },
+    )
+    .expect("parse source");
+    let source = Document::from_parsed(parsed).expect("build source XDM");
+    let mut indexed_control = InvocationControl::unbounded();
+    let indexed = execute_program(&program, &source, "indexed", &mut indexed_control)
+        .expect("indexed execution");
+    let mut reference_control = InvocationControl::unbounded().without_key_index_cache();
+    let reference = execute_program(&program, &source, "reference", &mut reference_control)
+        .expect("complete-scan reference execution");
+    assert_eq!(indexed.children, reference.children);
+    let (builds, _hits, retained_bytes) = indexed_control.key_index_cache_observation();
+    assert_eq!(builds, 1);
+    assert!(retained_bytes > 0);
+    assert_eq!(reference_control.key_index_cache_observation(), (0, 0, 0));
+
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("muenchian", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(results.by_request["muenchian"].serialized, "AZ|CA|NY|");
+}
+
+#[test]
+fn xslt10_muenchian_key_group_evaluates_concat_lookup_from_each_candidate_focus() {
+    const SOURCE: &str = "urn:fastxslt:muenchian-concat:source";
+    const STYLESHEET: &str = "urn:fastxslt:muenchian-concat:stylesheet";
+    const SOURCE_XML: &[u8] = b"<doc><row name='first'><plan>basic</plan><business>west</business></row><row name='duplicate'><plan>basic</plan><business>west</business></row><row name='second'><plan>premium</plan><business>west</business></row><row name='other'><plan>basic</plan><business>east</business></row></doc>";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:key name="businesses" match="row" use="business"/><xsl:key name="plans" match="row" use="concat(plan, ':', business)"/><xsl:template match="/"><xsl:for-each select="key('businesses', 'west')[count(. | key('plans', concat(plan, ':', business))[1]) = 1]"><xsl:value-of select="@name"/><xsl:text>|</xsl:text></xsl:for-each></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 32_768));
+    resources
+        .admit(SOURCE, SOURCE_XML.to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let parsed = parse_document(
+        SOURCE,
+        SOURCE_XML,
+        ParseLimits {
+            max_events: 64,
+            max_depth: 5,
+        },
+    )
+    .expect("parse source");
+    let source = Document::from_parsed(parsed).expect("build source XDM");
+    let mut indexed_control = InvocationControl::unbounded();
+    let indexed = execute_program(&program, &source, "indexed", &mut indexed_control)
+        .expect("indexed execution");
+    let mut reference_control = InvocationControl::unbounded().without_key_index_cache();
+    let reference = execute_program(&program, &source, "reference", &mut reference_control)
+        .expect("complete-scan reference execution");
+    assert_eq!(indexed.children, reference.children);
+
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(32_768));
+    builder
+        .add(request("muenchian-concat", "result", SOURCE))
+        .expect("admit request");
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["muenchian-concat"].serialized,
+        "first|second|"
+    );
+}
+
+#[test]
+fn xslt10_generate_id_muenchian_group_keeps_the_first_node_for_each_key_value() {
+    const SOURCE: &str = "urn:fastxslt:generate-id-muenchian:source";
+    const STYLESHEET: &str = "urn:fastxslt:generate-id-muenchian:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:key name="places" match="town" use="@state"/><xsl:template match="/"><xsl:for-each select="doc/town[generate-id() = generate-id(key('places', @state)[1])]"><xsl:value-of select="@state"/><xsl:text>|</xsl:text></xsl:for-each></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><town state='AZ'/><town state='CA'/><town state='AZ'/><town state='NY'/><town state='CA'/></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("generate-id-muenchian", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["generate-id-muenchian"].serialized,
+        "AZ|CA|NY|"
+    );
+}
+
+#[test]
+fn xslt10_key_lookup_current_context_path_uses_the_call_focus() {
+    const SOURCE: &str = "urn:fastxslt:key-current-path:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-current-path:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:key name="places" match="town" use="@state"/><xsl:template match="/"><xsl:for-each select="doc/town[@name='first']"><xsl:for-each select="key('places', current()/@state)"><xsl:value-of select="@name"/><xsl:text>|</xsl:text></xsl:for-each></xsl:for-each></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><town name='first' state='AZ'/><town name='second' state='CA'/><town name='third' state='AZ'/></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("key-current-path", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["key-current-path"].serialized,
+        "first|third|"
+    );
+}
+
+#[test]
 fn xslt10_key_node_consumers_preserve_document_order_identity_and_focus() {
     const SOURCE: &str = "urn:fastxslt:key-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:key-for-each:stylesheet";
@@ -5045,6 +5426,33 @@ fn xslt10_local_attribute_set_applies_to_static_computed_elements() {
     assert_eq!(
         results.by_request["computed-element-attribute-set"].serialized,
         "<out weight=\"bold\" color=\"red\"></out>"
+    );
+}
+
+#[test]
+fn xslt10_prefixed_computed_element_attribute_set_attribute_is_ignored() {
+    const SOURCE: &str = "urn:fastxslt:prefixed-computed-element-attribute-set:source";
+    const STYLESHEET: &str = "urn:fastxslt:prefixed-computed-element-attribute-set:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:attribute-set name="common"><xsl:attribute name="color">black</xsl:attribute></xsl:attribute-set><xsl:template match="/"><xsl:element name="out" xsl:use-attribute-sets="common"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("prefixed-attribute-set", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["prefixed-attribute-set"].serialized,
+        "<out></out>"
     );
 }
 
@@ -7361,6 +7769,33 @@ fn xslt10_number_reuses_focus_aware_checked_arithmetic() {
 }
 
 #[test]
+fn xslt10_number_accepts_locale_hints_when_the_selected_sequence_is_invariant() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-number-language:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-number-language:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\"><xsl:output method=\"text\"/><xsl:template match=\"/\"><xsl:number value=\"27\" format=\"A\" lang=\"sv\" letter-value=\"traditional\"/>|<xsl:number value=\"7\" format=\"丁\" lang=\"ko\" letter-value=\"alphabetic\"/></xsl:template></xsl:stylesheet>".as_bytes().to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile locale hints over invariant numbering sequences");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("number-language", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute numbering");
+
+    assert_eq!(results.by_request["number-language"].serialized, "AA|7");
+}
+
+#[test]
 fn xslt10_number_applies_latin_greek_and_roman_format_tokens() {
     const STYLESHEET: &str = "urn:fastxslt:number-named-format";
     const SOURCE: &str = "urn:fastxslt:number-named-format-source";
@@ -7548,6 +7983,72 @@ fn xslt10_number_applies_static_decimal_grouping() {
     assert_eq!(
         results.by_request["number-grouping"].serialized,
         "<out>012,345|12345|12345</out>"
+    );
+}
+
+#[test]
+fn xslt10_number_resolves_dynamic_grouping_avts() {
+    const STYLESHEET: &str = "urn:fastxslt:number-dynamic-grouping";
+    const SOURCE: &str = "urn:fastxslt:number-dynamic-grouping-source";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="format" select="'000001'"/><xsl:variable name="grouping-size" select="2"/><xsl:variable name="grouping-separator" select="','"/><xsl:template match="/"><out><xsl:number value="12345" format="{$format}" grouping-separator="{concat($grouping-separator, '')}" grouping-size="{$grouping-size + 1}"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile dynamic number grouping");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "number-dynamic-grouping",
+            "number-dynamic-grouping-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute dynamic number grouping");
+
+    assert_eq!(
+        results.by_request["number-dynamic-grouping"].serialized,
+        "<out>012,345</out>"
+    );
+}
+
+#[test]
+fn xslt10_number_converts_a_variable_value_to_number() {
+    const STYLESHEET: &str = "urn:fastxslt:number-variable-value";
+    const SOURCE: &str = "urn:fastxslt:number-variable-value-source";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:call-template name="emit"><xsl:with-param name="number">12.6</xsl:with-param></xsl:call-template></out></xsl:template><xsl:template name="emit"><xsl:param name="number">1</xsl:param><xsl:number value="$number" format="01"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable number value");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "number-variable-value",
+            "number-variable-value-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable number value");
+
+    assert_eq!(
+        results.by_request["number-variable-value"].serialized,
+        "<out>13</out>"
     );
 }
 
@@ -12439,6 +12940,59 @@ fn legacy_html_serialization_accepts_a_general_nested_result_tree() {
 }
 
 #[test]
+fn legacy_html_serialization_keeps_boolean_attributes_quoted_on_foreign_elements() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: Some("urn:foreign".to_owned()),
+                local: "input".to_owned(),
+            },
+            namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
+                prefix: None,
+                namespace: "urn:foreign".to_owned(),
+            }]
+            .into(),
+            attributes: vec![unnamespaced_result_attribute("checked", "checked")],
+            children: Vec::new(),
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("html".to_owned()),
+        version: Some("4.0".to_owned()),
+        html_version: Some("4.0".to_owned()),
+        encoding: None,
+        media_type: None,
+        doctype_system: None,
+        doctype_public: None,
+        include_content_type: Some(false),
+        escape_uri_attributes: None,
+        byte_order_mark: None,
+        normalization_form: None,
+        character_map: Vec::new(),
+        undeclare_prefixes: None,
+        standalone: None,
+        suppress_indentation_elements: Vec::new(),
+        cdata_section_elements: Vec::new(),
+        omit_xml_declaration: true,
+        indent: Some(false),
+    };
+
+    let serialized = serialize_xml(
+        &result,
+        &settings,
+        "foreign-html-boolean",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("serialize a foreign element through the legacy HTML method");
+
+    assert_eq!(
+        serialized,
+        "<input xmlns=\"urn:foreign\" checked=\"checked\"></input>"
+    );
+}
+
+#[test]
 fn legacy_html_serialization_recognizes_uppercase_script_and_void_elements() {
     let element = |local: &str, children: Vec<ResultNode>| ResultNode::Element {
         name: crate::xml::quick_xml_experiment::ExpandedName {
@@ -13284,6 +13838,42 @@ fn xslt10_numeric_sort_uses_xpath_number_lexicals_and_equal_zero_keys() {
 }
 
 #[test]
+fn xslt10_sort_uses_the_shared_binary_numeric_evaluator() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-binary-numeric-sort:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-binary-numeric-sort:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="doc/item"><xsl:sort select="@height * @width" data-type="number"/><xsl:value-of select="@name"/><xsl:text>|</xsl:text></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><item name="wide" height="3" width="4"/><item name="small" height="2" width="2"/><item name="tall" height="5" width="2"/></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile numeric expression sort");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "xslt10-binary-numeric-sort",
+            "binary-numeric-sort-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute numeric expression sort");
+
+    assert_eq!(
+        results.by_request["xslt10-binary-numeric-sort"].serialized,
+        "small|tall|wide|"
+    );
+}
+
+#[test]
 fn xslt10_sort_resolves_variable_data_type_and_order() {
     const SOURCE: &str = "urn:fastxslt:xslt10-variable-sort-control:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-sort-control:stylesheet";
@@ -13895,6 +14485,47 @@ fn html_output_allows_a_doctype_before_multiple_top_level_elements() {
 }
 
 #[test]
+fn html_output_uses_html_as_the_doctype_name_for_a_non_html_first_element() {
+    let result = SemanticResult {
+        children: vec![unnamespaced_result_element("area", Vec::new(), Vec::new())],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("html".to_owned()),
+        version: Some("4.0".to_owned()),
+        html_version: Some("4.0".to_owned()),
+        encoding: None,
+        media_type: None,
+        doctype_system: Some("system".to_owned()),
+        doctype_public: Some("public".to_owned()),
+        include_content_type: Some(false),
+        escape_uri_attributes: None,
+        byte_order_mark: None,
+        normalization_form: None,
+        character_map: Vec::new(),
+        undeclare_prefixes: None,
+        standalone: None,
+        suppress_indentation_elements: Vec::new(),
+        cdata_section_elements: Vec::new(),
+        omit_xml_declaration: true,
+        indent: Some(false),
+    };
+
+    let serialized = serialize_xml(
+        &result,
+        &settings,
+        "html-doctype-name",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("serialize a legacy HTML DOCTYPE independently of the result root name");
+
+    assert_eq!(
+        serialized,
+        "<!DOCTYPE html PUBLIC \"public\" \"system\"><area>"
+    );
+}
+
+#[test]
 fn html_output_emits_a_public_identifier_without_a_system_identifier() {
     let result = SemanticResult {
         children: vec![ResultNode::Element {
@@ -13939,7 +14570,7 @@ fn html_output_emits_a_public_identifier_without_a_system_identifier() {
 
     assert_eq!(
         serialized,
-        "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\"><HTML></HTML>"
+        "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\"><HTML></HTML>"
     );
 }
 
@@ -13976,6 +14607,14 @@ fn processing_instruction_serializes_as_markup_but_not_as_text_value() {
         serialize_xml(&result, &settings, "pi", 4_096, &mut control)
             .expect("serialize processing instruction"),
         "<?my-pi href=\"book.css\" type=\"text/css\"?>"
+    );
+
+    settings.method = Some("html".to_owned());
+    let mut control = InvocationControl::unbounded();
+    assert_eq!(
+        serialize_xml(&result, &settings, "pi-html", 4_096, &mut control)
+            .expect("serialize HTML processing instruction"),
+        "<?my-pi href=\"book.css\" type=\"text/css\">"
     );
 
     settings.method = Some("text".to_owned());
@@ -15036,6 +15675,35 @@ fn copy_of_path_union_deduplicates_and_restores_document_order() {
         results.by_request["union-copy"].serialized,
         "<out z=\"last-expression\" x=\"first-expression\"><p:a xmlns:p=\"urn:items\"></p:a><a xmlns:p=\"urn:items\"></a></out>"
     );
+}
+
+#[test]
+fn grouped_apply_path_union_composes_one_common_suffix() {
+    const SOURCE: &str = "urn:fastxslt:grouped-union:source";
+    const STYLESHEET: &str = "urn:fastxslt:grouped-union:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 12_288, 24_576));
+    resources
+        .admit(
+            SOURCE,
+            b"<root><north><before/><center/><after/></north><south/></root>".to_vec(),
+        )
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="//center"><xsl:apply-templates select="(preceding-sibling::*|following-sibling::*)/ancestor::*[last()]/*[last()]"/></xsl:for-each></xsl:template><xsl:template match="*"><xsl:value-of select="name(.)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile grouped path union");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(24_576));
+    builder
+        .add(request("grouped-union", "grouped-union-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute grouped path union");
+
+    assert_eq!(results.by_request["grouped-union"].serialized, "south");
 }
 
 #[test]

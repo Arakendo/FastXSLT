@@ -88,6 +88,7 @@ pub(super) enum PathBooleanPredicate {
     },
     ParentChildEqualsOuterContext(String),
     ContextStringEqualsOuterContext,
+    ContextStringEqualsOuterAncestorOrSelf,
     AttributeEqualsOuterAttribute {
         attribute: String,
         outer_attribute: String,
@@ -96,6 +97,7 @@ pub(super) enum PathBooleanPredicate {
         outer: Vec<RelativeChildStep>,
         inner: Vec<RelativeChildStep>,
     },
+    RelativeChildPathExists(Vec<RelativeChildStep>),
     ChildAttributeStartsWith {
         child: String,
         attribute: String,
@@ -109,6 +111,7 @@ pub(super) enum PathBooleanPredicate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum RelativeChildStep {
     Element(String),
+    Attribute(String),
     Text,
 }
 
@@ -174,6 +177,7 @@ impl PathBooleanPredicate {
             Self::NestedChildPathExists { outer, inner } => {
                 child_path_capacity(outer) + child_path_capacity(inner)
             }
+            Self::RelativeChildPathExists(path) => child_path_capacity(path),
             Self::ChildAttributeStartsWith {
                 child,
                 attribute,
@@ -185,6 +189,7 @@ impl PathBooleanPredicate {
             | Self::DescendantElementComparison { value, .. } => value.capacity(),
             Self::ContextNameLengthEquals(_)
             | Self::ContextStringEqualsOuterContext
+            | Self::ContextStringEqualsOuterAncestorOrSelf
             | Self::ChildElementIntegerEquals { name: None, .. }
             | Self::AncestorElementCountComparison { .. }
             | Self::ContextPosition(_)
@@ -247,8 +252,8 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     if let Some(name) = parse_parent_child_outer_context_equality(predicate) {
         return Some(PathBooleanPredicate::ParentChildEqualsOuterContext(name));
     }
-    if parse_context_outer_context_equality(predicate) {
-        return Some(PathBooleanPredicate::ContextStringEqualsOuterContext);
+    if let Some(comparison) = parse_outer_context_comparison(predicate) {
+        return Some(comparison);
     }
     if let Some((name, value)) = parse_attribute_inequality(predicate) {
         return Some(PathBooleanPredicate::NotEquals {
@@ -306,8 +311,8 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
             comparison,
         ));
     }
-    if let Some((outer, inner)) = parse_nested_child_path_existence(predicate) {
-        return Some(PathBooleanPredicate::NestedChildPathExists { outer, inner });
+    if let Some(predicate) = parse_child_path_existence_predicate(predicate) {
+        return Some(predicate);
     }
     if let Some((child, attribute, prefix)) = parse_child_attribute_starts_with(predicate) {
         return Some(PathBooleanPredicate::ChildAttributeStartsWith {
@@ -370,11 +375,40 @@ pub(super) fn recognizes_context_outer_context_equality(predicate: &str) -> bool
     parse_context_outer_context_equality(strip_outer_parentheses(predicate.trim()))
 }
 
+pub(super) fn recognizes_context_outer_ancestor_or_self_equality(predicate: &str) -> bool {
+    let predicate = strip_outer_parentheses(predicate.trim());
+    let predicate = predicate
+        .strip_prefix("not(")
+        .and_then(|value| value.strip_suffix(')'))
+        .map_or(predicate, str::trim);
+    parse_context_outer_ancestor_or_self_equality(predicate)
+}
+
 fn parse_context_outer_context_equality(predicate: &str) -> bool {
     let Some((left, right)) = split_top_level_predicate_operator(predicate, "=") else {
         return false;
     };
     matches!((left.trim(), right.trim()), (".", "'\0'") | ("'\0'", "."))
+}
+
+fn parse_outer_context_comparison(predicate: &str) -> Option<PathBooleanPredicate> {
+    if parse_context_outer_context_equality(predicate) {
+        Some(PathBooleanPredicate::ContextStringEqualsOuterContext)
+    } else if parse_context_outer_ancestor_or_self_equality(predicate) {
+        Some(PathBooleanPredicate::ContextStringEqualsOuterAncestorOrSelf)
+    } else {
+        None
+    }
+}
+
+fn parse_context_outer_ancestor_or_self_equality(predicate: &str) -> bool {
+    let Some((left, right)) = split_top_level_predicate_operator(predicate, "=") else {
+        return false;
+    };
+    matches!(
+        (left.trim(), right.trim()),
+        (".", "'\0'/ancestor-or-self::*") | ("'\0'/ancestor-or-self::*", ".")
+    )
 }
 
 fn parse_parent_child_outer_context_equality(predicate: &str) -> Option<String> {
@@ -447,6 +481,9 @@ fn evaluate_atomic(
     match predicate {
         PathBooleanPredicate::ContextStringEquals(value) => {
             context_string_equals(document, node, value, control)
+        }
+        PathBooleanPredicate::ContextStringEqualsOuterAncestorOrSelf => {
+            context_equals_outer_ancestor_or_self(document, focus, control)
         }
         PathBooleanPredicate::ContextNameComparison { value, equal } => {
             control.charge(WorkDomain::XPathOperation, 1)?;
@@ -523,6 +560,9 @@ fn evaluate_atomic(
         } => parent_attribute_string_comparison(document, node, attribute, value, *equal, control),
         PathBooleanPredicate::NestedChildPathExists { outer, inner } => {
             nested_child_path_exists(document, node, outer, inner, control)
+        }
+        PathBooleanPredicate::RelativeChildPathExists(path) => {
+            Ok(!select_relative_child_path(document, node, path, control)?.is_empty())
         }
         PathBooleanPredicate::ChildAttributeStartsWith {
             child,
@@ -601,6 +641,24 @@ fn context_equals_outer_context(
     Ok(document.string_value(focus.node) == document.string_value(focus.outer_context))
 }
 
+fn context_equals_outer_ancestor_or_self(
+    document: &Document,
+    focus: EvaluationFocus,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    control.charge(WorkDomain::XPathOperation, 1)?;
+    let candidate = document.string_value(focus.node);
+    let mut current = Some(focus.outer_context);
+    while let Some(node) = current {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(node) == NodeKind::Element && document.string_value(node) == candidate {
+            return Ok(true);
+        }
+        current = document.parent(node);
+    }
+    Ok(false)
+}
+
 fn evaluate_not(
     document: &Document,
     operand: &PathBooleanPredicate,
@@ -662,7 +720,9 @@ fn child_path_capacity(path: &[RelativeChildStep]) -> usize {
         + path
             .iter()
             .map(|step| match step {
-                RelativeChildStep::Element(name) => name.capacity(),
+                RelativeChildStep::Element(name) | RelativeChildStep::Attribute(name) => {
+                    name.capacity()
+                }
                 RelativeChildStep::Text => 0,
             })
             .sum::<usize>()
@@ -775,6 +835,9 @@ fn parse_child_path_string_operand(
     path: &str,
     literal: &str,
 ) -> Option<(Vec<RelativeChildStep>, String)> {
+    if path.contains('@') {
+        return None;
+    }
     Some((
         parse_relative_child_path(path)?,
         xpath_string_literal(literal)?.to_owned(),
@@ -845,11 +908,33 @@ fn parse_relative_child_path(path: &str) -> Option<Vec<RelativeChildStep>> {
         .map(|(index, step)| {
             if *step == "text()" && index + 1 == steps.len() {
                 Some(RelativeChildStep::Text)
+            } else if index + 1 == steps.len() {
+                step.strip_prefix('@')
+                    .filter(|name| is_ncname(name))
+                    .map(|name| RelativeChildStep::Attribute(name.to_owned()))
+                    .or_else(|| {
+                        is_ncname(step).then(|| RelativeChildStep::Element((*step).to_owned()))
+                    })
             } else {
                 is_ncname(step).then(|| RelativeChildStep::Element((*step).to_owned()))
             }
         })
         .collect()
+}
+
+fn parse_relative_child_path_exists(predicate: &str) -> Option<PathBooleanPredicate> {
+    predicate
+        .contains('/')
+        .then(|| parse_relative_child_path(predicate))
+        .flatten()
+        .map(PathBooleanPredicate::RelativeChildPathExists)
+}
+
+fn parse_child_path_existence_predicate(predicate: &str) -> Option<PathBooleanPredicate> {
+    if let Some((outer, inner)) = parse_nested_child_path_existence(predicate) {
+        return Some(PathBooleanPredicate::NestedChildPathExists { outer, inner });
+    }
+    parse_relative_child_path_exists(predicate)
 }
 
 fn parse_nested_child_path_existence(
@@ -948,6 +1033,21 @@ fn select_relative_child_path(
 ) -> Result<Vec<NodeId>, ControlFailure> {
     let mut selected = vec![node];
     for step in path {
+        if let RelativeChildStep::Attribute(name) = step {
+            let mut attributes = Vec::new();
+            for parent in selected {
+                for attribute in document.attributes(parent).iter().copied() {
+                    control.charge(WorkDomain::XPathNodeVisit, 1)?;
+                    if document.name(attribute).is_some_and(|candidate| {
+                        candidate.namespace.is_none() && candidate.local == *name
+                    }) {
+                        attributes.push(attribute);
+                    }
+                }
+            }
+            selected = attributes;
+            continue;
+        }
         let mut next = Vec::new();
         for parent in selected {
             for child in document.children(parent).iter().copied() {
@@ -959,6 +1059,7 @@ fn select_relative_child_path(
                                 candidate.namespace.is_none() && candidate.local == *name
                             })
                     }
+                    RelativeChildStep::Attribute(_) => unreachable!("handled above"),
                     RelativeChildStep::Text => document.kind(child) == NodeKind::Text,
                 };
                 if matches {
@@ -1456,7 +1557,7 @@ fn parse_relative_element_count_operand(
     let steps = path
         .split('/')
         .map(|step| match step.trim() {
-            "*" => Some(None),
+            "*" | "child::*" => Some(None),
             name if is_ncname(name) => Some(Some(name.to_owned())),
             _ => None,
         })

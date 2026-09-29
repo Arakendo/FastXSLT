@@ -128,9 +128,7 @@ pub(super) fn compile_output(
         "undeclare-prefixes",
         declared_version,
     )?;
-    let standalone = optional_attribute(document, element, None, "standalone")
-        .map(|value| parse_standalone(value, declared_version, document.location(element)))
-        .transpose()?;
+    let standalone = compile_standalone(document, element, declared_version, omit_xml_declaration)?;
     let doctype_system = optional_attribute(document, element, None, "doctype-system");
     let doctype_public = optional_attribute(document, element, None, "doctype-public");
     validate_doctype_public(document, element, doctype_public)?;
@@ -182,6 +180,22 @@ fn compile_output_encoding(document: &Document, element: NodeId) -> Option<&str>
         Some("UTF-16")
     } else {
         encoding
+    }
+}
+
+fn compile_standalone(
+    document: &Document,
+    element: NodeId,
+    declared_version: &str,
+    omit_xml_declaration: bool,
+) -> Result<Option<String>, CompileFailure> {
+    let standalone = optional_attribute(document, element, None, "standalone")
+        .map(|value| parse_standalone(value, declared_version, document.location(element)))
+        .transpose()?;
+    if omit_xml_declaration && uses_xslt10_compatibility(document, element) {
+        Ok(None)
+    } else {
+        Ok(standalone)
     }
 }
 
@@ -404,6 +418,9 @@ pub(super) fn merge_output(
         }
     }
     existing.specified.extend(next.specified);
+    if recover_conflicts_by_declaration_order && existing.settings.omit_xml_declaration {
+        existing.settings.standalone = None;
+    }
     Ok(existing)
 }
 

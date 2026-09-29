@@ -1456,6 +1456,42 @@ fn ancestor_or_self_predicate_checks_the_candidate_before_its_parent() {
 }
 
 #[test]
+fn xslt10_outer_context_ancestor_set_composes_with_intermediate_child_count() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<far><aunt/><parent><center>center</center></parent><uncle/></far>",
+        ParseLimits {
+            max_events: 24,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let far = document.children(document.document_node())[0];
+    let parent = document.children(far)[1];
+    let center = document.children(parent)[0];
+    let path = parse_xslt10_location_path(
+        "ancestor::*[count(child::*) > 1]/*[not(. = current()/ancestor-or-self::*)]",
+        location(),
+    )
+    .expect("bounded aunt selection should parse");
+
+    let selected = evaluate_location_path(&document, center, &path);
+    let names = selected
+        .iter()
+        .map(|node| {
+            document
+                .name(*node)
+                .expect("selected element")
+                .local
+                .as_str()
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(names, ["aunt", "uncle"]);
+}
+
+#[test]
 fn attribute_predicate_inspects_attributes_without_making_them_children() {
     let parsed = parse_document(
         "memory:source.xml",
@@ -2298,6 +2334,32 @@ fn path_boolean_predicates_select_nested_relative_path_existence() {
 }
 
 #[test]
+fn axis_predicates_select_relative_child_attribute_path_existence() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><group><fruit name='pear'/><elem/></group><group><fruit/><elem/></group></root>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let first_group = document.children(root)[0];
+    let first_elem = document.children(first_group)[1];
+    let path = parse_location_path("ancestor::*[fruit/@name]", location())
+        .expect("relative child-attribute existence predicate should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, first_elem, &path, &mut control)
+        .expect("ancestor predicate evaluation should succeed");
+
+    assert_eq!(selected, [first_group]);
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+}
+
+#[test]
 fn path_boolean_predicates_select_children_by_nested_attribute_prefix() {
     let parsed = parse_document(
         "memory:source.xml",
@@ -2468,6 +2530,78 @@ fn chained_axis_then_position_predicates_preserve_lexical_filter_order() {
     assert_eq!(grouped.len(), 1);
     assert_eq!(document.string_value(grouped[0]), "outer");
     assert!(grouped_axis.first_step_predicates_use_document_order);
+}
+
+#[test]
+fn parenthesized_path_last_filters_the_complete_document_order_sequence() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc att1='root'><a att1='a'><b att1='b'/></a><c att1='c'/></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let grouped = parse_location_path("(descendant-or-self::*/@att1)[last()]", location())
+        .expect("complete path position filter should parse");
+    let step_local = parse_location_path("descendant-or-self::*/@att1[last()]", location())
+        .expect("step-local position filter should parse");
+
+    let grouped_selected = evaluate_location_path(&document, document.document_node(), &grouped);
+    let step_local_selected =
+        evaluate_location_path(&document, document.document_node(), &step_local);
+
+    assert_eq!(grouped_selected.len(), 1);
+    assert_eq!(document.string_value(grouped_selected[0]), "c");
+    assert_eq!(step_local_selected.len(), 4);
+    assert_eq!(
+        grouped.sequence_position_predicate,
+        Some(PositionPredicate::Last)
+    );
+
+    let grouped_reverse_step =
+        parse_location_path("(ancestor-or-self::*)/@att1[last()]", location())
+            .expect("grouped reverse-axis step should parse before a child path");
+    let doc = document.children(document.document_node())[0];
+    let a = document.children(doc)[0];
+    let b = document.children(a)[0];
+    let grouped_reverse_selected = evaluate_location_path(&document, b, &grouped_reverse_step);
+    assert_eq!(grouped_reverse_selected.len(), 3);
+    assert_eq!(
+        grouped_reverse_selected
+            .iter()
+            .map(|node| document.string_value(*node))
+            .collect::<Vec<_>>(),
+        ["root", "a", "b"]
+    );
+    assert!(grouped_reverse_step.first_step_predicates_use_document_order);
+}
+
+#[test]
+fn parenthesized_path_prefix_composes_with_a_following_step() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><chapter><section><footnote>first</footnote><footnote>second</footnote></section></chapter></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let path = parse_location_path(
+        "(child::chapter/descendant-or-self::node())/footnote[2]",
+        location(),
+    )
+    .expect("parenthesized path prefix should compose with a following step");
+
+    let selected = evaluate_location_path(&document, doc, &path);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "second");
 }
 
 #[test]

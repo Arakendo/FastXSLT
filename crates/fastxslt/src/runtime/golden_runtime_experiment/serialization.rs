@@ -198,7 +198,7 @@ fn serialize_xml_with_namespace_mode(
             write_indentation(0, &mut output)?;
         }
         if !doctype_written && matches!(node, ResultNode::Element { .. }) {
-            serialize_doctype(result, settings, xhtml, &mut output)?;
+            serialize_doctype(result, settings, xhtml, html, &mut output)?;
             doctype_written = true;
         }
         serialize_node(node, &mut namespace_scope, options, 0, &mut output)?;
@@ -1099,11 +1099,11 @@ fn serialize_doctype(
     result: &SemanticResult,
     settings: &OutputSettings,
     xhtml: bool,
+    html: bool,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     let automatic_xhtml5 = xhtml && settings.html_version.as_deref() == Some("5");
-    let html_doctype_required =
-        settings.method.as_deref() == Some("html") && settings.html_version.as_deref() == Some("5");
+    let html_doctype_required = html && settings.html_version.as_deref() == Some("5");
     let system = settings
         .doctype_system
         .as_deref()
@@ -1112,7 +1112,7 @@ fn serialize_doctype(
         .doctype_public
         .as_deref()
         .filter(|value| !value.is_empty());
-    let html_public_only = settings.method.as_deref() == Some("html") && public.is_some();
+    let html_public_only = html && public.is_some();
     if system.is_none() && !automatic_xhtml5 && !html_doctype_required && !html_public_only {
         return Ok(());
     }
@@ -1148,10 +1148,14 @@ fn serialize_doctype(
             "XHTML DOCTYPE serialization requires an XHTML html document element",
         ));
     }
-    let (in_scope, _) = element_namespace_scope(name, namespaces, &[]);
-    let prefix = element_prefix(name.namespace.as_deref(), &in_scope, output)?;
     output.push_str("<!DOCTYPE ")?;
-    write_name(prefix, &name.local, output)?;
+    if html {
+        output.push_str("html")?;
+    } else {
+        let (in_scope, _) = element_namespace_scope(name, namespaces, &[]);
+        let prefix = element_prefix(name.namespace.as_deref(), &in_scope, output)?;
+        write_name(prefix, &name.local, output)?;
+    }
     if let Some(public) = public {
         output.push_str(" PUBLIC ")?;
         serialize_external_identifier(public, output)?;
@@ -1475,7 +1479,12 @@ fn serialize_node<'a>(
             )?;
         }
         ResultNode::ProcessingInstruction { target, value } => {
-            serialize_processing_instruction(target, value, output)?;
+            serialize_processing_instruction(
+                target,
+                value,
+                options.html_mode != HtmlMode::None,
+                output,
+            )?;
         }
         ResultNode::Comment(value) => {
             output.push_str("<!--")?;
@@ -1501,6 +1510,7 @@ fn serialize_node<'a>(
 fn serialize_processing_instruction(
     target: &str,
     value: &str,
+    html: bool,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     output.push_str("<?")?;
@@ -1509,7 +1519,7 @@ fn serialize_processing_instruction(
         output.push(' ')?;
         output.push_str(value)?;
     }
-    output.push_str("?>")
+    output.push_str(if html { ">" } else { "?>" })
 }
 
 fn serialize_element<'a>(
@@ -1617,6 +1627,7 @@ fn serialize_element_attribute(
     let prefix = namespace_scope.attribute_prefix(attribute.name.namespace.as_deref(), output)?;
     write_name(prefix.as_deref(), &attribute.name.local, output)?;
     if options.html_mode != HtmlMode::None
+        && element_name.namespace.is_none()
         && prefix.is_none()
         && is_minimized_html_boolean_attribute(attribute)
     {
@@ -2392,6 +2403,82 @@ mod scaling_measurement_tests {
         assert_eq!(
             scoped_control.consumed(WorkDomain::SerializedByte),
             complete_control.consumed(WorkDomain::SerializedByte)
+        );
+    }
+
+    #[test]
+    fn namespace_fixup_emits_only_the_final_binding_for_each_prefix() {
+        let result = SemanticResult {
+            children: vec![ResultNode::Element {
+                name: expanded_name(Some("urn:final"), "root"),
+                namespaces: vec![
+                    namespace_binding(Some("p"), "urn:discarded"),
+                    namespace_binding(None, "urn:discarded-default"),
+                    namespace_binding(Some("p"), "urn:final"),
+                    namespace_binding(None, ""),
+                ]
+                .into(),
+                attributes: Vec::new(),
+                children: Vec::new(),
+            }],
+        };
+        let settings = xml_settings();
+        let serialize = |mode| {
+            serialize_xml_with_namespace_mode(
+                &result,
+                &settings,
+                "namespace-fixup",
+                4_096,
+                &mut InvocationControl::unbounded(),
+                mode,
+                None,
+            )
+            .expect("namespace-fixup serialization")
+        };
+
+        let scoped = serialize(NamespaceMode::ScopedStack);
+        let complete = serialize(NamespaceMode::CompleteClone);
+
+        assert_eq!(scoped, complete);
+        assert_eq!(scoped, "<p:root xmlns:p=\"urn:final\"></p:root>");
+    }
+
+    #[test]
+    fn namespace_fixup_does_not_bind_an_unnamespaced_element_to_a_default_namespace() {
+        let result = SemanticResult {
+            children: vec![ResultNode::Element {
+                name: expanded_name(Some("urn:parent"), "root"),
+                namespaces: vec![namespace_binding(None, "urn:parent")].into(),
+                attributes: Vec::new(),
+                children: vec![ResultNode::Element {
+                    name: expanded_name(None, "child"),
+                    namespaces: vec![namespace_binding(None, "urn:parent")].into(),
+                    attributes: Vec::new(),
+                    children: Vec::new(),
+                }],
+            }],
+        };
+        let settings = xml_settings();
+        let serialize = |mode| {
+            serialize_xml_with_namespace_mode(
+                &result,
+                &settings,
+                "default-namespace-fixup",
+                4_096,
+                &mut InvocationControl::unbounded(),
+                mode,
+                None,
+            )
+            .expect("default-namespace fixup serialization")
+        };
+
+        let scoped = serialize(NamespaceMode::ScopedStack);
+        let complete = serialize(NamespaceMode::CompleteClone);
+
+        assert_eq!(scoped, complete);
+        assert_eq!(
+            scoped,
+            "<root xmlns=\"urn:parent\"><child xmlns=\"\"></child></root>"
         );
     }
 

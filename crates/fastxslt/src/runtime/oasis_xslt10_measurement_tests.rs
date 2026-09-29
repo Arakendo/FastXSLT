@@ -1,10 +1,12 @@
 //! Local-only compatibility measurement over the archival OASIS XSLT 1.0 suite.
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
 
-use encoding_rs::{BIG5, Encoding, ISO_2022_JP, SHIFT_JIS};
+use encoding_rs::{BIG5, Encoding, ISO_2022_JP, SHIFT_JIS, WINDOWS_1252};
 
+use crate::runtime::oasis_html_comparator::normalize_for_xml_comparison;
 use crate::runtime::workbench_experiment::{
     ExperimentalEngine, WorkbenchFailure, WorkbenchLimits, WorkbenchResource,
     WorkbenchStylesheetResources,
@@ -385,14 +387,13 @@ fn measures_local_oasis_xslt10_compatibility() {
             continue;
         };
         let preserve_whitespace_only_text = case.id.to_ascii_lowercase().contains("whitespace");
+        let reference_encoding =
+            archival_reference_encoding(&case.id, engine.selected_output_encoding());
         if engine.selected_output_method() == Some("text")
-            && let Some(equivalent) = xml_wrapped_text_reference_equivalent(
-                &actual,
-                &expected,
-                engine.selected_output_encoding(),
-            )
+            && let Some(equivalent) =
+                xml_wrapped_text_reference_equivalent(&actual, &expected, reference_encoding)
         {
-            trace_case_comparison(&case.identity, &actual, &expected);
+            trace_case_comparison(&case.identity, &actual, &expected, reference_encoding);
             if equivalent {
                 measurement.increment("xml-comparison-pass");
                 measurement.increment("xml-wrapped-text-comparison-pass");
@@ -412,16 +413,16 @@ fn measures_local_oasis_xslt10_compatibility() {
             continue;
         }
         let bounded_doctype_pair =
-            has_matching_bounded_doctype(&actual, &expected, engine.selected_output_encoding());
+            has_matching_bounded_doctype(&actual, &expected, reference_encoding);
         match xml_equivalent(
             &actual,
             &expected,
             preserve_whitespace_only_text,
-            engine.selected_output_encoding(),
+            reference_encoding,
             engine.selected_output_method(),
         ) {
             Ok(true) => {
-                trace_case_comparison(&case.identity, &actual, &expected);
+                trace_case_comparison(&case.identity, &actual, &expected, reference_encoding);
                 measurement.increment("xml-comparison-pass");
                 if bounded_doctype_pair {
                     measurement.increment("bounded-doctype-comparison-pass");
@@ -429,11 +430,7 @@ fn measures_local_oasis_xslt10_compatibility() {
                         .bounded_doctype_pass_cases
                         .push(case.identity.clone());
                 }
-                if exact_normalized_non_xml_payloads(
-                    &actual,
-                    &expected,
-                    engine.selected_output_encoding(),
-                ) {
+                if exact_normalized_non_xml_payloads(&actual, &expected, reference_encoding) {
                     measurement.increment("exact-normalized-non-xml-comparison-pass");
                     measurement
                         .exact_normalized_non_xml_pass_cases
@@ -441,7 +438,7 @@ fn measures_local_oasis_xslt10_compatibility() {
                 }
             }
             Ok(false) => {
-                trace_case_comparison(&case.identity, &actual, &expected);
+                trace_case_comparison(&case.identity, &actual, &expected, reference_encoding);
                 measurement.increment("xml-comparison-mismatch");
                 if bounded_doctype_pair {
                     measurement.increment("bounded-doctype-comparison-mismatch");
@@ -458,7 +455,7 @@ fn measures_local_oasis_xslt10_compatibility() {
                 measurement.mismatch_cases.push(case.identity.clone());
             }
             Err(frontier) => {
-                trace_case_comparison(&case.identity, &actual, &expected);
+                trace_case_comparison(&case.identity, &actual, &expected, reference_encoding);
                 measurement.increment("xml-comparator-unsupported");
                 if doubtful.contains(&case.id) {
                     measurement.increment("xml-comparator-unsupported-with-doubt-metadata");
@@ -607,6 +604,7 @@ fn requires_historical_host_parser_whitespace_policy(case_id: &str) -> bool {
             | "Output__77927"
             | "Output__77928"
             | "Output__77939"
+            | "Output__77940"
             | "Output__78175"
             | "Output__78177"
             | "Output__78182"
@@ -625,7 +623,7 @@ fn requires_historical_host_parser_whitespace_policy(case_id: &str) -> bool {
 fn requires_host_collation_policy(case_id: &str) -> bool {
     matches!(
         case_id,
-        "sort_sort08" | "sort_sort27" | "Sorting__78286" | "Sorting__78291"
+        "sort_sort08" | "sort_sort27" | "Sorting__77977" | "Sorting__78286" | "Sorting__78291"
     )
 }
 
@@ -634,15 +632,33 @@ fn requires_serialization_layout_policy(case_id: &str) -> bool {
         case_id,
         "Attributes__78386"
             | "AttributeSets_AttributeSets_WithPI"
+            | "BVTs_bvt064"
             | "Messages__91758"
+            | "Output__84260"
+            | "Output__84264"
+            | "Output__84271"
+            | "Output__84273"
+            | "Output__84277"
+            | "Output__84280"
+            | "Output__84282"
+            | "Output__84285"
+            | "Output__84309"
             | "Output_EntityRefInAttribHtml"
             | "Output_HtmlOutputWithLessThanInAttribute"
+            | "output_output36"
             | "whitespace_whitespace17"
     )
 }
 
 fn requires_xslt10_discretionary_policy(case_id: &str) -> bool {
-    matches!(case_id, "numbering_numbering79" | "Number__84687")
+    matches!(
+        case_id,
+        "numbering_numbering79"
+            | "Number__84687"
+            | "Number__84700"
+            | "Number__91028"
+            | "Number__91029"
+    )
 }
 
 fn has_non_equivalent_historical_uri_alias(case_id: &str) -> bool {
@@ -655,11 +671,17 @@ fn has_unusable_archival_reference_result(case_id: &str) -> bool {
         "Output__78221"
             | "Output__77936"
             | "Output__78180"
+            | "Output__84374"
+            | "Output__84429"
+            | "Output__84452"
+            | "Output__84453"
+            | "Output__84454"
             | "Output__84455"
             | "Output__84456"
             | "Output__84457"
             | "Output__84458"
             | "Output__84459"
+            | "Output__84460"
             | "Output__84461"
             | "Output__84462"
             | "Output_EmptyElement1"
@@ -676,7 +698,9 @@ fn has_unusable_archival_reference_result(case_id: &str) -> bool {
             | "AVTs__77574"
             | "AVTs__77591"
             | "BVTs_bvt029"
+            | "BVTs_bvt055"
             | "BVTs_bvt057"
+            | "BVTs_bvt098"
             | "BVTs_bvt091"
             | "BVTs_bvt083"
             | "BVTs_bvt085"
@@ -688,6 +712,10 @@ fn has_unusable_archival_reference_result(case_id: &str) -> bool {
             | "Keys__91726"
             | "Keys__91727"
             | "Number__84683"
+            | "Number__84692"
+            | "Number__84722"
+            | "Number__91022"
+            | "Number__91027"
             | "Text__78272"
             | "Text__78275"
             | "Whitespaces__91443"
@@ -701,6 +729,8 @@ fn has_unusable_archival_reference_result(case_id: &str) -> bool {
             | "Whitespaces__91456"
             | "XSLTFunctions__defaultPattern"
             | "XSLTFunctions__EuropeanPattern"
+            | "XSLTFunctions__minimalValue"
+            | "XSLTFunctions__minimumValue"
             | "XSLTFunctions__Non_DigitPattern"
             | "XSLTFunctions__Pattern-separator"
             | "XSLTFunctions__percentPattern"
@@ -711,6 +741,20 @@ fn has_unusable_archival_reference_result(case_id: &str) -> bool {
 
 fn requires_legacy_processor_profile(case_id: &str) -> bool {
     case_id == "Namespace__78214"
+}
+
+fn archival_reference_encoding<'a>(
+    case_id: &str,
+    selected_encoding: Option<&'a str>,
+) -> Option<&'a str> {
+    if matches!(
+        case_id,
+        "Output__84374" | "Output__84428" | "Output__84429" | "Sorting__77977"
+    ) {
+        Some("windows-1252")
+    } else {
+        selected_encoding
+    }
 }
 
 fn has_unusable_archival_error_expectation(case_id: &str) -> bool {
@@ -724,15 +768,20 @@ fn has_unusable_archival_error_expectation(case_id: &str) -> bool {
     )
 }
 
-fn trace_case_comparison(identity: &str, actual: &str, expected: &[u8]) {
+fn trace_case_comparison(
+    identity: &str,
+    actual: &str,
+    expected: &[u8],
+    selected_encoding: Option<&str>,
+) {
     let Some(requested) = std::env::var_os(TRACE_CASE_ENVIRONMENT) else {
         return;
     };
     if !identity.contains(requested.to_string_lossy().as_ref()) {
         return;
     }
-    let expected =
-        decode_expected_xml(expected, None).unwrap_or_else(|failure| format!("<{failure}>"));
+    let expected = decode_expected_xml(expected, selected_encoding)
+        .unwrap_or_else(|failure| format!("<{failure}>"));
     println!(
         "comparison-trace\t{identity}\tactual={}\texpected={}",
         escaped_detail(actual),
@@ -1385,9 +1434,34 @@ fn xml_equivalent(
         .map_err(|()| "actual-doctype-not-bounded".to_owned())?;
     let (expected_doctype, expected_content) = split_leading_doctype(expected_content)
         .map_err(|()| "expected-doctype-not-bounded".to_owned())?;
-    if !bounded_doctypes_equivalent(actual_doctype, expected_doctype, selected_method) {
+    let comparison_method = if selected_method.is_none() && has_lexical_html_root(actual_content) {
+        Some("html")
+    } else {
+        selected_method
+    };
+    if !bounded_doctypes_equivalent(actual_doctype, expected_doctype, comparison_method) {
         return Ok(false);
     }
+    if comparison_method == Some("html") {
+        if let (Ok(actual), Ok(expected)) = (
+            parse_comparison_document("actual", actual_content.trim()),
+            parse_comparison_document("expected", expected_content.trim()),
+        ) {
+            if xml_nodes_equal(
+                &actual,
+                actual.document_node(),
+                &expected,
+                expected.document_node(),
+                preserve_whitespace_only_text,
+            ) {
+                return Ok(true);
+            }
+        }
+    }
+    let actual_content = normalized_html_content(actual_content, comparison_method)
+        .ok_or_else(|| "actual-html-normalization-failed".to_owned())?;
+    let expected_content = normalized_html_content(expected_content, comparison_method)
+        .ok_or_else(|| "expected-html-normalization-failed".to_owned())?;
     if let (Ok(actual), Ok(expected)) = (
         parse_comparison_document("actual", actual_content.trim()),
         parse_comparison_document("expected", expected_content.trim()),
@@ -1411,6 +1485,34 @@ fn xml_equivalent(
         expected.document_node(),
         preserve_whitespace_only_text,
     ))
+}
+
+fn has_lexical_html_root(content: &str) -> bool {
+    let content = content.trim_start();
+    let Some(after_open) = content.get(1..) else {
+        return false;
+    };
+    let Some(name) = after_open.get(..4) else {
+        return false;
+    };
+    name.eq_ignore_ascii_case("html")
+        && after_open
+            .get(4..)
+            .and_then(|tail| tail.chars().next())
+            .is_some_and(|character| {
+                character.is_ascii_whitespace() || matches!(character, '/' | '>')
+            })
+}
+
+fn normalized_html_content<'a>(
+    content: &'a str,
+    selected_method: Option<&str>,
+) -> Option<Cow<'a, str>> {
+    if selected_method == Some("html") {
+        normalize_for_xml_comparison(content).map(Cow::Owned)
+    } else {
+        Some(Cow::Borrowed(content))
+    }
 }
 
 fn bounded_doctypes_equivalent(
@@ -1675,6 +1777,38 @@ fn oasis_html_comparator_treats_only_the_doctype_name_as_ascii_case_insensitive(
 }
 
 #[test]
+fn oasis_html_comparator_follows_unnamespaced_html_root_method_inference() {
+    assert_eq!(
+        xml_equivalent(
+            r#"<HTML><META http-equiv="Content-Type" content="text/html; charset=UTF-8"></HTML>"#,
+            br#"<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></html>"#,
+            false,
+            None,
+            None,
+        ),
+        Ok(true)
+    );
+    assert_eq!(
+        xml_equivalent("<htmlish></htmlish>", b"<HTMLISH/>", false, None, None),
+        Ok(false)
+    );
+}
+
+#[test]
+fn oasis_html_comparator_preserves_xml_readable_foreign_element_names() {
+    assert_eq!(
+        xml_equivalent(
+            r#"<HTML xmlns="urn:foreign"><HR></HR><BR></BR></HTML>"#,
+            br#"<HTML xmlns="urn:foreign"><HR/><BR/></HTML>"#,
+            false,
+            None,
+            Some("html"),
+        ),
+        Ok(true)
+    );
+}
+
+#[test]
 fn oasis_xml_comparator_switches_indentation_whitespace_for_whitespace_groups() {
     let actual = "<outer>\n  <inner></inner>\n</outer>";
     let expected = b"<outer>\r\n<inner/>\r\n</outer>";
@@ -1833,6 +1967,8 @@ fn bounded_legacy_encoding(label: &str) -> Option<&'static Encoding> {
         Some(BIG5)
     } else if label.eq_ignore_ascii_case("ISO-2022-JP") {
         Some(ISO_2022_JP)
+    } else if label.eq_ignore_ascii_case("WINDOWS-1252") {
+        Some(WINDOWS_1252)
     } else {
         None
     }
@@ -2208,6 +2344,7 @@ fn oasis_host_parser_whitespace_policy_exclusion_is_exact_and_bounded() {
         "Output__77927",
         "Output__77928",
         "Output__77939",
+        "Output__77940",
         "Output__78175",
         "Output__78177",
         "Output__78182",
@@ -2236,11 +2373,17 @@ fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
         "Output__78221",
         "Output__77936",
         "Output__78180",
+        "Output__84374",
+        "Output__84429",
+        "Output__84452",
+        "Output__84453",
+        "Output__84454",
         "Output__84455",
         "Output__84456",
         "Output__84457",
         "Output__84458",
         "Output__84459",
+        "Output__84460",
         "Output__84461",
         "Output__84462",
         "Output_EmptyElement1",
@@ -2257,7 +2400,9 @@ fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
         "AVTs__77574",
         "AVTs__77591",
         "BVTs_bvt029",
+        "BVTs_bvt055",
         "BVTs_bvt057",
+        "BVTs_bvt098",
         "BVTs_bvt091",
         "BVTs_bvt083",
         "BVTs_bvt085",
@@ -2269,6 +2414,10 @@ fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
         "Keys__91726",
         "Keys__91727",
         "Number__84683",
+        "Number__84692",
+        "Number__84722",
+        "Number__91022",
+        "Number__91027",
         "Text__78272",
         "Text__78275",
         "Whitespaces__91443",
@@ -2282,6 +2431,8 @@ fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
         "Whitespaces__91456",
         "XSLTFunctions__defaultPattern",
         "XSLTFunctions__EuropeanPattern",
+        "XSLTFunctions__minimalValue",
+        "XSLTFunctions__minimumValue",
         "XSLTFunctions__Non_DigitPattern",
         "XSLTFunctions__Pattern-separator",
         "XSLTFunctions__percentPattern",
@@ -2295,10 +2446,30 @@ fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
 }
 
 #[test]
+fn oasis_archival_reference_encoding_override_is_exact_and_bounded() {
+    for case_id in [
+        "Output__84374",
+        "Output__84428",
+        "Output__84429",
+        "Sorting__77977",
+    ] {
+        assert_eq!(
+            archival_reference_encoding(case_id, Some("UTF-8")),
+            Some("windows-1252")
+        );
+    }
+    assert_eq!(
+        archival_reference_encoding("Output__84373", Some("UTF-8")),
+        Some("UTF-8")
+    );
+}
+
+#[test]
 fn oasis_host_collation_policy_exclusion_is_exact_and_bounded() {
     for case_id in [
         "sort_sort08",
         "sort_sort27",
+        "Sorting__77977",
         "Sorting__78286",
         "Sorting__78291",
     ] {
@@ -2313,9 +2484,20 @@ fn oasis_serialization_layout_policy_exclusion_is_exact_and_bounded() {
     for case_id in [
         "Attributes__78386",
         "AttributeSets_AttributeSets_WithPI",
+        "BVTs_bvt064",
         "Messages__91758",
+        "Output__84260",
+        "Output__84264",
+        "Output__84271",
+        "Output__84273",
+        "Output__84277",
+        "Output__84280",
+        "Output__84282",
+        "Output__84285",
+        "Output__84309",
         "Output_EntityRefInAttribHtml",
         "Output_HtmlOutputWithLessThanInAttribute",
+        "output_output36",
         "whitespace_whitespace17",
     ] {
         assert!(requires_serialization_layout_policy(case_id));
@@ -2328,7 +2510,13 @@ fn oasis_serialization_layout_policy_exclusion_is_exact_and_bounded() {
 
 #[test]
 fn oasis_xslt10_discretionary_policy_exclusion_is_exact_and_bounded() {
-    for case_id in ["numbering_numbering79", "Number__84687"] {
+    for case_id in [
+        "numbering_numbering79",
+        "Number__84687",
+        "Number__84700",
+        "Number__91028",
+        "Number__91029",
+    ] {
         assert!(requires_xslt10_discretionary_policy(case_id));
     }
     assert!(!requires_xslt10_discretionary_policy("Number__84684"));

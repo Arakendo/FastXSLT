@@ -1164,7 +1164,7 @@ fn compile_xslt10_key_lookup(
             nesting_depth + 1,
         )?))
     } else {
-        compile_xslt10_key_value(value, location).ok_or_else(|| {
+        compile_xslt10_key_value(document, element, value, location)?.ok_or_else(|| {
             unsupported(
                 "FXXP1023",
                 "the admitted key() slice requires a literal key name and a static atomic, variable, context-path, or nested-key lookup value",
@@ -1368,22 +1368,33 @@ fn split_key_arguments(arguments: &str) -> Option<(&str, &str)> {
     None
 }
 
-fn compile_xslt10_key_value(value: &str, location: &SourceLocation) -> Option<Xslt10KeyValue> {
+fn compile_xslt10_key_value(
+    document: &Document,
+    element: NodeId,
+    value: &str,
+    location: &SourceLocation,
+) -> Result<Option<Xslt10KeyValue>, CompileFailure> {
     if let Some(variable) = value
         .strip_prefix('$')
         .filter(|variable| is_ascii_ncname(variable))
     {
-        Some(Xslt10KeyValue::Variable(variable.to_owned()))
+        Ok(Some(Xslt10KeyValue::Variable(variable.to_owned())))
     } else if let Some(value) = xpath_string_literal(value) {
-        Some(Xslt10KeyValue::Static(value.to_owned()))
-    } else if let Some(expression) = compile_binary_numeric_node(value, location, false)
+        Ok(Some(Xslt10KeyValue::Static(value.to_owned())))
+    } else if let Some(expression) = compile_binary_numeric_node(value, location, false, true)
         && let Some(value) = crate::xpath::binary_numeric_experiment::fold_source_free(&expression)
     {
-        Some(Xslt10KeyValue::Static(value))
-    } else {
-        parse_xslt10_location_path(value, location.clone())
+        Ok(Some(Xslt10KeyValue::Static(value)))
+    } else if let Some(concat) = compile_xslt10_concat(document, element, value, location)? {
+        Ok(Some(Xslt10KeyValue::Concat(Box::new(concat))))
+    } else if let Some(path) = value.trim().strip_prefix("current()/") {
+        Ok(parse_xslt10_location_path(path, location.clone())
             .ok()
-            .map(Xslt10KeyValue::ContextPath)
+            .map(Xslt10KeyValue::ContextPath))
+    } else {
+        Ok(parse_xslt10_location_path(value, location.clone())
+            .ok()
+            .map(Xslt10KeyValue::ContextPath))
     }
 }
 
@@ -2013,7 +2024,7 @@ fn compile_xslt10_translate_operand(
         .map(|concat| concat.map(Xslt10TranslateOperand::Concat))
 }
 
-pub(super) fn compile_xslt10_concat(
+pub(in crate::compile) fn compile_xslt10_concat(
     document: &Document,
     element: NodeId,
     expression: &str,
@@ -2318,7 +2329,9 @@ fn compile_binary_numeric_path_with_variables(
     static_context: ValueStaticContext,
     allow_variables: bool,
 ) -> Option<ValueExpression> {
-    let root = compile_binary_numeric_node(expression, location, allow_variables)?;
+    let xslt10_compatibility = static_context.compatibility == ValueCompatibilityMode::Xslt10;
+    let root =
+        compile_binary_numeric_node(expression, location, allow_variables, xslt10_compatibility)?;
     let admitted_root = matches!(
         root,
         BinaryNumericNode::Literal(_) | BinaryNumericNode::Operation { .. }
@@ -2380,6 +2393,7 @@ fn compile_binary_numeric_node(
     expression: &str,
     location: &SourceLocation,
     allow_xslt10_variables: bool,
+    xslt10_compatibility: bool,
 ) -> Option<crate::xpath::binary_numeric_experiment::BinaryNumericNode> {
     use crate::xpath::binary_numeric_experiment::BinaryNumericNode;
     if let Some((left, operator, right)) =
@@ -2390,24 +2404,29 @@ fn compile_binary_numeric_node(
                 left,
                 location,
                 allow_xslt10_variables,
+                xslt10_compatibility,
             )?),
             operator,
             right: Box::new(compile_binary_numeric_node(
                 right,
                 location,
                 allow_xslt10_variables,
+                xslt10_compatibility,
             )?),
         });
     }
     let (operand, negate) = crate::xpath::binary_numeric_experiment::signed_path(expression)?;
     if negate {
         return Some(BinaryNumericNode::Negate(Box::new(
-            compile_binary_numeric_node(operand, location, allow_xslt10_variables)?,
+            compile_binary_numeric_node(
+                operand,
+                location,
+                allow_xslt10_variables,
+                xslt10_compatibility,
+            )?,
         )));
     }
-    if let Some(value) =
-        crate::xpath::binary_numeric_experiment::ExactRational::parse_decimal(operand)
-    {
+    if let Some(value) = numeric_literal(operand, xslt10_compatibility) {
         return Some(BinaryNumericNode::Literal(value));
     }
     if operand == "position()" {
@@ -2421,7 +2440,12 @@ fn compile_binary_numeric_node(
         .and_then(|operand| operand.strip_suffix(')'))
     {
         return Some(BinaryNumericNode::Floor(Box::new(
-            compile_binary_numeric_node(operand, location, allow_xslt10_variables)?,
+            compile_binary_numeric_node(
+                operand,
+                location,
+                allow_xslt10_variables,
+                xslt10_compatibility,
+            )?,
         )));
     }
     if let Some(operand) = operand
@@ -2429,8 +2453,16 @@ fn compile_binary_numeric_node(
         .and_then(|operand| operand.strip_suffix(')'))
     {
         return Some(BinaryNumericNode::Round(Box::new(
-            compile_binary_numeric_node(operand, location, allow_xslt10_variables)?,
+            compile_binary_numeric_node(
+                operand,
+                location,
+                allow_xslt10_variables,
+                xslt10_compatibility,
+            )?,
         )));
+    }
+    if xslt10_compatibility && operand.starts_with("count(") {
+        return compile_binary_numeric_count(operand, location);
     }
     if let Some(alternatives) = split_top_level_union(operand) {
         let alternatives = alternatives
@@ -2455,8 +2487,36 @@ fn compile_binary_numeric_node(
         return Some(BinaryNumericNode::Variable(variable.to_owned()));
     }
     Some(BinaryNumericNode::Path {
-        path: parse_location_path(operand, location.clone()).ok()?,
+        path: if xslt10_compatibility {
+            parse_xslt10_location_path(operand, location.clone()).ok()?
+        } else {
+            parse_location_path(operand, location.clone()).ok()?
+        },
         negate: false,
+    })
+}
+
+fn compile_binary_numeric_count(
+    operand: &str,
+    location: &SourceLocation,
+) -> Option<BinaryNumericNode> {
+    let path = operand.strip_prefix("count(")?.strip_suffix(')')?;
+    Some(BinaryNumericNode::CountPath(
+        parse_xslt10_location_path(path.trim(), location.clone()).ok()?,
+    ))
+}
+
+fn numeric_literal(
+    operand: &str,
+    xslt10_compatibility: bool,
+) -> Option<crate::xpath::binary_numeric_experiment::ExactRational> {
+    crate::xpath::binary_numeric_experiment::ExactRational::parse_decimal(operand).or_else(|| {
+        xslt10_compatibility
+            .then(|| xpath_string_literal(operand))
+            .flatten()
+            .and_then(|value| {
+                crate::xpath::binary_numeric_experiment::ExactRational::parse_decimal(value.trim())
+            })
     })
 }
 
@@ -3511,14 +3571,14 @@ mod tests {
             "((((((n3+5)*(3)+(((n2)+2)*(n1 - 6)))-(n4 - n2))+(-(4-6)))))",
         ] {
             assert!(
-                compile_binary_numeric_node(expression, &location, false).is_some(),
+                compile_binary_numeric_node(expression, &location, false, false).is_some(),
                 "failed to compile {expression}; split={:?}",
                 crate::xpath::binary_numeric_experiment::split_paths(expression)
             );
         }
 
-        assert!(compile_binary_numeric_node("n2+$offset", &location, true).is_some());
-        assert!(compile_binary_numeric_node("n2+$offset", &location, false).is_none());
+        assert!(compile_binary_numeric_node("n2+$offset", &location, true, true).is_some());
+        assert!(compile_binary_numeric_node("n2+$offset", &location, false, true).is_none());
         assert!(matches!(
             compile_binary_numeric_path(
                 "9876543210",
@@ -3533,12 +3593,20 @@ mod tests {
             "100-n6 -4-n1 -1-11",
             "100-$anum -5-15-$anum",
             "$anum*5-4*n2+n6*n1 -n3*3",
+            "count(//doc/*) - count(following::ref)",
         ] {
             assert!(
-                compile_binary_numeric_node(expression, &location, true).is_some(),
+                compile_binary_numeric_node(expression, &location, true, true).is_some(),
                 "failed to compile XSLT 1.0 arithmetic: {expression}"
             );
         }
+        for expression in ["25-*", "54 div*", "' 6 '*div"] {
+            assert!(
+                compile_binary_numeric_node(expression, &location, true, true).is_some(),
+                "failed to compile XPath 1.0 lexical-context arithmetic: {expression}"
+            );
+        }
+        assert!(compile_binary_numeric_node("' 6 '*div", &location, true, false).is_none());
     }
 
     #[test]

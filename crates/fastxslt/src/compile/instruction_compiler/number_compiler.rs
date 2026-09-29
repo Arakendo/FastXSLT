@@ -4,9 +4,9 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::parse_xslt10_location_path;
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, NumberFormatPlan, NumberGrouping, NumberLevel, NumberPattern,
-    NumberPositionPredicate, NumberTokenStyle, NumberValue, default_number_format,
-    parse_admitted_number_format,
+    Instruction, NumberFormatPlan, NumberGroupingPlan, NumberGroupingSeparatorPlan,
+    NumberGroupingSizePlan, NumberLevel, NumberPattern, NumberPositionPredicate, NumberTokenStyle,
+    NumberValue, default_number_format, parse_admitted_number_format,
 };
 
 use super::{
@@ -25,6 +25,7 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
             "count",
             "from",
             "format",
+            "lang",
             "letter-value",
             "grouping-separator",
             "grouping-size",
@@ -53,35 +54,70 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
     let from = optional_attribute(document, element, None, "from")
         .map(|pattern| compile_pattern(document, element, pattern, "from"))
         .transpose()?;
-    let mut format = if let Some(format) = optional_attribute(document, element, None, "format") {
+    let format = if let Some(format) = optional_attribute(document, element, None, "format") {
         compile_format_plan(document, element, format)?
     } else {
         NumberFormatPlan::Static(default_number_format())
     };
     validate_letter_value(document, element, &format)?;
+    validate_language(document, element, &format)?;
     let grouping = compile_grouping(document, element)?;
-    match &mut format {
-        NumberFormatPlan::Static(format) => format.grouping = grouping,
-        NumberFormatPlan::Xslt10Variable(_) | NumberFormatPlan::Variable(_)
-            if grouping.is_some() =>
-        {
-            return Err(unsupported(
-                "FXST1051",
-                "dynamic xsl:number format with grouping is outside the admitted slice",
-                document.location(element),
-            ));
-        }
-        NumberFormatPlan::Xslt10Variable(_) | NumberFormatPlan::Variable(_) => {}
-    }
     Ok(Instruction::Number {
         value,
         level,
         count,
         from,
         format,
+        grouping: grouping.map(Box::new),
         xslt10_compatibility: uses_xslt10_compatibility(document, element),
         location: document.location(element).clone(),
     })
+}
+
+fn validate_language(
+    document: &Document,
+    element: NodeId,
+    format: &NumberFormatPlan,
+) -> Result<(), CompileFailure> {
+    let Some(language) = optional_attribute(document, element, None, "lang") else {
+        return Ok(());
+    };
+    if language.contains(['{', '}']) {
+        return Err(unsupported(
+            "FXST1052",
+            "dynamic xsl:number language selection is outside the admitted slice",
+            document.location(element),
+        ));
+    }
+    let NumberFormatPlan::Static(format) = format else {
+        return Err(unsupported(
+            "FXST1052",
+            "xsl:number language selection with a dynamic format is outside the admitted slice",
+            document.location(element),
+        ));
+    };
+    let language = language.trim().to_ascii_lowercase();
+    let language_is_irrelevant = format
+        .tokens
+        .iter()
+        .all(|token| token.style == NumberTokenStyle::Decimal);
+    let admitted_latin_language = matches!(language.as_str(), "da" | "en" | "fi" | "no" | "sv")
+        && format.tokens.iter().all(|token| {
+            matches!(
+                token.style,
+                NumberTokenStyle::Decimal
+                    | NumberTokenStyle::AlphabeticUpper
+                    | NumberTokenStyle::AlphabeticLower
+            )
+        });
+    if language_is_irrelevant || admitted_latin_language {
+        return Ok(());
+    }
+    Err(unsupported(
+        "FXST1052",
+        format!("xsl:number language is outside the admitted numbering semantics: {language}"),
+        document.location(element),
+    ))
 }
 
 fn validate_letter_value(
@@ -363,30 +399,137 @@ fn compile_format_plan(
 fn compile_grouping(
     document: &Document,
     element: NodeId,
-) -> Result<Option<NumberGrouping>, CompileFailure> {
+) -> Result<Option<NumberGroupingPlan>, CompileFailure> {
     let separator = optional_attribute(document, element, None, "grouping-separator");
     let size = optional_attribute(document, element, None, "grouping-size");
     let (Some(separator), Some(size)) = (separator, size) else {
         return Ok(None);
     };
-    if separator.contains(['{', '}']) || size.contains(['{', '}']) {
+    let xslt10 = uses_xslt10_compatibility(document, element);
+    let separator = compile_grouping_separator(document, element, separator, xslt10)?;
+    let size = compile_grouping_size(document, element, size, xslt10)?;
+    Ok(Some(NumberGroupingPlan { separator, size }))
+}
+
+fn compile_grouping_separator(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+    xslt10: bool,
+) -> Result<NumberGroupingSeparatorPlan, CompileFailure> {
+    if let Some(expression) = whole_avt_expression(lexical) {
+        if !xslt10 {
+            return Err(unsupported(
+                "FXST1051",
+                "dynamic modern xsl:number grouping separators are outside the admitted slice",
+                document.location(element),
+            ));
+        }
+        if let Some(literal) = xpath_string_literal(expression) {
+            return one_character_grouping_separator(document, element, literal)
+                .map(NumberGroupingSeparatorPlan::Static);
+        }
+        if let Some(variable) = expression
+            .trim()
+            .strip_prefix('$')
+            .filter(|name| is_ascii_ncname(name))
+        {
+            return Ok(NumberGroupingSeparatorPlan::Xslt10Variable(
+                variable.to_owned(),
+            ));
+        }
+        if let Some(expression) = super::value_expression_compiler::compile_xslt10_concat(
+            document,
+            element,
+            expression,
+            document.location(element),
+        )? {
+            return Ok(NumberGroupingSeparatorPlan::Xslt10Concat(expression));
+        }
         return Err(unsupported(
             "FXST1051",
-            "dynamic xsl:number grouping attributes are outside the admitted slice",
+            "unsupported XSLT 1.0 grouping-separator AVT",
             document.location(element),
         ));
     }
-    let mut characters = separator.chars();
-    let separator = characters.next().filter(|_| characters.next().is_none());
-    let size = size.trim().parse::<usize>().ok().filter(|size| *size != 0);
-    match (separator, size) {
-        (Some(separator), Some(size)) => Ok(Some(NumberGrouping { separator, size })),
-        _ => Err(invalid(
+    if lexical.contains(['{', '}']) {
+        return Err(invalid(
             "XTDE0030",
-            "xsl:number grouping requires a one-character separator and positive integer size",
+            "malformed xsl:number grouping-separator AVT",
             document.location(element),
-        )),
+        ));
     }
+    one_character_grouping_separator(document, element, lexical)
+        .map(NumberGroupingSeparatorPlan::Static)
+}
+
+fn one_character_grouping_separator(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+) -> Result<char, CompileFailure> {
+    let mut characters = lexical.chars();
+    characters
+        .next()
+        .filter(|_| characters.next().is_none())
+        .ok_or_else(|| {
+            invalid(
+                "XTDE0030",
+                "xsl:number grouping requires a one-character separator",
+                document.location(element),
+            )
+        })
+}
+
+fn compile_grouping_size(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+    xslt10: bool,
+) -> Result<NumberGroupingSizePlan, CompileFailure> {
+    if let Some(expression) = whole_avt_expression(lexical) {
+        if xslt10
+            && let Some(expression) =
+                super::value_expression_compiler::compile_xslt10_binary_numeric(
+                    document,
+                    element,
+                    expression,
+                    document.location(element),
+                )
+        {
+            return Ok(NumberGroupingSizePlan::Xslt10Numeric(Box::new(expression)));
+        }
+        return Err(unsupported(
+            "FXST1051",
+            "unsupported dynamic xsl:number grouping-size AVT",
+            document.location(element),
+        ));
+    }
+    if lexical.contains(['{', '}']) {
+        return Err(invalid(
+            "XTDE0030",
+            "malformed xsl:number grouping-size AVT",
+            document.location(element),
+        ));
+    }
+    lexical
+        .trim()
+        .parse::<usize>()
+        .ok()
+        .filter(|size| *size != 0)
+        .map(NumberGroupingSizePlan::Static)
+        .ok_or_else(|| {
+            invalid(
+                "XTDE0030",
+                "xsl:number grouping requires a positive integer size",
+                document.location(element),
+            )
+        })
+}
+
+fn whole_avt_expression(lexical: &str) -> Option<&str> {
+    let expression = lexical.strip_prefix('{')?.strip_suffix('}')?;
+    (!expression.contains(['{', '}'])).then_some(expression.trim())
 }
 
 fn unsupported_format(format: &str, location: &SourceLocation) -> CompileFailure {
@@ -408,6 +551,13 @@ fn compile_value(
     }
     if expression == "." {
         return Ok(NumberValue::ContextItem);
+    }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(variable) = expression
+            .strip_prefix('$')
+            .filter(|name| is_ascii_ncname(name))
+    {
+        return Ok(NumberValue::Xslt10Variable(variable.to_owned()));
     }
     let lexical = xpath_string_literal(expression).unwrap_or(expression);
     if lexical.parse::<f64>().is_ok() || xpath_string_literal(expression).is_some() {

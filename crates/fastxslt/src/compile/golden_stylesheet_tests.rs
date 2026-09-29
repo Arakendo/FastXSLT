@@ -7,8 +7,8 @@ use crate::xdm::owned_tree_experiment::Document;
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, ElementConstructorOrigin, GlobalBindingDefault, Instruction,
-    LiteralAttributeValue, MatchPattern, STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority,
-    ValueExpression,
+    KeyUseExpression, LiteralAttributeValue, MatchPattern, STANDARD_INITIAL_TEMPLATE_NAME,
+    TemplatePriority, ValueExpression, Xslt10ConcatPart,
 };
 
 use super::{CompileCategory, compile_stylesheet, merge_character_map_entries};
@@ -81,6 +81,141 @@ fn xslt10_key_use_rejects_variable_and_recursive_key_dependencies() {
         assert_eq!(failure.category, CompileCategory::Invalid);
         assert_eq!(failure.code, "XTSE1205");
     }
+}
+
+#[test]
+fn xslt10_key_use_concat_compiles_as_a_typed_focus_expression() {
+    let document = parse_stylesheet(
+        "test:key-use-concat.xsl",
+        br#"<xsl:stylesheet version="1.0"
+              xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:key name="descriptions" match="item" use="concat(level, ':', team)"/>
+              <xsl:template match="/"/>
+            </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("bounded concat key use should compile");
+    let KeyUseExpression::Xslt10Concat(expression) = &program.key_definitions[0].use_expression
+    else {
+        panic!("key use should retain the typed concat expression");
+    };
+    assert!(matches!(expression.parts[0], Xslt10ConcatPart::Path(_)));
+    assert_eq!(
+        expression.parts[1],
+        Xslt10ConcatPart::Literal(":".to_owned())
+    );
+    assert!(matches!(expression.parts[2], Xslt10ConcatPart::Path(_)));
+}
+
+#[test]
+fn xslt10_muenchian_key_group_compiles_as_an_xslt_aware_selection() {
+    let document = parse_stylesheet(
+        "test:muenchian-key-group.xsl",
+        br#"<xsl:stylesheet version="1.0"
+              xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:key name="places" match="town" use="@state"/>
+              <xsl:template match="/">
+                <xsl:for-each select="town[count(. | key('places', @state)[1]) = 1]">
+                  <xsl:value-of select="@state"/>
+                </xsl:for-each>
+              </xsl:template>
+            </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("Muenchian selection should compile");
+    let body = &program.root_template.as_ref().expect("root template").body;
+    assert!(matches!(
+        body.as_slice(),
+        [Instruction::ForEachNodes {
+            select:
+                crate::xslt::golden_semantics_experiment::ApplySelection::Xslt10MuenchianKeyGroup { .. },
+            ..
+        }]
+    ));
+}
+
+#[test]
+fn xslt10_muenchian_key_group_retains_a_focus_dependent_concat_lookup_value() {
+    let document = parse_stylesheet(
+        "test:muenchian-concat-key-value.xsl",
+        br#"<xsl:stylesheet version="1.0"
+              xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:key name="businesses" match="row" use="business"/>
+              <xsl:key name="plans" match="row" use="concat(plan, ':', business)"/>
+              <xsl:template match="/">
+                <xsl:for-each select="key('businesses', 'west')[count(. | key('plans', concat(plan, ':', business))[1]) = 1]">
+                  <xsl:value-of select="@name"/>
+                </xsl:for-each>
+              </xsl:template>
+            </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("Muenchian concat lookup should compile");
+    let body = &program.root_template.as_ref().expect("root template").body;
+    let [
+        Instruction::ForEachNodes {
+            select:
+                crate::xslt::golden_semantics_experiment::ApplySelection::Xslt10MuenchianKeyGroup {
+                    first,
+                    ..
+                },
+            ..
+        },
+    ] = body.as_slice()
+    else {
+        panic!("expected a typed Muenchian key-group selection");
+    };
+    assert!(matches!(
+        first.value,
+        crate::xslt::golden_semantics_experiment::Xslt10KeyValue::Concat(_)
+    ));
+}
+
+#[test]
+fn xslt10_generate_id_muenchian_key_group_uses_the_same_typed_selection() {
+    let document = parse_stylesheet(
+        "test:generate-id-muenchian-key-group.xsl",
+        br#"<xsl:stylesheet version="1.0"
+              xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:key name="places" match="town" use="@state"/>
+              <xsl:template match="/">
+                <xsl:for-each select="town[generate-id() = generate-id(key('places', @state)[1])]">
+                  <xsl:value-of select="@state"/>
+                </xsl:for-each>
+              </xsl:template>
+            </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("generate-id grouping should compile");
+    let body = &program.root_template.as_ref().expect("root template").body;
+    assert!(matches!(
+        body.as_slice(),
+        [Instruction::ForEachNodes {
+            select:
+                crate::xslt::golden_semantics_experiment::ApplySelection::Xslt10MuenchianKeyGroup { .. },
+            ..
+        }]
+    ));
+}
+
+#[test]
+fn xslt10_key_lookup_accepts_a_typed_current_context_path_value() {
+    let document = parse_stylesheet(
+        "test:key-current-path.xsl",
+        br#"<xsl:stylesheet version="1.0"
+              xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:key name="places" match="town" use="@state"/>
+              <xsl:template match="/">
+                <xsl:for-each select="doc/town">
+                  <xsl:for-each select="key('places', current()/@state)">
+                    <xsl:value-of select="@name"/>
+                  </xsl:for-each>
+                </xsl:for-each>
+              </xsl:template>
+            </xsl:stylesheet>"#,
+    );
+
+    compile_stylesheet(&document).expect("current-context key lookup should compile");
 }
 
 #[test]
@@ -852,6 +987,25 @@ fn forward_global_dependencies_are_ordered_before_materialization() {
 }
 
 #[test]
+fn xslt10_global_concat_dependencies_are_ordered_before_materialization() {
+    let document = parse_stylesheet(
+        "memory:xslt10-global-concat-dependency.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="first" select="concat('first:', $later, ':', $middle)"/><xsl:variable name="middle" select="concat('middle:', $later)"/><xsl:variable name="later" select="'value'"/><xsl:template match="/"/></xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("global concat dependencies should compile");
+
+    assert_eq!(program.global_bindings.len(), 3);
+    assert_eq!(program.global_bindings[0].name, "later");
+    assert_eq!(program.global_bindings[1].name, "middle");
+    assert_eq!(program.global_bindings[2].name, "first");
+    assert!(matches!(
+        program.global_bindings[2].default,
+        GlobalBindingDefault::Xslt10Concat(_)
+    ));
+}
+
+#[test]
 fn xslt10_content_global_dependencies_are_ordered_and_cycles_rejected() {
     let forward = parse_stylesheet(
         "memory:xslt10-content-forward-global-dependency.xsl",
@@ -1260,6 +1414,35 @@ fn rejects_overlapping_output_properties_during_bounded_merge() {
     assert_eq!(program.output.method.as_deref(), Some("text"));
     assert_eq!(program.output.encoding.as_deref(), Some("UTF-8"));
     assert!(!program.output.omit_xml_declaration);
+}
+
+#[test]
+fn xslt10_omitted_xml_declaration_discards_standalone_across_output_merging() {
+    let single = parse_stylesheet(
+        "memory:xslt10-omitted-declaration-standalone.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" standalone="no" omit-xml-declaration="yes"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let single = compile_stylesheet(&single)
+        .expect("XSLT 1.0 should omit standalone with the XML declaration");
+    assert!(single.output.omit_xml_declaration);
+    assert_eq!(single.output.standalone, None);
+
+    let merged = parse_stylesheet(
+        "memory:xslt10-merged-omitted-declaration-standalone.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output standalone="yes"/><xsl:output method="xml"/><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let merged = compile_stylesheet(&merged)
+        .expect("merged XSLT 1.0 output settings should omit standalone with the declaration");
+    assert!(merged.output.omit_xml_declaration);
+    assert_eq!(merged.output.standalone, None);
+
+    let modern = parse_stylesheet(
+        "memory:modern-omitted-declaration-standalone.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" standalone="yes" omit-xml-declaration="yes"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let modern = compile_stylesheet(&modern)
+        .expect("modern serialization consistency remains a runtime concern");
+    assert_eq!(modern.output.standalone.as_deref(), Some("yes"));
 }
 
 #[test]
@@ -2693,6 +2876,21 @@ fn xsl_text_preserves_explicit_whitespace_and_rejects_element_content() {
     let failure = compile_stylesheet(&invalid_text).expect_err("element content must fail");
     assert_eq!(failure.code, "FXST0026");
     assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
+fn literal_text_discards_only_xml_whitespace() {
+    let stylesheet = parse_stylesheet(
+        "memory:literal-non-breaking-space.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/">&#160;</xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet).expect("non-XML whitespace should compile");
+    let root_template = program.root_template.expect("root template");
+
+    assert!(matches!(
+        root_template.body.as_slice(),
+        [Instruction::Text { value, .. }] if value == "\u{00a0}"
+    ));
 }
 
 #[test]

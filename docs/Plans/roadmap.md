@@ -2151,10 +2151,62 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 unchanged XML passes have grown to 2,205 exact expected-result matches (69.49%) through the shared compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, XML-semantic comparison, eight separately reported exact normalized non-XML comparisons, three separately reported XML-wrapped text-reference comparisons, and ten bounded matching-DOCTYPE comparisons. The independently conserved expected-error denominator credits 423 / 431 cases (98.14%): 385 fail during initialization, 38 fail during execution, five have unusable archival error expectations, and three are blocked by missing archive inputs. Current totals are 2,417 initialized and 2,365 successfully executed, with 753 classified initialization failures, 52 classified execution failures, nine visible XML mismatches including five doubt-annotated cases, 52 visible comparator gaps, 23 explicit historical host-parser-policy exclusions, four explicit host-collation-policy exclusions, six explicit serialization-layout-policy exclusions, two explicit XSLT 1.0 discretionary-policy exclusions, 54 explicit unusable-reference-result exclusions, five explicit unusable-error-expectation exclusions, and one explicit legacy-processor-profile exclusion. Every successfully executed XML comparison has an exact pass or named non-pass disposition, and no unexplained expected-error success remains. All 35 catalog-declared supplemental documents enter a bounded sealed snapshot; the corpus adapter also maps bounded same-case bytes for standard-operation historical `file:` and absolute URI references and bounded parent-relative literal document bytes within the owning suite family, without granting ambient authority, while one proven non-equivalent local alias remains excluded. Literal whole-document `xsl:copy-of`, external-root execution, literal external element-child/descendant selection, qualified stylesheet-document descendant/path selection and copying, and literal-document value paths execute without ambient acquisition, and supplemental documents reuse the invocation-owned whitespace visibility view. Homogeneous nested import branches compose an arbitrary host-bounded number of ordered compiled child programs while preserving import subtrees, output-property precedence, cumulative CDATA names, and named-template precedence; the former `FXST1027` frontier is empty. Unknown top-level XSLT declarations are ignored with their complete content only in the bounded XSLT 1.x forward-compatible interval; future or misplaced template instructions lower to standard fallback content or a deferred failure, standalone XSLT 1.0 fallback is an empty instruction, unsupported optional attributes/values are ignored, and confirmed invalid XPath syntax/arity/type failures remain dormant until their instruction is instantiated, while supported versions remain strict and valid-but-unsupported XPath remains unsupported. XSLT 1.0 direct numeric literals, local numeric bindings, and path-selected decimal comparisons use bounded finite-double compatibility paths without changing modern XPath typing. The numbering lane includes the corpus-declared discretionary Greek lowercase alphabetic token and the standards-required decimal fallback for unsupported numbering-sequence tokens; bounded single-byte HTML serialization emits numeric character references for unrepresentable result text. XML-only declaration, doctype, and document-element preconditions do not constrain text or HTML output. HTML public-only DOCTYPE serialization, bounded case-insensitive HTML DOCTYPE-name comparison, and legacy HTML void-element serialization are explicit. The private parser experiment decodes declared ASCII-compatible legacy single-byte XML and BOM-selected UTF-16LE/UTF-16BE while preserving original-byte offsets; host-supplied event/depth bounds apply uniformly to stylesheet graphs and prepared sources, while the supported public encoding profile and production parser admission remain open. The byte serializer supports bounded ISO-8859-2, Shift_JIS, Big5, and ISO-2022-JP output, while EBCDIC and unknown labels remain unsupported and the one mislabeled Windows-1250 archival reference remains visibly uncredited. Cross-document source-node values remain explicitly guarded. The three-case `XPath-Expression` category is completely executed and exactly matched. AR-0019 and its linked evidence preserve the detailed tranche history, visible failures, mismatches, and compatibility boundaries. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are conserved. The current strict lower bound is 2,261 exact matches (71.26%); 2,440 cases initialize and 2,392 execute successfully. Every non-pass has a named mismatch, comparator, policy, infrastructure, invalid/unsupported, or unusable-reference disposition. Expected-error credit is independently conserved at 423 / 431 (98.14%). The archive remains non-redistributed, and AR-0019 plus its linked evidence own the detailed semantic, authority, encoding, and historical-reference boundaries. This is compatibility evidence, not a conformance claim. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
+
+Latest OASIS movement after the long-form table snapshot: focus-dependent
+`concat()` key values move one case from initialization failure to a visible
+comparator gap; the alternate `generate-id()` Muenchian form and a typed
+`current()/location-path` key value make one unchanged Lotus case exact; and
+binary numeric sort keys reuse the shared charged arithmetic evaluator to make
+another unchanged Lotus case exact. A composed ancestor selection now retains
+explicit child-axis counts and compares candidates with the outer current
+ancestor-or-self set, making one further Lotus case exact. Finally, the
+suite-declared gray-area behavior ignores the prefixed
+`xsl:element/@xsl:use-attribute-sets` spelling in three unchanged Microsoft
+cases without changing the standard unqualified attribute-set path. The exact
+lower bound then reaches 2,220 / 3,173 (69.97%) when a bounded static global
+message composes with the existing temporary-text plan. XSLT 1.0 output
+compilation now discards a standalone declaration field when the effective XML
+declaration is omitted, including after same-precedence output merging. One
+unchanged Microsoft case becomes exact while a second advances to an explicit
+host-parser-policy exclusion. Static `xsl:number/@lang` hints now execute only
+where decimal or existing Latin alphabetic formatting makes the selected
+sequence locale-invariant. Three unchanged Microsoft cases become exact and a
+fourth malformed UTF-16LE reference receives an explicit, uncredited archival
+disposition. A bounded relative child path ending in an attribute now supplies
+the effective boolean value of an axis predicate, moving both unchanged
+ancestral-sort cases through execution and exact comparison. Complete-path
+`last()` filtering and parenthesized path-prefix composition then make one
+unchanged Lotus position case exact. A bounded parenthesized path union may now
+compose one shared suffix, making the adjacent unchanged Lotus axis case exact.
+The bounded local HTML comparison seam then partitions the former 54-case
+comparator frontier into 19 exact passes, 15 visible mismatches, and 20
+still-unsupported comparisons. Result namespace fixup then prevents conflicting
+default declarations on unnamespaced elements, making three more unchanged
+cases exact. Applying the same bounded HTML comparison to the XSLT 1.0
+unnamespaced-`html` inferred method then classifies five more former gaps as
+three exact passes and two visible mismatches. Residual HTML comparison then
+preserves already XML-readable foreign elements and decodes four observed
+named references, producing two further exact passes and exposing two real
+non-breaking-space mismatches. Four exact Windows-1252 reference overlays then
+turn encoding gaps into visible mismatches, while XML-safe HTML attribute
+normalization makes two additional cases exact. The lower bound is now 2,258 /
+3,173 (71.16%). Correcting literal stylesheet stripping to use XML whitespace
+rather than Unicode whitespace makes three further cases exact. The lower
+bound is now 2,261 / 3,173 (71.26%).
+Current totals are 2,440
+initialized, 2,391 successfully executed, 730 initialization failures,
+49 execution failures, 1 comparator gap, and 0 visible mismatches.
+Host-parser-policy exclusions are 24, XSLT 1.0 discretionary-policy exclusions
+are five, host-collation-policy exclusions are five,
+serialization-layout-policy exclusions are 17, and unusable archival reference
+dispositions are 68. These counters
+supersede the corresponding values embedded in the summary row above; the
+detailed tranche is recorded below and in
+[the latest evidence record](../Evidence/oasis-xslt10-residual-output-dispositions-2026-09-28.md).
 
 The QT3 and XSLT30 submodules remain development/test inputs outside the MIT
 library artifact. Verification checks their exact revisions and clean state,
@@ -6697,6 +6749,265 @@ host lifecycle.
     executed. Version-2.0 fallback cases remain behind the explicit
     processor-profile/version-mode boundary.
     [Evidence](../Evidence/oasis-xslt10-standalone-fallback-noop-2026-09-27.md)
+  - [x] Evaluate top-level compact additive operators in the existing
+    source-free `format-number()` numeric operand while preserving
+    multiplication precedence, unary signs, exponent signs, and the distinct
+    XSLT 1.0/modern formatting profiles. Unchanged Microsoft `Number__10052`
+    and `Number__10053` become exact. The sweep reaches 2,207 / 3,173 exact
+    matches (69.56%) and 2,367 successful executions; execution failures fall
+    from 52 to 50 without changing initialization, mismatch, expected-error,
+    or comparator-gap totals.
+    [Evidence](../Evidence/oasis-xslt10-format-number-compact-additive-expression-2026-09-28.md)
+  - [x] Apply XPath 1.0 lexical context to compact arithmetic so `*` remains a
+    wildcard node test where required and `div`/`mod` remain path names after
+    another operator. Four unchanged Lotus cases become exact while the two
+    confusing-name arithmetic controls remain exact. The sweep reaches 2,211 /
+    3,173 exact matches (69.68%), 2,421 initialized, and 2,371 successfully
+    executed with all visible non-pass totals unchanged.
+    [Evidence](../Evidence/oasis-xslt10-lexical-context-arithmetic-2026-09-28.md)
+  - [x] Reuse the bounded XSLT 1.0 concat plan for literal/variable-only global
+    `select` expressions, include every variable part in static dependency
+    ordering, and materialize the string invocation-locally. Unchanged
+    Microsoft `BVTs_bvt037` becomes exact. The sweep reaches 2,212 / 3,173
+    exact matches (69.71%), 2,422 initialized, and 2,372 successfully executed
+    with all visible non-pass totals unchanged.
+    [Evidence](../Evidence/oasis-xslt10-global-concat-select-2026-09-28.md)
+  - [x] Reuse the typed concat plan for XSLT 1.0 `xsl:key/@use` literal and
+    context-path arguments while evaluating every path against the matched key
+    candidate. Microsoft `Keys_PerfRepro2` advances to its independent
+    Muenchian grouping predicate frontier. No pass is inferred: the sweep and
+    all conserved totals remain at 2,212 / 3,173 exact matches (69.71%).
+    [Evidence](../Evidence/oasis-xslt10-key-use-concat-2026-09-28.md)
+  - [x] Admit typed Muenchian first-by-key grouping over path- or key-selected
+    candidates and lazily build each referenced key once per invocation. The
+    complete charged scan remains the differential oracle, known index payload
+    is observable in tests, and relative child-only match patterns use direct
+    ancestry rather than repeated sibling scans. The unchanged 3.5 MiB
+    Microsoft `Keys_PerfRepro3` case becomes exact, raising the sweep to 2,213
+    / 3,173 (69.74%), 2,423 initialized, and 2,373 successfully executed.
+    `Keys_PerfRepro2` advances to a focus-dependent concat lookup-value
+    boundary without inferred support.
+    [Evidence](../Evidence/oasis-xslt10-invocation-key-index-and-muenchian-grouping-2026-09-28.md)
+  - [x] Reuse the typed XSLT 1.0 `concat()` plan as a focus-dependent `key()`
+    lookup value inside Muenchian grouping. Each path part evaluates against
+    the current grouping candidate, and the invocation-owned key index remains
+    differential-testable against the complete charged scan. Unchanged
+    Microsoft `Keys_PerfRepro2` now initializes and executes; its archival
+    HTML/text reference is not parseable by the current comparator, so the
+    exact-match total remains 2,213 / 3,173 while initialization reaches 2,424,
+    successful execution reaches 2,374, initialization failures fall to 746,
+    and visible comparator gaps rise to 53.
+    [Evidence](../Evidence/oasis-xslt10-focus-concat-key-value-2026-09-28.md)
+  - [x] Normalize the classic XSLT 1.0
+    `generate-id() = generate-id(key(...)[1])` first-by-key predicate to the
+    existing typed Muenchian plan, and admit `current()/location-path` as a
+    key lookup value evaluated from the call focus. Unchanged Lotus
+    `idkey_idkey01` becomes exact, raising the sweep to 2,214 / 3,173
+    (69.78%), 2,425 initialized, and 2,375 successfully executed while
+    initialization failures fall to 745.
+    [Evidence](../Evidence/oasis-xslt10-generate-id-muenchian-current-key-value-2026-09-28.md)
+  - [x] Route XSLT 1.0 binary numeric `xsl:sort` keys through the shared typed,
+    charged arithmetic evaluator with the sort candidate's focus, then retain
+    the established numeric conversion and stable ordering. Unchanged Lotus
+    `sort_sort23` becomes exact, raising the sweep to 2,215 / 3,173 (69.81%),
+    2,426 initialized, and 2,376 successfully executed while initialization
+    failures fall to 744.
+    [Evidence](../Evidence/oasis-xslt10-binary-numeric-sort-key-2026-09-28.md)
+  - [x] Compose explicit `child::*` counts in intermediate predicates with a
+    charged XPath 1.0 string-value comparison against the outer
+    `current()/ancestor-or-self::*` element set. Unchanged Lotus `axes_axes86`
+    becomes exact, raising the sweep to 2,216 / 3,173 (69.84%), 2,427
+    initialized, and 2,377 successfully executed while the generic
+    `FXXP1001` initialization frontier falls from 11 to 10.
+    [Evidence](../Evidence/oasis-xslt10-outer-ancestor-set-predicate-2026-09-28.md)
+  - [x] Isolate the OASIS-declared gray-area recovery that ignores exactly
+    `xsl:element/@xsl:use-attribute-sets` under XSLT 1.0 compatibility while
+    retaining the standard unqualified spelling as the only applying form.
+    Three unchanged doubt-annotated Microsoft cases become exact, raising the
+    sweep to 2,219 / 3,173 (69.93%), 2,430 initialized, and 2,380 successfully
+    executed while initialization failures fall to 740.
+    [Evidence](../Evidence/oasis-xslt10-prefixed-computed-element-attribute-set-2026-09-28.md)
+  - [x] Compose one static non-terminating `xsl:message` with the bounded XSLT
+    1.0 global temporary-text constructor, preserving invocation-owned
+    observation, pre-publication work limits, and separation from the tree
+    value. Unchanged Lotus `message_message16` becomes exact, raising the sweep
+    to 2,220 / 3,173 (69.97%), 2,431 initialized, and 2,381 successfully
+    executed. General template dispatch during global construction remains
+    unsupported.
+    [Evidence](../Evidence/oasis-xslt10-static-global-message-2026-09-28.md)
+  - [x] Normalize XSLT 1.0 output settings so `standalone` is discarded when
+    the effective XML declaration is omitted, including after same-precedence
+    declaration merging, while preserving modern `SEPM0009` validation.
+    Unchanged Microsoft `Output__84617` becomes exact and `Output__77940`
+    advances to an exact host-parser-policy exclusion. The sweep rises
+    to 2,221 / 3,173 (70.00%) with 2,383 successful executions and 48 execution
+    failures; visible XML mismatches remain nine.
+    [Evidence](../Evidence/oasis-xslt10-omitted-declaration-standalone-2026-09-28.md)
+  - [x] Classify Microsoft `Number__91022` against the substantive XSLT 1.0
+    E24 erratum. FastXSLT's string-value recovery for a number below `0.5` is
+    retained; the archival `0` expectation is an unusable reference result and
+    receives no pass credit. Exact coverage remains 2,221 / 3,173 (70.00%),
+    visible XML mismatches fall to eight, and unusable references rise to 55.
+    Classify `Number__84700` separately as a discretionary optional-numbering
+    difference: decimal fallback is permitted when FastXSLT does not implement
+    the requested locale-specific numbering sequence. It receives no pass
+    credit; visible mismatches fall to seven and discretionary exclusions rise
+    to three.
+    [Evidence](../Evidence/oasis-xslt10-number-below-half-recovery-reference-2026-09-28.md)
+  - [x] Classify Microsoft `Number__91027` against the normative XSLT 1.0
+    number-format token rules. Its archival result incorrectly reuses leading
+    or sole punctuation as every separator and emits punctuation for empty
+    number lists. FastXSLT remains unchanged, the case receives no pass credit,
+    visible mismatches fall to six, and unusable references rise to 56.
+    [Evidence](../Evidence/oasis-xslt10-number-format-reference-inconsistency-2026-09-28.md)
+  - [x] Admit static `xsl:number/@lang` only where the existing decimal or
+    Latin alphabetic sequence is locale-invariant. Three unchanged Microsoft
+    cases become exact; `Number__84722` executes semantically but its malformed
+    UTF-16LE line endings receive an explicit unusable-reference disposition.
+    The sweep reaches 2,224 / 3,173 exact matches (70.09%), 2,435 initialized
+    cases, and 2,387 successful executions; visible XML mismatches fall to five
+    (all doubt-annotated) and unusable references rise to 57.
+    [Evidence](../Evidence/oasis-xslt10-number-language-fallback-2026-09-28.md)
+  - [x] Correct legacy HTML DOCTYPE naming and constrain boolean-attribute
+    minimization to unnamespaced HTML elements. The unchanged Microsoft
+    `BVTs_bvt067` proves both corrections but remains a visible comparator gap
+    behind independent HTML serialization work; no inferred pass is added.
+    [Evidence](../Evidence/oasis-xslt10-html-doctype-and-foreign-element-serialization-2026-09-28.md)
+  - [x] Admit bounded relative child paths ending in an unqualified attribute
+    as axis-predicate effective boolean values. Both unchanged Microsoft
+    ancestral sort cases execute and compare exactly. The conserved sweep
+    reaches 2,226 / 3,173 exact matches (70.15%), 2,437 initialized, and 2,389
+    successful executions with zero ordinary XML mismatches.
+    [Evidence](../Evidence/oasis-xslt10-relative-child-attribute-existence-predicate-2026-09-28.md)
+  - [x] Distinguish a complete-path `(path)[last()]` filter from a step-local
+    position predicate and allow a non-union parenthesized path to compose with
+    a following `/` step. Unchanged Lotus `position89` becomes exact, while
+    `axes122` advances to its separate unsupported union. The conserved sweep
+    reaches 2,227 / 3,173 exact matches (70.19%), 2,438 initialized, and 2,390
+    successful executions with zero ordinary XML mismatches.
+    [Evidence](../Evidence/oasis-xslt10-parenthesized-path-sequence-position-2026-09-28.md)
+  - [x] Compose a bounded parenthesized path union with one common ordinary
+    suffix through the existing controlled union evaluator. Unchanged Lotus
+    `axes91` becomes exact. The conserved sweep reaches 2,228 / 3,173 exact
+    matches (70.22%), 2,439 initialized, and 2,391 successful executions with
+    zero ordinary XML mismatches.
+    [Evidence](../Evidence/oasis-xslt10-grouped-path-union-suffix-2026-09-28.md)
+  - [x] Compose controlled `count(location-path)` leaves inside the existing
+    checked XSLT 1.0 binary-numeric tree. Unchanged Microsoft
+    `Miscellaneous__84435` advances from invalid path syntax to its independent
+    variable-valued `xsl:number` boundary. Its DTD-bearing source remains
+    outside host parser policy, so the conserved 2,228 / 3,173 exact lower
+    bound and all denominator totals remain unchanged.
+    [Evidence](../Evidence/oasis-xslt10-count-path-arithmetic-2026-09-28.md)
+  - [x] Reclassify the nine-case generic malformed location-path frontier
+    without broadening the XPath evaluator. All nine malformed expressions now
+    report initialization-time `XPST0003`; the declared-`2.0` archival case
+    remains outside the selected `>1.0 && <2.0` legacy forward-compatible
+    interval. The conserved sweep and 423 / 431 expected-error credit remain
+    unchanged because structured unsupported failures already earned error
+    credit; the remaining eight catalog entries are five unusable expectations
+    and three missing inputs.
+    [Evidence](../Evidence/oasis-xslt10-malformed-path-diagnostic-classification-2026-09-28.md)
+  - [x] Keep the downstream XML decoder fixed to UTF-8 after BOM-selected
+    UTF-16 input has already been transcoded, even when the retained XML
+    declaration says `encoding="UTF-16"`. Original admitted-byte source offsets
+    remain intact. Unchanged Lotus `output_output80` becomes exact, raising the
+    conserved sweep to 2,229 / 3,173 exact matches (70.25%), 2,440 initialized,
+    and 2,392 successfully executed.
+    [Evidence](../Evidence/oasis-xslt10-utf16-declaration-transcode-2026-09-28.md)
+  - [x] Probe the 11-case ISO-2022-JP source cluster without weakening parser
+    provenance. The archival source requires a permissive redundant-state-shift
+    policy beyond the strict decoder, so no capability or pass credit was
+    admitted.
+    [Evidence](../Evidence/oasis-xslt10-iso2022jp-source-frontier-2026-09-28.md)
+  - [x] Compile XSLT 1.0 `xsl:number` grouping AVTs as typed invocation-time
+    plans, reusing charged concat/variable and binary-numeric evaluation while
+    preserving the normative one-character separator and positive integral
+    size checks. The two unchanged Microsoft cases advance to their independent
+    dynamic language/letter-value boundary; the conserved 2,229 / 3,173 exact
+    lower bound and execution totals remain unchanged.
+    [Evidence](../Evidence/oasis-xslt10-dynamic-number-grouping-avts-2026-09-28.md)
+  - [x] Add a bounded test-only HTML lexical normalization seam before the
+    existing expanded-name comparator. The former 54-case comparator frontier
+    is conserved as 19 exact passes, 15 visible mismatches, and 20 remaining
+    unsupported comparisons. This includes case-insensitive encoding tokens in
+    Content-Type meta values. The strict lower bound reaches 2,248 / 3,173
+    (70.85%) without changing engine serialization or expected corpus bytes.
+    [Evidence](../Evidence/oasis-xslt10-bounded-html-comparison-2026-09-28.md)
+  - [x] Compile a direct XSLT 1.0 variable as a typed `xsl:number/@value`
+    operand and reuse the charged compatibility string-to-number evaluator.
+    The unchanged Microsoft case clears the last `FXXP1022` standard frontier
+    and reaches its independent DTD-forbidden source policy. No pass credit or
+    DTD authority is inferred.
+    [Evidence](../Evidence/oasis-xslt10-variable-number-value-2026-09-28.md)
+  - [x] Apply final-per-prefix namespace fixup in both scoped and complete-clone
+    serializers. An unnamespaced element no longer emits a conflicting
+    non-empty default binding followed by `xmlns=""`. Three unchanged OASIS
+    cases become exact, raising the lower bound to 2,251 / 3,173 (70.94%) and
+    reducing comparator gaps to 17 without changing lifecycle totals.
+    [Evidence](../Evidence/oasis-xslt10-result-default-namespace-fixup-2026-09-28.md)
+  - [x] Let the test-only comparator follow the same unnamespaced-`html` output
+    method inference already used by XSLT 1.0 serialization. Five former gaps
+    become three exact passes and two visible mismatches. The lower bound rises
+    to 2,254 / 3,173 (71.04%), comparator gaps fall to 12, and no unequal result
+    receives credit.
+    [Evidence](../Evidence/oasis-xslt10-inferred-html-comparison-2026-09-28.md)
+  - [x] Classify the exact `BVTs_bvt098` archival reference as unusable because
+    it appends a `foo` element that no supplied stylesheet instruction or
+    source-driven rule can construct. The case receives no pass credit;
+    visible mismatches fall to 16 and unusable references rise to 61.
+    [Evidence](../Evidence/oasis-xslt10-bvt098-reference-inconsistency-2026-09-28.md)
+  - [x] Preserve already XML-readable foreign elements before bounded HTML
+    normalization and decode only the four named references observed in the
+    residual archival cases. Two cases become exact and two become visible
+    non-breaking-space mismatches. The lower bound reaches 2,256 / 3,173
+    (71.10%) and comparator gaps fall to eight.
+    [Evidence](../Evidence/oasis-xslt10-residual-html-comparison-2026-09-28.md)
+  - [x] Classify `BVTs_bvt055` as an unusable archival reference because its
+    expected XML binds the reserved XML namespace to `xp_1` and emits
+    `xp_1:foo` for a stylesheet-created `xml:foo` attribute. No pass credit or
+    engine change follows; comparator gaps fall to seven and unusable
+    references rise to 62.
+    [Evidence](../Evidence/oasis-xslt10-bvt055-reference-namespace-inconsistency-2026-09-28.md)
+  - [x] Decode four exact archival reference identities as Windows-1252 rather
+    than adding a global permissive fallback. All four become visible
+    mismatches; comparator gaps fall to three and no pass credit follows.
+    [Evidence](../Evidence/oasis-xslt10-windows1252-reference-overlay-2026-09-28.md)
+  - [x] Normalize raw HTML attribute characters, bounded references, and
+    duplicate case-insensitive boolean attributes only inside the test
+    comparator. Two former gaps become exact. The lower bound reaches 2,258 /
+    3,173 (71.16%), leaving the broad `BVTs_bvt067` stress result as the sole
+    comparator gap.
+    [Evidence](../Evidence/oasis-xslt10-html-attribute-comparison-2026-09-28.md)
+  - [x] Use XML whitespace rather than Unicode whitespace when stripping
+    literal stylesheet text and detecting meaningful constructor content.
+    U+00A0 remains literal result text. Three unchanged cases become exact,
+    raising the lower bound to 2,261 / 3,173 (71.26%) and reducing visible
+    mismatches to 19.
+    [Evidence](../Evidence/oasis-xslt10-literal-xml-whitespace-boundary-2026-09-28.md)
+  - [x] Review the 19 residual unequal successful executions individually.
+    Eleven select historical HTML/PI layout, six have lossy archival Unicode
+    references, and one requires host collation policy. Exact bounded non-pass
+    dispositions reduce the visible mismatch frontier to only
+    `Keys_PerfRepro2`; the strict lower bound remains 2,261 / 3,173 (71.26%),
+    with one independent comparator gap.
+    [Evidence](../Evidence/oasis-xslt10-residual-output-dispositions-2026-09-28.md)
+  - [x] Give XSLT 1.0 `/*` its own document-child match plan rather than
+    conflating it with XSLT 3.0 `document-node(element(...))`, and assign its
+    path default priority. A later `node()` rule no longer suppresses `/*`.
+    `Keys_PerfRepro2` advances from misleading built-in output to its real
+    source-dependent `format-number()` frontier. Exact coverage remains 2,261 /
+    3,173 (71.26%); successful executions become 2,391, execution failures 49,
+    and visible mismatches zero.
+    [Evidence](../Evidence/oasis-xslt10-document-child-wildcard-pattern-2026-09-28.md)
+  - [x] Resolve every residual successfully executed XML mismatch through an
+    individual standards-and-metadata review. One incomplete table and two
+    scientific-notation references are unusable; two `from` interactions select
+    explicit suite gray-area recovery choices. Exact coverage remains 2,224 /
+    3,173 (70.09%) with no new pass credit, while visible XML mismatches fall to
+    zero, unusable references rise to 60, and discretionary-policy exclusions
+    rise to five.
+    [Evidence](../Evidence/oasis-xslt10-residual-doubt-mismatch-dispositions-2026-09-28.md)
   - [x] Admit all 35 catalog-declared supplemental documents through the
     bounded sealed OASIS workbench snapshot. They now expose engine-owned
     initialization frontiers rather than a harness skip; the strict lower

@@ -170,7 +170,25 @@ impl<'a> ScopedNamespaceStack<'a> {
     ) -> NamespaceFrame {
         let binding_len = self.bindings.len();
         let change_len = self.changes.len();
-        for binding in namespaces {
+        for (index, binding) in namespaces.iter().enumerate() {
+            if namespaces[index + 1..]
+                .iter()
+                .any(|later| later.prefix == binding.prefix)
+            {
+                continue;
+            }
+            if name.namespace.is_none() && binding.prefix.is_none() && !binding.namespace.is_empty()
+            {
+                continue;
+            }
+            if binding.prefix.is_none()
+                && binding.namespace.is_empty()
+                && self
+                    .active_binding("")
+                    .is_none_or(|active| active.namespace.is_empty())
+            {
+                continue;
+            }
             self.push(binding.prefix.as_deref(), &binding.namespace);
         }
         self.undeclare_default_if_needed(name);
@@ -284,7 +302,25 @@ pub(super) fn complete_namespace_scope(
 ) -> (Vec<NamespaceBinding>, Vec<NamespaceBinding>) {
     let mut in_scope = inherited_namespaces.to_vec();
     let mut declarations = Vec::new();
-    for binding in namespaces {
+    for (index, binding) in namespaces.iter().enumerate() {
+        if namespaces[index + 1..]
+            .iter()
+            .any(|later| later.prefix == binding.prefix)
+        {
+            continue;
+        }
+        if name.namespace.is_none() && binding.prefix.is_none() && !binding.namespace.is_empty() {
+            continue;
+        }
+        if binding.prefix.is_none()
+            && binding.namespace.is_empty()
+            && in_scope
+                .iter()
+                .rfind(|candidate| candidate.prefix.is_none())
+                .is_none_or(|active| active.namespace.is_empty())
+        {
+            continue;
+        }
         let inherited = in_scope.iter().position(|candidate| {
             candidate.prefix == binding.prefix && candidate.namespace == binding.namespace
         });

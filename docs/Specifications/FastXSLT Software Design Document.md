@@ -204,6 +204,13 @@ selection, DOM wrapping versus an owned arena, DTD support, and entity behavior
 remain open. External entities and ambient network/filesystem access default to
 unavailable until explicit policy exists.
 
+The private parser adapter may transcode BOM-selected UTF-16 input before XML
+event parsing, but that transcode must preserve locations in the immutable
+admitted byte resource. Once transcoded, the parser consumes the private buffer
+as explicit UTF-8; a retained source declaration must not cause the buffer to
+be decoded a second time. Invalid surrogates and incomplete code units remain
+input errors rather than receiving replacement characters.
+
 ### XDM
 
 The XDM layer will own the engine-visible data model: node identity and order,
@@ -278,6 +285,14 @@ invocation-local control state and never enters the principal result tree;
 uses the ordinary instruction/result work charges. This behavior does not
 select an ambient logger, a public message sink, adapter delivery, or modern
 profile message semantics.
+
+A bounded XSLT 1.0 global temporary-text constructor may contain a static,
+non-terminating `xsl:message` alongside its admitted text and source-value
+parts. Compilation retains the message as an invocation-time side effect;
+execution charges its instruction, ephemeral result node, and text bytes
+before recording it, and contributes no message content to the temporary tree.
+Dynamic or terminating messages and general instruction or template execution
+during global construction remain unsupported.
 
 Named-template declarations and `xsl:call-template` instructions use the same
 expanded QName identity. Unprefixed names remain in no namespace; prefixed
@@ -520,6 +535,12 @@ testing attribute presence. Ancestor, attribute, and child inspection is work
 charged against the invocation's effective source document. This does not
 rewrite sequential predicates as conjunctions, admit arbitrary predicate
 composition, or broaden the modern expression grammar.
+An axis-step predicate may also test the effective boolean value of a bounded
+relative child path ending in one unqualified attribute step, such as
+`ancestor::*[fruit/@name]`. The path is true exactly when its node selection is
+non-empty; child and attribute visits remain invocation-local and work charged.
+This does not admit descendant abbreviations, qualified relative steps,
+cross-document nodes, or a general predicate-expression tree.
 The compatibility path also admits three exact same-lexical-name forms whose
 predicates compare `name()` with `name(current())`: descendant-or-following
 existence, a rooted descendant count, and selection of element children from
@@ -535,6 +556,14 @@ ordinary compatibility path parser and executes from the instruction's source
 focus with existing first-node string conversion, charging, cancellation,
 identity, and provenance behavior. This does not admit `current()` inside
 arbitrary composed expressions or in modern static context.
+The XSLT 1.0 compatibility path may compose an intermediate
+`count(child::*)` numeric predicate with a later general comparison between
+the candidate string value and the outer `current()/ancestor-or-self::*`
+element set. The explicit child axis shares the existing child-element count
+plan; the outer set remains invocation-local and every visited node and
+comparison is charged. This is XPath 1.0 string-value general comparison, not
+node identity, and does not admit general primary-expression paths or ambient
+current-node state.
 The `self` axis additionally admits explicit `text()`, `comment()`, and
 `processing-instruction()` tests alongside its named-element, any-element, and
 any-node forms. The single context candidate is work charged and retained only
@@ -562,6 +591,14 @@ grouped reverse-axis result uses document order. Compilation records that
 distinction before normalizing the typed path, so grouping is not erased into a
 different result. This does not admit arbitrary grouped filters, dynamic
 positions, or a general parenthesized XPath grammar.
+The typed path may also retain the exact complete-sequence filter
+`(location-path)[last()]`. Execution completes ordinary step evaluation,
+document-order normalization, and identity deduplication before applying the
+position filter, rather than incorrectly attaching it to the final step. A
+non-union parenthesized location path may compose with a following ordinary `/`
+step through the same evaluator. These forms do not admit arbitrary filter
+expressions, parenthesized unions, completion-order semantics, or a general
+primary-expression grammar.
 The exact `string-length(.) = nonnegative-integer` conditional form counts
 Unicode codepoints in the controlled context string value and charges the scan
 to XPath work. It does not admit general string functions, alternate operands,
@@ -592,6 +629,13 @@ order, and applies first-node string conversion only after normalization.
 Qualified alternatives use the instruction's static namespace context. This
 does not admit function or variable union alternatives, namespace nodes,
 general sequence expressions, or a public node-set representation.
+An XSLT 1.0 apply selection may also compose a parenthesized union of at most
+eight admitted location paths with one common ordinary `/` suffix. Compilation
+distributes the suffix into typed alternatives; execution uses the controlled
+path-union owner and restores document order while removing duplicate node
+identities before dispatch. This does not admit variable or function arms,
+`//` at the grouping boundary, general primary expressions, or a public
+scheduling/order contract.
 The exact XSLT 1.0 effective-boolean path
 `child[@attribute=string($variable)]`, with an optional leading `./`, converts
 the variable once through those same string rules and performs a charged scan
@@ -829,6 +873,14 @@ engine-unsupported rather than being forced through the location-path parser.
 The global `QName()` constructor is one such boundary: it is classified before
 path parsing so punctuation in a valid but unsupported function call does not
 produce a misleading invalid-XPath diagnostic.
+Conversely, the private location-path boundary reports `XPST0003` for bounded
+lexically impossible forms such as an initial enclosed-expression delimiter,
+unquoted semicolon or backslash, and adjacent numeric operands without an
+operator. Quote-aware scanning must not classify punctuation inside XPath
+string literals. XSLT 1.x forward-compatible processing may retain such a
+confirmed invalid expression as a deferred failure owned by the containing
+instruction; diagnostic classification does not override version-controlled
+error timing.
 
 Compiled mode names use expanded QName identity. An unprefixed lexical mode is
 in no namespace; a prefixed mode is resolved against the namespace context of
@@ -994,6 +1046,19 @@ at compilation. Variable-valued, path-valued, mixed-text, and other dynamic
 sort controls remain explicit unsupported boundaries; execution does not gain
 a separate sort-control AVT evaluator.
 
+Within XSLT 1.0 compatibility, a binary numeric sort-key expression reuses the
+same typed and charged path-arithmetic plan as ordinary value evaluation. The
+sort candidate supplies node, position, and size; the resulting lexical value
+then flows through the existing numeric-sort conversion and stable ordering.
+This does not admit a second arithmetic evaluator, general dynamic sort
+expressions, or different modern XPath typing.
+
+The same XSLT 1.0 binary-numeric plan admits `count(location-path)` as a typed
+operand. It evaluates the path through ordinary work control, converts the
+selected cardinality into the checked exact numeric representation, and
+charges the numeric operation before composing it with surrounding arithmetic.
+This is not a general function-call operand or a separate count evaluator.
+
 Within XSLT 1.0 compatibility, a sort-key expression may apply one numeric
 variable predicate to one child step, including the direct `*[$index]` and
 explicit `*[position() = $index]` forms. Compilation uses the same typed
@@ -1148,6 +1213,13 @@ work and cancellation controls, recursion limits, variable-frame isolation,
 and decimal-format binding. This compatibility behavior is not admitted for a
 modern static context and does not define a public sequence-constructor type.
 
+The XSLT 1.0 compatibility compiler tolerates and ignores exactly the
+corpus-declared gray-area spelling `xsl:element/@xsl:use-attribute-sets`. The
+standard unqualified instruction attribute remains the only spelling that
+applies a named attribute set. This compile-selected recovery does not admit a
+general rule for XSLT-namespaced instruction attributes, alter modern static
+contexts, or classify the prefixed spelling as standards-conforming syntax.
+
 Result-element assembly has one private ownership rule across literal and
 computed elements plus source and temporary-tree `xsl:copy`: attributes
 produced by nested instructions are absorbed only before child content,
@@ -1170,15 +1242,18 @@ rule.
 An admitted `xsl:key` declaration is immutable compiled stylesheet state: its
 expanded name, bounded match pattern, typed `use` location path, and source
 location compile once and compose additively across admitted stylesheet-module
-graphs. The safe reference implementation for a literal key name and literal
-or finite source-free numeric lookup value performs a complete charged scan of
-the current source document,
-reuses the compiled match and `use` semantics, composes same-name declarations
-additively, and restores document order and node identity after an optional
-location-path tail. A declaration `use` expression may be a typed location
+graphs. The safe reference implementation performs a complete charged scan of
+the current source document, reuses the compiled match and `use` semantics,
+composes same-name declarations additively, and restores document order and
+node identity after an optional location-path tail. Production lookup lazily
+builds a private source-derived index once per referenced expanded key name and
+invocation. The index maps each computed key value to source nodes in document
+order, is retired with the invocation, records its known retained string/vector
+payload in test observations, and remains differential-testable against the
+complete scan. It is never shared across invocations, prepared inputs, workers,
+snapshots, or generations. A declaration `use` expression may be a typed location
 path, string literal, or `number(location-path)`; numeric paths use XSLT 1.0
-first-node conversion under existing work accounting. The reference path does
-not retain an index. Its private node-selection result may feed XSLT 1.0
+first-node conversion under existing work accounting. Its private node-selection result may feed XSLT 1.0
 first-node string conversion, `xsl:for-each`, `xsl:apply-templates`, or the
 existing `xsl:copy-of` source deep-copy path through ordinary typed execution
 plans; those consumers preserve source node identity, document order, focus,
@@ -1190,8 +1265,11 @@ statically resolved attribute has one exact literal value, charging every
 attribute inspected. These forms do not admit general predicate evaluation. A
 literal-name lookup may source its value from a runtime
 variable: atomic and temporary-tree values use XSLT 1.0 string conversion,
-while source-node-set values contribute each node's string value. This does not
-admit a dynamic key name or arbitrary value expression. The same node-set
+while source-node-set values contribute each node's string value. A lookup
+value may also use the existing typed XSLT 1.0 `concat()` plan; its literal,
+variable, and location-path parts evaluate against the lookup call's current
+focus and produce one string value. This does not admit a dynamic key name or
+an arbitrary value expression. The same node-set
 conversion may consume an already typed location path evaluated from the
 call's current principal-source context; cross-document context switching and
 nested key calls remain outside the slice. The typed XSLT 1.0 `count()` value
@@ -1209,24 +1287,29 @@ general function calls into other expression positions. The private
 context-node selection for both value production and identity equality. It
 therefore shares the same stable identity, cardinality checks, diagnostics, and
 work accounting as explicit `generate-id(.)`; it does not create a separate
-ambient-current-node mechanism. The private
+ambient-current-node mechanism. The classic XSLT 1.0
+`generate-id() = generate-id(key(...)[1])` grouping predicate lowers to the
+same typed first-by-key selection and invocation-owned index as the equivalent
+count/union form. Within a typed key lookup value, `current()/location-path`
+is normalized to the existing context path evaluated from the lookup call's
+explicit focus; this does not admit general `current()` expressions or hidden
+ambient focus. The private
 apply/for-each selection plan may union at most eight already typed key
-lookups. It evaluates every alternative through the charged reference scan,
+lookups. It evaluates every alternative through the shared charged selector,
 then restores principal-source document order and removes duplicate node
 identities. This does not admit mixed key/path unions or general union
 expressions. An XSLT 1.0 sort expression may consume the same selector from
 each candidate's context and use the first selected node's string value through
 the ordinary sort typing path. This does not admit arbitrary function-valued
 sort expressions or a sort-specific key index. Any optimized lookup
-structure
-must remain differential-testable against that scan and must be source-derived
-and invocation-owned unless a later review admits another immutable prepared
-representation; it must not become a global or cross-snapshot cache. Variable
+structure must preserve that oracle and ownership unless a later review admits
+another immutable prepared representation; it must not become a global or
+cross-snapshot cache. Variable
 references and recursive `key()` calls in the declaration's `use` expression
 remain static errors. A structurally complete `key()` call with any arity other
 than two reports `XPST0017` before supported-operand selection. One lookup may
 obtain its values from another complete typed lookup; recursive plan depth is
-limited to four and every nested scan remains charged independently. Dynamic
+limited to four and every nested lookup remains charged independently. Dynamic
 key names supplied by one unqualified variable reference are converted through
 XSLT 1.0 string rules and resolved as lexical QNames against immutable
 stylesheet namespaces captured at the call site. Invalid or unbound names
@@ -1247,6 +1330,16 @@ reserved ownership seam, not an accepted metadata schema or requirement to
 implement formal streamability analysis in the first profile. One semantic
 compiler should remain authoritative if later tree, streaming, or hybrid
 execution strategies are admitted.
+
+The private XSLT 1.0 `xsl:number` compatibility lane retains static numbering
+format tokens and uses the standard decimal sequence when a requested token is
+not implemented. A static `lang` hint may be admitted without locale data when
+the selected sequence is provably invariant: decimal tokens accept any literal
+language, and the existing Latin alphabetic sequence accepts `da`, `en`, `fi`,
+`no`, or `sv`. Non-literal language selection, a dynamic format combined with
+`lang`, and every other locale-sensitive combination remain explicitly
+unsupported. Compilation and execution must not consult an ambient host locale
+or imply support for a numbering sequence that FastXSLT does not implement.
 
 ### Runtime
 
@@ -1282,7 +1375,11 @@ strings bypass it; CDATA-selected text normalizes before CDATA construction.
 NFKC, NFKD, and fully-normalized output remain unsupported.
 The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` metadata; `yes` and `no` become declaration pseudo-attributes, while
-`omit` emits none. An explicit serialization version is retained separately
+`omit` emits none. Under XSLT 1.0 compatibility, an effective omitted XML
+declaration also discards `standalone` during compilation, including after
+same-precedence output-declaration merging; modern profiles retain the
+combination for the serializer's normal consistency error. An explicit
+serialization version is retained separately
 from the stylesheet language version; the current bounded lane admits and emits
 only XML `1.0`. XHTML-only content-type metadata remains inert for XML output.
 An unused, uniquely named output declaration may be validated separately from
@@ -1353,8 +1450,10 @@ claim that every HTML serialization rule or comparison case conforms; corpus
 mismatches and HTML-shaped results that the XML-semantic comparator cannot
 assess remain explicit evidence. An environment-supplied default HTML version
 is not inferred. The XSLT 1.0 HTML boolean-attribute set is minimized when an
-unnamespaced value equals its attribute name without ASCII case sensitivity;
-other and namespaced attributes retain quoted serialization. Ordinary HTML
+unnamespaced value equals its attribute name without ASCII case sensitivity and
+the owning element is also unnamespaced; attributes on namespaced foreign
+elements and all other or namespaced attributes retain quoted serialization.
+Ordinary HTML
 attribute values preserve angle brackets and XML whitespace characters rather
 than applying XML attribute escaping; ampersands, double quotes, and C1
 controls retain their required escaped forms. On the XSLT 1.0 no-character-map
@@ -1403,6 +1502,8 @@ CDATA elements use the same
 expanded-name matching and terminator-splitting behavior as XML output, so a
 literal `]]>` becomes adjacent CDATA sections without changing result text.
 DOCTYPE system and public identifiers are retained as compiled output metadata.
+Legacy HTML serialization emits `html` as the DOCTYPE name independently of
+the first result element's name.
 The current serializer emits SYSTEM or paired PUBLIC declarations only for an
 XHTML `html` document element; a public identifier alone is inert. An emitted
 identifier containing both quote forms, or any other result shape, remains

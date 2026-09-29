@@ -705,7 +705,7 @@ impl Document {
     }
 }
 
-fn is_xml_whitespace_only(value: &str) -> bool {
+pub(crate) fn is_xml_whitespace_only(value: &str) -> bool {
     value
         .bytes()
         .all(|byte| matches!(byte, b' ' | b'\t' | b'\r' | b'\n'))

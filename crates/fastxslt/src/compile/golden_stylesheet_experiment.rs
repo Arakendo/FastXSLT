@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
-use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
+use crate::xdm::owned_tree_experiment::{
+    Document, NodeId, NodeKind, SourceLocation, is_xml_whitespace_only,
+};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
@@ -537,6 +539,10 @@ fn compile_key_definition(
     }
     let use_expression = if let Some(literal) = xpath_string_literal(lexical_use) {
         KeyUseExpression::LiteralString(literal.to_owned())
+    } else if let Some(expression) =
+        compile_xslt10_key_concat(document, element, lexical_use, document.location(element))?
+    {
+        KeyUseExpression::Xslt10Concat(expression)
     } else if let Some(alternatives) = instruction_compiler::split_top_level_union(lexical_use) {
         let alternatives = alternatives
             .into_iter()
@@ -575,6 +581,36 @@ fn compile_key_definition(
         use_expression,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_xslt10_key_concat(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<
+    Option<Box<crate::xslt::golden_semantics_experiment::Xslt10ConcatExpression>>,
+    CompileFailure,
+> {
+    if !instruction_compiler::uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let Some(expression) = instruction_compiler::value_expression_compiler::compile_xslt10_concat(
+        document, element, expression, location,
+    )?
+    else {
+        return Ok(None);
+    };
+    if !expression.parts.iter().all(|part| {
+        matches!(
+            part,
+            crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::Literal(_)
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::Path(_)
+        )
+    }) {
+        return Ok(None);
+    }
+    Ok(Some(Box::new(expression)))
 }
 
 fn contains_xpath_variable_or_key_call(expression: &str) -> bool {
@@ -877,10 +913,25 @@ fn global_dependencies(default: &GlobalBindingDefault) -> impl Iterator<Item = &
         | GlobalBindingDefault::Xslt10ConditionalText { variable, .. } => {
             dependencies.push(variable.as_str());
         }
+        GlobalBindingDefault::Xslt10Concat(expression) => {
+            dependencies.extend(expression.parts.iter().filter_map(|part| match part {
+                crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::Variable(name) => {
+                    Some(name.as_str())
+                }
+                crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::Literal(_)
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::VariablePosition {
+                    ..
+                }
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::Path(_)
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::SumPath(_) => None,
+            }));
+        }
         GlobalBindingDefault::Xslt10TemporaryTextParts(parts) => {
             dependencies.extend(parts.iter().filter_map(|part| match part {
                 Xslt10TemporaryTextPart::Variable(name) => Some(name.as_str()),
-                Xslt10TemporaryTextPart::Text(_) | Xslt10TemporaryTextPart::SourcePath(_) => None,
+                Xslt10TemporaryTextPart::Text(_)
+                | Xslt10TemporaryTextPart::Message(_)
+                | Xslt10TemporaryTextPart::SourcePath(_) => None,
             }));
         }
         _ => {}
@@ -1115,7 +1166,7 @@ fn compile_global_binding(
     };
     if required
         && (optional_attribute(document, element, None, "select").is_some()
-            || !document.string_value(element).trim().is_empty())
+            || !is_xml_whitespace_only(&document.string_value(element)))
     {
         return Err(invalid(
             "FXST0026",
@@ -1153,6 +1204,8 @@ fn compile_global_default(
             compile_xslt10_source_variable_path_global(document, element, select)?
         {
             Ok(GlobalBindingDefault::SourceVariablePath { variable, path })
+        } else if let Some(concat) = compile_xslt10_global_concat(document, element, select)? {
+            Ok(concat)
         } else if let Some(variable) = compile_variable_global(select, document.location(element))?
         {
             Ok(variable)
@@ -1222,6 +1275,37 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::TemporaryText(value))
         }
     }
+}
+
+fn compile_xslt10_global_concat(
+    document: &Document,
+    element: NodeId,
+    select: &str,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    if !instruction_compiler::uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let Some(expression) = instruction_compiler::value_expression_compiler::compile_xslt10_concat(
+        document,
+        element,
+        select,
+        document.location(element),
+    )?
+    else {
+        return Ok(None);
+    };
+    if !expression.parts.iter().all(|part| {
+        matches!(
+            part,
+            crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::Literal(_)
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::Variable(_)
+        )
+    }) {
+        return Ok(None);
+    }
+    Ok(Some(GlobalBindingDefault::Xslt10Concat(Box::new(
+        expression,
+    ))))
 }
 
 fn text_only_global_constructor_value(
@@ -1442,6 +1526,7 @@ fn compile_xslt10_temporary_text_parts(
                 || is_xslt_element(document, *child, "value-of")
                 || is_xslt_element(document, *child, "variable")
                 || is_xslt_element(document, *child, "text")
+                || is_xslt_element(document, *child, "message")
         })
     {
         return Ok(None);
@@ -1459,6 +1544,13 @@ fn compile_xslt10_temporary_text_parts(
             parts.push(Xslt10TemporaryTextPart::Text(
                 instruction_compiler::compile_text_value(document, child)?,
             ));
+            continue;
+        }
+        if is_xslt_element(document, child, "message") {
+            let Some(value) = compile_xslt10_static_global_message(document, child)? else {
+                return Ok(None);
+            };
+            parts.push(Xslt10TemporaryTextPart::Message(value));
             continue;
         }
         if is_xslt_element(document, child, "variable") {
@@ -1501,6 +1593,28 @@ fn compile_xslt10_temporary_text_parts(
         }
     }
     Ok(Some(GlobalBindingDefault::Xslt10TemporaryTextParts(parts)))
+}
+
+fn compile_xslt10_static_global_message(
+    document: &Document,
+    element: NodeId,
+) -> Result<Option<String>, CompileFailure> {
+    ensure_only_attributes(document, element, &["terminate"], "xsl:message")?;
+    if !matches!(
+        optional_attribute(document, element, None, "terminate"),
+        None | Some("no")
+    ) {
+        return Ok(None);
+    }
+    let instructions = instruction_compiler::compile_sequence(document, element)?;
+    let mut value = String::new();
+    for instruction in instructions {
+        let Instruction::Text { value: part, .. } = instruction else {
+            return Ok(None);
+        };
+        value.push_str(&part);
+    }
+    Ok(Some(value))
 }
 
 fn compile_xslt10_conditional_text(
@@ -2770,6 +2884,9 @@ pub(super) fn ensure_only_attributes(
         if is_ignored_xslt10_extension_attribute(document, element, *attribute) {
             continue;
         }
+        if is_ignored_xslt10_prefixed_instruction_attribute(document, element, *attribute) {
+            continue;
+        }
         if instruction_compiler::uses_xslt10_forward_compatible_processing(document, element)
             && (name.namespace.is_some() || !allowed.contains(&name.local.as_str()))
         {
@@ -2788,6 +2905,24 @@ pub(super) fn ensure_only_attributes(
         }
     }
     Ok(())
+}
+
+fn is_ignored_xslt10_prefixed_instruction_attribute(
+    document: &Document,
+    element: NodeId,
+    attribute: NodeId,
+) -> bool {
+    let element_name = document
+        .name(element)
+        .expect("instruction elements have expanded names");
+    let attribute_name = document
+        .name(attribute)
+        .expect("attribute nodes have expanded names");
+    instruction_compiler::uses_xslt10_compatibility(document, element)
+        && element_name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+        && element_name.local == "element"
+        && attribute_name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+        && attribute_name.local == "use-attribute-sets"
 }
 
 pub(super) fn is_ignored_xslt10_extension_attribute(
@@ -2829,11 +2964,7 @@ pub(super) fn meaningful_children(document: &Document, parent: NodeId) -> Vec<No
         .copied()
         .filter(|child| match document.kind(*child) {
             NodeKind::Comment | NodeKind::ProcessingInstruction => false,
-            NodeKind::Text => !document
-                .value(*child)
-                .unwrap_or_default()
-                .chars()
-                .all(char::is_whitespace),
+            NodeKind::Text => !is_xml_whitespace_only(document.value(*child).unwrap_or_default()),
             _ => true,
         })
         .collect()

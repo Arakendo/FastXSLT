@@ -28,10 +28,12 @@ finite, nonzero double binding rather than becoming a path or cast expression.
 ## Corpus observation
 
 Unchanged cases `Microsoft/XSLTFunctions__minimalValue` and
-`Microsoft/XSLTFunctions__minimumValue` now initialize and execute. Both remain
-uncredited visible mismatches. Their archival expected outputs use a legacy
-scientific rendering for the subnormal value, and both cases carry the suite's
-doubt metadata; FastXSLT retains the XPath 1.0 decimal string form.
+`Microsoft/XSLTFunctions__minimumValue` now initialize and execute. Their
+archival expected outputs use a legacy scientific rendering for the subnormal
+value, and both cases carry the suite's doubt metadata; FastXSLT retains the
+XPath 1.0 decimal string form. A later standards review assigns both references
+exact, uncredited unusable-reference dispositions rather than leaving them as
+ordinary mismatches.
 
 Consequently:
 
@@ -53,4 +55,3 @@ cargo test -p fastxslt xslt10_local_numeric_literal_retains_double_value
 ./scripts/measure-oasis-xslt10.ps1
 ./scripts/verify.ps1
 ```
-

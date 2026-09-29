@@ -17,10 +17,11 @@ use crate::xpath::path_experiment::{
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, ConstructedNode, GlobalBinding, GlobalBindingDefault, StylesheetProgram,
     Template, TemplateArgument, TemplateArgumentValue, TemplateParameterDefault,
-    Xslt10ContentArgument,
+    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10ContentArgument,
 };
 
 use super::dynamic_document::DynamicDocument;
+use super::key_lookup::KeyIndexCache;
 use super::result_tree::ResultNode;
 use super::template_selector::DocumentRootedMatchCache;
 use super::value_evaluator::{
@@ -39,6 +40,7 @@ pub(super) struct SequenceInputs<'a> {
     pub(super) globals: &'a RuntimeGlobals,
     pub(super) multiple_match_policy: MultipleMatchPolicy,
     pub(super) document_rooted_matches: RefCell<DocumentRootedMatchCache>,
+    pub(super) key_indexes: RefCell<KeyIndexCache>,
     pub(super) complete_atomic_frame_clones: bool,
     pub(super) resource_snapshot: Option<&'a ResourceSnapshot>,
     pub(super) denied_resources: Option<&'a HashSet<String>>,
@@ -762,6 +764,11 @@ fn materialize_global_default(
                 globals, binding, variable, path, source, request_id, control,
             )?;
         }
+        GlobalBindingDefault::Xslt10Concat(expression) => {
+            materialize_global_xslt10_concat(
+                globals, binding, expression, source, request_id, control,
+            )?;
+        }
         GlobalBindingDefault::TemporaryTree(nodes) => {
             let tree = materialize_temporary_nodes(nodes, source, request_id, control)?;
             globals.temporary_trees.insert(binding.name.clone(), tree);
@@ -881,6 +888,41 @@ fn bind_global_atomic(globals: &mut RuntimeGlobals, binding: &GlobalBinding, val
     Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value);
 }
 
+fn materialize_global_xslt10_concat(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    expression: &Xslt10ConcatExpression,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let mut value = String::new();
+    for part in &expression.parts {
+        match part {
+            Xslt10ConcatPart::Literal(literal) => value.push_str(literal),
+            Xslt10ConcatPart::Variable(name) => {
+                value.push_str(&global_string_value(
+                    globals, name, source, request_id, control,
+                )?);
+            }
+            Xslt10ConcatPart::VariablePosition { .. }
+            | Xslt10ConcatPart::Path(_)
+            | Xslt10ConcatPart::SumPath(_) => {
+                unreachable!("global concat compilation admits literal and variable parts only")
+            }
+        }
+    }
+    bind_global_atomic(
+        globals,
+        binding,
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::String, value),
+    );
+    Ok(())
+}
+
 fn materialize_global_number(
     globals: &mut RuntimeGlobals,
     binding: &GlobalBinding,
@@ -990,6 +1032,14 @@ fn materialize_xslt10_temporary_text_parts(
     for part in parts {
         match part {
             Xslt10TemporaryTextPart::Text(text) => value.push_str(text),
+            Xslt10TemporaryTextPart::Message(message) => {
+                control
+                    .charge(WorkDomain::XsltInstruction, 2)
+                    .and_then(|()| control.charge(WorkDomain::ResultNode, 1))
+                    .and_then(|()| control.charge(WorkDomain::ResultTextByte, message.len()))
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                control.record_message(message.clone());
+            }
             Xslt10TemporaryTextPart::Variable(name) => {
                 value.push_str(&global_string_value(
                     globals, name, source, request_id, control,

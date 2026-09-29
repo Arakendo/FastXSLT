@@ -408,6 +408,11 @@ pub(super) fn parse_apply_selection(
         ));
     }
     if uses_xslt10_compatibility(document, element) {
+        if let Some(selection) =
+            parse_xslt10_muenchian_key_group(document, element, expression, &location)?
+        {
+            return Ok(selection);
+        }
         if let Some(argument) =
             super::value_expression_compiler::compile_xslt10_id_without_typed_ids(
                 expression, &location,
@@ -429,6 +434,12 @@ pub(super) fn parse_apply_selection(
         return Ok(selection);
     }
     if let Some(selection) = parse_apply_union(document, element, expression, &location)? {
+        return Ok(selection);
+    }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(selection) =
+            parse_grouped_path_union_suffix(document, element, expression, &location)?
+    {
         return Ok(selection);
     }
     if let Some((start, end)) = expression.split_once(" to ").and_then(|(start, end)| {
@@ -527,6 +538,79 @@ pub(super) fn parse_apply_selection(
         ));
     }
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
+}
+
+fn parse_xslt10_muenchian_key_group(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    let Some(open) = expression.find('[') else {
+        return Ok(None);
+    };
+    let Some(predicate) = expression[open + 1..].strip_suffix(']') else {
+        return Ok(None);
+    };
+    let Some(predicate) = compact_xpath_whitespace(predicate) else {
+        return Ok(None);
+    };
+    let key = predicate
+        .strip_prefix("count(.|")
+        .and_then(|value| value.strip_suffix(")=1"))
+        .or_else(|| {
+            predicate
+                .strip_prefix("generate-id()=generate-id(")
+                .and_then(|value| value.strip_suffix(')'))
+        })
+        .or_else(|| {
+            predicate
+                .strip_prefix("generate-id(")
+                .and_then(|value| value.strip_suffix(")=generate-id()"))
+        })
+        .filter(|value| value.starts_with("key(") && value.ends_with("[1]"));
+    let Some(key) = key else {
+        return Ok(None);
+    };
+    let selection = expression[..open].trim();
+    let selection = if selection.starts_with("key(") {
+        crate::xslt::golden_semantics_experiment::Xslt10MuenchianSelection::KeyLookup(Box::new(
+            super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+                document, element, selection, location,
+            )?,
+        ))
+    } else {
+        crate::xslt::golden_semantics_experiment::Xslt10MuenchianSelection::LocationPath(
+            parse_selection_path(document, element, selection, location.clone())?,
+        )
+    };
+    let first = super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+        document, element, key, location,
+    )?;
+    Ok(Some(ApplySelection::Xslt10MuenchianKeyGroup {
+        selection,
+        first: Box::new(first),
+    }))
+}
+
+fn compact_xpath_whitespace(expression: &str) -> Option<String> {
+    let mut quote = None;
+    let mut compact = String::with_capacity(expression.len());
+    for character in expression.chars() {
+        match quote {
+            Some(active) if character == active => {
+                quote = None;
+                compact.push(character);
+            }
+            None if matches!(character, '\'' | '"') => {
+                quote = Some(character);
+                compact.push(character);
+            }
+            None if character.is_ascii_whitespace() => {}
+            Some(_) | None => compact.push(character),
+        }
+    }
+    quote.is_none().then_some(compact)
 }
 
 fn parse_literal_document_selection(expression: &str) -> Option<(&str, Option<&str>, bool)> {
@@ -670,6 +754,66 @@ fn parse_apply_union(
     } else {
         ApplySelection::PathUnion(paths)
     }))
+}
+
+fn parse_grouped_path_union_suffix(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    let Some((union, suffix)) = grouped_union_and_suffix(expression) else {
+        return Ok(None);
+    };
+    let Some(alternatives) = split_top_level_union(union) else {
+        return Ok(None);
+    };
+    if alternatives.len() > 8 {
+        return Err(unsupported(
+            "FXXP1023",
+            "the admitted XSLT 1.0 grouped path union is limited to eight alternatives",
+            location,
+        ));
+    }
+    let paths = alternatives
+        .into_iter()
+        .map(|alternative| {
+            parse_selection_path(
+                document,
+                element,
+                &format!("{}{suffix}", alternative.trim()),
+                location.clone(),
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Some(ApplySelection::PathUnion(paths)))
+}
+
+fn grouped_union_and_suffix(expression: &str) -> Option<(&str, &str)> {
+    let expression = expression.trim();
+    if !expression.starts_with('(') {
+        return None;
+    }
+    let mut depth = 0usize;
+    let mut quote = None;
+    for (index, character) in expression.char_indices() {
+        match quote {
+            Some(active) if character == active => quote = None,
+            None if matches!(character, '\'' | '"') => quote = Some(character),
+            None if character == '(' => depth += 1,
+            None if character == ')' => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    let suffix = expression[index + 1..].trim_start();
+                    return suffix
+                        .starts_with('/')
+                        .then_some((&expression[1..index], suffix));
+                }
+            }
+            Some(_) | None => {}
+        }
+    }
+    None
 }
 
 fn parse_xslt10_path_union_position(

@@ -8,4 +8,6 @@ pub(crate) mod prepared_input_experiment;
 pub(crate) mod workbench_experiment;
 
 #[cfg(all(test, feature = "workbench"))]
+mod oasis_html_comparator;
+#[cfg(all(test, feature = "workbench"))]
 mod oasis_xslt10_measurement_tests;

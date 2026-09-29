@@ -3,6 +3,10 @@
 Date: 2026-09-23  
 Status: Local compatibility evidence
 
+Follow-up: dynamic grouping AVTs were admitted on 2026-09-28 while retaining
+the one-character effective-value rule. See
+[OASIS XSLT 1.0 Dynamic Number Grouping AVTs](oasis-xslt10-dynamic-number-grouping-avts-2026-09-28.md).
+
 ## Question
 
 Does a statically known invalid effective value for the AVT-capable
@@ -34,7 +38,8 @@ case uses genuinely dynamic grouping expressions and stays unsupported.
 - Valid static grouping behavior is unchanged.
 - Detecting a statically known effective-value error during compilation does
   not redefine it as a stylesheet-grammar restriction.
-- General grouping AVTs and their runtime validation are not admitted.
+- General grouping AVTs were not admitted by this tranche; the linked follow-up
+  later admits the bounded typed subset and invocation-time validation.
 - This is compatibility evidence from a locally acquired archive, not a
   conformance claim.
 

@@ -14,7 +14,7 @@ use super::{
     SourceWhitespacePolicy, StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue,
     TemplateParameter, TemplateParameterDefault, ValueExpression, VariableFilteredElementPath,
     Xslt10ApplyUnionPart, Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName,
-    Xslt10KeyValue, Xslt10TemporaryTextPart,
+    Xslt10KeyValue, Xslt10MuenchianSelection, Xslt10TemporaryTextPart,
 };
 
 impl StylesheetProgram {
@@ -102,6 +102,9 @@ fn key_definition_owned(value: &KeyDefinition) -> usize {
                 vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
             }
             KeyUseExpression::LiteralString(value) => value.capacity(),
+            KeyUseExpression::Xslt10Concat(expression) => {
+                size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
+            }
         }
         + location_owned(&value.location)
 }
@@ -210,6 +213,7 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             GlobalBindingDefault::SourceVariablePath { variable, path } => {
                 variable.capacity() + path.known_owned_capacity_bytes()
             }
+            GlobalBindingDefault::Xslt10Concat(expression) => xslt10_concat_owned(expression),
             GlobalBindingDefault::Atomic(value) => value.known_owned_capacity_bytes(),
             GlobalBindingDefault::EmptySequence | GlobalBindingDefault::Integer(_) => 0,
             GlobalBindingDefault::DoubleDivision {
@@ -231,6 +235,7 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             GlobalBindingDefault::Xslt10TemporaryTextParts(parts) => {
                 vec_owned(parts, |part| match part {
                     Xslt10TemporaryTextPart::Text(value)
+                    | Xslt10TemporaryTextPart::Message(value)
                     | Xslt10TemporaryTextPart::Variable(value) => value.capacity(),
                     Xslt10TemporaryTextPart::SourcePath(path) => path.known_owned_capacity_bytes(),
                 })
@@ -296,7 +301,9 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         | MatchPattern::AnyElement
         | MatchPattern::AnyAttribute
         | MatchPattern::AnyElementNumberEquals(_) => 0,
-        MatchPattern::DocumentElement(name) => name.as_ref().map_or(0, name_owned),
+        MatchPattern::DocumentElement(name) | MatchPattern::DocumentChildElement(name) => {
+            name.as_ref().map_or(0, name_owned)
+        }
         MatchPattern::Element(name) | MatchPattern::Attribute(name) => name_owned(name),
         MatchPattern::ProcessingInstructionNamed(target) => target.capacity(),
         MatchPattern::ElementLocal(value)
@@ -435,6 +442,15 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
             .as_ref()
             .map_or(0, LocationPath::known_owned_capacity_bytes),
         ApplySelection::Xslt10KeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
+        ApplySelection::Xslt10MuenchianKeyGroup { selection, first } => {
+            (match selection {
+                Xslt10MuenchianSelection::LocationPath(path) => path.known_owned_capacity_bytes(),
+                Xslt10MuenchianSelection::KeyLookup(lookup) => {
+                    size_of_val(lookup.as_ref()) + xslt10_key_lookup_owned(lookup)
+                }
+            }) + size_of_val(first.as_ref())
+                + xslt10_key_lookup_owned(first)
+        }
         ApplySelection::Xslt10KeyUnion(lookups) => vec_owned(lookups, xslt10_key_lookup_owned),
         ApplySelection::Xslt10MixedUnion(alternatives) => {
             vec_owned(alternatives, |alternative| match alternative {
@@ -509,6 +525,9 @@ fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
     }) + match &lookup.value {
         Xslt10KeyValue::Static(value) | Xslt10KeyValue::Variable(value) => value.capacity(),
         Xslt10KeyValue::ContextPath(path) => path.known_owned_capacity_bytes(),
+        Xslt10KeyValue::Concat(expression) => {
+            size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
+        }
         Xslt10KeyValue::NestedLookup(lookup) => xslt10_key_lookup_owned(lookup),
     } + lookup
         .predicate
@@ -927,7 +946,9 @@ fn local_atomic_variable_owned(
 
 fn number_value_owned(value: Option<&super::NumberValue>) -> usize {
     value.map_or(0, |value| match value {
-        super::NumberValue::Literal(value) => value.capacity(),
+        super::NumberValue::Literal(value) | super::NumberValue::Xslt10Variable(value) => {
+            value.capacity()
+        }
         super::NumberValue::ContextPosition | super::NumberValue::ContextItem => 0,
         super::NumberValue::Xslt10FirstNodePath(path) => path.known_owned_capacity_bytes(),
         super::NumberValue::BinaryNumeric(expression) => expression.known_owned_capacity_bytes(),
@@ -941,6 +962,7 @@ fn number_instruction_owned(instruction: &Instruction) -> usize {
         count,
         from,
         format,
+        grouping,
         xslt10_compatibility: _,
         location,
     } = instruction
@@ -960,6 +982,22 @@ fn number_instruction_owned(instruction: &Instruction) -> usize {
             super::NumberFormatPlan::Xslt10Variable(variable)
             | super::NumberFormatPlan::Variable(variable) => variable.capacity(),
         }
+        + grouping.as_ref().map_or(0, |grouping| {
+            let separator = match &grouping.separator {
+                super::NumberGroupingSeparatorPlan::Static(_) => 0,
+                super::NumberGroupingSeparatorPlan::Xslt10Variable(value) => value.capacity(),
+                super::NumberGroupingSeparatorPlan::Xslt10Concat(expression) => {
+                    xslt10_concat_owned(expression)
+                }
+            };
+            let size = match &grouping.size {
+                super::NumberGroupingSizePlan::Static(_) => 0,
+                super::NumberGroupingSizePlan::Xslt10Numeric(expression) => {
+                    expression.known_owned_capacity_bytes()
+                }
+            };
+            separator + size
+        })
         + location_owned(location)
 }
 
@@ -1115,6 +1153,9 @@ fn sort_key_owned(sort: &SortKey) -> usize {
         SortSelect::LocationPath(path)
         | SortSelect::CountPath(path)
         | SortSelect::NumberPath(path) => path.known_owned_capacity_bytes(),
+        SortSelect::Xslt10BinaryNumeric(expression) => {
+            size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
+        }
         SortSelect::Xslt10VariablePositionPath { path, variable, .. } => {
             path.known_owned_capacity_bytes() + variable.capacity()
         }

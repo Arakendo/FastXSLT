@@ -1,7 +1,9 @@
 //! Private compilation of XSLT sequence constructors and instructions.
 
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
-use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
+use crate::xdm::owned_tree_experiment::{
+    Document, NodeId, NodeKind, SourceLocation, is_xml_whitespace_only,
+};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::case_conversion_experiment::{
     CaseConversionParseFailure, parse as parse_case_conversion,
@@ -494,7 +496,7 @@ fn compile_literal_text_node(
     preserve_whitespace: bool,
 ) -> Result<Option<Instruction>, CompileFailure> {
     let value = document.value(node).unwrap_or_default();
-    if !preserve_whitespace && value.chars().all(char::is_whitespace) {
+    if !preserve_whitespace && is_xml_whitespace_only(value) {
         return Ok(None);
     }
     if effective_expand_text(document, node)? {
@@ -579,7 +581,7 @@ fn text_run_contains_non_whitespace(
         document.kind(*sibling) == NodeKind::Text
             && document
                 .value(*sibling)
-                .is_some_and(|value| !value.chars().all(char::is_whitespace))
+                .is_some_and(|value| !is_xml_whitespace_only(value))
     })
 }
 
@@ -1600,6 +1602,13 @@ fn compile_sort_select(
         )?
     {
         return Ok(SortSelect::Xslt10PathSubstring(Box::new(expression)));
+    }
+    if xslt10_compatibility
+        && let Some(expression) = value_expression_compiler::compile_xslt10_binary_numeric(
+            document, sort, select, location,
+        )
+    {
+        return Ok(SortSelect::Xslt10BinaryNumeric(Box::new(expression)));
     }
     if let Some(alternatives) = split_top_level_union(select) {
         let alternatives = alternatives

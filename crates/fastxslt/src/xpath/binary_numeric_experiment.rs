@@ -36,6 +36,7 @@ pub(crate) enum BinaryNumericNode {
         negate: bool,
     },
     PathUnion(Vec<LocationPath>),
+    CountPath(LocationPath),
     Literal(ExactRational),
     Variable(String),
     ContextPosition,
@@ -66,6 +67,7 @@ pub(crate) fn fold_source_free(root: &BinaryNumericNode) -> Option<String> {
             } => apply_operator(evaluate(left)?, *operator, evaluate(right)?).ok(),
             BinaryNumericNode::Path { .. }
             | BinaryNumericNode::PathUnion(_)
+            | BinaryNumericNode::CountPath(_)
             | BinaryNumericNode::Variable(_)
             | BinaryNumericNode::ContextPosition
             | BinaryNumericNode::ContextSize => None,
@@ -86,7 +88,7 @@ impl BinaryNumericNode {
     #[cfg(feature = "workbench")]
     fn known_owned_capacity_bytes(&self) -> usize {
         match self {
-            Self::Path { path, .. } => path.known_owned_capacity_bytes(),
+            Self::Path { path, .. } | Self::CountPath(path) => path.known_owned_capacity_bytes(),
             Self::PathUnion(alternatives) => {
                 alternatives.capacity() * std::mem::size_of::<LocationPath>()
                     + alternatives
@@ -132,7 +134,8 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
             '+' | '-' | '*' if depth == 0 => {
                 if character == '*'
                     && (expression[..index].ends_with('/')
-                        || expression[index + 1..].starts_with('/'))
+                        || expression[index + 1..].starts_with('/')
+                        || expression[index + 1..].trim().is_empty())
                 {
                     continue;
                 }
@@ -145,6 +148,8 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                         && bytes[index + 1..].first().is_some_and(|byte| {
                             byte.is_ascii_alphanumeric() || matches!(byte, b'$' | b'_')
                         }))
+                    && !(bytes[..index].last().is_some_and(u8::is_ascii_digit)
+                        && bytes[index + 1..].first() == Some(&b'*'))
                     && !expression[..index].ends_with([')', ']'])
                 {
                     continue;
@@ -168,14 +173,26 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
             'd' if depth == 0
                 && expression[index..].starts_with("div")
                 && operator_keyword_left_boundary(&expression[..index])
-                && expression[index + 3..].starts_with(char::is_whitespace) =>
+                && !immediately_follows_operator(
+                    expression,
+                    index,
+                    additive_candidate,
+                    multiplicative_candidate,
+                )
+                && operator_keyword_right_boundary(&expression[index + 3..]) =>
             {
                 multiplicative_candidate = Some((index, BinaryNumericOperator::Divide, 3));
             }
             'm' if depth == 0
                 && expression[index..].starts_with("mod")
                 && operator_keyword_left_boundary(&expression[..index])
-                && expression[index + 3..].starts_with(char::is_whitespace) =>
+                && !immediately_follows_operator(
+                    expression,
+                    index,
+                    additive_candidate,
+                    multiplicative_candidate,
+                )
+                && operator_keyword_right_boundary(&expression[index + 3..]) =>
             {
                 multiplicative_candidate = Some((index, BinaryNumericOperator::Modulo, 3));
             }
@@ -205,6 +222,32 @@ fn is_left_spaced_binary_minus(expression: &str, index: usize) -> bool {
 
 fn operator_keyword_left_boundary(left: &str) -> bool {
     left.ends_with(char::is_whitespace) || left.ends_with([')', ']'])
+}
+
+fn immediately_follows_operator(
+    expression: &str,
+    index: usize,
+    additive_candidate: Option<(usize, BinaryNumericOperator, usize)>,
+    multiplicative_candidate: Option<(usize, BinaryNumericOperator, usize)>,
+) -> bool {
+    [additive_candidate, multiplicative_candidate]
+        .into_iter()
+        .flatten()
+        .map(|(operator_index, _, width)| operator_index + width)
+        .filter(|operator_end| *operator_end <= index)
+        .max()
+        .is_some_and(|operator_end| expression[operator_end..index].trim().is_empty())
+}
+
+fn operator_keyword_right_boundary(right: &str) -> bool {
+    right
+        .chars()
+        .next()
+        .is_some_and(|character| character.is_whitespace() || !is_xpath_name_character(character))
+}
+
+fn is_xpath_name_character(character: char) -> bool {
+    character == '_' || character == '-' || character == '.' || character.is_alphanumeric()
 }
 
 pub(crate) fn signed_path(expression: &str) -> Option<(&str, bool)> {
@@ -283,6 +326,7 @@ fn evaluate_node<VariableFailure>(
             selected_operand_value(document, &selected, false, selection, control)
                 .map_err(lift_failure)
         }
+        BinaryNumericNode::CountPath(path) => count_path(document, context, path, control),
         BinaryNumericNode::Literal(value) => Ok(*value),
         BinaryNumericNode::ContextPosition => {
             focus_numeric_value(focus.map(|focus| focus.0), control)
@@ -367,6 +411,21 @@ fn evaluate_node<VariableFailure>(
             apply_operator(left, *operator, right).map_err(lift_failure)
         }
     }
+}
+
+fn count_path<VariableFailure>(
+    document: &Document,
+    context: NodeId,
+    path: &LocationPath,
+    control: &mut InvocationControl,
+) -> Result<ExactRational, BinaryNumericEvaluationFailure<VariableFailure>> {
+    let selected = evaluate_location_path_controlled(document, context, path, control)
+        .map_err(BinaryNumericEvaluationFailure::Control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(BinaryNumericEvaluationFailure::Control)?;
+    ExactRational::parse_decimal(&selected.len().to_string())
+        .ok_or(BinaryNumericEvaluationFailure::Overflow)
 }
 
 fn focus_numeric_value<VariableFailure>(
@@ -719,6 +778,22 @@ mod tests {
         assert_eq!(
             split_paths("(n1*n2)div n3"),
             Some(("n1*n2", BinaryNumericOperator::Divide, "n3"))
+        );
+        assert_eq!(
+            split_paths("54 div*"),
+            Some(("54", BinaryNumericOperator::Divide, "*"))
+        );
+        assert_eq!(
+            split_paths("' 6 '*div"),
+            Some(("' 6 '", BinaryNumericOperator::Multiply, "div"))
+        );
+        assert_eq!(
+            split_paths("div/@attrib div mod/@attrib"),
+            Some(("div/@attrib", BinaryNumericOperator::Divide, "mod/@attrib"))
+        );
+        assert_eq!(
+            split_paths("div/@attrib mod mod/@attrib"),
+            Some(("div/@attrib", BinaryNumericOperator::Modulo, "mod/@attrib"))
         );
         assert_eq!(
             split_paths("-n-2 --n-1"),

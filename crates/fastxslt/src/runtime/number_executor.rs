@@ -1,10 +1,13 @@
 //! Private execution of the admitted `xsl:number` surface.
 
+use std::borrow::Cow;
+
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, NumberFormat, NumberFormatPlan, NumberGrouping, NumberLevel, NumberPattern,
+    Instruction, NumberFormat, NumberFormatPlan, NumberGrouping, NumberGroupingPlan,
+    NumberGroupingSeparatorPlan, NumberGroupingSizePlan, NumberLevel, NumberPattern,
     NumberPositionPredicate, NumberTokenStyle, NumberValue, parse_admitted_number_format,
 };
 
@@ -41,42 +44,22 @@ pub(super) fn evaluate(
         count,
         from,
         format,
+        grouping,
         xslt10_compatibility,
         ..
     } = instruction
     else {
         unreachable!("number execution receives only number instructions")
     };
-    let owned_format;
-    let format = match format {
-        NumberFormatPlan::Static(format) => format,
-        NumberFormatPlan::Xslt10Variable(variable) => {
-            let lexical = value_evaluator::xslt10_variable_string_value(
-                inputs, variable, variables, control,
-            )?;
-            owned_format = parse_admitted_number_format(&lexical).ok_or_else(|| {
-                failure(
-                    "FXRT1017",
-                    FailureCategory::Unsupported,
-                    Some(inputs.request_id),
-                    format!("unsupported dynamic xsl:number format token: {lexical}"),
-                )
-            })?;
-            &owned_format
-        }
-        NumberFormatPlan::Variable(variable) => {
-            let lexical = dynamic_variable_string_value(inputs, variable, variables, control)?;
-            owned_format = parse_admitted_number_format(&lexical).ok_or_else(|| {
-                failure(
-                    "FXRT1017",
-                    FailureCategory::Unsupported,
-                    Some(inputs.request_id),
-                    format!("unsupported dynamic xsl:number format token: {lexical}"),
-                )
-            })?;
-            &owned_format
-        }
-    };
+    let format = resolve_number_format(
+        inputs,
+        execution,
+        format,
+        grouping.as_deref(),
+        variables,
+        control,
+    )?;
+    let format = format.as_ref();
     let formatted = if let Some(value) = value {
         control
             .charge(WorkDomain::XPathOperation, 1)
@@ -129,6 +112,120 @@ pub(super) fn evaluate(
         }
     };
     Ok(formatted)
+}
+
+fn resolve_number_format<'a>(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    plan: &'a NumberFormatPlan,
+    grouping: Option<&NumberGroupingPlan>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Cow<'a, NumberFormat>, ExecutionFailure> {
+    let mut format = match plan {
+        NumberFormatPlan::Static(format) => Cow::Borrowed(format),
+        NumberFormatPlan::Xslt10Variable(variable) => {
+            let lexical = value_evaluator::xslt10_variable_string_value(
+                inputs, variable, variables, control,
+            )?;
+            Cow::Owned(parse_dynamic_number_format(inputs, &lexical)?)
+        }
+        NumberFormatPlan::Variable(variable) => {
+            let lexical = dynamic_variable_string_value(inputs, variable, variables, control)?;
+            Cow::Owned(parse_dynamic_number_format(inputs, &lexical)?)
+        }
+    };
+    if let Some(grouping) = grouping {
+        format.to_mut().grouping = Some(evaluate_grouping(
+            inputs, execution, grouping, variables, control,
+        )?);
+    }
+    Ok(format)
+}
+
+fn parse_dynamic_number_format(
+    inputs: &SequenceInputs<'_>,
+    lexical: &str,
+) -> Result<NumberFormat, ExecutionFailure> {
+    parse_admitted_number_format(lexical).ok_or_else(|| {
+        failure(
+            "FXRT1017",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            format!("unsupported dynamic xsl:number format token: {lexical}"),
+        )
+    })
+}
+
+fn evaluate_grouping(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    plan: &NumberGroupingPlan,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<NumberGrouping, ExecutionFailure> {
+    let separator = match &plan.separator {
+        NumberGroupingSeparatorPlan::Static(separator) => *separator,
+        NumberGroupingSeparatorPlan::Xslt10Variable(variable) => {
+            let lexical = value_evaluator::xslt10_variable_string_value(
+                inputs, variable, variables, control,
+            )?;
+            effective_grouping_separator(inputs, &lexical)?
+        }
+        NumberGroupingSeparatorPlan::Xslt10Concat(expression) => {
+            let lexical = value_evaluator::evaluate_xslt10_concat(
+                inputs,
+                execution.node,
+                expression,
+                variables,
+                control,
+            )?;
+            effective_grouping_separator(inputs, &lexical)?
+        }
+    };
+    let size = match &plan.size {
+        NumberGroupingSizePlan::Static(size) => *size,
+        NumberGroupingSizePlan::Xslt10Numeric(expression) => {
+            value_evaluator::evaluate_binary_numeric_value(
+                inputs,
+                execution.node,
+                execution.sequence_focus(),
+                expression,
+                variables,
+                control,
+            )?
+            .parse::<usize>()
+            .ok()
+            .filter(|size| *size != 0)
+            .ok_or_else(|| {
+                failure(
+                    "XTDE0030",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "xsl:number grouping-size AVT did not evaluate to a positive integer",
+                )
+            })?
+        }
+    };
+    Ok(NumberGrouping { separator, size })
+}
+
+fn effective_grouping_separator(
+    inputs: &SequenceInputs<'_>,
+    lexical: &str,
+) -> Result<char, ExecutionFailure> {
+    let mut characters = lexical.chars();
+    characters
+        .next()
+        .filter(|_| characters.next().is_none())
+        .ok_or_else(|| {
+            failure(
+                "XTDE0030",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "xsl:number grouping-separator AVT did not evaluate to one character",
+            )
+        })
 }
 
 fn dynamic_variable_string_value(
@@ -215,7 +312,7 @@ fn apply_format(value: &str, format: &NumberFormat) -> String {
         value,
         token.style,
         token.minimum_width,
-        format.grouping,
+        format.grouping.as_ref(),
     );
     result.push_str(&format.suffix);
     result
@@ -247,7 +344,7 @@ fn format_sequence_tokens(values: &[String], format: &NumberFormat) -> String {
             value,
             token.style,
             token.minimum_width,
-            format.grouping,
+            format.grouping.as_ref(),
         );
     }
     result.push_str(&format.suffix);
@@ -259,7 +356,7 @@ fn append_number_token(
     value: &str,
     token_style: NumberTokenStyle,
     minimum_width: usize,
-    grouping: Option<NumberGrouping>,
+    grouping: Option<&NumberGrouping>,
 ) {
     match token_style {
         NumberTokenStyle::Decimal => append_decimal_token(result, value, minimum_width, grouping),
@@ -275,7 +372,7 @@ fn append_decimal_token(
     result: &mut String,
     value: &str,
     minimum_width: usize,
-    grouping: Option<NumberGrouping>,
+    grouping: Option<&NumberGrouping>,
 ) {
     if !value.bytes().all(|byte| byte.is_ascii_digit()) {
         result.push_str(value);
@@ -389,6 +486,15 @@ fn evaluate_value(
             value.trim().parse::<f64>().unwrap_or(f64::NAN),
             Some(value.trim().to_owned()),
         ),
+        NumberValue::Xslt10Variable(variable) => {
+            let lexical = value_evaluator::xslt10_variable_string_value(
+                inputs, variable, variables, control,
+            )?;
+            (
+                lexical.trim().parse::<f64>().unwrap_or(f64::NAN),
+                Some(lexical),
+            )
+        }
         NumberValue::ContextPosition => execution
             .focus_position
             .to_string()

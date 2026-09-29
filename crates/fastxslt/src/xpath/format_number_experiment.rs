@@ -771,6 +771,15 @@ fn evaluate_source_free_number(value: &str) -> Option<f64> {
     {
         return evaluate_source_free_number(inner);
     }
+    if let Some((left, operator, right)) = split_top_level_additive(value) {
+        let left = evaluate_source_free_number(left)?;
+        let right = evaluate_source_free_number(right)?;
+        return Some(if operator == '+' {
+            left + right
+        } else {
+            left - right
+        });
+    }
     if let Some(quoted) = quoted(value) {
         return Some(quoted.trim().parse().unwrap_or(f64::NAN));
     }
@@ -803,6 +812,40 @@ fn evaluate_source_free_number(value: &str) -> Option<f64> {
         }
     }
     value.parse().ok()
+}
+
+fn split_top_level_additive(value: &str) -> Option<(&str, char, &str)> {
+    let mut depth = 0_usize;
+    let mut quote = None;
+    let mut candidate = None;
+    let mut previous = None;
+    for (offset, character) in value.char_indices() {
+        if let Some(delimiter) = quote {
+            if character == delimiter {
+                quote = None;
+            }
+            previous = Some(character);
+            continue;
+        }
+        match character {
+            '\'' | '"' => quote = Some(character),
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            '+' | '-'
+                if depth == 0
+                    && offset != 0
+                    && !previous.is_some_and(|previous| {
+                        matches!(previous, 'e' | 'E' | '+' | '-' | '*' | '(')
+                    }) =>
+            {
+                candidate = Some((offset, character));
+            }
+            _ => {}
+        }
+        previous = Some(character);
+    }
+    let (offset, operator) = candidate?;
+    Some((&value[..offset], operator, &value[offset + 1..]))
 }
 
 fn evaluate_source_free_exact(value: &str) -> Option<ExactRational> {
@@ -1260,6 +1303,44 @@ mod tests {
             evaluate(&expression, &invalid_variables),
             Err(FormatNumberEvaluationFailure::InvalidDecimalFormatName)
         );
+    }
+
+    #[test]
+    fn xslt10_dynamic_decimal_format_evaluates_compact_subtraction() {
+        let mut expression =
+            parse_with_path_operands("format-number(2-3.56, 'i2dii', $format)", &location(), true)
+                .expect("XSLT 1.0 compact subtraction should parse");
+        expression.set_dynamic_formats(vec![(
+            ExpandedName {
+                namespace: None,
+                local: "custom".to_owned(),
+            },
+            DecimalFormat {
+                decimal_separator: 'd',
+                zero_digit: '2',
+                digit: 'i',
+                minus_sign: '+',
+                ..DecimalFormat::default()
+            },
+        )]);
+        let variables = BTreeMap::from([("format".to_owned(), AtomicValue::string("custom"))]);
+
+        assert_eq!(evaluate(&expression, &variables), Ok("+3d78".to_owned()));
+    }
+
+    #[test]
+    fn modern_format_number_retains_additive_precedence_and_exponent_signs() {
+        for (source, expected) in [
+            ("format-number(2-3.56, '0.00')", "-1.56"),
+            ("format-number(1+2*3, '0')", "7"),
+            ("format-number(1e-3+2e-3, '0.000')", "0.003"),
+        ] {
+            let expression = parse(source, &location()).expect("additive expression should parse");
+            assert_eq!(
+                evaluate(&expression, &BTreeMap::new()),
+                Ok(expected.to_owned())
+            );
+        }
     }
 
     #[test]

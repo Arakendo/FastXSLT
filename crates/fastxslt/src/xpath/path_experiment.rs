@@ -23,6 +23,7 @@ pub(crate) struct LocationPath {
     final_predicate: Option<Box<AxisPredicate>>,
     final_boolean_predicate: Option<Box<PathBooleanPredicate>>,
     final_context_predicate: Option<FinalContextPredicate>,
+    sequence_position_predicate: Option<PositionPredicate>,
     first_step_predicates_use_document_order: bool,
     step_axis_predicates: Vec<Option<AxisPredicate>>,
     step_boolean_predicates: Vec<Option<Box<PathBooleanPredicate>>>,
@@ -67,6 +68,25 @@ impl LocationPath {
         )
     }
 
+    pub(crate) fn is_plain_relative_child_path(&self) -> bool {
+        self.origin == PathOrigin::Relative
+            && self.steps.iter().all(|step| {
+                matches!(
+                    step,
+                    PathStep::ChildNamed(_)
+                        | PathStep::ChildLocalName(_)
+                        | PathStep::ChildExpandedName(_)
+                )
+            })
+            && self.final_predicate.is_none()
+            && self.final_boolean_predicate.is_none()
+            && self.final_context_predicate.is_none()
+            && self.sequence_position_predicate.is_none()
+            && self.step_axis_predicates.iter().all(Option::is_none)
+            && self.step_boolean_predicates.iter().all(Option::is_none)
+            && self.step_position_predicates.iter().all(Vec::is_empty)
+    }
+
     pub(crate) fn is_bounded_descendant_named_match_path(&self) -> bool {
         if self.origin != PathOrigin::Descendant
             || !matches!(
@@ -81,6 +101,7 @@ impl LocationPath {
             )
             || self.final_boolean_predicate.is_some()
             || self.final_context_predicate.is_some()
+            || self.sequence_position_predicate.is_some()
             || self.step_boolean_predicates.iter().any(Option::is_some)
         {
             return false;
@@ -111,18 +132,19 @@ impl LocationPath {
     }
 
     pub(crate) fn has_non_simple_position_predicate(&self) -> bool {
-        self.step_position_predicates.iter().any(|predicates| {
-            predicates.len() > 1
-                || predicates.iter().any(|predicate| {
-                    matches!(
-                        predicate,
-                        StepPredicate::Position(
-                            PositionPredicate::Compare { .. } | PositionPredicate::LastMinus(_)
-                        ) | StepPredicate::ContextName(_)
-                            | StepPredicate::Boolean(_)
-                    )
-                })
-        })
+        self.sequence_position_predicate.is_some()
+            || self.step_position_predicates.iter().any(|predicates| {
+                predicates.len() > 1
+                    || predicates.iter().any(|predicate| {
+                        matches!(
+                            predicate,
+                            StepPredicate::Position(
+                                PositionPredicate::Compare { .. } | PositionPredicate::LastMinus(_)
+                            ) | StepPredicate::ContextName(_)
+                                | StepPredicate::Boolean(_)
+                        )
+                    })
+            })
     }
 
     pub(crate) fn has_positional_child_string_predicate(&self) -> bool {
@@ -716,14 +738,10 @@ pub(crate) fn parse_location_path(
     location: SourceLocation,
 ) -> Result<LocationPath, PathFailure> {
     validate_expression_opening(expression, &location)?;
-    if expression == "." {
-        return Ok(origin_only_path(PathOrigin::ContextItem, location));
-    }
-    if expression == "/" {
-        return Ok(origin_only_path(PathOrigin::DocumentNode, location));
-    }
-    if expression == "()" {
-        return Ok(origin_only_path(PathOrigin::EmptySequence, location));
+    let (expression, sequence_position_predicate) =
+        parse_complete_path_position_filter(expression).unwrap_or((expression, None));
+    if let Some(origin) = origin_only_expression(expression) {
+        return Ok(origin_only_path(origin, location));
     }
     let normalized_position = normalize_grouped_reverse_axis_position(expression);
     let expression = normalized_position
@@ -735,6 +753,8 @@ pub(crate) fn parse_location_path(
             .as_ref()
             .is_some_and(|(_, document_order)| *document_order);
     let expression = normalized_filter.as_deref().unwrap_or(expression);
+    let normalized_prefix = unwrap_parenthesized_path_prefix(expression);
+    let expression = normalized_prefix.as_deref().unwrap_or(expression);
     let (expression, final_context_predicate) = parse_final_context_predicate(expression);
     let (expression, final_boolean_predicate) = parse_final_boolean_predicate(expression);
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
@@ -810,12 +830,22 @@ pub(crate) fn parse_location_path(
         final_predicate,
         final_boolean_predicate,
         final_context_predicate,
+        sequence_position_predicate,
         first_step_predicates_use_document_order,
         step_axis_predicates,
         step_boolean_predicates,
         step_position_predicates,
         location,
     })
+}
+
+fn origin_only_expression(expression: &str) -> Option<PathOrigin> {
+    match expression {
+        "." => Some(PathOrigin::ContextItem),
+        "/" => Some(PathOrigin::DocumentNode),
+        "()" => Some(PathOrigin::EmptySequence),
+        _ => None,
+    }
 }
 
 pub(crate) fn parse_xslt10_location_path(
@@ -855,7 +885,8 @@ fn normalize_xslt10_outer_context_comparison(expression: &str) -> Option<String>
     normalized.push_str(&expression[start + marker.len()..]);
     let predicate = normalized.rsplit_once('[')?.1.strip_suffix(']')?;
     (path_boolean_predicate::recognizes_parent_child_outer_context_equality(predicate)
-        || path_boolean_predicate::recognizes_context_outer_context_equality(predicate))
+        || path_boolean_predicate::recognizes_context_outer_context_equality(predicate)
+        || path_boolean_predicate::recognizes_context_outer_ancestor_or_self_equality(predicate))
     .then_some(normalized)
 }
 
@@ -970,16 +1001,59 @@ fn unwrap_parenthesized_reverse_axis_filter(expression: &str) -> Option<String> 
     Some(format!("{inner}{suffix}"))
 }
 
+fn parse_complete_path_position_filter(
+    expression: &str,
+) -> Option<(&str, Option<PositionPredicate>)> {
+    let expression = expression.trim();
+    if !expression.starts_with('(') {
+        return None;
+    }
+    let close = matching_path_parenthesis(expression, 0)?;
+    let suffix = expression[close + 1..].trim();
+    let predicate = match suffix {
+        "[last()]" => PositionPredicate::Last,
+        _ => return None,
+    };
+    let inner = expression[1..close].trim();
+    (!inner.is_empty() && !matches!(inner, "." | "/" | "()")).then_some((inner, Some(predicate)))
+}
+
+fn unwrap_parenthesized_path_prefix(expression: &str) -> Option<String> {
+    if !expression.starts_with('(') {
+        return None;
+    }
+    let close = matching_path_parenthesis(expression, 0)?;
+    let inner = expression[1..close].trim();
+    let suffix = expression[close + 1..].trim_start();
+    if inner.is_empty()
+        || inner.contains('|')
+        || !suffix.starts_with('/')
+        || suffix.starts_with("//")
+    {
+        return None;
+    }
+    Some(format!("{inner}{suffix}"))
+}
+
 fn normalize_grouped_reverse_axis_position(expression: &str) -> Option<(String, bool)> {
     let expression = strip_enclosing_path_parentheses(expression.trim());
     let slash = first_top_level_path_slash(expression)?;
-    let group = expression[..slash].trim();
+    let lexical_group = expression[..slash].trim();
     let suffix = &expression[slash..];
     if suffix.starts_with("//") {
         return None;
     }
-    let group = strip_enclosing_path_parentheses(group);
-    let (base, predicate) = group.rsplit_once('[')?;
+    let group = strip_enclosing_path_parentheses(lexical_group);
+    let Some((base, predicate)) = group.rsplit_once('[') else {
+        let supported_reverse_axis = group.starts_with("ancestor::")
+            || group.starts_with("ancestor-or-self::")
+            || group.starts_with("preceding::")
+            || group.starts_with("preceding-sibling::");
+        return (group != lexical_group
+            && supported_reverse_axis
+            && !group.contains(['/', '[', ']', '(', ')']))
+        .then(|| (format!("{group}{suffix}"), true));
+    };
     let position = predicate.strip_suffix(']')?.trim().parse::<usize>().ok()?;
     let base = base.trim();
     let step = strip_enclosing_path_parentheses(base);
@@ -1215,6 +1289,7 @@ fn qualified_location_path(
         final_predicate: None,
         final_boolean_predicate: None,
         final_context_predicate: None,
+        sequence_position_predicate: None,
         first_step_predicates_use_document_order: false,
         step_axis_predicates: vec![None; step_count],
         step_boolean_predicates: vec![None; step_count],
@@ -1360,7 +1435,53 @@ fn validate_expression_opening(
             location,
         ));
     }
+    if expression.trim_start().starts_with('{') {
+        return Err(invalid_syntax(
+            "a path expression cannot begin with an enclosed-expression delimiter",
+            location,
+        ));
+    }
+    if contains_unquoted_forbidden_path_punctuation(expression) {
+        return Err(invalid_syntax(
+            "the path expression contains punctuation that is not part of XPath location-path syntax",
+            location,
+        ));
+    }
+    if has_adjacent_numeric_tokens(expression) {
+        return Err(invalid_syntax(
+            "the path expression contains adjacent numeric operands without an operator",
+            location,
+        ));
+    }
     Ok(())
+}
+
+fn contains_unquoted_forbidden_path_punctuation(expression: &str) -> bool {
+    let mut quote = None;
+    for character in expression.chars() {
+        if matches!(character, '\'' | '"') {
+            if quote == Some(character) {
+                quote = None;
+            } else if quote.is_none() {
+                quote = Some(character);
+            }
+        } else if quote.is_none() && matches!(character, ';' | '\\') {
+            return true;
+        }
+    }
+    false
+}
+
+fn has_adjacent_numeric_tokens(expression: &str) -> bool {
+    let mut previous_was_numeric = false;
+    for token in expression.split_ascii_whitespace() {
+        let is_numeric = token.parse::<f64>().is_ok();
+        if previous_was_numeric && is_numeric {
+            return true;
+        }
+        previous_was_numeric = is_numeric;
+    }
+    false
 }
 
 fn is_declaration_shaped_xpath_syntax(expression: &str) -> bool {
@@ -1463,6 +1584,7 @@ fn origin_only_path(origin: PathOrigin, location: SourceLocation) -> LocationPat
         final_predicate: None,
         final_boolean_predicate: None,
         final_context_predicate: None,
+        sequence_position_predicate: None,
         first_step_predicates_use_document_order: false,
         step_axis_predicates: Vec::new(),
         step_boolean_predicates: Vec::new(),
@@ -2080,7 +2202,26 @@ pub(crate) fn evaluate_location_path_controlled(
         next.dedup();
         current = next;
     }
-    Ok(current)
+    apply_complete_sequence_position(document, context, current, path, control)
+}
+
+fn apply_complete_sequence_position(
+    document: &Document,
+    context: NodeId,
+    candidates: Vec<NodeId>,
+    path: &LocationPath,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
+    let Some(predicate) = path.sequence_position_predicate else {
+        return Ok(candidates);
+    };
+    apply_sequential_predicates(
+        document,
+        context,
+        candidates,
+        &[StepPredicate::Position(predicate)],
+        control,
+    )
 }
 
 fn final_predicates_match(

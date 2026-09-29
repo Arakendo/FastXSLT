@@ -387,6 +387,7 @@ fn execute_program_with_parameters_using(
         globals: &globals,
         multiple_match_policy,
         document_rooted_matches: RefCell::default(),
+        key_indexes: RefCell::default(),
         complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
         resource_snapshot,
         denied_resources,
@@ -486,6 +487,7 @@ fn execute_initial_mode(
         globals: &globals,
         multiple_match_policy,
         document_rooted_matches: RefCell::default(),
+        key_indexes: RefCell::default(),
         complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
         resource_snapshot: None,
         denied_resources: None,
@@ -632,6 +634,7 @@ fn execute_initial_template_with_optional_source(
         globals: &globals,
         multiple_match_policy,
         document_rooted_matches: RefCell::default(),
+        key_indexes: RefCell::default(),
         complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
         resource_snapshot: None,
         denied_resources: None,
@@ -1701,6 +1704,7 @@ fn execute_for_each_literal_document_root<'a>(
         globals: inputs.globals,
         multiple_match_policy: inputs.multiple_match_policy,
         document_rooted_matches: RefCell::default(),
+        key_indexes: RefCell::default(),
         complete_atomic_frame_clones: inputs.complete_atomic_frame_clones,
         resource_snapshot: inputs.resource_snapshot,
         denied_resources: inputs.denied_resources,
@@ -1846,6 +1850,9 @@ fn evaluate_sort_key_value(
                 .first()
                 .map_or_else(String::new, |selected| source.string_value(*selected)))
         }
+        SortSelect::Xslt10BinaryNumeric(expression) => {
+            evaluate_xslt10_binary_numeric_sort(inputs, focus, expression, variables, control)
+        }
         SortSelect::Xslt10VariablePositionPath {
             path,
             variable,
@@ -1924,6 +1931,26 @@ fn evaluate_sort_key_value(
             control,
         ),
     }
+}
+
+fn evaluate_xslt10_binary_numeric_sort(
+    inputs: &SequenceInputs<'_>,
+    focus: SortFocus<'_>,
+    expression: &crate::xpath::binary_numeric_experiment::BinaryNumericExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    value_evaluator::evaluate_binary_numeric_value(
+        inputs,
+        Some(focus.node),
+        Some(SequenceFocus {
+            position: focus.position,
+            size: focus.size,
+        }),
+        expression,
+        variables,
+        control,
+    )
 }
 
 fn evaluate_xslt10_variable_position_sort(
@@ -3455,6 +3482,7 @@ fn execute_apply_literal_document_root(
         globals: inputs.globals,
         multiple_match_policy: inputs.multiple_match_policy,
         document_rooted_matches: RefCell::default(),
+        key_indexes: RefCell::default(),
         complete_atomic_frame_clones: inputs.complete_atomic_frame_clones,
         resource_snapshot: inputs.resource_snapshot,
         denied_resources: inputs.denied_resources,
@@ -5379,6 +5407,10 @@ fn copy_source_node(
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the exhaustive private apply-selection dispatch remains one semantic ownership point"
+)]
 fn select_apply_nodes(
     inputs: &SequenceInputs<'_>,
     select: Option<&ApplySelection>,
@@ -5405,6 +5437,11 @@ fn select_apply_nodes(
         }
         ApplySelection::Xslt10KeyLookup(lookup) => {
             key_lookup::select(inputs, lookup, Some(context), variables, control)
+        }
+        ApplySelection::Xslt10MuenchianKeyGroup { selection, first } => {
+            select_xslt10_muenchian_key_group(
+                inputs, source, context, selection, first, variables, control,
+            )
         }
         ApplySelection::Xslt10KeyUnion(lookups) => {
             select_xslt10_key_union(inputs, lookups, context, variables, control)
@@ -5486,6 +5523,27 @@ fn select_apply_nodes(
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }
+}
+
+fn select_xslt10_muenchian_key_group(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    context: NodeId,
+    selection: &crate::xslt::golden_semantics_experiment::Xslt10MuenchianSelection,
+    first: &Xslt10KeyLookup,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let candidates = match selection {
+        crate::xslt::golden_semantics_experiment::Xslt10MuenchianSelection::LocationPath(path) => {
+            evaluate_location_path_controlled(source, context, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?
+        }
+        crate::xslt::golden_semantics_experiment::Xslt10MuenchianSelection::KeyLookup(lookup) => {
+            key_lookup::select(inputs, lookup, Some(context), variables, control)?
+        }
+    };
+    key_lookup::retain_muenchian_first(inputs, first, candidates, variables, control)
 }
 
 fn select_xslt10_id_without_typed_ids(

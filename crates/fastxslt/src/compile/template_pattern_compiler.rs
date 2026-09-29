@@ -42,7 +42,7 @@ pub(super) fn compile_match_pattern(
             )
         }
         "/" | "document-node()" => MatchPattern::Document,
-        "/*" => MatchPattern::DocumentElement(None),
+        "/*" => MatchPattern::DocumentChildElement(None),
         "comment()" => MatchPattern::Comment,
         "text()" => MatchPattern::Text,
         "processing-instruction()" => MatchPattern::ProcessingInstruction,
@@ -1127,10 +1127,9 @@ fn compile_template_priority(
             | MatchPattern::DescendantElementPathAtPosition { .. }
             | MatchPattern::DescendantElementAtNamedSiblingBoundary { .. }
             | MatchPattern::Xslt10KeyLookup(_)
-            | MatchPattern::UnionAlternatives(_) => TemplatePriority::PATH_DEFAULT,
-            MatchPattern::Document | MatchPattern::DocumentElement(None) => {
-                TemplatePriority::ROOT_DEFAULT
-            }
+            | MatchPattern::UnionAlternatives(_)
+            | MatchPattern::DocumentChildElement(_) => TemplatePriority::PATH_DEFAULT,
+            MatchPattern::Document => TemplatePriority::ROOT_DEFAULT,
             MatchPattern::DocumentElement(Some(_))
             | MatchPattern::Element(_)
             | MatchPattern::Attribute(_)
@@ -1144,7 +1143,8 @@ fn compile_template_priority(
             | MatchPattern::ProcessingInstruction
             | MatchPattern::AnyNode
             | MatchPattern::AnyElement
-            | MatchPattern::AnyAttribute => TemplatePriority::NODE_TEST_DEFAULT,
+            | MatchPattern::AnyAttribute
+            | MatchPattern::DocumentElement(None) => TemplatePriority::NODE_TEST_DEFAULT,
         });
     };
     let lexical = lexical.trim();
