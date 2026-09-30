@@ -39,7 +39,7 @@ The complete sweep reports these directly blocked standard-operation cases:
 | First failure | Cases |
 | --- | ---: |
 | Principal source DTD denied | 87 |
-| Principal stylesheet DTD denied | 30 |
+| Stylesheet input DTD denied (28 principal, 2 dependency) | 30 |
 | Total direct DTD-denial frontier | 117 |
 
 Related cases beyond that direct frontier exercise `id()` over DTD-typed
@@ -90,6 +90,35 @@ reason, and multiple cases reuse the same physical input. Correlating every
 direct failure with declaration-level semantic dependencies remains required
 before implementation.
 
+The measurement runner now also classifies the exact 117 current standard-case
+frontiers at the point where the engine reports `dtd-forbidden`. These counts
+are therefore a conserved failure denominator rather than a broader input
+inventory:
+
+| Property | Direct frontier cases |
+| --- | ---: |
+| Principal source | 87 |
+| Stylesheet input (28 principal, 2 dependency) | 30 |
+| Internal subset | 113 |
+| External identifier | 94 |
+| Attribute-list declaration | 41 |
+| Explicit default-attribute candidate | 27 |
+| Any entity declaration | 17 |
+| Internal general-entity candidate | 13 |
+| External general-entity candidate | 5 |
+| Typed-ID candidate | 11 |
+| Parameter entity / notation / unparsed entity candidate | 0 |
+| XML expected-result comparator | 115 |
+| Manual expected-result comparator | 2 |
+
+Properties overlap. In particular, most internal subsets also name an external
+identifier, so "internal subset" does not imply that an internal-only parser is
+sufficient. The private internal-general-entity reference parser rejects all
+117 inputs at another deliberately unsupported declaration or external-
+identifier boundary; none is silently initialized. Candidate counts identify
+declaration pressure syntactically; they do not yet prove that the expected
+result observes every declaration.
+
 ## Architectural consequence
 
 AR-0008 deliberately denies DTDs and requires an authority/security review
@@ -104,7 +133,8 @@ explicitly admitted sealed resources.
 - This evidence does not raise the exact-match numerator above 2,348.
 - The 117 directly blocked cases are a pressure count, not an expected pass
   count.
-- The physical-file inventory is not yet the required case-by-case declaration
-  inventory.
+- The measurement runner now conserves declaration-property counts for the
+  exact direct frontier, but dependency relevance and expected serialization
+  method still require case-level interpretation.
 - No DTD, entity, validation, typed-ID, external-resource, or XSLT 1.0
   conformance support is selected by this record.

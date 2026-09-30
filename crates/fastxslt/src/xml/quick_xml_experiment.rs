@@ -9,6 +9,9 @@ use quick_xml::reader::NsReader;
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xml::input_transcoding::ParserInput;
+use crate::xml::internal_subset::{
+    InternalEntities, InternalSubsetFailure, InternalSubsetLimits, parse_internal_subset,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct ParseLimits {
@@ -159,6 +162,8 @@ impl ParsedDocument {
 enum ParseFailure {
     Malformed { offset: usize, detail: String },
     DtdForbidden { span: Range<usize> },
+    DtdUnsupported { span: Range<usize>, detail: String },
+    DtdLimit { span: Range<usize>, detail: String },
     UnknownNamespacePrefix { offset: usize, prefix: Vec<u8> },
     UnknownEntity { offset: usize, name: Vec<u8> },
     MultipleRoots { span: Range<usize> },
@@ -190,6 +195,8 @@ impl LocatedFailure {
             | ParseFailure::UnknownEntity { offset, .. }
             | ParseFailure::EventLimit { offset, .. } => Some(*offset..*offset),
             ParseFailure::DtdForbidden { span }
+            | ParseFailure::DtdUnsupported { span, .. }
+            | ParseFailure::DtdLimit { span, .. }
             | ParseFailure::MultipleRoots { span }
             | ParseFailure::ContentOutsideRoot { span }
             | ParseFailure::DepthLimit { span, .. } => Some(span.clone()),
@@ -202,9 +209,41 @@ impl LocatedFailure {
         match &self.failure {
             ParseFailure::EventLimit { limit, .. } => Some(format!("XML event limit is {limit}")),
             ParseFailure::DepthLimit { limit, .. } => Some(format!("XML depth limit is {limit}")),
+            ParseFailure::DtdLimit { detail, .. } => Some(detail.clone()),
             _ => None,
         }
     }
+
+    #[cfg(test)]
+    pub(crate) const fn dtd_reference_category(&self) -> &'static str {
+        match self.failure {
+            ParseFailure::DtdUnsupported { .. } => "unsupported-declaration-semantics",
+            ParseFailure::DtdLimit { .. } => "dtd-limit",
+            ParseFailure::Malformed { .. } => "malformed-xml-or-dtd",
+            ParseFailure::UnknownEntity { .. } => "unknown-entity",
+            ParseFailure::Control(_) => "control",
+            ParseFailure::DtdForbidden { .. } => "unexpected-default-denial",
+            ParseFailure::UnknownNamespacePrefix { .. }
+            | ParseFailure::MultipleRoots { .. }
+            | ParseFailure::MissingRoot
+            | ParseFailure::ContentOutsideRoot { .. }
+            | ParseFailure::EventLimit { .. }
+            | ParseFailure::DepthLimit { .. } => "other-xml-failure",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum DtdPolicy {
+    Deny,
+    #[cfg_attr(
+        not(test),
+        allow(
+            dead_code,
+            reason = "AR-0025 reference path is not admitted by production callers"
+        )
+    )]
+    BoundedInternalSubset(InternalSubsetLimits),
 }
 
 pub(crate) fn parse_document(
@@ -222,7 +261,7 @@ pub(crate) fn parse_document_controlled(
     limits: ParseLimits,
     control: &mut InvocationControl,
 ) -> Result<ParsedDocument, LocatedFailure> {
-    parse_bytes(input, limits, control)
+    parse_bytes(input, limits, DtdPolicy::Deny, control)
         .map(|mut document| {
             resource.clone_into(&mut document.resource);
             document
@@ -233,6 +272,47 @@ pub(crate) fn parse_document_controlled(
         })
 }
 
+#[cfg(test)]
+pub(crate) fn parse_document_with_internal_subset(
+    resource: &str,
+    input: &[u8],
+    limits: ParseLimits,
+    dtd_limits: InternalSubsetLimits,
+) -> Result<ParsedDocument, LocatedFailure> {
+    let mut control = InvocationControl::unbounded();
+    parse_document_controlled_with_internal_subset(
+        resource,
+        input,
+        limits,
+        dtd_limits,
+        &mut control,
+    )
+}
+
+#[cfg(test)]
+fn parse_document_controlled_with_internal_subset(
+    resource: &str,
+    input: &[u8],
+    limits: ParseLimits,
+    dtd_limits: InternalSubsetLimits,
+    control: &mut InvocationControl,
+) -> Result<ParsedDocument, LocatedFailure> {
+    parse_bytes(
+        input,
+        limits,
+        DtdPolicy::BoundedInternalSubset(dtd_limits),
+        control,
+    )
+    .map(|mut document| {
+        resource.clone_into(&mut document.resource);
+        document
+    })
+    .map_err(|failure| LocatedFailure {
+        resource: resource.to_owned(),
+        failure,
+    })
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "keeping the experimental event loop together makes parser behavior auditable"
@@ -240,6 +320,7 @@ pub(crate) fn parse_document_controlled(
 fn parse_bytes(
     input: &[u8],
     limits: ParseLimits,
+    dtd_policy: DtdPolicy,
     control: &mut InvocationControl,
 ) -> Result<ParsedDocument, ParseFailure> {
     let parser_input = ParserInput::new(input).map_err(|failure| ParseFailure::Malformed {
@@ -265,6 +346,7 @@ fn parse_bytes(
     let mut comment_count = 0_usize;
     let mut processing_instruction_count = 0_usize;
     let mut events = Vec::new();
+    let mut internal_entities = None;
 
     loop {
         let parser_start = usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX);
@@ -298,8 +380,20 @@ fn parse_bytes(
             Event::Start(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
                 let prefix = lexical_prefix(reader.decoder(), element.name().as_ref(), start)?;
-                let attributes = resolve_attributes(&reader, &element, start)?;
-                let namespaces = resolve_namespace_declarations(&reader, &element, start)?;
+                let attributes = resolve_attributes(
+                    &reader,
+                    &element,
+                    start,
+                    internal_entities.as_ref(),
+                    control,
+                )?;
+                let namespaces = resolve_namespace_declarations(
+                    &reader,
+                    &element,
+                    start,
+                    internal_entities.as_ref(),
+                    control,
+                )?;
                 if depth == 0 {
                     if root.is_some() {
                         return Err(ParseFailure::MultipleRoots { span });
@@ -330,8 +424,20 @@ fn parse_bytes(
             Event::Empty(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
                 let prefix = lexical_prefix(reader.decoder(), element.name().as_ref(), start)?;
-                let attributes = resolve_attributes(&reader, &element, start)?;
-                let namespaces = resolve_namespace_declarations(&reader, &element, start)?;
+                let attributes = resolve_attributes(
+                    &reader,
+                    &element,
+                    start,
+                    internal_entities.as_ref(),
+                    control,
+                )?;
+                let namespaces = resolve_namespace_declarations(
+                    &reader,
+                    &element,
+                    start,
+                    internal_entities.as_ref(),
+                    control,
+                )?;
                 if depth == 0 {
                     if root.is_some() {
                         return Err(ParseFailure::MultipleRoots { span });
@@ -391,20 +497,55 @@ fn parse_bytes(
                     return Err(ParseFailure::ContentOutsideRoot { span });
                 }
                 let reference_bytes: &[u8] = reference.as_ref();
-                if reference.resolve_char_ref().ok().flatten().is_none()
-                    && !matches!(reference_bytes, b"lt" | b"gt" | b"amp" | b"apos" | b"quot")
+                let value = if reference.resolve_char_ref().ok().flatten().is_some()
+                    || matches!(reference_bytes, b"lt" | b"gt" | b"amp" | b"apos" | b"quot")
                 {
+                    resolve_reference(&reference, start)?
+                } else if let Some(entities) = internal_entities.as_ref() {
+                    let name = reader
+                        .decoder()
+                        .decode(reference_bytes)
+                        .map_err(|error| malformed(start, error))?;
+                    let before = entities.reference_count();
+                    let value = entities
+                        .resolve(&name)
+                        .map_err(|failure| map_dtd_failure(failure, span.clone(), start))?
+                        .to_owned();
+                    charge_entity_references(
+                        control,
+                        entities
+                            .reference_count()
+                            .saturating_sub(before)
+                            .saturating_sub(1),
+                    )?;
+                    value
+                } else {
                     return Err(ParseFailure::UnknownEntity {
                         offset: start,
                         name: reference_bytes.to_vec(),
                     });
-                }
-                events.push(OwnedXmlEvent::Text {
-                    value: resolve_reference(&reference, start)?,
-                    span,
-                });
+                };
+                events.push(OwnedXmlEvent::Text { value, span });
             }
-            Event::DocType(_) => return Err(ParseFailure::DtdForbidden { span }),
+            Event::DocType(doctype) => match dtd_policy {
+                DtdPolicy::Deny => return Err(ParseFailure::DtdForbidden { span }),
+                DtdPolicy::BoundedInternalSubset(dtd_limits) => {
+                    if internal_entities.is_some() {
+                        return Err(ParseFailure::Malformed {
+                            offset: start,
+                            detail: "multiple DOCTYPE declarations are not permitted".to_owned(),
+                        });
+                    }
+                    let declaration = reader
+                        .decoder()
+                        .decode(doctype.as_ref())
+                        .map_err(|error| malformed(start, error))?;
+                    let entities = parse_internal_subset(&declaration, dtd_limits)
+                        .map_err(|failure| map_dtd_failure(failure, span, start))?;
+                    charge_entity_references(control, entities.declaration_work())?;
+                    internal_entities = Some(entities);
+                }
+            },
             Event::Comment(comment) => {
                 let value = comment
                     .xml10_content()
@@ -483,6 +624,8 @@ fn resolve_attributes(
     reader: &NsReader<&[u8]>,
     element: &BytesStart<'_>,
     offset: usize,
+    entities: Option<&InternalEntities>,
+    control: &mut InvocationControl,
 ) -> Result<Vec<XmlAttribute>, ParseFailure> {
     let mut names = Vec::new();
     let mut expanded_names = HashSet::new();
@@ -492,10 +635,7 @@ fn resolve_attributes(
             offset,
             detail: error.to_string(),
         })?;
-        let value = attribute
-            .decoded_and_normalized_value(XmlVersion::Implicit1_0, reader.decoder())
-            .map_err(|error| malformed(offset, error))?
-            .into_owned();
+        let value = resolve_attribute_value(reader, &attribute, offset, entities, control)?;
         if attribute.key.as_ref() == b"xmlns" || attribute.key.as_ref().starts_with(b"xmlns:") {
             continue;
         }
@@ -522,6 +662,8 @@ fn resolve_namespace_declarations(
     reader: &NsReader<&[u8]>,
     element: &BytesStart<'_>,
     offset: usize,
+    entities: Option<&InternalEntities>,
+    control: &mut InvocationControl,
 ) -> Result<Vec<NamespaceBinding>, ParseFailure> {
     let mut bindings = Vec::new();
     for attribute in element.attributes() {
@@ -537,13 +679,72 @@ fn resolve_namespace_declarations(
         } else {
             continue;
         };
-        let namespace = attribute
-            .decoded_and_normalized_value(XmlVersion::Implicit1_0, reader.decoder())
-            .map_err(|error| malformed(offset, error))?
-            .into_owned();
+        let namespace = resolve_attribute_value(reader, &attribute, offset, entities, control)?;
         bindings.push(NamespaceBinding { prefix, namespace });
     }
     Ok(bindings)
+}
+
+fn resolve_attribute_value(
+    reader: &NsReader<&[u8]>,
+    attribute: &quick_xml::events::attributes::Attribute<'_>,
+    offset: usize,
+    entities: Option<&InternalEntities>,
+    control: &mut InvocationControl,
+) -> Result<String, ParseFailure> {
+    let Some(entities) = entities else {
+        return attribute
+            .decoded_and_normalized_value(XmlVersion::Implicit1_0, reader.decoder())
+            .map(std::borrow::Cow::into_owned)
+            .map_err(|error| malformed(offset, error));
+    };
+    let before = entities.reference_count();
+    let mut entity_failure = None;
+    let value = attribute.decoded_and_normalized_value_with(
+        XmlVersion::Implicit1_0,
+        reader.decoder(),
+        usize::MAX,
+        |name| match entities.resolve(name) {
+            Ok(value) => Some(value),
+            Err(failure) => {
+                entity_failure = Some(failure);
+                None
+            }
+        },
+    );
+    if let Some(failure) = entity_failure {
+        return Err(map_dtd_failure(failure, offset..offset, offset));
+    }
+    let value = value
+        .map_err(|error| malformed(offset, error))?
+        .into_owned();
+    charge_entity_references(control, entities.reference_count().saturating_sub(before))?;
+    Ok(value)
+}
+
+fn charge_entity_references(
+    control: &mut InvocationControl,
+    references: usize,
+) -> Result<(), ParseFailure> {
+    control
+        .charge(WorkDomain::XmlEvent, references)
+        .map_err(ParseFailure::Control)
+}
+
+fn map_dtd_failure(
+    failure: InternalSubsetFailure,
+    span: Range<usize>,
+    offset: usize,
+) -> ParseFailure {
+    match failure {
+        InternalSubsetFailure::Malformed(detail) => ParseFailure::Malformed { offset, detail },
+        InternalSubsetFailure::Unsupported(detail) => ParseFailure::DtdUnsupported { span, detail },
+        InternalSubsetFailure::Limit(detail) => ParseFailure::DtdLimit { span, detail },
+        InternalSubsetFailure::UnknownEntity(name) => ParseFailure::UnknownEntity {
+            offset,
+            name: name.into_bytes(),
+        },
+    }
 }
 
 fn expanded_name(
@@ -641,11 +842,22 @@ fn resolve_reference(
 mod tests {
     use super::{
         ExpandedName, LocatedFailure, OwnedXmlEvent, ParseFailure, ParseLimits, parse_document,
+        parse_document_controlled_with_internal_subset, parse_document_with_internal_subset,
     };
+    use crate::execution_control_experiment::{
+        CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits,
+    };
+    use crate::xml::internal_subset::InternalSubsetLimits;
 
     const LIMITS: ParseLimits = ParseLimits {
         max_events: 64,
         max_depth: 8,
+    };
+    const DTD_LIMITS: InternalSubsetLimits = InternalSubsetLimits {
+        declarations: 8,
+        nesting_depth: 4,
+        references: 16,
+        replacement_bytes: 128,
     };
 
     #[test]
@@ -842,6 +1054,134 @@ mod tests {
             parse_document("memory:hostile.xml", b"<missing:root/>", LIMITS),
             Err(LocatedFailure {
                 failure: ParseFailure::UnknownNamespacePrefix { .. },
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn bounded_internal_subset_expands_text_and_attributes() {
+        let xml = br#"<!DOCTYPE root [
+                <!ENTITY greeting "Hello">
+                <!ENTITY subject "world">
+            ]>
+            <root message="&greeting;, &subject;!">&greeting; &subject;</root>"#;
+        let document = parse_document_with_internal_subset(
+            "memory:internal-subset.xml",
+            xml,
+            LIMITS,
+            DTD_LIMITS,
+        )
+        .expect("bounded character-data entities should be admitted explicitly");
+
+        assert_eq!(document.root.namespace, None);
+        assert!(document.events.iter().any(|event| {
+            matches!(
+                event,
+                OwnedXmlEvent::Start { attributes, .. }
+                    if attributes.iter().any(|attribute| {
+                        attribute.name.local == "message"
+                            && attribute.value == "Hello, world!"
+                    })
+            )
+        }));
+        let text = document
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                OwnedXmlEvent::Text { value, .. } => Some(value.as_str()),
+                _ => None,
+            })
+            .collect::<String>();
+        assert_eq!(text, "Hello world");
+        let final_reference = xml
+            .windows(b"&subject;".len())
+            .rposition(|window| window == b"&subject;")
+            .expect("authored reference");
+        assert!(document.events.iter().any(|event| {
+            matches!(
+                event,
+                OwnedXmlEvent::Text { value, span }
+                    if value == "world"
+                        && span == &(final_reference..final_reference + b"&subject;".len())
+            )
+        }));
+    }
+
+    #[test]
+    fn bounded_internal_subset_still_denies_external_authority() {
+        assert!(matches!(
+            parse_document_with_internal_subset(
+                "memory:no-authority.xml",
+                b"<!DOCTYPE root SYSTEM 'file:///secret'><root/>",
+                LIMITS,
+                DTD_LIMITS,
+            ),
+            Err(LocatedFailure {
+                failure: ParseFailure::DtdUnsupported { .. },
+                ..
+            })
+        ));
+        assert!(matches!(
+            parse_document_with_internal_subset(
+                "memory:no-defaults.xml",
+                b"<!DOCTYPE root [<!ATTLIST root value CDATA 'secret'>]><root/>",
+                LIMITS,
+                DTD_LIMITS,
+            ),
+            Err(LocatedFailure {
+                failure: ParseFailure::DtdUnsupported { .. },
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn bounded_internal_subset_reports_expansion_limits_at_original_reference() {
+        let xml = b"<!DOCTYPE root [<!ENTITY value '0123456789'>]><root>&value;</root>";
+        let failure = parse_document_with_internal_subset(
+            "memory:bounded.xml",
+            xml,
+            LIMITS,
+            InternalSubsetLimits {
+                replacement_bytes: 4,
+                ..DTD_LIMITS
+            },
+        )
+        .expect_err("replacement must be rejected before XDM construction");
+
+        assert!(matches!(
+            &failure,
+            LocatedFailure {
+                failure: ParseFailure::DtdLimit { .. },
+                ..
+            }
+        ));
+        assert!(failure.source_span().is_some());
+        assert_eq!(
+            failure.structural_limit_detail().as_deref(),
+            Some("DTD replacement-byte limit is 4")
+        );
+    }
+
+    #[test]
+    fn bounded_internal_subset_observes_existing_xml_cancellation() {
+        let cancellation = CancellationToken::new();
+        cancellation.cancel();
+        let mut control = InvocationControl::new(cancellation, WorkLimits::unbounded());
+
+        assert!(matches!(
+            parse_document_controlled_with_internal_subset(
+                "memory:cancelled.xml",
+                b"<!DOCTYPE root [<!ENTITY value 'content'>]><root>&value;</root>",
+                LIMITS,
+                DTD_LIMITS,
+                &mut control,
+            ),
+            Err(LocatedFailure {
+                failure: ParseFailure::Control(ControlFailure::Cancelled {
+                    domain: WorkDomain::XmlEvent,
+                }),
                 ..
             })
         ));

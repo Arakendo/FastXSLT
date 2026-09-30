@@ -9,7 +9,7 @@
 | Trigger | The 74% OASIS XSLT 1.0 checkpoint leaves 117 standard-operation cases at explicit source or stylesheet DTD denial, with related `id()` and `unparsed-entity-uri()` cases behind the same XML semantics |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007 |
 | Related reviews | AR-0008, AR-0014, AR-0019 |
-| Related evidence | [Post-74% frontier and DTD inventory](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md) |
+| Related evidence | [Post-74% frontier and DTD inventory](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md); [bounded internal-entity reference path](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md) |
 
 ## Architectural question
 
@@ -22,18 +22,23 @@ semantics?
 ## Trigger and evidence
 
 The conserved 3,173-case OASIS XSLT 1.0 denominator reached 2,348 exact XML
-comparisons (74.00%). At that checkpoint, 87 standard source documents and 30
-standard stylesheets stop at the deliberate `dtd-forbidden` boundary. Related
+comparisons (74.00%). At that checkpoint, 87 standard source inputs and 30
+stylesheet inputs (28 principal modules and two dependencies) stop at the
+deliberate `dtd-forbidden` boundary. Related
 standard cases exercise `id()` over DTD-typed attributes and
 `unparsed-entity-uri()` over entity declarations, so merely ignoring the DTD
 would initialize more documents while silently producing wrong XSLT results.
 
 This is sufficient pressure to study the boundary, not to enable general DTD
-processing. The current parser adapter has no ambient resolver and rejects DTDs
-before XDM construction. No complete inventory yet separates internal-only
-declarations, sealed external dependencies, parameter entities, validation
-requirements, entity-expansion shape, or cases that depend on typed metadata.
-No adversarial expansion or resource-accounting evidence exists.
+processing. The production parser adapter has no ambient resolver and rejects
+DTDs before XDM construction. The complete runner now separates syntactic
+internal/external, declaration, entity-kind, default-attribute, and typed-ID
+pressure for the exact direct frontier. Whether each declaration is observable
+in its expected result, and whether external bytes are already sealed under a
+usable logical identity, still requires case interpretation. The first private
+reference path has bounded cycle, nesting, reference, replacement-byte,
+cancellation, and work-accounting tests; broad memory-pressure evidence does
+not yet exist.
 
 ## Ownership and constraints
 
@@ -118,6 +123,25 @@ could introduce ambient I/O or unbounded expansion. Rejected.
   remain the tokenization mechanism without taking ownership of policy.
 - It is unknown whether a useful supported XML/XSLT profile can exclude
   external subsets while making a credible conformance statement.
+- A first safe reference path now proves bounded character-data general
+  entities in text and ordinary attributes without adding acquisition
+  authority. It deliberately rejects every other declaration family. The
+  current quick-xml tokenizer also attempts namespace-declaration expansion
+  before the adapter can apply its entity table, so entity-bearing namespace
+  values remain outside this slice rather than receiving partial semantics.
+- The exact direct frontier is now measurement-owned rather than inferred from
+  the broader catalog inventory: 113 cases have internal subsets, 94 name
+  external identifiers, 41 contain attribute-list declarations, 27 contain an
+  explicit default candidate, 17 declare entities, 13 have internal general
+  entities, five have external general entities, and 11 are typed-ID
+  candidates. No direct case contains parameter-entity, notation, or unparsed-
+  entity pressure. These overlapping syntactic candidates do not yet prove
+  that every declaration affects the expected result.
+- The bounded internal-general-entity parser rejects all 117 exact frontier
+  resources at another unsupported declaration or external-identifier seam.
+  This is a useful negative result: the first reference slice proves ownership,
+  limits, and denial behavior, but no direct OASIS case is simple enough for it
+  to initialize honestly.
 
 ## Disposition
 
@@ -136,9 +160,9 @@ requires separate sealed-snapshot evidence and a later decision.
   attribute dependency, and expected output method.
 - [ ] Identify related `id()` and `unparsed-entity-uri()` cases whose first
   visible failure occurs after parsing.
-- [ ] Build a safe internal-subset reference parser with explicit declaration,
+- [x] Build a safe internal-subset reference parser with explicit declaration,
   nesting, reference, replacement-size, and total-work limits.
-- [ ] Prove that DTD denial remains the default and that no URI or system/public
+- [x] Prove that DTD denial remains the default and that no URI or system/public
   identifier causes ambient acquisition.
 - [ ] Preserve original-byte provenance and deterministic diagnostics across
   entity replacement and declaration failures.
@@ -165,3 +189,11 @@ memory amplification.
 - 2026-09-30 -- Opened as Incubating from the post-74% OASIS frontier. DTD
   denial remains the default; only a bounded internal-subset reference
   experiment is admitted after inventory.
+- 2026-09-30 -- Added the first private bounded internal general-entity
+  reference path. It handles character-data replacement in text and ordinary
+  attributes, charges declaration/expansion work, and rejects external
+  identifiers and unimplemented declaration semantics. Production entry points
+  retain complete DTD denial.
+- 2026-09-30 -- Added direct-frontier accounting to the complete OASIS runner.
+  All 117 standard DTD denials now contribute reproducible role, declaration,
+  entity-kind, typed-ID/default candidate, and expected-comparator counts.

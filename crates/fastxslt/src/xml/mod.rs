@@ -3,6 +3,9 @@
 #[cfg(any(test, feature = "workbench"))]
 mod input_transcoding;
 
+#[cfg(any(test, feature = "workbench"))]
+pub(crate) mod internal_subset;
+
 pub(crate) mod names;
 
 #[cfg(any(test, feature = "workbench"))]

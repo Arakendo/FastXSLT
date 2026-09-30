@@ -17,9 +17,25 @@ denial, with related typed-ID and unparsed-entity behavior behind the same XML
 boundary. AR-0025 therefore gates the next large tranche on a case-level
 inventory and a bounded internal-subset reference experiment; ambient or
 parser-owned external resolution remains forbidden. Smaller independent
-semantic slices may continue while that review matures.
+semantic slices may continue while that review matures. The first private
+reference path is now executable: bounded internal general entities expand in
+text and ordinary attributes, while the production parser still denies every
+DTD and the experiment rejects external identifiers, parameter entities,
+default attributes, notations, markup-producing replacement text, and
+entity-bearing namespace declarations. This establishes the safe ownership and
+accounting seam but adds no OASIS pass credit; case correlation and the
+typed-ID/default-attribute boundary remain next. The complete runner now owns
+the exact direct-frontier accounting: 113 internal subsets, 94 external
+identifiers, 41 attribute-list declarations, 27 default-attribute candidates,
+17 entity declarations, 13 internal general-entity candidates, five external
+general-entity candidates, and 11 typed-ID candidates across the conserved 117
+cases. These are overlapping pressure counts, not expected passes.
+All 117 exact failing resources remain explicitly unsupported when replayed
+through the first internal-general-entity reference parser, confirming that the
+slice is a boundary proof rather than a hidden coverage gain.
 [Post-74% frontier evidence](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md)
 [DTD/entity review](../Architectural%20Reviews/AR-0025-bounded-dtd-and-entity-semantics.md)
+[Bounded entity evidence](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md)
 
 The first P1 experiment from the 2026-09-04 performance review is complete and
 was deliberately not retained. A compile-selected monotonic child scan removed

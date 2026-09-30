@@ -12,7 +12,10 @@ use crate::runtime::workbench_experiment::{
     WorkbenchStylesheetResources,
 };
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
-use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xml::internal_subset::InternalSubsetLimits;
+use crate::xml::quick_xml_experiment::{
+    ParseLimits, parse_document, parse_document_with_internal_subset,
+};
 
 const SUITE_ROOT_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_ROOT";
 const TRACE_CASE_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_TRACE_CASE";
@@ -63,6 +66,124 @@ struct Measurement {
     unusable_reference_excluded_cases: Vec<String>,
     mismatch_cases: Vec<String>,
     doubt_annotated_mismatch_cases: Vec<String>,
+    direct_dtd_frontier_properties: BTreeMap<String, usize>,
+    direct_dtd_frontier_comparators: BTreeMap<String, usize>,
+    direct_dtd_reference_outcomes: BTreeMap<String, usize>,
+    direct_dtd_reference_cases: Vec<(String, &'static str, &'static str)>,
+}
+
+#[derive(Debug, Clone)]
+struct DtdProperties(Vec<&'static str>);
+
+impl DtdProperties {
+    fn inspect(bytes: &[u8]) -> Self {
+        let text = String::from_utf8_lossy(bytes);
+        let doctype = text
+            .find("<!DOCTYPE")
+            .map(|start| {
+                let remainder = &text[start..];
+                let length = remainder.find("]>").map_or_else(
+                    || remainder.find('>').map_or(remainder.len(), |end| end + 1),
+                    |end| end + 2,
+                );
+                &remainder[..length]
+            })
+            .unwrap_or_default();
+        let candidates = [
+            ("internal-subset", doctype.contains('[')),
+            (
+                "external-identifier",
+                doctype.contains(" SYSTEM ") || doctype.contains(" PUBLIC "),
+            ),
+            ("entity-declaration", doctype.contains("<!ENTITY ")),
+            (
+                "internal-general-entity-candidate",
+                dtd_declaration_matches(doctype, "<!ENTITY", |declaration| {
+                    !is_parameter_entity(declaration)
+                        && !declaration.contains(" SYSTEM ")
+                        && !declaration.contains(" PUBLIC ")
+                }),
+            ),
+            (
+                "external-general-entity-candidate",
+                dtd_declaration_matches(doctype, "<!ENTITY", |declaration| {
+                    !is_parameter_entity(declaration)
+                        && (declaration.contains(" SYSTEM ") || declaration.contains(" PUBLIC "))
+                }),
+            ),
+            (
+                "unparsed-entity-candidate",
+                dtd_declaration_matches(doctype, "<!ENTITY", |declaration| {
+                    declaration.contains(" NDATA ")
+                }),
+            ),
+            (
+                "parameter-entity-declaration",
+                doctype.contains("<!ENTITY %") || doctype.contains("<!ENTITY  %"),
+            ),
+            ("attribute-list-declaration", doctype.contains("<!ATTLIST ")),
+            (
+                "default-attribute-candidate",
+                dtd_declaration_matches(doctype, "<!ATTLIST", |declaration| {
+                    declaration.contains('"') || declaration.contains('\'')
+                }),
+            ),
+            (
+                "id-typing-candidate",
+                doctype.contains(" ID ") || doctype.contains("\tID "),
+            ),
+            ("notation-declaration", doctype.contains("<!NOTATION ")),
+        ];
+        Self(
+            candidates
+                .into_iter()
+                .filter_map(|(name, present)| present.then_some(name))
+                .collect(),
+        )
+    }
+
+    fn named(self) -> impl Iterator<Item = &'static str> {
+        self.0.into_iter()
+    }
+
+    fn has_dtd(&self) -> bool {
+        !self.0.is_empty()
+    }
+}
+
+fn is_parameter_entity(declaration: &str) -> bool {
+    declaration.strip_prefix("<!ENTITY").is_some_and(|body| {
+        body.trim_start_matches([' ', '\t', '\r', '\n'])
+            .starts_with('%')
+    })
+}
+
+fn dtd_declaration_matches(doctype: &str, marker: &str, predicate: impl Fn(&str) -> bool) -> bool {
+    let mut remainder = doctype;
+    while let Some(start) = remainder.find(marker) {
+        let declaration = &remainder[start..];
+        let mut quote = None;
+        let mut end = None;
+        for (offset, character) in declaration.char_indices() {
+            match (quote, character) {
+                (Some(active), current) if current == active => quote = None,
+                (None, '\'' | '"') => quote = Some(character),
+                (None, '>') => {
+                    end = Some(offset);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        let Some(end) = end else {
+            return false;
+        };
+        if predicate(&declaration[..=end]) {
+            return true;
+        }
+        remainder = &declaration[end + 1..];
+    }
+    false
 }
 
 impl Measurement {
@@ -120,6 +241,66 @@ impl Measurement {
         self.frontier_examples
             .entry(frontier)
             .or_insert_with(|| format!("{identity}: {}", bounded_detail(&failure.detail)));
+    }
+
+    fn direct_dtd_frontier(
+        &mut self,
+        case: &LegacyCase,
+        failure: &WorkbenchFailure,
+        input_observations: &BTreeMap<String, (DtdProperties, &'static str)>,
+    ) {
+        if case.operation != "standard" {
+            return;
+        }
+        let frontier = failure_frontier(failure);
+        let role = if frontier.contains("source-input:dtd-forbidden") {
+            "source"
+        } else if frontier.contains("stylesheet-input:dtd-forbidden") {
+            "stylesheet"
+        } else {
+            return;
+        };
+        let observation = failure
+            .location
+            .as_ref()
+            .and_then(|location| input_observations.get(&location.resource))
+            .filter(|(properties, _)| properties.has_dtd())
+            .or_else(|| {
+                input_observations
+                    .iter()
+                    .find_map(|(identity, observation)| {
+                        (observation.0.has_dtd() && failure.detail.contains(identity))
+                            .then_some(observation)
+                    })
+            });
+        let Some((properties, reference_outcome)) = observation else {
+            return;
+        };
+        self.increment("direct-dtd-frontier-case");
+        *self
+            .direct_dtd_frontier_properties
+            .entry(format!("role:{role}"))
+            .or_default() += 1;
+        for name in properties.clone().named() {
+            *self
+                .direct_dtd_frontier_properties
+                .entry(name.to_owned())
+                .or_default() += 1;
+        }
+        *self
+            .direct_dtd_frontier_comparators
+            .entry(
+                case.output_compare
+                    .clone()
+                    .unwrap_or_else(|| "missing".to_owned()),
+            )
+            .or_default() += 1;
+        *self
+            .direct_dtd_reference_outcomes
+            .entry((*reference_outcome).to_owned())
+            .or_default() += 1;
+        self.direct_dtd_reference_cases
+            .push((case.identity.clone(), role, *reference_outcome));
     }
 }
 
@@ -225,6 +406,27 @@ fn measures_local_oasis_xslt10_compatibility() {
             continue;
         }
 
+        let source_identity = format!(
+            "{}source/{}",
+            logical_case_base(&case),
+            case.principal_source
+        );
+        let stylesheet_identity = logical_identity(&case, &case.principal_stylesheet);
+        let mut dtd_input_observations = BTreeMap::new();
+        record_dtd_input_observation(&mut dtd_input_observations, &source_identity, &source);
+        record_dtd_input_observation(
+            &mut dtd_input_observations,
+            &stylesheet_identity,
+            &stylesheet,
+        );
+        for resource in &resources {
+            record_dtd_input_observation(
+                &mut dtd_input_observations,
+                &resource.identity,
+                &resource.bytes,
+            );
+        }
+
         let engine = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             ExperimentalEngine::new_with_stylesheet_resources(
                 format!(
@@ -249,6 +451,7 @@ fn measures_local_oasis_xslt10_compatibility() {
             }
             Ok(Err(failure)) => {
                 trace_case_failure(&case.identity, "initialization", &failure);
+                measurement.direct_dtd_frontier(&case, &failure, &dtd_input_observations);
                 measurement.initialization_failure(
                     &case.identity,
                     &failure,
@@ -523,6 +726,21 @@ fn measures_local_oasis_xslt10_compatibility() {
         &measurement.standard_execution_frontiers,
     );
     print_ranked("comparison-frontier", &measurement.comparison_frontiers);
+    print_ranked(
+        "direct-dtd-frontier-property",
+        &measurement.direct_dtd_frontier_properties,
+    );
+    print_ranked(
+        "direct-dtd-frontier-comparator",
+        &measurement.direct_dtd_frontier_comparators,
+    );
+    print_ranked(
+        "direct-dtd-reference-outcome",
+        &measurement.direct_dtd_reference_outcomes,
+    );
+    for (identity, role, outcome) in &measurement.direct_dtd_reference_cases {
+        println!("direct-dtd-reference-case\t{outcome}\t{role}\t{identity}");
+    }
     for (frontier, example) in &measurement.frontier_examples {
         println!("frontier-example\t{frontier}\t{example}");
     }
@@ -875,6 +1093,41 @@ fn escaped_detail(detail: &str) -> String {
         escaped.push('…');
     }
     escaped
+}
+
+fn record_dtd_input_observation(
+    observations: &mut BTreeMap<String, (DtdProperties, &'static str)>,
+    identity: &str,
+    bytes: &[u8],
+) {
+    let properties = DtdProperties::inspect(bytes);
+    let outcome = dtd_reference_outcome(identity, bytes, &properties);
+    if properties.has_dtd() || !observations.contains_key(identity) {
+        observations.insert(identity.to_owned(), (properties, outcome));
+    }
+}
+
+fn dtd_reference_outcome(identity: &str, bytes: &[u8], properties: &DtdProperties) -> &'static str {
+    if !properties.has_dtd() {
+        return "not-applicable";
+    }
+    match parse_document_with_internal_subset(
+        identity,
+        bytes,
+        ParseLimits {
+            max_events: 1_000_000,
+            max_depth: 256,
+        },
+        InternalSubsetLimits {
+            declarations: 4_096,
+            nesting_depth: 32,
+            references: 100_000,
+            replacement_bytes: 16 * 1_048_576,
+        },
+    ) {
+        Ok(_) => "parsed",
+        Err(failure) => failure.dtd_reference_category(),
+    }
 }
 
 fn measurement_limits() -> WorkbenchLimits {
@@ -1775,6 +2028,36 @@ fn xml_wrapped_text_reference_equivalent(
     let expected = parse_comparison_fragment("expected-text", expected.trim()).ok()?;
     let expected_text = expected.string_value(expected.document_node());
     Some(strip_xml_declaration(&actual).trim() == strip_xml_declaration(&expected_text).trim())
+}
+
+#[test]
+fn classifies_direct_dtd_declaration_pressure_without_scanning_document_content() {
+    let properties = DtdProperties::inspect(
+        br#"<!DOCTYPE root SYSTEM "sealed.dtd" [
+            <!ENTITY local "value">
+            <!ENTITY remote SYSTEM "remote.ent">
+            <!ENTITY image SYSTEM "image.bin" NDATA png>
+            <!ATTLIST root identity ID #REQUIRED label CDATA "default">
+            <!NOTATION png SYSTEM "image/png">
+        ]><root>ordinary ID text and <!ENTITY fake "content"></root>"#,
+    );
+    let properties = properties.named().collect::<BTreeSet<_>>();
+
+    for expected in [
+        "internal-subset",
+        "external-identifier",
+        "entity-declaration",
+        "internal-general-entity-candidate",
+        "external-general-entity-candidate",
+        "unparsed-entity-candidate",
+        "attribute-list-declaration",
+        "default-attribute-candidate",
+        "id-typing-candidate",
+        "notation-declaration",
+    ] {
+        assert!(properties.contains(expected), "missing {expected}");
+    }
+    assert!(!properties.contains("parameter-entity-declaration"));
 }
 
 #[test]
