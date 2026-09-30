@@ -69,7 +69,7 @@ struct Measurement {
     direct_dtd_frontier_properties: BTreeMap<String, usize>,
     direct_dtd_frontier_comparators: BTreeMap<String, usize>,
     direct_dtd_reference_outcomes: BTreeMap<String, usize>,
-    direct_dtd_reference_cases: Vec<(String, &'static str, &'static str)>,
+    direct_dtd_reference_cases: Vec<(String, &'static str, &'static str, String)>,
 }
 
 #[derive(Debug, Clone)]
@@ -243,44 +243,67 @@ impl Measurement {
             .or_insert_with(|| format!("{identity}: {}", bounded_detail(&failure.detail)));
     }
 
-    fn direct_dtd_frontier(
+    fn direct_dtd_failure(
         &mut self,
         case: &LegacyCase,
         failure: &WorkbenchFailure,
+        source_identity: &str,
         input_observations: &BTreeMap<String, (DtdProperties, &'static str)>,
     ) {
         if case.operation != "standard" {
             return;
         }
-        let frontier = failure_frontier(failure);
-        let role = if frontier.contains("source-input:dtd-forbidden") {
-            "source"
-        } else if frontier.contains("stylesheet-input:dtd-forbidden") {
-            "stylesheet"
-        } else {
-            return;
-        };
         let observation = failure
             .location
             .as_ref()
-            .and_then(|location| input_observations.get(&location.resource))
-            .filter(|(properties, _)| properties.has_dtd())
+            .and_then(|location| input_observations.get_key_value(&location.resource))
+            .filter(|(_, (properties, _))| properties.has_dtd())
             .or_else(|| {
-                input_observations
-                    .iter()
-                    .find_map(|(identity, observation)| {
-                        (observation.0.has_dtd() && failure.detail.contains(identity))
-                            .then_some(observation)
-                    })
+                input_observations.iter().find(|(identity, observation)| {
+                    observation.0.has_dtd() && failure.detail.contains(*identity)
+                })
             });
-        let Some((properties, reference_outcome)) = observation else {
+        let Some((identity, (properties, reference_outcome))) = observation else {
             return;
         };
+        let role = if identity == source_identity {
+            "source"
+        } else {
+            "stylesheet"
+        };
+        self.record_direct_dtd_case(case, role, properties, reference_outcome);
+    }
+
+    fn direct_dtd_success(
+        &mut self,
+        case: &LegacyCase,
+        source_identity: &str,
+        input_observations: &BTreeMap<String, (DtdProperties, &'static str)>,
+    ) {
+        if case.operation != "standard" {
+            return;
+        }
+        let Some((properties, reference_outcome)) = input_observations.get(source_identity) else {
+            return;
+        };
+        if properties.has_dtd() {
+            self.record_direct_dtd_case(case, "source", properties, reference_outcome);
+        }
+    }
+
+    fn record_direct_dtd_case(
+        &mut self,
+        case: &LegacyCase,
+        role: &'static str,
+        properties: &DtdProperties,
+        reference_outcome: &&'static str,
+    ) {
         self.increment("direct-dtd-frontier-case");
         *self
             .direct_dtd_frontier_properties
             .entry(format!("role:{role}"))
             .or_default() += 1;
+        let property_names = properties.0.join(",");
         for name in properties.clone().named() {
             *self
                 .direct_dtd_frontier_properties
@@ -299,8 +322,12 @@ impl Measurement {
             .direct_dtd_reference_outcomes
             .entry((*reference_outcome).to_owned())
             .or_default() += 1;
-        self.direct_dtd_reference_cases
-            .push((case.identity.clone(), role, *reference_outcome));
+        self.direct_dtd_reference_cases.push((
+            case.identity.clone(),
+            role,
+            *reference_outcome,
+            property_names,
+        ));
     }
 }
 
@@ -428,7 +455,7 @@ fn measures_local_oasis_xslt10_compatibility() {
         }
 
         let engine = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            ExperimentalEngine::new_with_stylesheet_resources(
+            ExperimentalEngine::new_with_bounded_internal_source_subset(
                 format!(
                     "{}source/{}",
                     logical_case_base(&case),
@@ -442,16 +469,23 @@ fn measures_local_oasis_xslt10_compatibility() {
                     denied_identities: Vec::new(),
                 },
                 measurement_limits(),
+                dtd_reference_limits(),
             )
         }));
         let engine = match engine {
             Ok(Ok(engine)) => {
                 measurement.increment("initialized");
+                measurement.direct_dtd_success(&case, &source_identity, &dtd_input_observations);
                 engine
             }
             Ok(Err(failure)) => {
                 trace_case_failure(&case.identity, "initialization", &failure);
-                measurement.direct_dtd_frontier(&case, &failure, &dtd_input_observations);
+                measurement.direct_dtd_failure(
+                    &case,
+                    &failure,
+                    &source_identity,
+                    &dtd_input_observations,
+                );
                 measurement.initialization_failure(
                     &case.identity,
                     &failure,
@@ -738,8 +772,10 @@ fn measures_local_oasis_xslt10_compatibility() {
         "direct-dtd-reference-outcome",
         &measurement.direct_dtd_reference_outcomes,
     );
-    for (identity, role, outcome) in &measurement.direct_dtd_reference_cases {
-        println!("direct-dtd-reference-case\t{outcome}\t{role}\t{identity}");
+    for (identity, role, outcome, properties) in &measurement.direct_dtd_reference_cases {
+        println!(
+            "direct-dtd-reference-case\t{outcome}\t{role}\tproperties={properties}\t{identity}"
+        );
     }
     for (frontier, example) in &measurement.frontier_examples {
         println!("frontier-example\t{frontier}\t{example}");
@@ -1118,15 +1154,19 @@ fn dtd_reference_outcome(identity: &str, bytes: &[u8], properties: &DtdPropertie
             max_events: 1_000_000,
             max_depth: 256,
         },
-        InternalSubsetLimits {
-            declarations: 4_096,
-            nesting_depth: 32,
-            references: 100_000,
-            replacement_bytes: 16 * 1_048_576,
-        },
+        dtd_reference_limits(),
     ) {
         Ok(_) => "parsed",
         Err(failure) => failure.dtd_reference_category(),
+    }
+}
+
+const fn dtd_reference_limits() -> InternalSubsetLimits {
+    InternalSubsetLimits {
+        declarations: 4_096,
+        nesting_depth: 32,
+        references: 100_000,
+        replacement_bytes: 16 * 1_048_576,
     }
 }
 

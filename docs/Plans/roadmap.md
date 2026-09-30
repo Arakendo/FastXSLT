@@ -6,8 +6,8 @@ standards scope are decided.
 
 ## Current critical path
 
-The XSLT 1.0 compatibility track has reached 2,348 / 3,173 exact OASIS
-comparisons (74.00%). Reaching 75.00% requires 32 additional exact cases. Two
+The XSLT 1.0 compatibility track has reached 2,350 / 3,173 exact OASIS
+comparisons (74.06%). Reaching 75.00% requires 30 additional exact cases. Two
 post-checkpoint safe slices—declared ISO-2022-JP input and dynamic
 `xsl:processing-instruction` target AVTs—are focused-tested but do not change
 the numerator because the affected archival input is malformed under strict
@@ -23,16 +23,26 @@ text and ordinary attributes, while the production parser still denies every
 DTD and the experiment rejects external identifiers, parameter entities,
 default attributes, notations, markup-producing replacement text, and
 entity-bearing namespace declarations. This establishes the safe ownership and
-accounting seam but adds no OASIS pass credit; case correlation and the
-typed-ID/default-attribute boundary remain next. The complete runner now owns
+accounting seam. A second bounded slice syntactically admits non-validating
+internal `ELEMENT` declarations without using them as validation authority.
+The unchanged `Lotus/select_select73` entity case and
+`Microsoft/Elements__89108` declaration-only case then initialize, execute,
+and compare exactly through the measurement-only path. Production entry points
+still deny every DTD. The complete runner now owns
 the exact direct-frontier accounting: 113 internal subsets, 94 external
 identifiers, 41 attribute-list declarations, 27 default-attribute candidates,
 17 entity declarations, 13 internal general-entity candidates, five external
 general-entity candidates, and 11 typed-ID candidates across the conserved 117
 cases. These are overlapping pressure counts, not expected passes.
-All 117 exact failing resources remain explicitly unsupported when replayed
-through the first internal-general-entity reference parser, confirming that the
-slice is a boundary proof rather than a hidden coverage gain.
+The original 117-case direct frontier remains conserved: two resources now
+parse through the bounded reference profile and 115 remain explicitly
+unsupported. The next material internal-only seam is `ATTLIST` semantics;
+external identifiers still dominate 94 cases and remain denied. The 21
+external-free cases divide into ten typed-ID source cases, two default-attribute
+source cases, and nine stylesheet cases whose DTD supplies fixed/defaulted
+namespace or version attributes before namespace resolution. These require
+separate XML/XDM and tokenizer-boundary experiments rather than one permissive
+ATTLIST shortcut.
 [Post-74% frontier evidence](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md)
 [DTD/entity review](../Architectural%20Reviews/AR-0025-bounded-dtd-and-entity-semantics.md)
 [Bounded entity evidence](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md)
@@ -2182,7 +2192,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are conserved. The current strict lower bound is 2,348 exact matches (74.00%); 2,537 cases initialize and 2,491 execute successfully. Every non-pass has a named policy, infrastructure, invalid/unsupported, mismatch, comparator, or unusable-reference disposition; seven visible mismatches and four comparator gaps remain. Expected-error credit is independently conserved at 423 / 431 (98.14%). The archive remains non-redistributed, and AR-0019/AR-0024/AR-0025 plus their linked evidence own the detailed semantic, authority, encoding, DTD/entity, and historical-reference boundaries. This is compatibility evidence, not a conformance claim. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are conserved. The current strict lower bound is 2,350 exact matches (74.06%); 2,539 cases initialize and 2,493 execute successfully. Every non-pass has a named policy, infrastructure, invalid/unsupported, mismatch, comparator, or unusable-reference disposition; seven visible mismatches and four comparator gaps remain. Expected-error credit is independently conserved at 423 / 431 (98.14%). The archive remains non-redistributed, and AR-0019/AR-0024/AR-0025 plus their linked evidence own the detailed semantic, authority, encoding, DTD/entity, and historical-reference boundaries. This is compatibility evidence, not a conformance claim. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -2230,8 +2240,8 @@ rather than Unicode whitespace makes three further cases exact. The lower
 bound reaches 2,261 / 3,173 (71.26%). A subsequent normative HTML
 serialization correction deliberately withdraws one former exact pass whose
 archival expectation minimized non-Boolean element/attribute pairs. The
-current lower bound is 2,348 / 3,173 (74.00%). Current totals are 2,537
-initialized, 2,491 successfully executed, 633 initialization failures,
+current lower bound is 2,350 / 3,173 (74.06%). Current totals are 2,539
+initialized, 2,493 successfully executed, 631 initialization failures,
 46 execution failures, 4 comparator gaps, and 7 visible mismatches.
 Host-parser-policy exclusions are 24, XSLT 1.0 discretionary-policy exclusions
 are five, host-collation-policy exclusions are five,

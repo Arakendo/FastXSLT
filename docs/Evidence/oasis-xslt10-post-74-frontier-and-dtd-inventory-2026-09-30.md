@@ -24,7 +24,8 @@ Two safe private capabilities were implemented and focused-tested:
   attribute-value-template representation, with execution-time NCName/`xml`
   validation and no extra result-node budget charge.
 
-The complete sweep remains at 2,348 exact comparisons. The synthetic valid
+The first two post-checkpoint capabilities leave the sweep at 2,348 exact
+comparisons. The synthetic valid
 ISO-2022-JP case proves the decoder boundary, while the sampled archival input
 contains malformed sequences and remains a structured initialization failure;
 FastXSLT does not replace invalid bytes merely to make the case execute. The two
@@ -113,11 +114,24 @@ inventory:
 
 Properties overlap. In particular, most internal subsets also name an external
 identifier, so "internal subset" does not imply that an internal-only parser is
-sufficient. The private internal-general-entity reference parser rejects all
-117 inputs at another deliberately unsupported declaration or external-
-identifier boundary; none is silently initialized. Candidate counts identify
-declaration pressure syntactically; they do not yet prove that the expected
-result observes every declaration.
+sufficient. After the inventory, the private parser added syntax-validating,
+non-validating `ELEMENT` declarations to the bounded internal-general-entity
+profile. Exactly two resources now parse: `Lotus/select_select73`, which uses
+one internal character-data entity, and `Microsoft/Elements__89108`, whose
+declaration is semantically inert to the selected transform. Both unchanged
+cases initialize, execute, and compare exactly through the measurement-only
+profile. The other 115 resources remain explicitly unsupported. The original
+117-case denominator, its 87/30 role split, and every declaration-property
+count remain conserved rather than disappearing when the failure diagnostic
+changes.
+
+The 21 still-blocked cases without external identifiers are not one ATTLIST
+tranche. Ten source cases require DTD-typed ID metadata, two source cases use
+default attribute values, and nine stylesheet cases obtain fixed/defaulted
+namespace or version attributes from the DTD. Those stylesheet attributes
+must participate before namespace resolution, so the current start-event
+adapter cannot add them afterward without changing the meaning of the parsed
+stylesheet.
 
 ## Architectural consequence
 
@@ -130,7 +144,8 @@ explicitly admitted sealed resources.
 
 ## Non-claims
 
-- This evidence does not raise the exact-match numerator above 2,348.
+- The bounded reference experiment raises the measured lower bound to 2,350 /
+  3,173 (74.06%), but production DTD denial remains unchanged.
 - The 117 directly blocked cases are a pressure count, not an expected pass
   count.
 - The measurement runner now conserves declaration-property counts for the

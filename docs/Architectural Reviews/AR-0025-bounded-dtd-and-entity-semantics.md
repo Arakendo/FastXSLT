@@ -125,7 +125,9 @@ could introduce ambient I/O or unbounded expansion. Rejected.
   external subsets while making a credible conformance statement.
 - A first safe reference path now proves bounded character-data general
   entities in text and ordinary attributes without adding acquisition
-  authority. It deliberately rejects every other declaration family. The
+  authority. A second slice syntax-validates non-validating internal `ELEMENT`
+  declarations while rejecting declaration families with unimplemented
+  observable semantics. The
   current quick-xml tokenizer also attempts namespace-declaration expansion
   before the adapter can apply its entity table, so entity-bearing namespace
   values remain outside this slice rather than receiving partial semantics.
@@ -137,11 +139,19 @@ could introduce ambient I/O or unbounded expansion. Rejected.
   candidates. No direct case contains parameter-entity, notation, or unparsed-
   entity pressure. These overlapping syntactic candidates do not yet prove
   that every declaration affects the expected result.
-- The bounded internal-general-entity parser rejects all 117 exact frontier
-  resources at another unsupported declaration or external-identifier seam.
-  This is a useful negative result: the first reference slice proves ownership,
-  limits, and denial behavior, but no direct OASIS case is simple enough for it
-  to initialize honestly.
+- The bounded reference parser admits exactly two of the 117 exact-frontier
+  resources. The unchanged `Lotus/select_select73` internal-entity case and
+  `Microsoft/Elements__89108` declaration-only case initialize, execute, and
+  compare exactly through the measurement-only profile. The other 115 remain
+  at explicit unsupported declaration or external-identifier seams. The
+  original 87-source/30-stylesheet denominator remains conserved.
+- The remaining 21 external-identifier-free frontier cases split into three
+  materially different seams: ten source cases require typed-ID metadata, two
+  source cases require defaulted attributes, and nine stylesheet cases rely on
+  fixed/defaulted namespace or version attributes. The stylesheet group must
+  affect namespace resolution before ordinary start-event handling; it cannot
+  be implemented honestly as post-XDM attribute injection at the current
+  tokenizer seam.
 
 ## Disposition
 
@@ -155,7 +165,7 @@ requires separate sealed-snapshot evidence and a later decision.
 
 - [x] Add a reproducible catalog inventory for standard principal source and
   stylesheet inputs containing DTDs.
-- [ ] Inventory the 117 directly blocked standard cases by internal/external
+- [x] Inventory the 117 directly blocked standard cases by internal/external
   subset, declaration type, entity kind, typed-ID dependency, defaulted
   attribute dependency, and expected output method.
 - [ ] Identify related `id()` and `unparsed-entity-uri()` cases whose first
@@ -197,3 +207,7 @@ memory amplification.
 - 2026-09-30 -- Added direct-frontier accounting to the complete OASIS runner.
   All 117 standard DTD denials now contribute reproducible role, declaration,
   entity-kind, typed-ID/default candidate, and expected-comparator counts.
+- 2026-09-30 -- Added bounded grammar validation for non-validating internal
+  `ELEMENT` declarations and a measurement-only prepared-source route. Two
+  unchanged standard cases become exact; 115 cases remain explicitly
+  unsupported, and production DTD denial is unchanged.

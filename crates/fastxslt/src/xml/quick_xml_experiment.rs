@@ -289,8 +289,7 @@ pub(crate) fn parse_document_with_internal_subset(
     )
 }
 
-#[cfg(test)]
-fn parse_document_controlled_with_internal_subset(
+pub(crate) fn parse_document_controlled_with_internal_subset(
     resource: &str,
     input: &[u8],
     limits: ParseLimits,

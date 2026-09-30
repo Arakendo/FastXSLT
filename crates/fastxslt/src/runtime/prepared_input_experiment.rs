@@ -5,7 +5,10 @@ use std::{collections::BTreeMap, sync::Arc};
 use crate::execution_control_experiment::{ControlFailure, InvocationControl};
 use crate::resources::ResourceSnapshot;
 use crate::xdm::owned_tree_experiment::{BuildFailure, Document, SourceLocation};
-use crate::xml::quick_xml_experiment::{ParseLimits, parse_document_controlled};
+use crate::xml::internal_subset::InternalSubsetLimits;
+use crate::xml::quick_xml_experiment::{
+    ParseLimits, parse_document_controlled, parse_document_controlled_with_internal_subset,
+};
 
 #[cfg(test)]
 const PREPARATION_XML_LIMITS: ParseLimits = ParseLimits {
@@ -39,6 +42,7 @@ pub(super) struct PreparedInputBuilder {
     parse_limits: ParseLimits,
     documents: BTreeMap<String, Arc<Document>>,
     parsed_phase_capacity_bytes: BTreeMap<String, usize>,
+    internal_subset_limits: Option<InternalSubsetLimits>,
 }
 
 impl PreparedInputBuilder {
@@ -49,6 +53,7 @@ impl PreparedInputBuilder {
             parse_limits: PREPARATION_XML_LIMITS,
             documents: BTreeMap::new(),
             parsed_phase_capacity_bytes: BTreeMap::new(),
+            internal_subset_limits: None,
         }
     }
 
@@ -58,7 +63,17 @@ impl PreparedInputBuilder {
             parse_limits,
             documents: BTreeMap::new(),
             parsed_phase_capacity_bytes: BTreeMap::new(),
+            internal_subset_limits: None,
         }
+    }
+
+    #[cfg(test)]
+    pub(super) const fn with_internal_subset_limits(
+        mut self,
+        limits: InternalSubsetLimits,
+    ) -> Self {
+        self.internal_subset_limits = Some(limits);
+        self
     }
 
     pub(super) fn prepare(
@@ -71,8 +86,13 @@ impl PreparedInputBuilder {
                 identity: identity.to_owned(),
             });
         }
-        let (document, parsed_phase_capacity_bytes) =
-            prepare_document(&self.snapshot, self.parse_limits, identity, control)?;
+        let (document, parsed_phase_capacity_bytes) = prepare_document_with_policy(
+            &self.snapshot,
+            self.parse_limits,
+            identity,
+            control,
+            self.internal_subset_limits,
+        )?;
         self.documents.insert(identity.to_owned(), document);
         self.parsed_phase_capacity_bytes
             .insert(identity.to_owned(), parsed_phase_capacity_bytes);
@@ -89,33 +109,57 @@ impl PreparedInputBuilder {
     }
 }
 
+#[cfg_attr(
+    not(test),
+    allow(
+        dead_code,
+        reason = "the direct reference preparation path is exercised by test-only pipeline probes"
+    )
+)]
 pub(super) fn prepare_document(
     snapshot: &ResourceSnapshot,
     parse_limits: ParseLimits,
     identity: &str,
     control: &mut InvocationControl,
 ) -> Result<(Arc<Document>, usize), PreparationFailure> {
+    prepare_document_with_policy(snapshot, parse_limits, identity, control, None)
+}
+
+fn prepare_document_with_policy(
+    snapshot: &ResourceSnapshot,
+    parse_limits: ParseLimits,
+    identity: &str,
+    control: &mut InvocationControl,
+    internal_subset_limits: Option<InternalSubsetLimits>,
+) -> Result<(Arc<Document>, usize), PreparationFailure> {
     let bytes = snapshot
         .get(identity)
         .ok_or_else(|| PreparationFailure::MissingResource {
             identity: identity.to_owned(),
         })?;
-    let parsed =
-        parse_document_controlled(identity, bytes, parse_limits, control).map_err(|failure| {
-            match failure.control_failure() {
-                Some(failure) => PreparationFailure::Control(*failure),
-                None => PreparationFailure::InvalidXml {
-                    identity: identity.to_owned(),
-                    location: SourceLocation {
-                        resource: identity.to_owned(),
-                        span: failure
-                            .source_span()
-                            .expect("non-control XML failures must own a source span"),
-                    },
-                    detail: format!("{failure:?}"),
-                },
-            }
-        })?;
+    let parsed = match internal_subset_limits {
+        Some(dtd_limits) => parse_document_controlled_with_internal_subset(
+            identity,
+            bytes,
+            parse_limits,
+            dtd_limits,
+            control,
+        ),
+        None => parse_document_controlled(identity, bytes, parse_limits, control),
+    }
+    .map_err(|failure| match failure.control_failure() {
+        Some(failure) => PreparationFailure::Control(*failure),
+        None => PreparationFailure::InvalidXml {
+            identity: identity.to_owned(),
+            location: SourceLocation {
+                resource: identity.to_owned(),
+                span: failure
+                    .source_span()
+                    .expect("non-control XML failures must own a source span"),
+            },
+            detail: format!("{failure:?}"),
+        },
+    })?;
     let parsed_phase_capacity_bytes = parsed.owned_capacity_bytes();
     let document =
         Document::from_parsed_controlled(parsed, control).map_err(|failure| match failure {

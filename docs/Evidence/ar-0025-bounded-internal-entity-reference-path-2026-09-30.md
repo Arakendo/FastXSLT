@@ -31,14 +31,15 @@ select complete DTD denial. The bounded path must be chosen explicitly inside
 the crate's test configuration and is not exposed by the Rust facade, .NET
 adapters, isolated worker, or WASM adapter.
 
-The experimental parser rejects rather than ignores:
+The experimental parser syntax-validates non-validating internal `ELEMENT`
+declarations. It rejects rather than ignores:
 
 - `SYSTEM` and `PUBLIC` identifiers;
 - external general or parameter entities;
 - parameter entities;
 - attribute-list and default-attribute declarations;
 - notation and unparsed-entity declarations;
-- element or other declaration kinds;
+- attribute-list, notation, parameter-entity, and other declaration kinds;
 - replacement text that can inject markup; and
 - entity-bearing namespace declaration values that the current tokenizer tries
   to resolve before the adapter receives the start event.
@@ -74,11 +75,16 @@ feature.
   and 11 typed-ID candidates. No direct-frontier input contains a parameter
   entity, notation, or unparsed-entity candidate. These properties overlap.
 - Replaying the private reference parser against the exact failing resource for
-  every direct case produces 117 explicit
-  `unsupported-declaration-semantics` outcomes. The 30 stylesheet failures are
-  28 principal modules plus two included/imported modules; the runner follows
-  the structured/failure resource identity rather than incorrectly attributing
-  those two failures to the principal stylesheet.
+  every direct case produces 115 explicit
+  `unsupported-declaration-semantics` outcomes and two parsed resources. The 30
+  stylesheet failures are 28 principal modules plus two included/imported
+  modules; the runner follows the structured/failure resource identity rather
+  than incorrectly attributing those two failures to the principal stylesheet.
+- The unchanged `Lotus/select_select73` internal-entity case and
+  `Microsoft/Elements__89108` declaration-only case initialize, execute, and
+  compare exactly when the local OASIS measurement explicitly selects the
+  bounded source profile. This raises the measured lower bound to 2,350 / 3,173
+  (74.06%) without enabling the profile for ordinary engine callers.
 - Default attributes, typed IDs, notations, and unparsed entities remain
   observable XML/XDM semantics and must not be skipped to improve initialization
   counts.
@@ -86,8 +92,8 @@ feature.
 ## Non-claims
 
 - Production DTD support is not enabled.
-- No OASIS case receives pass credit from this experiment yet; the complete
-  runner remains at 2,348 / 3,173 exact comparisons (74.00%).
+- Two OASIS cases receive measurement credit; this is compatibility evidence
+  for a private profile, not production DTD support.
 - The experiment is not a validating XML processor.
 - External subset resolution, typed IDs, default attributes, parameter
   entities, notations, and `unparsed-entity-uri()` remain unsupported.
