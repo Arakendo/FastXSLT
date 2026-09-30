@@ -1,4 +1,4 @@
-# OASIS XSLT 1.0 Prefixed Computed-Element Attribute Set -- 2026-09-28
+# OASIS XSLT 1.0 Prefixed Instruction Attribute-Set Recovery -- 2026-09-28
 
 Date: 2026-09-28  
 Status: Verified compatibility and corpus evidence  
@@ -17,15 +17,19 @@ the computed element.
 
 ## Change
 
-The XSLT 1.0 compatibility compiler tolerates and ignores exactly
-`xsl:element/@xsl:use-attribute-sets`. It does not resolve or apply the named
-set. The standard unqualified `use-attribute-sets` spelling continues through
-the existing attribute-set linker and runtime application path.
+The XSLT 1.0 compatibility compiler initially tolerated and ignored exactly
+`xsl:element/@xsl:use-attribute-sets`. On 2026-09-29 the same corpus-selected
+recovery was extended to `xsl:attribute-set` and `xsl:copy`. It does not
+resolve or apply the named set. The standard unqualified
+`use-attribute-sets` spelling continues through the existing attribute-set
+linker and runtime application path.
 
-The rule is compile-selected and limited to an actual XSLT `element`
-instruction under XSLT 1.0 compatibility. It does not generally ignore
-XSLT-namespaced attributes, weaken modern static contexts, or treat the
-prefixed spelling as standards-conforming syntax.
+The rule is compile-selected and limited to the actual XSLT `element`,
+`attribute-set`, and `copy` instructions under XSLT 1.0 compatibility. It does
+not generally ignore XSLT-namespaced attributes, weaken modern static contexts,
+or treat the prefixed spelling as standards-conforming syntax. Dependency-graph
+collection follows the same namespace rule, so an ignored prefixed spelling
+cannot silently create an attribute-set dependency.
 
 ## Corpus result
 
@@ -49,6 +53,15 @@ mismatches remain nine. The cases retain their doubt metadata; this evidence
 does not convert the suite's chosen recovery behavior into an XSLT 1.0
 conformance claim.
 
+The 2026-09-29 extension deliberately earns no additional pass credit.
+`Microsoft/AttributeSets__91036#1` advances to its independent unknown
+unqualified `foo` attribute, while `Microsoft/AttributeSets__91038#1` advances
+to its empty standard `use-attribute-sets` list. The latter remains invalid:
+XSLT 1.0's `QNames` production requires at least one QName. The complete sweep
+therefore stays at 2,262 / 3,173 exact matches (71.29%), 2,442 initialized
+cases, and 2,393 successful executions, with zero visible mismatches and zero
+comparator gaps.
+
 ## Verification
 
 A focused runtime test proves that the prefixed spelling is ignored while the
@@ -58,7 +71,10 @@ cases.
 
 ```powershell
 cargo test -p fastxslt --all-features xslt10_prefixed_computed_element_attribute_set_attribute_is_ignored
+cargo test -p fastxslt --all-features xslt10_prefixed_attribute_set_spelling_is_ignored_on_declarations_and_copy
+cargo test -p fastxslt --all-features xslt10_attribute_set_lists_require_at_least_one_qname
 ./scripts/measure-oasis-xslt10.ps1 -TraceCase 'Microsoft/AttributeSets__91083#1'
+./scripts/measure-oasis-xslt10.ps1 -TraceCase 'Microsoft/AttributeSets__91038#1'
 ./scripts/verify.ps1
 ```
 

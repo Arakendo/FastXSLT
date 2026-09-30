@@ -424,9 +424,21 @@ pub(super) fn execute_value_of(
         ValueExpression::Xslt10CountPathUnion(alternatives) => {
             append_xslt10_count_path_union(inputs, context, alternatives, result, control)?;
         }
+        ValueExpression::Xslt10CountSourceDocumentsDescendants { references, name } => {
+            let count = super::dynamic_document::count_source_document_descendants(
+                inputs, context, references, name, control,
+            )?;
+            append_text(result, &count.to_string(), inputs.request_id, control)?;
+        }
         ValueExpression::CountSourceNodeVariable(variable) => {
             let count = variables
                 .source_nodes(inputs.globals, variable)
+                .map(Vec::len)
+                .or_else(|| {
+                    variables
+                        .detached_source_node_strings(variable)
+                        .map(Vec::len)
+                })
                 .ok_or_else(|| {
                     failure(
                         "XPTY0004",
@@ -434,8 +446,7 @@ pub(super) fn execute_value_of(
                         Some(inputs.request_id),
                         format!("count requires a source-node sequence: ${variable}"),
                     )
-                })?
-                .len();
+                })?;
             control
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;

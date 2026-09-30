@@ -21,6 +21,10 @@ unimplemented numbering semantics. No runtime branch or locale policy is added.
 Focused tests cover traditional mixed tokens, alphabetic Latin tokens, decimal
 tokens, and rejection of alphabetic reinterpretation of a Roman token.
 
+Subsequent standards review corrected that final boundary: `i` and `I` are
+fixed Roman tokens whose meaning is not changed by either valid static
+`letter-value`. See [OASIS XSLT 1.0 Unambiguous Roman `letter-value`](oasis-xslt10-unambiguous-roman-letter-value-2026-09-29.md).
+
 ## Corpus result
 
 Affected unchanged cases advance from attribute rejection to their next honest

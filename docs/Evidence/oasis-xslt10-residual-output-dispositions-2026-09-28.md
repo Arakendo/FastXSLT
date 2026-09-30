@@ -65,6 +65,12 @@ execution boundary rather than crediting its materially different result. The
 broad `Microsoft/BVTs_bvt067#1` HTML stress result remains the sole
 comparator-unsupported case.
 
+The subsequent HTML serialization/reference-boundary tranche makes that result
+comparable and assigns it an exact uncredited archival-reference disposition.
+The current ledger has no visible mismatch and no comparator-unsupported case;
+see
+[OASIS XSLT 1.0 HTML Serialization Reference Boundaries](oasis-xslt10-html-serialization-reference-boundaries-2026-09-29.md).
+
 ## Measurement effect
 
 The strict exact lower bound remains 2,261 / 3,173 (71.26%). Initialization and

@@ -1,5 +1,8 @@
 //! Private execution of the admitted `xsl:number` surface.
 
+#[path = "number_executor/attribute_values.rs"]
+mod attribute_values;
+
 use std::borrow::Cow;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
@@ -44,6 +47,8 @@ pub(super) fn evaluate(
         count,
         from,
         format,
+        letter_value,
+        language,
         grouping,
         xslt10_compatibility,
         ..
@@ -60,6 +65,22 @@ pub(super) fn evaluate(
         control,
     )?;
     let format = format.as_ref();
+    attribute_values::validate_effective_letter_value(
+        inputs,
+        execution,
+        letter_value.as_ref(),
+        format,
+        variables,
+        control,
+    )?;
+    attribute_values::validate_effective_language(
+        inputs,
+        execution,
+        language.as_ref(),
+        format,
+        variables,
+        control,
+    )?;
     let formatted = if let Some(value) = value {
         control
             .charge(WorkDomain::XPathOperation, 1)

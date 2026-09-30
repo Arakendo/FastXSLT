@@ -182,14 +182,19 @@ fn collect_attribute_set_references(
     references: &mut Vec<ExpandedName>,
 ) -> Result<(), CompileFailure> {
     const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
-    for namespace in [None, Some(XSLT_NAMESPACE)] {
-        let Some(names) = optional_attribute(document, element, namespace, "use-attribute-sets")
-        else {
-            continue;
-        };
-        references.extend(compile_attribute_set_reference_list(
-            document, element, names,
-        )?);
+    if document.kind(element) == crate::xdm::owned_tree_experiment::NodeKind::Element {
+        let element_namespace = document
+            .name(element)
+            .and_then(|name| name.namespace.as_deref());
+        let attribute_namespace =
+            (element_namespace != Some(XSLT_NAMESPACE)).then_some(XSLT_NAMESPACE);
+        if let Some(names) =
+            optional_attribute(document, element, attribute_namespace, "use-attribute-sets")
+        {
+            references.extend(compile_attribute_set_reference_list(
+                document, element, names,
+            )?);
+        }
     }
     for child in document.children(element) {
         collect_attribute_set_references(document, *child, references)?;

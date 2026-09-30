@@ -7,6 +7,7 @@ use crate::xslt::golden_semantics_experiment::{
     TemplatePriority,
 };
 
+use super::match_boolean_predicate_compiler::parse as parse_match_boolean_predicate;
 use super::match_sequence_predicate_compiler::parse as parse_match_sequence_predicates;
 use super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::{
@@ -84,6 +85,15 @@ pub(super) fn compile_match_pattern(
                 parse_any_element_number_predicate(predicate)
                     .expect("wildcard element numeric predicate shape was checked"),
             )
+        }
+        predicate if parse_match_boolean_predicate(predicate).is_some() => {
+            MatchPattern::AnyElementBooleanPredicate(
+                parse_match_boolean_predicate(predicate)
+                    .expect("boolean wildcard predicate shape was checked"),
+            )
+        }
+        predicate if parse_element_node_set_string_equals(predicate).is_some() => {
+            compile_element_node_set_string_equals(document, element, predicate)
         }
         predicate if parse_node_string_predicate(predicate).is_some() => {
             compile_node_string_value_pattern(document, element, predicate)
@@ -1111,6 +1121,8 @@ fn compile_template_priority(
             | MatchPattern::AnyElementWithAttributeValue { .. }
             | MatchPattern::AnyElementNumberEquals(_)
             | MatchPattern::AnyElementWithAttributeNumberEquals { .. }
+            | MatchPattern::AnyElementBooleanPredicate(_)
+            | MatchPattern::ElementNodeSetStringEquals { .. }
             | MatchPattern::AttributeNameEquals(_)
             | MatchPattern::NodeStringPredicate { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
@@ -1171,6 +1183,99 @@ fn compile_template_priority(
         format!("invalid template priority: {lexical}"),
         document.location(element),
     ))
+}
+
+type ParsedNodeSetStringPattern<'a> = (&'a str, Vec<(&'a str, bool)>, &'a str);
+
+fn parse_element_node_set_string_equals(pattern: &str) -> Option<ParsedNodeSetStringPattern<'_>> {
+    let (element, predicate) = pattern.split_once('[')?;
+    if !is_ascii_ncname(element) {
+        return None;
+    }
+    let predicate = predicate.strip_suffix(']')?.trim();
+    let equality = top_level_character(predicate, '=')?;
+    let (nodes, value) = predicate.split_at(equality);
+    let value = value.strip_prefix('=')?.trim();
+    let value = value
+        .strip_prefix('\'')
+        .and_then(|inner| inner.strip_suffix('\''))
+        .or_else(|| {
+            value
+                .strip_prefix('"')
+                .and_then(|inner| inner.strip_suffix('"'))
+        })?;
+    let mut operands = Vec::new();
+    flatten_node_set_union(nodes.trim(), &mut operands)?;
+    (operands.len() >= 2).then_some((element, operands, value))
+}
+
+fn flatten_node_set_union<'a>(lexical: &'a str, operands: &mut Vec<(&'a str, bool)>) -> Option<()> {
+    let lexical = super::strip_outer_pattern_parentheses(lexical);
+    if let Some(alternatives) = super::instruction_compiler::split_top_level_union(lexical) {
+        for alternative in alternatives {
+            flatten_node_set_union(alternative.trim(), operands)?;
+        }
+        return Some(());
+    }
+    let (name, attribute) = lexical
+        .strip_prefix('@')
+        .map_or((lexical, false), |name| (name, true));
+    is_ascii_ncname(name).then(|| operands.push((name, attribute)))
+}
+
+fn top_level_character(lexical: &str, target: char) -> Option<usize> {
+    let mut quote = None;
+    let mut parentheses = 0usize;
+    for (index, current) in lexical.char_indices() {
+        if let Some(expected) = quote {
+            if current == expected {
+                quote = None;
+            }
+            continue;
+        }
+        match current {
+            '\'' | '"' => quote = Some(current),
+            '(' => parentheses += 1,
+            ')' => parentheses = parentheses.checked_sub(1)?,
+            _ if current == target && parentheses == 0 => return Some(index),
+            _ => {}
+        }
+    }
+    None
+}
+
+fn compile_element_node_set_string_equals(
+    document: &Document,
+    template: NodeId,
+    pattern: &str,
+) -> MatchPattern {
+    let (element, operands, value) = parse_element_node_set_string_equals(pattern)
+        .expect("node-set string comparison pattern shape was checked");
+    let default_namespace = effective_xpath_default_namespace(document, template);
+    let mut children = Vec::new();
+    let mut attributes = Vec::new();
+    for (name, attribute) in operands {
+        let expanded = crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: (!attribute)
+                .then(|| default_namespace.map(str::to_owned))
+                .flatten(),
+            local: name.to_owned(),
+        };
+        if attribute {
+            attributes.push(expanded);
+        } else {
+            children.push(expanded);
+        }
+    }
+    MatchPattern::ElementNodeSetStringEquals {
+        element: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: default_namespace.map(str::to_owned),
+            local: element.to_owned(),
+        },
+        children,
+        attributes,
+        value: value.to_owned(),
+    }
 }
 
 fn parse_xslt10_template_priority(value: &str) -> Option<TemplatePriority> {

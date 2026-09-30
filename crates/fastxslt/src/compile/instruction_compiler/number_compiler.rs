@@ -4,9 +4,10 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::parse_xslt10_location_path;
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, NumberFormatPlan, NumberGroupingPlan, NumberGroupingSeparatorPlan,
-    NumberGroupingSizePlan, NumberLevel, NumberPattern, NumberPositionPredicate, NumberTokenStyle,
-    NumberValue, default_number_format, parse_admitted_number_format,
+    Instruction, NumberAttributeValuePlan, NumberFormatPlan, NumberGroupingPlan,
+    NumberGroupingSeparatorPlan, NumberGroupingSizePlan, NumberLevel, NumberPattern,
+    NumberPositionPredicate, NumberTokenStyle, NumberValue, default_number_format,
+    parse_admitted_number_format,
 };
 
 use super::{
@@ -59,8 +60,8 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
     } else {
         NumberFormatPlan::Static(default_number_format())
     };
-    validate_letter_value(document, element, &format)?;
-    validate_language(document, element, &format)?;
+    let letter_value = compile_letter_value(document, element, &format)?;
+    let language = compile_language(document, element, &format)?;
     let grouping = compile_grouping(document, element)?;
     Ok(Instruction::Number {
         value,
@@ -68,24 +69,29 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
         count,
         from,
         format,
+        letter_value,
+        language,
         grouping: grouping.map(Box::new),
         xslt10_compatibility: uses_xslt10_compatibility(document, element),
         location: document.location(element).clone(),
     })
 }
 
-fn validate_language(
+fn compile_language(
     document: &Document,
     element: NodeId,
     format: &NumberFormatPlan,
-) -> Result<(), CompileFailure> {
+) -> Result<Option<NumberAttributeValuePlan>, CompileFailure> {
     let Some(language) = optional_attribute(document, element, None, "lang") else {
-        return Ok(());
+        return Ok(None);
     };
+    if let Some(plan) = compile_xslt10_number_attribute_avt(document, element, language)? {
+        return Ok(Some(plan));
+    }
     if language.contains(['{', '}']) {
-        return Err(unsupported(
-            "FXST1052",
-            "dynamic xsl:number language selection is outside the admitted slice",
+        return Err(invalid(
+            "XTDE0030",
+            "malformed xsl:number language AVT",
             document.location(element),
         ));
     }
@@ -111,7 +117,7 @@ fn validate_language(
             )
         });
     if language_is_irrelevant || admitted_latin_language {
-        return Ok(());
+        return Ok(None);
     }
     Err(unsupported(
         "FXST1052",
@@ -120,14 +126,24 @@ fn validate_language(
     ))
 }
 
-fn validate_letter_value(
+fn compile_letter_value(
     document: &Document,
     element: NodeId,
     format: &NumberFormatPlan,
-) -> Result<(), CompileFailure> {
+) -> Result<Option<NumberAttributeValuePlan>, CompileFailure> {
     let Some(letter_value) = optional_attribute(document, element, None, "letter-value") else {
-        return Ok(());
+        return Ok(None);
     };
+    if let Some(plan) = compile_xslt10_number_attribute_avt(document, element, letter_value)? {
+        return Ok(Some(plan));
+    }
+    if letter_value.contains(['{', '}']) {
+        return Err(invalid(
+            "XTDE0030",
+            "malformed xsl:number letter-value AVT",
+            document.location(element),
+        ));
+    }
     if !matches!(letter_value, "alphabetic" | "traditional") {
         return Err(invalid(
             "XTSE0020",
@@ -150,15 +166,55 @@ fn validate_letter_value(
                     NumberTokenStyle::Decimal
                         | NumberTokenStyle::AlphabeticUpper
                         | NumberTokenStyle::AlphabeticLower
+                        | NumberTokenStyle::RomanUpper
+                        | NumberTokenStyle::RomanLower
                         | NumberTokenStyle::GreekAlphabeticLower
                 )
             }))
     {
-        return Ok(());
+        return Ok(None);
     }
     Err(unsupported(
         "FXST1049",
         format!("xsl:number letter-value is outside the admitted format semantics: {letter_value}"),
+        document.location(element),
+    ))
+}
+
+fn compile_xslt10_number_attribute_avt(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+) -> Result<Option<NumberAttributeValuePlan>, CompileFailure> {
+    let Some(expression) = whole_avt_expression(lexical) else {
+        return Ok(None);
+    };
+    if !uses_xslt10_compatibility(document, element) {
+        return Err(unsupported(
+            "FXST1052",
+            "dynamic xsl:number control AVTs are outside the admitted modern slice",
+            document.location(element),
+        ));
+    }
+    if let Some(variable) = expression
+        .strip_prefix('$')
+        .filter(|name| is_ascii_ncname(name))
+    {
+        return Ok(Some(NumberAttributeValuePlan::Xslt10Variable(
+            variable.to_owned(),
+        )));
+    }
+    if let Some(expression) = super::value_expression_compiler::compile_xslt10_concat(
+        document,
+        element,
+        expression,
+        document.location(element),
+    )? {
+        return Ok(Some(NumberAttributeValuePlan::Xslt10Concat(expression)));
+    }
+    Err(unsupported(
+        "FXST1052",
+        "unsupported dynamic xsl:number control AVT",
         document.location(element),
     ))
 }
@@ -379,6 +435,13 @@ fn compile_format_plan(
     element: NodeId,
     format: &str,
 ) -> Result<NumberFormatPlan, CompileFailure> {
+    if let Some(expression) = whole_avt_expression(format)
+        && let Some(literal) = xpath_string_literal(expression)
+    {
+        return parse_admitted_number_format(literal)
+            .map(NumberFormatPlan::Static)
+            .ok_or_else(|| unsupported_format(literal, document.location(element)));
+    }
     if let Some(variable) = format
         .strip_prefix("{$")
         .and_then(|value| value.strip_suffix('}'))

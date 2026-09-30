@@ -70,6 +70,7 @@ pub(super) fn compile_output(
     document: &Document,
     element: NodeId,
     declared_version: &str,
+    allow_superseded_xslt10_extension_method: bool,
 ) -> Result<OutputDeclaration, CompileFailure> {
     ensure_output_attributes(document, element)?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
@@ -77,14 +78,8 @@ pub(super) fn compile_output(
         .map(|value| compile_expanded_qname(document, element, value, "xsl:output name"))
         .transpose()?;
     let html_version = compile_html_version(document, element)?;
-    let method = optional_attribute(document, element, None, "method").map(str::trim);
-    if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml" | "html")) {
-        return Err(unsupported(
-            "FXST1004",
-            format!("unsupported output method: {}", method.unwrap_or_default()),
-            document.location(element),
-        ));
-    }
+    let method =
+        compile_output_method(document, element, allow_superseded_xslt10_extension_method)?;
     let encoding = compile_output_encoding(document, element);
     let omit_xml_declaration = optional_attribute(document, element, None, "omit-xml-declaration")
         .map(|value| {
@@ -166,6 +161,35 @@ pub(super) fn compile_output(
         specified,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_output_method(
+    document: &Document,
+    element: NodeId,
+    allow_superseded_xslt10_extension_method: bool,
+) -> Result<Option<&str>, CompileFailure> {
+    let method = optional_attribute(document, element, None, "method").map(str::trim);
+    let Some(extension) =
+        method.filter(|method| !matches!(*method, "xml" | "text" | "xhtml" | "html"))
+    else {
+        return Ok(method);
+    };
+    let expanded = compile_expanded_qname(document, element, extension, "xsl:output method")?;
+    if expanded.namespace.is_none() {
+        return Err(invalid(
+            "XTSE1570",
+            format!("an extension output method must have a non-null namespace URI: {extension}"),
+            document.location(element),
+        ));
+    }
+    if allow_superseded_xslt10_extension_method {
+        return Ok(method);
+    }
+    Err(unsupported(
+        "FXST1004",
+        format!("unsupported output method: {extension}"),
+        document.location(element),
+    ))
 }
 
 fn compile_output_encoding(document: &Document, element: NodeId) -> Option<&str> {

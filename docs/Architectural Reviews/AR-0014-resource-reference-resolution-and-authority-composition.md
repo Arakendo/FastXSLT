@@ -9,7 +9,7 @@
 | Trigger | The first private qualified-snapshot resolver makes unresolved reference semantics and policy ownership implementation-adjacent |
 | Related ADRs | ADR-0002, ADR-0005, ADR-0006 |
 | Related reviews | AR-0002, AR-0004, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Evidence/private-qualified-snapshot-resolution-2026-08-28.md`; `../Evidence/private-host-owned-two-stage-workflow-2026-08-25.md`; `../Evidence/peer-ar-0014-review-monday-2026-08-28.md`; `../Evidence/rfc3986-relative-reference-mechanics-2026-08-28.md` |
+| Related evidence | `../Evidence/private-qualified-snapshot-resolution-2026-08-28.md`; `../Evidence/private-host-owned-two-stage-workflow-2026-08-25.md`; `../Evidence/peer-ar-0014-review-monday-2026-08-28.md`; `../Evidence/rfc3986-relative-reference-mechanics-2026-08-28.md`; `../Evidence/oasis-xslt10-source-derived-document-copy-2026-09-29.md`; `../Evidence/oasis-xslt10-two-argument-document-base-2026-09-29.md`; `../Evidence/oasis-xslt10-variable-document-reference-2026-09-29.md`; `../Evidence/oasis-xslt10-nested-document-references-2026-09-29.md` |
 
 ## Architectural question
 
@@ -285,3 +285,60 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   compile-time link-order correction only; it introduces no live resolution or
   additional host authority.
   [Evidence](../Evidence/oasis-xslt10-cross-module-decimal-format-linking-2026-09-24.md)
+- 2026-09-29 -- XSLT 1.0 `xsl:copy-of` now admits one source location path as
+  the sole `document()` argument. Reference values resolve relative to their
+  source-node identity, remain snapshot-only, prepare under invocation control,
+  and deduplicate by invocation-local document identity. Three unchanged OASIS
+  cases become exact through an exact case/file harness overlay; no ambient
+  discovery, live resolver, second base argument, or cross-invocation cache is
+  admitted.
+  [Evidence](../Evidence/oasis-xslt10-source-derived-document-copy-2026-09-29.md)
+- 2026-09-29 -- the bounded XSLT 1.0 `xsl:copy-of` path now admits a
+  compile-time string or typed source-path first argument plus either one typed
+  source location path or one literal `document()` call as the second argument. The first selected
+  node supplies the logical base identity; acquisition remains sealed-snapshot-
+  only and invocation-owned. Three unchanged OASIS cases become exact; only
+  archival siblings omitted by two catalog cases need exact overlays. General
+  nested calls, computed strings, and live resolution remain unadmitted.
+  [Evidence](../Evidence/oasis-xslt10-two-argument-document-base-2026-09-29.md)
+- 2026-09-29 -- one scalar invocation variable may now supply the first
+  `document()` argument for XSLT 1.0 `xsl:copy-of`. The reference still uses
+  the admitted explicit-base forms and the same invocation-owned sealed
+  snapshot; non-atomic variable values remain unsupported. Unchanged
+  `Lotus/mdocs_mdocs15#1` becomes exact.
+  [Evidence](../Evidence/oasis-xslt10-variable-document-reference-2026-09-29.md)
+- 2026-09-29 -- one bounded nested `document()` layer now preserves each inner
+  result node's logical base identity when resolving the outer reference.
+  Inner and outer preparation remain invocation-owned and snapshot-only.
+  Unchanged `Lotus/mdocs_mdocs02#1` and `Lotus/reluri_reluri11#1` become exact.
+  [Evidence](../Evidence/oasis-xslt10-nested-document-references-2026-09-29.md)
+- 2026-09-29 -- XSLT 1.0 template dispatch may now prepare documents from one
+  typed principal-source reference path and select one exact descendant name.
+  Each source node supplies the relative base identity; acquisition remains
+  invocation-owned and sealed-snapshot-only. Unchanged
+  `Lotus/mdocs_mdocs08#1` becomes exact. The same source-selected descendant
+  set can subsequently be counted and sorted by one bounded
+  `substring-after(path, literal)` key, making unchanged
+  `Lotus/mdocs_mdocs18#1` exact. Other cross-document sorting and unqualified
+  source-node globals/parameters remain explicit boundaries.
+  [Evidence](../Evidence/oasis-xslt10-source-document-template-dispatch-2026-09-29.md)
+- 2026-09-29 -- XSLT 1.0 template dispatch now admits the bounded
+  `document(reference-path, base-path)/*` form. The first selected base node
+  supplies logical identity while preparation remains invocation-owned and
+  sealed-snapshot-only. Unchanged `Lotus/mdocs_mdocs06#1` becomes exact.
+  [Evidence](../Evidence/oasis-xslt10-source-document-child-dispatch-2026-09-29.md)
+- 2026-09-29 -- one-argument source-selected and literal `document()` template
+  dispatch may now retain a trailing typed location path. The call remains a
+  private external-resource plan; only admitted snapshot bytes are prepared,
+  and selected nodes retain owning-document provenance. Unchanged
+  `Lotus/mdocs_mdocs05#1` becomes exact without adding live authority or a
+  cross-invocation cache.
+  [Evidence](../Evidence/oasis-xslt10-document-path-template-dispatch-2026-09-29.md)
+- 2026-09-29 -- a private typed stylesheet-document selection may compare one
+  expanded candidate attribute with a scalar invocation variable. Principal
+  source-node values are converted before switching document ownership; raw
+  node identities do not cross documents. Two unchanged OASIS cases become
+  exact, with one exact local harness alias for already admitted principal
+  bytes. This adds no live authority or general cross-document expression
+  contract.
+  [Evidence](../Evidence/oasis-xslt10-stylesheet-document-variable-selection-2026-09-29.md)

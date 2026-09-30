@@ -114,10 +114,14 @@ fn normalize_tag(tag: &str, make_empty: bool) -> Option<String> {
         return None;
     }
     if closing {
-        return Some(format!("</{}>", name.to_ascii_lowercase()));
+        let normalized_name = if name.contains(':') {
+            name.to_owned()
+        } else {
+            name.to_ascii_lowercase()
+        };
+        return Some(format!("</{normalized_name}>"));
     }
 
-    let normalized_name = name.to_ascii_lowercase();
     let mut attributes = Vec::new();
     let mut remainder = inner.get(name_end..)?;
     loop {
@@ -151,6 +155,15 @@ fn normalize_tag(tag: &str, make_empty: bool) -> Option<String> {
             attributes.push((attribute.clone(), attribute, '"'));
         }
     }
+    let html_element = !name.contains(':')
+        && !attributes
+            .iter()
+            .any(|(name, value, _)| name == "xmlns" && !value.is_empty());
+    let normalized_name = if html_element {
+        name.to_ascii_lowercase()
+    } else {
+        name.to_owned()
+    };
     if normalized_name == "meta"
         && attributes.iter().any(|(name, value, _)| {
             name == "http-equiv" && value.eq_ignore_ascii_case("content-type")
@@ -172,7 +185,7 @@ fn normalize_tag(tag: &str, make_empty: bool) -> Option<String> {
         push_xml_escaped_attribute_value(&mut normalized, &value);
         normalized.push(delimiter);
     }
-    if make_empty || explicit_empty {
+    if (make_empty && html_element) || explicit_empty {
         normalized.push('/');
     }
     normalized.push('>');
@@ -349,6 +362,19 @@ mod tests {
         assert_eq!(
             normalize_for_xml_comparison(r#"<meta content="example=UTF-8">"#).as_deref(),
             Some(r#"<meta content="example=UTF-8"/>"#)
+        );
+    }
+
+    #[test]
+    fn preserves_foreign_elements_whose_local_names_look_like_html_void_elements() {
+        assert_eq!(
+            normalize_for_xml_comparison(
+                r#"<area xmlns="http://example.test/foreign"></area><foo:INPUT xmlns:foo="http://example.test/foreign"></foo:INPUT>"#
+            )
+            .as_deref(),
+            Some(
+                r#"<area xmlns="http://example.test/foreign"></area><foo:INPUT xmlns:foo="http://example.test/foreign"></foo:INPUT>"#
+            )
         );
     }
 }

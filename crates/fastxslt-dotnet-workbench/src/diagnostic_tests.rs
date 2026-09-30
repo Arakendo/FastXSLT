@@ -38,7 +38,7 @@ fn native_failure_envelope_preserves_structured_location() {
     let source_identity = b"urn:fastxslt:diagnostic:source";
     let source = b"<order/>";
     let stylesheet_identity = b"urn:fastxslt:diagnostic:unsupported-stylesheet";
-    let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:message/></xsl:template></xsl:stylesheet>"#;
+    let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:future/></xsl:template></xsl:stylesheet>"#;
     let outcome = fastxslt_workbench_v0_create(
         source_identity.as_ptr(),
         source_identity.len(),
@@ -58,8 +58,8 @@ fn native_failure_envelope_preserves_structured_location() {
             "",
             "urn:fastxslt:diagnostic:unsupported-stylesheet",
             "103",
-            "117",
-            "unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117",
+            "116",
+            "unsupported XSLT instruction: xsl:future at urn:fastxslt:diagnostic:unsupported-stylesheet:103..116",
         ]
     );
     assert_eq!(fastxslt_workbench_v0_outcome_release(outcome), 1);

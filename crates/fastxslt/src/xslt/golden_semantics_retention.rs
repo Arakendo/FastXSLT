@@ -6,15 +6,16 @@ use super::{
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
     ConditionalPathBranch, ConditionalPathExpression, ConstructedAttribute, ConstructedElement,
     ConstructedNode, DecimalFormatDefinition, DecimalSumForExpression, DeepEqualBooleanExpression,
-    ExpandedName, FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression,
-    GlobalBinding, GlobalBindingDefault, Instruction, IntegerForExpression, KeyDefinition,
-    KeyUseExpression, LiteralAttribute, LiteralAttributeValue, LocationPath, MatchNodeTest,
-    MatchPattern, MatchSequencePredicate, MatchStringPredicate, MatchedTemplate, NamedTemplate,
-    NamespaceBinding, OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation,
-    SourceWhitespacePolicy, StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue,
-    TemplateParameter, TemplateParameterDefault, ValueExpression, VariableFilteredElementPath,
-    Xslt10ApplyUnionPart, Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName,
-    Xslt10KeyValue, Xslt10MuenchianSelection, Xslt10TemporaryTextPart,
+    DocumentBaseReference, ExpandedName, FocusSumForExpression, ForDistinctValuesExpression,
+    FormatNumberExpression, GlobalBinding, GlobalBindingDefault, Instruction, IntegerForExpression,
+    KeyDefinition, KeyUseExpression, LiteralAttribute, LiteralAttributeValue, LocationPath,
+    MatchNodeTest, MatchPattern, MatchSequencePredicate, MatchStringPredicate, MatchedTemplate,
+    NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression, SortKey, SortSelect,
+    SourceLocation, SourceWhitespacePolicy, StylesheetProgram, Template, TemplateArgument,
+    TemplateArgumentValue, TemplateParameter, TemplateParameterDefault, ValueExpression,
+    VariableFilteredElementPath, Xslt10ApplyUnionPart, Xslt10AvtPart, Xslt10ConcatPart,
+    Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyValue, Xslt10MuenchianSelection,
+    Xslt10TemporaryTextPart,
 };
 
 impl StylesheetProgram {
@@ -320,6 +321,20 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         MatchPattern::AnyElementWithAttributeNumberEquals { attribute, .. } => {
             name_owned(attribute)
         }
+        MatchPattern::AnyElementBooleanPredicate(predicate) => {
+            match_boolean_predicate_owned(predicate)
+        }
+        MatchPattern::ElementNodeSetStringEquals {
+            element,
+            children,
+            attributes,
+            value,
+        } => {
+            name_owned(element)
+                + vec_owned(children, name_owned)
+                + vec_owned(attributes, name_owned)
+                + value.capacity()
+        }
         MatchPattern::NodeStringPredicate {
             node_test,
             predicate,
@@ -396,6 +411,27 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
     }
 }
 
+fn match_boolean_predicate_owned(
+    value: &crate::xslt::golden_semantics_experiment::MatchBooleanPredicate,
+) -> usize {
+    use crate::xslt::golden_semantics_experiment::MatchBooleanPredicate;
+    match value {
+        MatchBooleanPredicate::ContextNumberEquals(_) | MatchBooleanPredicate::Position { .. } => 0,
+        MatchBooleanPredicate::AttributeEquals { attribute, value } => {
+            name_owned(attribute) + value.capacity()
+        }
+        MatchBooleanPredicate::And(left, right) | MatchBooleanPredicate::Or(left, right) => {
+            size_of_val(left.as_ref())
+                + match_boolean_predicate_owned(left)
+                + size_of_val(right.as_ref())
+                + match_boolean_predicate_owned(right)
+        }
+        MatchBooleanPredicate::Not(inner) => {
+            size_of_val(inner.as_ref()) + match_boolean_predicate_owned(inner)
+        }
+    }
+}
+
 fn match_sequence_predicates_owned(
     values: &[MatchSequencePredicate],
     reserved_slots: usize,
@@ -428,6 +464,22 @@ fn variable_filtered_path_owned(value: &VariableFilteredElementPath) -> usize {
         + value.variable.capacity()
 }
 
+fn literal_document_variable_filter_owned(
+    reference: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
+    path: &LocationPath,
+    attribute: &crate::xml::quick_xml_experiment::ExpandedName,
+    variable_capacity: usize,
+) -> usize {
+    document_root_reference_owned(reference)
+        + path.known_owned_capacity_bytes()
+        + name_owned(attribute)
+        + variable_capacity
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "the exhaustive private apply-selection retention accounting remains one semantic ownership point"
+)]
 fn apply_selection_owned(value: &ApplySelection) -> usize {
     match value {
         ApplySelection::LocationPath(path) => path.known_owned_capacity_bytes(),
@@ -438,6 +490,28 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         ApplySelection::LiteralDocumentDescendants { reference, name } => {
             document_root_reference_owned(reference) + name_owned(name)
         }
+        ApplySelection::LiteralDocumentPath { reference, path } => {
+            document_root_reference_owned(reference) + path.known_owned_capacity_bytes()
+        }
+        ApplySelection::Xslt10LiteralDocumentVariableFilteredPath {
+            reference,
+            path,
+            attribute,
+            variable,
+        } => {
+            literal_document_variable_filter_owned(reference, path, attribute, variable.capacity())
+        }
+        ApplySelection::Xslt10SourceDocumentsDescendants { references, name } => {
+            references.known_owned_capacity_bytes() + name_owned(name)
+        }
+        ApplySelection::Xslt10SourceDocumentsChildren { references, base } => references
+            .known_owned_capacity_bytes()
+            .checked_add(base.known_owned_capacity_bytes())
+            .expect("live source-document child selection capacity is representable"),
+        ApplySelection::Xslt10SourceDocumentsPath { references, path } => references
+            .known_owned_capacity_bytes()
+            .checked_add(path.known_owned_capacity_bytes())
+            .expect("live source-document path selection capacity is representable"),
         ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path } => argument_path
             .as_ref()
             .map_or(0, LocationPath::known_owned_capacity_bytes),
@@ -556,7 +630,10 @@ fn instruction_owned(value: &Instruction) -> usize {
         Instruction::LiteralElement { .. }
         | Instruction::ContextNameElement { .. }
         | Instruction::DynamicNameElement { .. } => element_instruction_owned(value),
-        Instruction::Text { value, location } | Instruction::CommentNode { value, location } => {
+        Instruction::Text {
+            value, location, ..
+        }
+        | Instruction::CommentNode { value, location } => {
             value.capacity() + location_owned(location)
         }
         Instruction::Xslt10CommentNode { body, location } => {
@@ -588,6 +665,7 @@ fn instruction_owned(value: &Instruction) -> usize {
             select,
             separator,
             location,
+            ..
         } => value_expression_owned(select) + separator.capacity() + location_owned(location),
         instruction @ Instruction::Number { .. } => number_instruction_owned(instruction),
         Instruction::Xslt10Message { body, location, .. } => {
@@ -676,6 +754,9 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
         | Instruction::CopyOfDocument { .. }
+        | Instruction::CopyOfVariableDocument { .. }
+        | Instruction::CopyOfNestedDocuments { .. }
+        | Instruction::CopyOfSourceDocuments { .. }
         | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfStaticAtomicText { .. }
@@ -962,6 +1043,8 @@ fn number_instruction_owned(instruction: &Instruction) -> usize {
         count,
         from,
         format,
+        letter_value,
+        language,
         grouping,
         xslt10_compatibility: _,
         location,
@@ -982,6 +1065,10 @@ fn number_instruction_owned(instruction: &Instruction) -> usize {
             super::NumberFormatPlan::Xslt10Variable(variable)
             | super::NumberFormatPlan::Variable(variable) => variable.capacity(),
         }
+        + letter_value
+            .as_ref()
+            .map_or(0, number_attribute_value_owned)
+        + language.as_ref().map_or(0, number_attribute_value_owned)
         + grouping.as_ref().map_or(0, |grouping| {
             let separator = match &grouping.separator {
                 super::NumberGroupingSeparatorPlan::Static(_) => 0,
@@ -999,6 +1086,15 @@ fn number_instruction_owned(instruction: &Instruction) -> usize {
             separator + size
         })
         + location_owned(location)
+}
+
+fn number_attribute_value_owned(plan: &super::NumberAttributeValuePlan) -> usize {
+    match plan {
+        super::NumberAttributeValuePlan::Xslt10Variable(variable) => variable.capacity(),
+        super::NumberAttributeValuePlan::Xslt10Concat(expression) => {
+            xslt10_concat_owned(expression)
+        }
+    }
 }
 
 fn number_pattern_owned(pattern: &super::NumberPattern) -> usize {
@@ -1054,6 +1150,7 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
         } => select.known_owned_capacity_bytes() + location_owned(location),
         Instruction::CopyOfDocument {
             select,
+            base,
             path,
             location,
             ..
@@ -1061,6 +1158,52 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
             select.base.capacity()
                 + select.reference.capacity()
                 + select.descendant_name.as_ref().map_or(0, name_owned)
+                + base.as_ref().map_or(0, document_base_owned)
+                + path.as_ref().map_or(
+                    0,
+                    crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+                )
+                + location_owned(location)
+        }
+        Instruction::CopyOfVariableDocument {
+            variable,
+            static_base,
+            base,
+            path,
+            location,
+            ..
+        } => {
+            variable.capacity()
+                + static_base.capacity()
+                + base.as_ref().map_or(0, document_base_owned)
+                + path.as_ref().map_or(
+                    0,
+                    crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+                )
+                + location_owned(location)
+        }
+        Instruction::CopyOfNestedDocuments {
+            references,
+            path,
+            location,
+            ..
+        } => {
+            nested_document_references_owned(references)
+                + path.as_ref().map_or(
+                    0,
+                    crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+                )
+                + location_owned(location)
+        }
+        Instruction::CopyOfSourceDocuments {
+            references,
+            base,
+            path,
+            location,
+            ..
+        } => {
+            references.known_owned_capacity_bytes()
+                + base.as_ref().map_or(0, document_base_owned)
                 + path.as_ref().map_or(
                     0,
                     crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
@@ -1090,6 +1233,39 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
             select.known_owned_capacity_bytes() + location_owned(location)
         }
         _ => unreachable!("copy-of retention receives one copy-of instruction"),
+    }
+}
+
+fn nested_document_references_owned(
+    references: &crate::xslt::golden_semantics_experiment::NestedDocumentReferences,
+) -> usize {
+    use crate::xslt::golden_semantics_experiment::NestedDocumentReferences;
+    match references {
+        NestedDocumentReferences::Literal { reference, path } => {
+            document_root_reference_owned(reference)
+                + path.as_ref().map_or(
+                    0,
+                    crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+                )
+        }
+        NestedDocumentReferences::Source { references, path } => {
+            references.known_owned_capacity_bytes()
+                + path.as_ref().map_or(
+                    0,
+                    crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+                )
+        }
+    }
+}
+
+fn document_base_owned(base: &DocumentBaseReference) -> usize {
+    match base {
+        DocumentBaseReference::SourcePath(path) => path.known_owned_capacity_bytes(),
+        DocumentBaseReference::LiteralDocument(reference) => {
+            reference.base.capacity()
+                + reference.reference.capacity()
+                + reference.descendant_name.as_ref().map_or(0, name_owned)
+        }
     }
 }
 
@@ -1168,6 +1344,10 @@ fn sort_key_owned(sort: &SortKey) -> usize {
         SortSelect::Xslt10PathSubstring(expression) => {
             size_of_val(expression.as_ref()) + expression.path.known_owned_capacity_bytes()
         }
+        SortSelect::Xslt10PathSubstringAfter { path, delimiter } => path
+            .known_owned_capacity_bytes()
+            .checked_add(delimiter.capacity())
+            .expect("live substring-after sort capacity is representable"),
         SortSelect::PathUnion(alternatives) => vec_owned(
             alternatives,
             crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
@@ -1298,6 +1478,11 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::Xslt10CountPathUnion(alternatives) => {
             vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
         }
+        ValueExpression::Xslt10CountSourceDocumentsDescendants { references, name } => references
+            .known_owned_capacity_bytes()
+            .checked_add(name.namespace.as_ref().map_or(0, String::capacity))
+            .and_then(|capacity| capacity.checked_add(name.local.capacity()))
+            .expect("live source-document count capacity is representable"),
         ValueExpression::BinaryNumeric(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }

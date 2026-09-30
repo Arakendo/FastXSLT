@@ -859,6 +859,37 @@ fn split_top_level_boolean_operator<'a>(
     None
 }
 
+fn split_top_level_symbol(expression: &str, symbol: u8) -> Option<(&str, &str)> {
+    let bytes = expression.as_bytes();
+    let mut quote = None;
+    let mut parentheses = 0_usize;
+    let mut brackets = 0_usize;
+    for (index, byte) in bytes.iter().copied().enumerate() {
+        if let Some(expected) = quote {
+            if byte == expected {
+                quote = None;
+            }
+            continue;
+        }
+        match byte {
+            b'\'' | b'"' => quote = Some(byte),
+            b'(' => parentheses += 1,
+            b')' => parentheses = parentheses.saturating_sub(1),
+            b'[' => brackets += 1,
+            b']' => brackets = brackets.saturating_sub(1),
+            _ if byte == symbol && parentheses == 0 && brackets == 0 => {
+                let left = expression[..index].trim();
+                let right = expression[index + 1..].trim();
+                if !left.is_empty() && !right.is_empty() {
+                    return Some((left, right));
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
 fn parse_context_focus_comparison(
     expression: &str,
 ) -> Option<(
@@ -1335,7 +1366,7 @@ fn parse_unqualified_name_equality(expression: &str) -> Option<(&str, &str)> {
 }
 
 fn parse_path_string_equality(expression: &str) -> Option<(&str, &str)> {
-    let (left, right) = expression.split_once('=')?;
+    let (left, right) = split_top_level_symbol(expression, b'=')?;
     let left = left.trim();
     let right = right.trim();
     if let Some(value) = xpath_string_literal(right)

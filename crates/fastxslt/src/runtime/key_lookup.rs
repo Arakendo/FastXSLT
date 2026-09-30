@@ -518,6 +518,9 @@ fn evaluate_lookup_value(
     match value {
         Xslt10KeyValue::Static(value) => Ok(vec![value.clone()]),
         Xslt10KeyValue::Variable(name) => {
+            if let Some(values) = variables.detached_source_node_strings(name) {
+                return Ok(values.clone());
+            }
             if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
                 let source = inputs.source.ok_or_else(|| {
                     super::failure(

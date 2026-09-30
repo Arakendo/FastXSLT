@@ -33,6 +33,7 @@ pub(super) enum ResultNode {
     PendingAttribute(ResultAttribute),
     Xslt10RecoverableAttribute(ResultAttribute),
     Text(String),
+    Xslt10DisableOutputEscapingText(String),
     ProcessingInstruction {
         target: String,
         value: String,
@@ -362,7 +363,7 @@ fn materialize_xslt10_sequence_attribute(
     let nodes = super::execute_sequence(inputs, instructions, execution, variables, control)?;
     let mut value = String::new();
     for node in nodes {
-        if let ResultNode::Text(text) = node {
+        if let ResultNode::Text(text) | ResultNode::Xslt10DisableOutputEscapingText(text) = node {
             value.push_str(&text);
         }
     }

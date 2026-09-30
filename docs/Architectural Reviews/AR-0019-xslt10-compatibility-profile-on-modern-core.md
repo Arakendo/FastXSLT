@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-09-04 |
-| Last reviewed | 2026-09-28 |
+| Last reviewed | 2026-09-29 |
 | Scope | Named XSLT 1.0 compatibility, backwards-compatible behavior, and shared modern execution |
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
@@ -3958,3 +3958,214 @@ maintained redistributable legacy suite becomes available.
   2,261 / 3,173 (71.26%); execution becomes 2,391 successes and 49 classified
   failures, with zero visible mismatches and one independent comparator gap.
   [Evidence](../Evidence/oasis-xslt10-document-child-wildcard-pattern-2026-09-28.md)
+- 2026-09-29: the last HTML comparator gap is closed without crediting an
+  unequal result. The test-only normalizer preserves foreign namespace
+  boundaries, and the legacy serializer now follows the normative HTML rules
+  for Boolean element/attribute pairs, URI attribute characters, foreign
+  attribute escaping, and nested script/style raw text. `Output__84165` and
+  `BVTs_bvt067` have exact, uncredited archival-reference dispositions because
+  their expected output conflicts with those rules. The sweep records 2,260 /
+  3,173 exact matches (71.23%), 2,440 initialized cases, 2,391 successful
+  executions, zero visible mismatches, and zero comparator gaps. The lower pass
+  count is retained honestly because one former pass depended on incorrect
+  broad Boolean minimization.
+  [Evidence](../Evidence/oasis-xslt10-html-serialization-reference-boundaries-2026-09-29.md)
+- 2026-09-29: static `letter-value` validation now admits either valid lexical
+  value over the already unambiguous `i` and `I` Roman numbering tokens. Their
+  fixed meaning is unchanged; no locale data, dynamic attribute evaluation, or
+  new numbering algorithm is introduced. Unchanged
+  `Microsoft/Number__84720#1` becomes exact, bringing the sweep to 2,261 /
+  3,173 exact matches (71.26%), 2,441 initialized cases, and 2,392 successful
+  executions, with zero visible mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-unambiguous-roman-letter-value-2026-09-29.md)
+- 2026-09-29: non-built-in output methods now undergo QName and namespace
+  classification before serializer capability selection. Empty/malformed and
+  bare custom methods are invalid, while namespace-qualified extension methods
+  remain explicitly unsupported. The two corrected OASIS cases already held
+  expected-error credit, so the aggregate counters remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-output-method-qname-classification-2026-09-29.md)
+- 2026-09-29: the existing invocation-owned `xsl:message` implementation now
+  admits its common sequence-constructor and static `terminate` subset across
+  declared versions rather than rejecting it solely outside version `1.0`.
+  The unchanged forward-compatible `Lotus/ver_ver01#1` case becomes exact.
+  The sweep reaches 2,262 / 3,173 exact matches (71.29%), 2,442 initialized
+  cases, and 2,393 successful executions, with zero visible mismatches and zero
+  comparator gaps. Dynamic message attributes and the broader modern message
+  surface remain outside this tranche.
+  [Evidence](../Evidence/oasis-xslt10-forward-compatible-message-2026-09-29.md)
+- 2026-09-29: the corpus-selected gray-area recovery for
+  `@xsl:use-attribute-sets` now applies consistently to `xsl:element`,
+  `xsl:attribute-set`, and `xsl:copy`, including dependency-graph collection.
+  A focused regression preserves the separate standards rule that an empty
+  unqualified list is invalid. Two unchanged doubt-annotated cases advance to
+  their next honest frontiers without pass credit; aggregate counts remain
+  2,262 / 3,173 exact, 2,442 initialized, and 2,393 executed, with zero visible
+  mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-prefixed-computed-element-attribute-set-2026-09-28.md)
+- 2026-09-29: bounded whole-expression variable and `concat()` AVTs now carry
+  XSLT 1.0 `xsl:number/@letter-value` and `@lang` into invocation-time
+  validation, while quoted constant `format` AVTs are folded before token
+  parsing. The unchanged `Microsoft/Number__91026#1` case now initializes but
+  remains an honest `XTDE0030` execution failure because its effective
+  grouping separator is the nonconforming two-character string `,.`.
+  Exact coverage remains 2,262 / 3,173 (71.29%); initialized cases increase to
+  2,443, initialization failures fall to 727, successful executions remain
+  2,393, and execution failures increase to 50. Visible mismatches and
+  comparator gaps remain zero.
+  [Evidence](../Evidence/oasis-xslt10-dynamic-number-control-avts-2026-09-29.md)
+- 2026-09-29: an exact-version-1.0 stylesheet may now select the existing
+  private forward-compatible instruction path locally through
+  `xsl:version="2.0"` on a literal result element. Version attributes on XSLT
+  instruction elements do not override that literal ancestor, while supported
+  XSLT 2.0/3.0 stylesheet roots remain strict modern inputs. Invalid optional
+  extension-prefix controls are ignored only inside the locally selected mode;
+  a paired regression retains strict `XTSE1430` outside it. The unchanged
+  `Microsoft/BVTs_bvt034#1` case becomes exact. The sweep reaches 2,263 / 3,173
+  exact matches (71.32%), 2,444 initialized cases, and 2,394 successful
+  executions; initialization failures fall to 726, with zero visible
+  mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-local-forward-compatible-version-2026-09-29.md)
+- 2026-09-29: `xsl:copy-of` now admits a source location path as the sole
+  `document()` argument, resolves each value only through the sealed snapshot,
+  and deduplicates repeated resources by invocation-local document identity.
+  An exact three-case harness overlay supplies four reviewed archival sibling
+  documents omitted by the catalog. Three unchanged cases become exact. The
+  sweep reaches 2,266 / 3,173 exact matches (71.42%), 2,447 initialized cases,
+  and 2,397 successful executions; initialization failures fall to 723, with
+  zero visible mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-source-derived-document-copy-2026-09-29.md)
+- 2026-09-29: a literal or source-path first `document()` argument may now use
+  the first node selected by one source location path or one literal `document()` call as its
+  explicit base identity. Runtime resolution remains invocation-owned and
+  sealed-snapshot-only. Exact harness overlays supply archival siblings omitted
+  by two cases; the `reluri09` resources are already catalog-declared.
+  Unchanged `Lotus/mdocs_mdocs03#1`, `Lotus/reluri_reluri09#1`, and
+  `Lotus/reluri_reluri10#1` become exact. The sweep reaches 2,269 / 3,173 exact
+  matches (71.51%), 2,450 initialized cases, and 2,400 successful executions;
+  initialization failures fall to 720,
+  with zero visible mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-two-argument-document-base-2026-09-29.md)
+- 2026-09-29: the XSLT 1.0 `xsl:copy-of` path now admits one scalar variable as
+  the lexical first argument of `document()`, while retaining the typed
+  explicit-base forms and sealed-snapshot-only authority. Unchanged
+  `Lotus/mdocs_mdocs15#1` becomes exact. The sweep reaches 2,270 / 3,173 exact
+  matches (71.54%), 2,451 initialized cases, and 2,401 successful executions;
+  initialization failures fall to 719, with zero visible mismatches and zero
+  comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-variable-document-reference-2026-09-29.md)
+- 2026-09-29: one bounded nested `document()` layer now resolves outer relative
+  references from the logical identities of selected inner document nodes.
+  Unchanged `Lotus/mdocs_mdocs02#1` and `Lotus/reluri_reluri11#1` become exact.
+  The sweep reaches 2,272 / 3,173 exact matches (71.60%), 2,453 initialized
+  cases, and 2,403 successful executions; initialization failures fall to 717,
+  with zero visible mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-nested-document-references-2026-09-29.md)
+- 2026-09-29: `xsl:apply-templates` now admits one principal-source location
+  path as the `document()` reference node-set and one exact descendant element
+  selection. The unchanged `Lotus/mdocs_mdocs08#1` case becomes exact through
+  sealed, invocation-owned preparation and one aggregate cross-document focus.
+  The sweep reaches 2,273 / 3,173 exact matches (71.64%), 2,454 initialized
+  cases, and 2,404 successful executions; initialization failures fall to 716,
+  with zero visible mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-source-document-template-dispatch-2026-09-29.md)
+- 2026-09-29: `xsl:apply-templates` now admits two typed source paths in
+  `document(reference-path, base-path)/*`, preserving explicit base identity,
+  owning-document provenance, aggregate focus, and template parameters.
+  Unchanged `Lotus/mdocs_mdocs06#1` becomes exact. The sweep reaches 2,275 /
+  3,173 exact matches (71.70%), 2,456 initialized cases, and 2,406 successful
+  executions; initialization failures fall to 714, with zero visible
+  mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-source-document-child-dispatch-2026-09-29.md)
+- 2026-09-29: the typed source-document descendant selection now also supports
+  `count()` and stable text sorting by `substring-after(path, literal)` while
+  retaining each sort focus node's owning document. Unchanged
+  `Lotus/mdocs_mdocs18#1` becomes exact. The sweep reaches 2,274 / 3,173 exact
+  matches (71.67%), 2,455 initialized cases, and 2,405 successful executions;
+  initialization failures fall to 715, with zero visible mismatches and zero
+  comparator gaps. Other cross-document sort forms remain unsupported.
+  [Evidence](../Evidence/oasis-xslt10-source-document-template-dispatch-2026-09-29.md)
+- 2026-09-29: one-argument source-selected and literal `document()` template
+  dispatch now composes with the existing typed trailing location-path subset.
+  External preparation remains invocation-owned and sealed-snapshot-only;
+  selected nodes retain owning-document provenance and source-selected results
+  share one aggregate focus. Unchanged `Lotus/mdocs_mdocs05#1` becomes exact.
+  The sweep reaches 2,276 / 3,173 exact matches (71.73%), 2,457 initialized
+  cases, and 2,407 successful executions; initialization failures fall to 713,
+  with zero visible mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-document-path-template-dispatch-2026-09-29.md)
+- 2026-09-29: one typed stylesheet-document path may end in an expanded
+  attribute-equals-variable predicate. Atomic and principal-source node
+  variables are converted against the principal invocation before evaluation
+  continues in the stylesheet document. Unchanged `Lotus/select_select67#1`
+  and `Lotus/select_select68#1` become exact. The sweep reaches 2,278 / 3,173
+  exact matches (71.79%), 2,459 initialized cases, and 2,409 successful
+  executions; initialization failures fall to 711, with zero visible
+  mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-stylesheet-document-variable-selection-2026-09-29.md)
+- 2026-09-29: unavailable output encodings now select the XSLT 1.0 section
+  16.1-permitted UTF-8 physical fallback only for exact-version-1.0
+  stylesheets. Compiled settings retain the requested preference, while modern
+  stylesheets keep strict `SESU0007`. Unchanged `Lotus/output_output77#1`
+  becomes exact; the EBCDIC reference remains one visible comparison boundary.
+  The sweep reaches 2,279 / 3,173 exact matches (71.83%), 2,459 initialized
+  cases, and 2,411 successful executions; execution failures fall to 48, with
+  zero visible mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-unavailable-output-encoding-fallback-2026-09-29.md)
+- 2026-09-29: literal-document `xsl:for-each` now detaches ordered string
+  values and cardinality from local principal-source node bindings before the
+  source switch. Raw node identity does not cross documents; bounded XSLT 1.0
+  string, boolean, count, comparison, and `key()` consumers use the detached
+  values. Four unchanged `idkey`/Microsoft Keys cases become exact. The sweep
+  reaches 2,283 / 3,173 exact matches (71.95%) and 2,415 successful executions;
+  execution failures fall to 44, with zero visible mismatches and zero
+  comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-detached-cross-document-node-values-2026-09-29.md)
+- 2026-09-29: a bounded wildcard match-predicate AST now composes nested
+  `and`/`or`/`not`, context-node integer equality, integer `position()` bounds,
+  and unqualified attribute string equality. Source and temporary-tree
+  evaluation share short-circuit scalar semantics while retaining
+  representation-owned navigation and controlled work charges. Unchanged
+  `Lotus/impincl_impincl16#1` becomes exact. The sweep reaches 2,284 / 3,173
+  exact matches (71.98%), 2,460 initialized cases, and 2,416 successful
+  executions; initialization failures fall to 710, with zero visible
+  mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-boolean-wildcard-match-predicate-2026-09-29.md)
+- 2026-09-29: template-pattern union decomposition now ignores `|` inside
+  quotes, parentheses, and predicate brackets. One bounded named-element
+  predicate compares an unqualified child/attribute node-set union to a string
+  literal using XPath 1.0 existential node-set equality. Source and temporary
+  trees retain representation-owned navigation and charged visits. Unchanged
+  `Microsoft/ConflictResolution__77881#1` becomes exact. The sweep reaches
+  2,285 / 3,173 exact matches (72.01%), 2,461 initialized cases, and 2,417
+  successful executions; initialization failures fall to 709. Only two
+  DTD-typed-ID-dependent `id()` patterns remain in this standard-operation
+  match frontier.
+  [Evidence](../Evidence/oasis-xslt10-nested-node-set-union-match-2026-09-29.md)
+- 2026-09-29: exact-version-1.0 output composition now defers a
+  namespace-qualified extension method only when a later unnamed declaration
+  in the same module selects a supported standard method. The effective method
+  must still be standard. `Microsoft/BVTs_bvt070#1` becomes exact;
+  `BVTs_bvt063#1` executes but is excluded because its archival HTML reference
+  omits the required charset metadata; and the effective `my:xml` extension
+  method remains unsupported. The sweep reaches 2,286 / 3,173 exact matches
+  (72.05%), 2,463 initialized cases, and 2,419 successful executions;
+  initialization failures fall to 707, with zero visible mismatches and zero
+  comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-superseded-extension-output-method-2026-09-29.md)
+- 2026-09-29: bounded location-path predicates now compose nested child
+  selection, child-focus position, string comparison, attributes, `not()`, and
+  short-circuit boolean operators. Top-level equality routing observes quote,
+  parenthesis, and predicate-bracket depth, while existing specialized
+  predicate forms retain precedence. Unchanged `Microsoft/BVTs_bvt100#1`
+  becomes exact. The sweep reaches 2,287 / 3,173 exact matches (72.08%), 2,464
+  initialized cases, and 2,420 successful executions; initialization failures
+  fall to 706, with zero visible mismatches and zero comparator gaps.
+  [Evidence](../Evidence/oasis-xslt10-nested-child-boolean-path-predicate-2026-09-29.md)
+- 2026-09-30: AR-0024's first private disable-output-escaping tranche retains
+  explicit XSLT 1.0 plan/result markers, preserves them through invocation-owned
+  temporary-tree copies, and discards them in attribute, comment, and
+  processing-instruction string construction. The complete sweep reaches 2,316
+  / 3,173 exact matches (73.00%), 2,499 initialized cases, and 2,453 successful
+  executions. Two visible mismatches and three comparator gaps remain explicit;
+  expected-error credit remains 423 / 431.
+  [Evidence](../Evidence/oasis-xslt10-disable-output-escaping-reference-marker-2026-09-30.md)

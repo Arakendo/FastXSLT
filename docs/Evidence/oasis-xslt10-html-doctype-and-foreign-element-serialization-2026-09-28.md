@@ -50,6 +50,12 @@ also receives no pass credit.
 This tranche changes no catalog pass counter by itself. The gap is deliberately
 not hidden behind a special-case comparator or an inferred pass.
 
+The later HTML serialization/reference-boundary tranche closes the comparator
+gap, corrects additional normative serializer behavior, and assigns the
+remaining incompatible archival expectation an exact uncredited disposition.
+See
+[OASIS XSLT 1.0 HTML Serialization Reference Boundaries](oasis-xslt10-html-serialization-reference-boundaries-2026-09-29.md).
+
 ## Boundaries
 
 - This does not claim general HTML 4 serialization conformance.

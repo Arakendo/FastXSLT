@@ -7,8 +7,8 @@ use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::{PathStep, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
-    ChildPresenceTest, MatchNodeTest, MatchPattern, MatchStringPredicate, MatchedTemplate,
-    NamedSiblingBoundary, StylesheetProgram,
+    ChildPresenceTest, MatchBooleanPredicate, MatchNodeTest, MatchPattern, MatchStringPredicate,
+    MatchedTemplate, NamedSiblingBoundary, StylesheetProgram,
 };
 
 use super::MultipleMatchPolicy;
@@ -311,6 +311,17 @@ pub(super) fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::AnyElementBooleanPredicate(predicate) => {
+            matches_boolean_predicate(source, node, predicate, request_id, control)
+        }
+        MatchPattern::ElementNodeSetStringEquals {
+            element,
+            children,
+            attributes,
+            value,
+        } => matches_node_set_string_equals(
+            source, node, element, children, attributes, value, request_id, control,
+        ),
         MatchPattern::NodeStringPredicate {
             node_test,
             predicate,
@@ -525,6 +536,130 @@ pub(super) fn matches_pattern(
                 .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())),
         MatchPattern::AnyNode => Ok(matches_any_node(source.kind(node))),
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn matches_node_set_string_equals(
+    source: &Document,
+    node: NodeId,
+    element: &crate::xml::quick_xml_experiment::ExpandedName,
+    children: &[crate::xml::quick_xml_experiment::ExpandedName],
+    attributes: &[crate::xml::quick_xml_experiment::ExpandedName],
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.name(node) != Some(element) {
+        return Ok(false);
+    }
+    for child in source.children(node) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source
+            .name(*child)
+            .is_some_and(|name| children.contains(name))
+            && source.string_value(*child) == value
+        {
+            return Ok(true);
+        }
+    }
+    for attribute in source.attributes(node) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source
+            .name(*attribute)
+            .is_some_and(|name| attributes.contains(name))
+            && source.string_value(*attribute) == value
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+struct SourceBooleanContext<'a> {
+    source: &'a Document,
+    node: NodeId,
+    position: usize,
+    request_id: &'a str,
+    control: &'a mut InvocationControl,
+}
+
+impl super::match_boolean_predicate::Context for SourceBooleanContext<'_> {
+    type Error = ExecutionFailure;
+
+    fn charge_operation(&mut self) -> Result<(), Self::Error> {
+        self.control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, self.request_id))
+    }
+
+    fn context_number_equals(&mut self, value: i32) -> Result<bool, Self::Error> {
+        Ok(
+            crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                &self.source.string_value(self.node),
+            ) == Some(f64::from(value)),
+        )
+    }
+
+    fn position(&self) -> usize {
+        self.position
+    }
+
+    fn attribute_equals(
+        &mut self,
+        name: &crate::xml::quick_xml_experiment::ExpandedName,
+        value: &str,
+    ) -> Result<bool, Self::Error> {
+        for attribute in self.source.attributes(self.node) {
+            self.control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, self.request_id))?;
+            if self.source.name(*attribute) == Some(name)
+                && self.source.string_value(*attribute) == value
+            {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+}
+
+fn matches_boolean_predicate(
+    source: &Document,
+    node: NodeId,
+    predicate: &MatchBooleanPredicate,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.kind(node) != NodeKind::Element {
+        return Ok(false);
+    }
+    let Some(parent) = source.parent(node) else {
+        return Ok(false);
+    };
+    let mut position = 0usize;
+    for sibling in source.children(parent) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.kind(*sibling) == NodeKind::Element {
+            position += 1;
+            if *sibling == node {
+                break;
+            }
+        }
+    }
+    let mut context = SourceBooleanContext {
+        source,
+        node,
+        position,
+        request_id,
+        control,
+    };
+    super::match_boolean_predicate::evaluate(predicate, &mut context)
 }
 
 #[allow(clippy::too_many_arguments)]

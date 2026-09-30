@@ -60,8 +60,11 @@ Four unchanged cases leave `SESU0007` and execute:
   HTML-comparator boundary because the archival reference differs only in
   HTML name casing and layout.
 
-`Lotus/output_output22` (`EBCDIC-CP-IT`) and `Lotus/output_output77`
-(`Big-Deal`) remain explicitly unsupported as `SESU0007`.
+At this tranche, `Lotus/output_output22` (`EBCDIC-CP-IT`) and
+`Lotus/output_output77` (`Big-Deal`) remained explicitly unsupported as
+`SESU0007`. The later
+[XSLT 1.0 unavailable-encoding fallback](oasis-xslt10-unavailable-output-encoding-fallback-2026-09-29.md)
+supersedes that runtime disposition without adding either encoder.
 
 The conserved sweep changes as follows:
 

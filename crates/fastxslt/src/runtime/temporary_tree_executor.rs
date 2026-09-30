@@ -483,7 +483,9 @@ fn copy_temporary_focus(
         return apply_temporary_children(inputs, focus, mode, parameters, control);
     };
     match &tree.nodes[node].kind {
-        TemporaryNodeKind::Text(value) => copy_temporary_text(value, inputs.request_id, control),
+        TemporaryNodeKind::Text(value) => {
+            copy_temporary_text_node(tree, node, value, inputs.request_id, control)
+        }
         TemporaryNodeKind::Comment(value) => {
             copy_temporary_comment(value, inputs.request_id, control)
         }
@@ -558,7 +560,9 @@ fn copy_temporary_node(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match &tree.nodes[node].kind {
-        TemporaryNodeKind::Text(value) => copy_temporary_text(value, inputs.request_id, control),
+        TemporaryNodeKind::Text(value) => {
+            copy_temporary_text_node(tree, node, value, inputs.request_id, control)
+        }
         TemporaryNodeKind::Comment(value) => {
             copy_temporary_comment(value, inputs.request_id, control)
         }
@@ -679,7 +683,9 @@ pub(super) fn execute_temporary_copy(
     };
     let temporary = &tree.nodes[node];
     match &temporary.kind {
-        TemporaryNodeKind::Text(value) => copy_temporary_text(value, inputs.request_id, control),
+        TemporaryNodeKind::Text(value) => {
+            copy_temporary_text_node(tree, node, value, inputs.request_id, control)
+        }
         TemporaryNodeKind::Comment(value) => {
             copy_temporary_comment(value, inputs.request_id, control)
         }
@@ -976,6 +982,21 @@ fn temporary_matches(
             tree, attributes, attribute, *value, request_id, control,
         )?,
         (
+            TemporaryNodeKind::Element { .. },
+            MatchPattern::AnyElementBooleanPredicate(predicate),
+        ) => temporary_matches_boolean_predicate(tree, node, predicate, request_id, control)?,
+        (
+            TemporaryNodeKind::Element { name, .. },
+            MatchPattern::ElementNodeSetStringEquals {
+                element,
+                children,
+                attributes,
+                value,
+            },
+        ) if name == element => temporary_node_set_string_equals(
+            tree, node, children, attributes, value, request_id, control,
+        )?,
+        (
             _,
             MatchPattern::NodeStringPredicate {
                 node_test,
@@ -987,6 +1008,142 @@ fn temporary_matches(
         _ => false,
     };
     Ok(matched)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn temporary_node_set_string_equals(
+    tree: &TemporaryTree,
+    node: usize,
+    children: &[ExpandedName],
+    attributes: &[ExpandedName],
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    for child in &tree.nodes[node].children {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(
+            &tree.nodes[*child].kind,
+            TemporaryNodeKind::Element { name, .. } if children.contains(name)
+        ) && super::runtime_context::temporary_node_string_value(
+            tree, *child, request_id, control,
+        )? == value
+        {
+            return Ok(true);
+        }
+    }
+    let TemporaryNodeKind::Element {
+        attributes: node_attributes,
+        ..
+    } = &tree.nodes[node].kind
+    else {
+        return Ok(false);
+    };
+    for attribute in node_attributes {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(
+            &tree.nodes[*attribute].kind,
+            TemporaryNodeKind::Attribute { name, value: lexical }
+                if attributes.contains(name) && lexical == value
+        ) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+struct TemporaryBooleanContext<'a> {
+    tree: &'a TemporaryTree,
+    node: usize,
+    position: usize,
+    request_id: &'a str,
+    control: &'a mut InvocationControl,
+}
+
+impl super::match_boolean_predicate::Context for TemporaryBooleanContext<'_> {
+    type Error = ExecutionFailure;
+
+    fn charge_operation(&mut self) -> Result<(), Self::Error> {
+        self.control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, self.request_id))
+    }
+
+    fn context_number_equals(&mut self, value: i32) -> Result<bool, Self::Error> {
+        let lexical = super::runtime_context::temporary_node_string_value(
+            self.tree,
+            self.node,
+            self.request_id,
+            self.control,
+        )?;
+        Ok(
+            crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&lexical)
+                == Some(f64::from(value)),
+        )
+    }
+
+    fn position(&self) -> usize {
+        self.position
+    }
+
+    fn attribute_equals(
+        &mut self,
+        required: &ExpandedName,
+        expected: &str,
+    ) -> Result<bool, Self::Error> {
+        let TemporaryNodeKind::Element { attributes, .. } = &self.tree.nodes[self.node].kind else {
+            return Ok(false);
+        };
+        for attribute in attributes {
+            self.control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, self.request_id))?;
+            if matches!(
+                &self.tree.nodes[*attribute].kind,
+                TemporaryNodeKind::Attribute { name, value }
+                    if name == required && value == expected
+            ) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+}
+
+fn temporary_matches_boolean_predicate(
+    tree: &TemporaryTree,
+    node: usize,
+    predicate: &crate::xslt::golden_semantics_experiment::MatchBooleanPredicate,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let Some(parent) = tree.nodes[node].parent else {
+        return Ok(false);
+    };
+    let mut position = 0usize;
+    for sibling in &tree.nodes[parent].children {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(tree.nodes[*sibling].kind, TemporaryNodeKind::Element { .. }) {
+            position += 1;
+            if *sibling == node {
+                break;
+            }
+        }
+    }
+    let mut context = TemporaryBooleanContext {
+        tree,
+        node,
+        position,
+        request_id,
+        control,
+    };
+    super::match_boolean_predicate::evaluate(predicate, &mut context)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1392,6 +1549,27 @@ fn copy_temporary_text(
         .charge(WorkDomain::ResultTextByte, value.len())
         .map_err(|failure| control_failure(failure, request_id))?;
     Ok(vec![ResultNode::Text(value.to_owned())])
+}
+
+fn copy_temporary_text_node(
+    tree: &TemporaryTree,
+    node: usize,
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if !tree.xslt10_disable_output_escaping_text.contains(&node) {
+        return copy_temporary_text(value, request_id, control);
+    }
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    control
+        .charge(WorkDomain::ResultTextByte, value.len())
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(vec![ResultNode::Xslt10DisableOutputEscapingText(
+        value.to_owned(),
+    )])
 }
 
 fn copy_temporary_comment(

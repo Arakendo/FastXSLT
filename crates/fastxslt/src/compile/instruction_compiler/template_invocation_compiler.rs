@@ -51,6 +51,28 @@ pub(super) fn compile_apply_templates(
     let select = optional_attribute(document, element, None, "select")
         .map(|expression| parse_apply_selection(document, element, expression, location.clone()))
         .transpose()?;
+    if matches!(
+        select,
+        Some(
+            ApplySelection::Xslt10SourceDocumentsDescendants { .. }
+                | ApplySelection::Xslt10SourceDocumentsChildren { .. }
+                | ApplySelection::Xslt10SourceDocumentsPath { .. }
+        )
+    ) && sorts.iter().any(|sort| {
+        !matches!(
+            select,
+            Some(ApplySelection::Xslt10SourceDocumentsDescendants { .. })
+        ) || !matches!(
+            sort.select,
+            crate::xslt::golden_semantics_experiment::SortSelect::Xslt10PathSubstringAfter { .. }
+        )
+    }) {
+        return Err(unsupported(
+            "FXXP1003",
+            "the admitted multi-document apply-templates slice sorts only by substring-after(.)",
+            document.location(element),
+        ));
+    }
     let mode = match optional_attribute(document, element, None, "mode") {
         Some("#unnamed") => None,
         Some(mode) => Some(parse_apply_mode(document, element, mode)?),
@@ -430,7 +452,7 @@ pub(super) fn parse_apply_selection(
             return Ok(selection);
         }
     }
-    if let Some(selection) = compile_literal_document_selection(document, element, expression)? {
+    if let Some(selection) = compile_document_selection(document, element, expression)? {
         return Ok(selection);
     }
     if let Some(selection) = parse_apply_union(document, element, expression, &location)? {
@@ -538,6 +560,171 @@ pub(super) fn parse_apply_selection(
         ));
     }
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
+}
+
+fn compile_document_selection(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    if let Some(selection) = compile_literal_document_selection(document, element, expression)? {
+        return Ok(Some(selection));
+    }
+    if let Some(selection) = compile_literal_document_path_selection(document, element, expression)?
+    {
+        return Ok(Some(selection));
+    }
+    if uses_xslt10_compatibility(document, element) {
+        return compile_source_documents_descendant_selection(document, element, expression);
+    }
+    Ok(None)
+}
+
+pub(super) fn compile_source_documents_descendant_selection(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    let Some(argument_and_tail) = expression.strip_prefix("document(") else {
+        return Ok(None);
+    };
+    let mut depth = 0_usize;
+    let mut quote = None;
+    let mut close = None;
+    for (index, character) in argument_and_tail.char_indices() {
+        if let Some(active) = quote {
+            if character == active {
+                quote = None;
+            }
+            continue;
+        }
+        match character {
+            '\'' | '"' => quote = Some(character),
+            '(' => depth += 1,
+            ')' if depth == 0 => {
+                close = Some(index);
+                break;
+            }
+            ')' => depth -= 1,
+            _ => {}
+        }
+    }
+    let Some(close) = close else {
+        return Ok(None);
+    };
+    let argument = argument_and_tail[..close].trim();
+    if argument.is_empty() {
+        return Ok(None);
+    }
+    let tail = &argument_and_tail[close + 1..];
+    let arguments =
+        crate::xpath::static_string_experiment::split_arguments(argument, 2).unwrap_or_default();
+    match arguments.as_slice() {
+        [references] => {
+            let references =
+                parse_xslt10_location_path(references.trim(), document.location(element).clone())
+                    .map_err(map_path_failure)?;
+            if let Some(name) = tail
+                .strip_prefix("//")
+                .filter(|name| !name.is_empty() && !name.contains('/'))
+            {
+                let name = super::super::compile_expanded_qname(
+                    document,
+                    element,
+                    name,
+                    "document() descendant name test",
+                )?;
+                Ok(Some(ApplySelection::Xslt10SourceDocumentsDescendants {
+                    references,
+                    name,
+                }))
+            } else if tail.starts_with('/') && tail.len() > 1 {
+                Ok(Some(ApplySelection::Xslt10SourceDocumentsPath {
+                    references,
+                    path: parse_selection_path(
+                        document,
+                        element,
+                        tail,
+                        document.location(element).clone(),
+                    )?,
+                }))
+            } else {
+                Ok(None)
+            }
+        }
+        [references, base] if tail == "/*" => {
+            Ok(Some(ApplySelection::Xslt10SourceDocumentsChildren {
+                references: parse_xslt10_location_path(
+                    references.trim(),
+                    document.location(element).clone(),
+                )
+                .map_err(map_path_failure)?,
+                base: parse_xslt10_location_path(base.trim(), document.location(element).clone())
+                    .map_err(map_path_failure)?,
+            }))
+        }
+        _ => Ok(None),
+    }
+}
+
+fn compile_literal_document_path_selection(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    let Some(argument_and_tail) = expression.strip_prefix("document(") else {
+        return Ok(None);
+    };
+    let Some(quote) = argument_and_tail
+        .chars()
+        .next()
+        .filter(|quote| matches!(quote, '\'' | '"'))
+    else {
+        return Ok(None);
+    };
+    let Some(closing_quote) = argument_and_tail[1..].find(quote).map(|index| index + 1) else {
+        return Ok(None);
+    };
+    let reference = &argument_and_tail[1..closing_quote];
+    let Some(tail) = argument_and_tail[closing_quote + quote.len_utf8()..]
+        .strip_prefix(')')
+        .filter(|tail| tail.starts_with('/') && tail.len() > 1)
+    else {
+        return Ok(None);
+    };
+    let reference = crate::xslt::golden_semantics_experiment::DocumentRootReference {
+        base: document.location(element).resource.clone(),
+        reference: reference.to_owned(),
+        descendant_name: None,
+    };
+    if uses_xslt10_compatibility(document, element)
+        && let Some((path, predicate)) = tail.rsplit_once("[@")
+        && let Some(predicate) = predicate.strip_suffix(']')
+        && let Some((attribute, variable)) = predicate.split_once("=$")
+        && !path.is_empty()
+        && !attribute.is_empty()
+        && !variable.is_empty()
+        && !attribute.contains(['=', '[', ']'])
+        && !variable.contains(['=', '[', ']'])
+    {
+        return Ok(Some(
+            ApplySelection::Xslt10LiteralDocumentVariableFilteredPath {
+                reference,
+                path: super::parse_copy_of_literal_document_path(document, element, path)?,
+                attribute: super::super::compile_expanded_qname(
+                    document,
+                    element,
+                    attribute,
+                    "document() attribute predicate",
+                )?,
+                variable: normalize_variable_qname(document, element, variable)?,
+            },
+        ));
+    }
+    Ok(Some(ApplySelection::LiteralDocumentPath {
+        reference,
+        path: parse_selection_path(document, element, tail, document.location(element).clone())?,
+    }))
 }
 
 fn parse_xslt10_muenchian_key_group(

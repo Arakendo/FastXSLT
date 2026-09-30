@@ -134,3 +134,8 @@ and add the record to this index. Never reuse a retired number.
   than ambient logs, with a retained private oracle leading while termination,
   accounting, adapter parity, and the eventual host delivery surface are
   established experimentally.
+- [AR-0024: Disable-Output-Escaping Result Markers](AR-0024-disable-output-escaping-result-markers.md)
+  -- Incubating; a private XSLT 1.0 marked-text experiment may preserve the
+  serialization request without turning authored markup into XDM structure or
+  exposing a public result-node contract. Ordinary escaped text remains the
+  reference path.

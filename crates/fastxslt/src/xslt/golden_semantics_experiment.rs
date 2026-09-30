@@ -405,6 +405,13 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
         value: i32,
     },
+    AnyElementBooleanPredicate(MatchBooleanPredicate),
+    ElementNodeSetStringEquals {
+        element: ExpandedName,
+        children: Vec<ExpandedName>,
+        attributes: Vec<ExpandedName>,
+        value: String,
+    },
     NodeStringPredicate {
         node_test: MatchNodeTest,
         predicate: MatchStringPredicate,
@@ -476,6 +483,22 @@ pub(crate) enum MatchPattern {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum MatchBooleanPredicate {
+    ContextNumberEquals(i32),
+    Position {
+        relation: MatchNumericRelation,
+        value: usize,
+    },
+    AttributeEquals {
+        attribute: ExpandedName,
+        value: String,
+    },
+    And(Box<MatchBooleanPredicate>, Box<MatchBooleanPredicate>),
+    Or(Box<MatchBooleanPredicate>, Box<MatchBooleanPredicate>),
+    Not(Box<MatchBooleanPredicate>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum MatchSequencePredicate {
     PositionModulo {
         divisor: usize,
@@ -544,6 +567,28 @@ pub(crate) enum ApplySelection {
     LiteralDocumentDescendants {
         reference: DocumentRootReference,
         name: ExpandedName,
+    },
+    LiteralDocumentPath {
+        reference: DocumentRootReference,
+        path: LocationPath,
+    },
+    Xslt10LiteralDocumentVariableFilteredPath {
+        reference: DocumentRootReference,
+        path: LocationPath,
+        attribute: ExpandedName,
+        variable: String,
+    },
+    Xslt10SourceDocumentsDescendants {
+        references: LocationPath,
+        name: ExpandedName,
+    },
+    Xslt10SourceDocumentsChildren {
+        references: LocationPath,
+        base: LocationPath,
+    },
+    Xslt10SourceDocumentsPath {
+        references: LocationPath,
+        path: LocationPath,
     },
     Xslt10IdLookupWithoutTypedIds {
         argument_path: Option<LocationPath>,
@@ -682,6 +727,10 @@ pub(crate) enum SortSelect {
     },
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Xslt10PathSubstring(Box<Xslt10PathSubstring>),
+    Xslt10PathSubstringAfter {
+        path: LocationPath,
+        delimiter: String,
+    },
     PathUnion(Vec<LocationPath>),
     Literal(String),
     Variable(String),
@@ -725,6 +774,7 @@ pub(crate) enum Instruction {
     },
     Text {
         value: String,
+        disable_output_escaping: bool,
         location: SourceLocation,
     },
     ProcessingInstructionNode {
@@ -753,6 +803,7 @@ pub(crate) enum Instruction {
     ValueOf {
         select: ValueExpression,
         separator: String,
+        disable_output_escaping: bool,
         location: SourceLocation,
     },
     Number {
@@ -761,6 +812,8 @@ pub(crate) enum Instruction {
         count: Option<NumberPattern>,
         from: Option<NumberPattern>,
         format: NumberFormatPlan,
+        letter_value: Option<NumberAttributeValuePlan>,
+        language: Option<NumberAttributeValuePlan>,
         grouping: Option<Box<NumberGroupingPlan>>,
         xslt10_compatibility: bool,
         location: SourceLocation,
@@ -932,6 +985,28 @@ pub(crate) enum Instruction {
     },
     CopyOfDocument {
         select: DocumentRootReference,
+        base: Option<DocumentBaseReference>,
+        path: Option<LocationPath>,
+        recover_unattached_attributes: bool,
+        location: SourceLocation,
+    },
+    CopyOfVariableDocument {
+        variable: String,
+        static_base: String,
+        base: Option<DocumentBaseReference>,
+        path: Option<LocationPath>,
+        recover_unattached_attributes: bool,
+        location: SourceLocation,
+    },
+    CopyOfNestedDocuments {
+        references: NestedDocumentReferences,
+        path: Option<LocationPath>,
+        recover_unattached_attributes: bool,
+        location: SourceLocation,
+    },
+    CopyOfSourceDocuments {
+        references: LocationPath,
+        base: Option<DocumentBaseReference>,
         path: Option<LocationPath>,
         recover_unattached_attributes: bool,
         location: SourceLocation,
@@ -1028,6 +1103,12 @@ pub(crate) enum NumberFormatPlan {
     Static(NumberFormat),
     Xslt10Variable(String),
     Variable(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum NumberAttributeValuePlan {
+    Xslt10Variable(String),
+    Xslt10Concat(Xslt10ConcatExpression),
 }
 
 pub(crate) fn default_number_format() -> NumberFormat {
@@ -1230,6 +1311,10 @@ pub(crate) enum ValueExpression {
     Xslt10CountDescendantsSameNameAsCurrent,
     CountLocationPath(LocationPath),
     Xslt10CountPathUnion(Vec<LocationPath>),
+    Xslt10CountSourceDocumentsDescendants {
+        references: LocationPath,
+        name: ExpandedName,
+    },
     CountSourceNodeVariable(String),
     RootPath(LocationPath),
     RootVariable(String),
@@ -1789,6 +1874,24 @@ pub(crate) struct DocumentRootReference {
     pub(crate) base: String,
     pub(crate) reference: String,
     pub(crate) descendant_name: Option<ExpandedName>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum DocumentBaseReference {
+    SourcePath(LocationPath),
+    LiteralDocument(DocumentRootReference),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum NestedDocumentReferences {
+    Literal {
+        reference: DocumentRootReference,
+        path: Option<LocationPath>,
+    },
+    Source {
+        references: LocationPath,
+        path: Option<LocationPath>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

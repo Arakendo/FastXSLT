@@ -278,13 +278,15 @@ compatibility profile or expose a public or host-configurable policy. The
 current executable slice proves only the bounded module topologies below; it
 does not define a public module graph representation.
 
-The private XSLT 1.0 compatibility slice constructs `xsl:message` content under
-the current invocation focus and variable frame. Message text is retained on
+The private common `xsl:message` subset constructs sequence-constructor content
+under the current invocation focus and variable frame for XSLT 1.0, 2.0, 3.0,
+and forward-compatible future-version stylesheets. Message text is retained on
 invocation-local control state and never enters the principal result tree;
-`terminate="yes"` records before structured `XTMM9000` termination. Construction
-uses the ordinary instruction/result work charges. This behavior does not
-select an ambient logger, a public message sink, adapter delivery, or modern
-profile message semantics.
+static `terminate="yes"` records before structured `XTMM9000` termination.
+Construction uses the ordinary instruction/result work charges. This behavior
+does not select an ambient logger, a public message sink, adapter delivery,
+dynamic message attributes, `select`, `error-code`, or the complete modern
+profile message surface.
 
 A bounded XSLT 1.0 global temporary-text constructor may contain a static,
 non-terminating `xsl:message` alongside its admitted text and source-value
@@ -864,9 +866,16 @@ likewise converts the admitted decimal through IEEE double precision at compile
 time and retains only its XPath 1.0 lexical string; equality between two such
 forms folds to a typed boolean constant. Exponential lexical output remains
 outside this narrow form rather than silently inheriting Rust formatting.
-Execution performs no version branch. This initial seam
-does not yet interpret local version declarations, general backwards-compatible
-behavior, path operands, or non-literal mixed-type comparison.
+Execution performs no version branch. Within an exact-version-1.0 stylesheet,
+a numeric `xsl:version` greater than `1.0` on a literal result element selects
+the existing private forward-compatible instruction path for its subtree;
+version attributes on XSLT instruction elements do not override that literal
+ancestor. Invalid optional extension-prefix controls are ignored only within
+that selected local mode; strict XSLT 1.0 validation is unchanged. This does
+not reinterpret supported XSLT 2.0 or 3.0 stylesheet roots as legacy-profile
+inputs. The broader seam does not yet interpret general
+backwards-compatible behavior, path operands, or non-literal mixed-type
+comparison.
 
 Recognized valid expression families that exceed the admitted evaluator remain
 engine-unsupported rather than being forced through the location-path parser.
@@ -1020,6 +1029,27 @@ selection. `attribute::node()` also compiles to the any-attribute pattern
 because attribute is the axis's principal node kind, preserving the same
 default priority and conflict behavior. Other expanded-axis pattern forms
 remain outside this bounded slice.
+
+One bounded wildcard-element match predicate may compile to a private boolean
+tree containing `and`, `or`, `not`, integer comparison against the context
+node's XPath string value, integer `position()` comparison, and equality
+between an unqualified attribute and a string literal. Evaluation
+short-circuits, derives position among element siblings, and charges inspected
+siblings, attributes, string-value traversal, and predicate operations. Source
+and temporary trees share the scalar predicate semantics while retaining their
+own navigation. This does not admit general XPath during template selection,
+prefixed attribute operands, variables, broader functions, arithmetic, or
+named-node boolean predicate patterns.
+
+Template-pattern union decomposition observes string-literal, parenthesis, and
+predicate-bracket boundaries; an inner XPath union never becomes a template
+alternative. One bounded named-element predicate may compare a union of
+unqualified child and attribute node tests to one string literal. It follows
+XPath 1.0 node-set/string equality by succeeding when any selected node has the
+requested string value. Child names use the effective XPath default namespace,
+while unqualified attributes remain in no namespace. This does not admit
+arbitrary path operands, prefixed union members, computed values, broader
+comparison operators, or general XPath execution during template selection.
 
 The admitted literal-result-attribute AVT subset includes the exact context
 item form `{.}`. Compilation records it as a typed operation. Execution obtains
@@ -1214,11 +1244,15 @@ and decimal-format binding. This compatibility behavior is not admitted for a
 modern static context and does not define a public sequence-constructor type.
 
 The XSLT 1.0 compatibility compiler tolerates and ignores exactly the
-corpus-declared gray-area spelling `xsl:element/@xsl:use-attribute-sets`. The
-standard unqualified instruction attribute remains the only spelling that
-applies a named attribute set. This compile-selected recovery does not admit a
-general rule for XSLT-namespaced instruction attributes, alter modern static
-contexts, or classify the prefixed spelling as standards-conforming syntax.
+corpus-declared gray-area spelling `@xsl:use-attribute-sets` on `xsl:element`,
+`xsl:attribute-set`, and `xsl:copy`. The standard unqualified instruction
+attribute remains the only spelling that applies or references a named
+attribute set, including during dependency-graph construction. An empty
+standard `use-attribute-sets` value remains invalid because the XSLT 1.0
+`QNames` production is non-empty. This compile-selected recovery does not
+admit a general rule for XSLT-namespaced instruction attributes, alter modern
+static contexts, or classify the prefixed spelling as standards-conforming
+syntax.
 
 Result-element assembly has one private ownership rule across literal and
 computed elements plus source and temporary-tree `xsl:copy`: attributes
@@ -1333,13 +1367,20 @@ execution strategies are admitted.
 
 The private XSLT 1.0 `xsl:number` compatibility lane retains static numbering
 format tokens and uses the standard decimal sequence when a requested token is
-not implemented. A static `lang` hint may be admitted without locale data when
-the selected sequence is provably invariant: decimal tokens accept any literal
-language, and the existing Latin alphabetic sequence accepts `da`, `en`, `fi`,
-`no`, or `sv`. Non-literal language selection, a dynamic format combined with
-`lang`, and every other locale-sensitive combination remain explicitly
-unsupported. Compilation and execution must not consult an ambient host locale
-or imply support for a numbering sequence that FastXSLT does not implement.
+not implemented. A valid static `letter-value` does not reinterpret an already
+unambiguous implemented token: `i` and `I` retain their fixed lower- and
+upper-case Roman sequences. A static `lang` hint may be admitted without locale
+data when the selected sequence is provably invariant: decimal tokens accept
+any literal language, and the existing Latin alphabetic sequence accepts `da`,
+`en`, `fi`, `no`, or `sv`. The XSLT 1.0 lane may retain a bounded typed
+whole-expression variable or `concat()` AVT for `lang` and `letter-value`, then
+validate its effective value per invocation after resolving the effective
+format. Constant quoted `format` AVTs may be folded before token parsing.
+Dynamic control values do not admit a locale-sensitive sequence that is not
+already implemented, and the normative one-character grouping-separator rule
+remains unchanged. Compilation and execution must not consult an ambient host
+locale or imply support for a numbering sequence that FastXSLT does not
+implement.
 
 ### Runtime
 
@@ -1373,6 +1414,13 @@ implementation during private XML, XHTML, HTML, and text serialization.
 Character mapping precedes requested normalization and mapped replacement
 strings bypass it; CDATA-selected text normalizes before CDATA construction.
 NFKC, NFKD, and fully-normalized output remain unsupported.
+For an exact-version-1.0 stylesheet, the private byte serializer may use the
+XSLT 1.0 section 16.1 recovery choice of UTF-8 when the requested output
+encoding is unavailable. The compiled settings retain the requested preference;
+only physical serialization selects the fallback, and the emitted declaration
+truthfully identifies UTF-8. Modern stylesheet versions retain strict
+`SESU0007` behavior. This does not admit an ambient encoding provider, EBCDIC,
+or a public encoding-capability registry.
 The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` metadata; `yes` and `no` become declaration pseudo-attributes, while
 `omit` emits none. Under XSLT 1.0 compatibility, an effective omitted XML
@@ -1394,11 +1442,15 @@ URI-attribute rule recognizes the standard HTML element/attribute pairs rather
 than treating every `href` spelling as URI-valued. When enabled or defaulted,
 the complete value first normalizes to NFC, then each non-ASCII character
 becomes its uppercase percent-escaped UTF-8 bytes, a double quote becomes
-`%22`, and existing ASCII percent sequences remain unchanged; when disabled,
-ordinary XML-compatible attribute escaping applies. Element and attribute
-recognition is ASCII-case-insensitive for the HTML vocabulary, and both names
-must be unprefixed. Character maps do not rewrite an enabled URI-expansion
-path. The property remains unsupported for an absent output method. A separate
+`%22`, `<` remains literal, an ampersand immediately before `{` remains
+literal, other ampersands retain HTML escaping, and existing ASCII percent
+sequences remain unchanged. When disabled, the owning output method's ordinary
+attribute rules apply. Legacy HTML applies these rules only to null-namespace
+elements; foreign namespaced elements use XML-compatible attribute escaping.
+Element and attribute recognition is ASCII-case-insensitive for the HTML
+vocabulary, and URI-valued attributes must be unprefixed. Character maps do not
+rewrite an enabled URI-expansion path. The property remains unsupported for an
+absent output method. A separate
 bounded XPath `escape-html-uri()` semantic path
 preserves printable ASCII and percent-escapes every other character's UTF-8
 bytes without Unicode normalization. The original leading-computed-attribute
@@ -1449,11 +1501,13 @@ cancellation use the shared serializer paths. General tree admission is not a
 claim that every HTML serialization rule or comparison case conforms; corpus
 mismatches and HTML-shaped results that the XML-semantic comparator cannot
 assess remain explicit evidence. An environment-supplied default HTML version
-is not inferred. The XSLT 1.0 HTML boolean-attribute set is minimized when an
-unnamespaced value equals its attribute name without ASCII case sensitivity and
-the owning element is also unnamespaced; attributes on namespaced foreign
-elements and all other or namespaced attributes retain quoted serialization.
-Ordinary HTML
+is not inferred. An XSLT 1.0 HTML Boolean attribute is minimized only when the
+owning null-namespace element and attribute form a Boolean pair defined by the
+HTML vocabulary and the value equals the attribute name without ASCII case
+sensitivity. Attributes on namespaced foreign elements and all other or
+namespaced attributes retain quoted serialization. Script/style raw-text
+handling applies to text throughout the result subtree rooted at that HTML
+element, including text below an unexpected nested result element. Ordinary HTML
 attribute values preserve angle brackets and XML whitespace characters rather
 than applying XML attribute escaping; ampersands, double quotes, and C1
 controls retain their required escaped forms. On the XSLT 1.0 no-character-map
@@ -1532,6 +1586,32 @@ nested document node in the result sequence. Element and text descendants use
 the same result-node and retained-text accounting as direct source-node copies.
 Copying source attributes, comments, and processing instructions through this
 specific selection remains outside the private slice.
+Under XSLT 1.0 compatibility, `xsl:apply-templates` may select one exact
+descendant element name from documents whose relative references are supplied
+by one typed principal-source location path. Resolution uses each reference
+node's logical identity and the sealed invocation snapshot. Prepared documents
+are invocation-owned and deduplicated; selected nodes retain their owning
+document while position and size use one aggregate focus. Source-node globals
+or parameters remain rejected at this boundary until runtime node values carry
+document provenance. The same typed multi-document descendant selection may be
+counted, and template dispatch may sort it stably by the bounded XSLT 1.0
+`substring-after(path, literal)` form; other cross-document sort expressions
+remain unsupported.
+XSLT 1.0 `xsl:apply-templates` also admits the bounded two-argument form
+`document(reference-path, base-path)/*`. The first node selected by the typed
+base path supplies the logical base identity for every typed reference-path
+node; execution selects document element children and preserves one aggregate
+focus across prepared documents. Both paths are principal-source paths,
+acquisition remains sealed-snapshot-only, and arbitrary trailing paths remain
+unsupported.
+The one-argument source-selected and literal `document()` apply-selection forms
+may instead retain a trailing expression from the existing typed location-path
+subset. The call prefix remains a typed external-resource plan rather than an
+ordinary XPath function call: execution prepares only admitted snapshot bytes,
+evaluates the suffix from each prepared document node, preserves owning-document
+provenance, and combines source-selected results into one aggregate focus. This
+does not admit computed references, live acquisition, or arbitrary function
+composition around `document()`.
 The exact `xsl:copy-of select="ancestor-or-self::*"` slice walks element nodes
 from the context item toward the document root in reverse-axis order, charging
 each visit and using the same bounded recursive copy path. When an initial
@@ -1543,6 +1623,14 @@ when it is the complete expression and the abbreviated `self::node()` step when
 composed after another step. The latter uses the ordinary charged self-axis
 evaluation and document-order normalization; it does not introduce a separate
 compatibility evaluator or admit general filter-expression composition.
+The same grammar admits a bounded nested-child predicate form whose child
+selection establishes its own ordered position/size focus before evaluating a
+typed nested predicate. Positional child filtering may feed XPath 1.0 string
+comparison, and these forms compose with the existing attribute comparisons,
+`not()`, `and`, and `or` operators. Equality routing recognizes only a
+top-level operator after accounting for quotes, parentheses, and predicate
+brackets. Navigation remains charged and preserves the original outer context;
+this does not admit arbitrary filter expressions or a second XPath evaluator.
 XPath tab, line-feed, carriage-return, and space characters may surround the
 `::` axis separator. Compilation removes only that token-boundary whitespace
 before normal axis-name, node-test, and QName validation; it does not loosen
@@ -1551,6 +1639,10 @@ When no output method is declared, an XHTML-namespaced `html` document element
 selects the XHTML serializer and its content-type behavior. A null-namespace
 `html` selects the still-unsupported HTML method; the two inference rules must
 not be conflated.
+An explicitly declared non-built-in output method must first be a valid QName
+whose expanded name has a non-null namespace URI. Malformed and null-namespace
+custom methods are invalid; a namespace-qualified extension method remains
+explicitly unsupported until an extension-serializer contract is admitted.
 Unnamed output declarations may now merge only when their scalar properties do
 not overlap; repeated scalar properties remain explicitly unsupported until
 precedence and conflict semantics are implemented. `cdata-section-elements`
@@ -1612,13 +1704,25 @@ extensions. The engine reports an explicit missing/denied-resource condition.
 An optional live resolver may be studied later, but must be an explicit
 capability and cannot become ambient disk or network access.
 
-The current private reference engine admits one narrower runtime form: a
+The current private reference engine admits several bounded runtime forms. A
 literal `document()` reference may be resolved against the stylesheet's
-absolute logical identity and looked up only in the transform set's sealed
-snapshot. Its parsed XDM document and opaque identity belong to that invocation
-and repeated access reuses them. This does not admit computed references,
-fragments, live acquisition, cross-invocation caching, or a public resolver
-contract; those remain governed by AR-0014.
+absolute logical identity. XSLT 1.0 `xsl:copy-of` may also obtain one or more
+references from a typed source location path and resolve each value relative
+to that source node's logical identity. One scalar invocation variable may
+provide the lexical first argument while retaining the same explicit base and
+sealed-snapshot authority rules. Finally, a literal, variable, or source-derived
+first argument may use the first node selected by one typed source location
+path as its explicit base identity, or may use the document node prepared from
+one literal `document()` reference as that explicit base. All forms look up only resources
+in the transform set's sealed snapshot. Parsed XDM documents and opaque identities
+belong to the invocation; repeated resolved documents reuse and deduplicate by
+that identity. XSLT 1.0 `xsl:copy-of` also admits exactly one nested
+`document()` layer whose inner reference is literal or source-derived and whose
+typed inner result nodes retain their own logical base identities for the outer
+resolution. This does not admit general computed expressions, non-atomic
+variable arguments, general or
+deeper `document()` arguments, fragments, live acquisition, cross-invocation
+caching, or a public resolver contract; those remain governed by AR-0014.
 
 Under ADR-0005, a transform set contains only independently executable requests.
 Submission, start, execution, and completion order have no semantic meaning;
@@ -1871,3 +1975,27 @@ accepted ADR before they become project contracts.
 A private experiment may test an alternative when its scope and reversibility
 are explicit. It does not acquire architectural authority merely because it
 compiles, performs well, or is convenient to reuse.
+
+The private XSLT 1.0 compatibility implementation may select nodes from an
+admitted stylesheet document through one typed path ending in an expanded
+attribute-equals-variable predicate. A principal-source node variable is
+converted while its owning source is still active; only the scalar comparison
+value crosses into stylesheet-document evaluation. This does not admit raw
+cross-document node identities, ambient acquisition, or a general public
+multi-document expression contract.
+
+A literal-document `xsl:for-each` may similarly derive an invocation-owned
+detached view of local principal-source node variables before changing source
+documents. The view retains ordered string values and cardinality for bounded
+XSLT 1.0 scalar conversion, boolean, count, comparison, and `key()` lookup
+semantics; it does not retain portable node identity. Navigation and
+identity-sensitive operations still require nodes owned by the active
+document. Global source-node bindings and source-node parameters remain
+rejected at this boundary.
+
+The private XSLT 1.0 output-declaration recovery path may defer rejection of a
+namespace-qualified extension output method only when a later unnamed
+declaration in the same stylesheet module selects a supported standard method.
+The complete merge must leave a standard effective method. This rule does not
+admit extension serialization, local-name aliases for extension methods, or
+the same recovery for modern stylesheet versions.

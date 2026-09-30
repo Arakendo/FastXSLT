@@ -89,6 +89,9 @@ fn validate_named_calls(
             | Instruction::CopyOfAncestorOrSelfElements { .. }
             | Instruction::CopyOfLocationPath { .. }
             | Instruction::CopyOfDocument { .. }
+            | Instruction::CopyOfVariableDocument { .. }
+            | Instruction::CopyOfNestedDocuments { .. }
+            | Instruction::CopyOfSourceDocuments { .. }
             | Instruction::CopyOfXslt10KeyLookup { .. }
             | Instruction::CopyOfPathUnion { .. }
             | Instruction::CopyOfStaticAtomicText { .. }

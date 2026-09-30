@@ -37,6 +37,9 @@ pub(super) fn variable_string_value(
     if let Some(values) = variables.atomic_sequences.get(name) {
         return Ok(values.first().map_or("", AtomicValue::lexical).to_owned());
     }
+    if let Some(values) = variables.detached_source_node_strings(name) {
+        return Ok(values.first().map_or("", String::as_str).to_owned());
+    }
     if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
         let Some(node) = nodes.first() else {
             return Ok(String::new());
@@ -170,6 +173,9 @@ pub(super) fn variable_string_comparison(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    if let Some(values) = variables.detached_source_node_strings(name) {
+        return Ok(values.iter().any(|actual| (actual == expected) == equal));
+    }
     if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
         let source = required_comparison_source(inputs)?;
         for node in nodes {
@@ -194,6 +200,11 @@ pub(super) fn variable_number_comparison(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    if let Some(values) = variables.detached_source_node_strings(name) {
+        return Ok(values
+            .iter()
+            .any(|actual| number_equals(actual, expected) == equal));
+    }
     if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
         let source = required_comparison_source(inputs)?;
         for node in nodes {

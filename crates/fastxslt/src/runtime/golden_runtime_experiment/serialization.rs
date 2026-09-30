@@ -29,6 +29,7 @@ struct SerializationOptions<'a> {
     content_type_media_type: Option<&'a str>,
     content_type_encoding: &'a str,
     html_mode: HtmlMode,
+    html_raw_text_context: HtmlRawTextContext,
     escape_uri_attributes: bool,
     normalization_form: NormalizationForm,
     xml_empty_element_tag: bool,
@@ -39,6 +40,13 @@ struct SerializationOptions<'a> {
 impl SerializationOptions<'_> {
     fn inherited_for(self, name: &crate::xml::quick_xml_experiment::ExpandedName) -> Self {
         Self {
+            html_raw_text_context: if self.html_raw_text_context == HtmlRawTextContext::Active
+                || self.html_mode != HtmlMode::None && is_html_raw_text_element(name)
+            {
+                HtmlRawTextContext::Active
+            } else {
+                HtmlRawTextContext::Inactive
+            },
             indentation_state: if self.indentation_state == IndentationState::Suppressed
                 || self.suppress_indentation_elements.contains(name)
             {
@@ -63,6 +71,12 @@ enum HtmlMode {
     None,
     Legacy,
     Five,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum HtmlRawTextContext {
+    Inactive,
+    Active,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -110,20 +124,8 @@ fn serialize_xml_with_namespace_mode(
     validate_string_encoding(settings, request_id)?;
     validate_html_version(settings, request_id)?;
     validate_string_byte_order_mark(settings, request_id)?;
-    let first_significant = result
-        .children
-        .iter()
-        .find(|node| is_significant_result_node(node));
-    let legacy_html_by_root = settings.method.is_none()
-        && matches!(first_significant, Some(ResultNode::Element { name, .. })
-            if name.namespace.is_none() && name.local.eq_ignore_ascii_case("html"));
-    let xhtml_serialization_by_root = settings.method.is_none()
-        && matches!(
-            first_significant,
-            Some(ResultNode::Element { name, .. })
-                if name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
-                    && name.local.eq_ignore_ascii_case("html")
-        );
+    let (legacy_html_by_root, xhtml_serialization_by_root) =
+        inferred_html_root_modes(result, settings);
     if settings.method.as_deref() == Some("text") {
         return serialize_text_result(
             result,
@@ -182,6 +184,7 @@ fn serialize_xml_with_namespace_mode(
             .or(settings.encoding.as_deref())
             .unwrap_or("UTF-8"),
         html_mode: select_html_mode(settings, html),
+        html_raw_text_context: HtmlRawTextContext::Inactive,
         escape_uri_attributes: (xhtml || html) && settings.escape_uri_attributes.unwrap_or(true),
         normalization_form,
         xml_empty_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
@@ -205,6 +208,24 @@ fn serialize_xml_with_namespace_mode(
         previous_was_element = is_element;
     }
     Ok(output.finish())
+}
+
+fn inferred_html_root_modes(result: &SemanticResult, settings: &OutputSettings) -> (bool, bool) {
+    let first_significant = result
+        .children
+        .iter()
+        .find(|node| is_significant_result_node(node));
+    let legacy_html = settings.method.is_none()
+        && matches!(first_significant, Some(ResultNode::Element { name, .. })
+            if name.namespace.is_none() && name.local.eq_ignore_ascii_case("html"));
+    let xhtml = settings.method.is_none()
+        && matches!(
+            first_significant,
+            Some(ResultNode::Element { name, .. })
+                if name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+                    && name.local.eq_ignore_ascii_case("html")
+        );
+    (legacy_html, xhtml)
 }
 
 fn output_namespace_mode(requested: NamespaceMode, xhtml_mode: XhtmlMode) -> NamespaceMode {
@@ -236,7 +257,9 @@ pub(in crate::runtime) fn serialize_xml_complete_namespace_reference(
 
 fn is_significant_result_node(node: &ResultNode) -> bool {
     match node {
-        ResultNode::Text(value) => !value.chars().all(char::is_whitespace),
+        ResultNode::Text(value) | ResultNode::Xslt10DisableOutputEscapingText(value) => {
+            !value.chars().all(char::is_whitespace)
+        }
         ResultNode::Element { .. } => true,
         ResultNode::PendingAttribute(_)
         | ResultNode::Xslt10RecoverableAttribute(_)
@@ -865,7 +888,9 @@ fn is_bounded_html5_document(nodes: &[ResultNode]) -> bool {
         return false;
     };
     nodes.iter().all(|node| match node {
-        ResultNode::Text(value) => value.chars().all(char::is_whitespace),
+        ResultNode::Text(value) | ResultNode::Xslt10DisableOutputEscapingText(value) => {
+            value.chars().all(char::is_whitespace)
+        }
         ResultNode::Comment(_) | ResultNode::ProcessingInstruction { .. } => true,
         ResultNode::PendingAttribute(_) | ResultNode::Xslt10RecoverableAttribute(_) => false,
         ResultNode::Element { .. } => std::ptr::eq(node, *root),
@@ -874,7 +899,9 @@ fn is_bounded_html5_document(nodes: &[ResultNode]) -> bool {
 
 fn is_bounded_html5_node(node: &ResultNode, root: bool) -> bool {
     match node {
-        ResultNode::Text(_) | ResultNode::Comment(_) => true,
+        ResultNode::Text(_)
+        | ResultNode::Xslt10DisableOutputEscapingText(_)
+        | ResultNode::Comment(_) => true,
         ResultNode::PendingAttribute(_)
         | ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::ProcessingInstruction { .. } => false,
@@ -964,6 +991,7 @@ fn validate_html_processing_instructions(
             ResultNode::PendingAttribute(_)
             | ResultNode::Xslt10RecoverableAttribute(_)
             | ResultNode::Text(_)
+            | ResultNode::Xslt10DisableOutputEscapingText(_)
             | ResultNode::Comment(_) => false,
         }
     }
@@ -981,7 +1009,7 @@ fn validate_html_processing_instructions(
 
 fn is_bounded_html_node(node: &ResultNode, root: bool) -> bool {
     match node {
-        ResultNode::Text(_) => true,
+        ResultNode::Text(_) | ResultNode::Xslt10DisableOutputEscapingText(_) => true,
         ResultNode::PendingAttribute(_)
         | ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::ProcessingInstruction { .. }
@@ -1212,6 +1240,42 @@ pub(in crate::runtime) fn serialize_xml_bytes(
 }
 
 #[cfg(any(test, feature = "workbench"))]
+pub(in crate::runtime) fn serialize_xml_bytes_with_stylesheet_version(
+    result: &SemanticResult,
+    settings: &OutputSettings,
+    stylesheet_version: &str,
+    request_id: &str,
+    byte_limit: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<u8>, ExecutionFailure> {
+    let Some(encoding) = settings.encoding.as_deref() else {
+        return serialize_xml_bytes(result, settings, request_id, byte_limit, control);
+    };
+    if stylesheet_version.trim() != "1.0" || is_supported_byte_encoding(encoding) {
+        return serialize_xml_bytes(result, settings, request_id, byte_limit, control);
+    }
+
+    // XSLT 1.0 section 16.1 permits a processor that cannot support the
+    // requested encoding to serialize as UTF-8 or UTF-16 instead. Keep the
+    // declared preference intact in the compiled program and select the
+    // physical fallback only at this private serialization boundary. Modern
+    // stylesheets continue to receive SESU0007 for the same unavailable label.
+    let mut fallback = settings.clone();
+    fallback.encoding = Some("UTF-8".to_owned());
+    serialize_xml_bytes(result, &fallback, request_id, byte_limit, control)
+}
+
+#[cfg(any(test, feature = "workbench"))]
+fn is_supported_byte_encoding(encoding: &str) -> bool {
+    encoding.eq_ignore_ascii_case("UTF-8")
+        || encoding.eq_ignore_ascii_case("UTF-16")
+        || encoding.eq_ignore_ascii_case("US-ASCII")
+        || encoding.eq_ignore_ascii_case("ISO-8859-1")
+        || encoding.eq_ignore_ascii_case("ISO-8859-2")
+        || is_bounded_legacy_encoding(encoding)
+}
+
+#[cfg(any(test, feature = "workbench"))]
 fn serialize_utf8_bytes(
     result: &SemanticResult,
     settings: &OutputSettings,
@@ -1418,6 +1482,7 @@ fn contains_pending_attribute(nodes: &[ResultNode]) -> bool {
         ResultNode::Element { children, .. } => contains_pending_attribute(children),
         ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::Text(_)
+        | ResultNode::Xslt10DisableOutputEscapingText(_)
         | ResultNode::ProcessingInstruction { .. }
         | ResultNode::Comment(_) => false,
     })
@@ -1430,7 +1495,7 @@ fn serialize_text_node(
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     match node {
-        ResultNode::Text(value) => {
+        ResultNode::Text(value) | ResultNode::Xslt10DisableOutputEscapingText(value) => {
             write_character_mapped(value, character_map, normalization_form, output)
         }
         ResultNode::PendingAttribute(_)
@@ -1470,11 +1535,28 @@ fn serialize_node<'a>(
 ) -> Result<(), ExecutionFailure> {
     match node {
         ResultNode::Text(value) => {
-            escape_text(
+            if options.html_raw_text_context == HtmlRawTextContext::Active {
+                write_character_mapped(
+                    value,
+                    options.character_map,
+                    options.normalization_form,
+                    output,
+                )?;
+            } else {
+                escape_text(
+                    value,
+                    options.character_map,
+                    options.normalization_form,
+                    options.html_mode == HtmlMode::Five,
+                    output,
+                )?;
+            }
+        }
+        ResultNode::Xslt10DisableOutputEscapingText(value) => {
+            write_character_mapped(
                 value,
                 options.character_map,
                 options.normalization_form,
-                options.html_mode == HtmlMode::Five,
                 output,
             )?;
         }
@@ -1626,17 +1708,30 @@ fn serialize_element_attribute(
     output.push(' ')?;
     let prefix = namespace_scope.attribute_prefix(attribute.name.namespace.as_deref(), output)?;
     write_name(prefix.as_deref(), &attribute.name.local, output)?;
+    let html_attribute = uses_html_attribute_rules(element_name, options.html_mode);
+    let uri_attribute_rules = html_attribute
+        || options.xhtml_mode != XhtmlMode::None
+            && element_name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml");
+    let legacy_html_attribute =
+        options.html_mode == HtmlMode::Legacy && element_name.namespace.is_none();
     if options.html_mode != HtmlMode::None
         && element_name.namespace.is_none()
         && prefix.is_none()
-        && is_minimized_html_boolean_attribute(attribute)
+        && is_minimized_html_boolean_attribute(element_name, attribute)
     {
         return Ok(());
     }
     output.push_str("=\"")?;
-    if options.escape_uri_attributes && is_uri_attribute(element_name, attribute) {
-        escape_uri_attribute(&attribute.value, output)?;
-    } else if options.html_mode != HtmlMode::None {
+    if uri_attribute_rules
+        && options.escape_uri_attributes
+        && is_uri_attribute(element_name, attribute)
+    {
+        if legacy_html_attribute {
+            escape_legacy_html_uri_attribute(&attribute.value, output)?;
+        } else {
+            escape_uri_attribute(&attribute.value, output)?;
+        }
+    } else if html_attribute {
         escape_html_attribute_with_character_map(
             &attribute.value,
             options.character_map,
@@ -1652,6 +1747,20 @@ fn serialize_element_attribute(
         )?;
     }
     output.push('"')
+}
+
+fn uses_html_attribute_rules(
+    element: &crate::xml::quick_xml_experiment::ExpandedName,
+    html_mode: HtmlMode,
+) -> bool {
+    match html_mode {
+        HtmlMode::None => false,
+        HtmlMode::Legacy => element.namespace.is_none(),
+        HtmlMode::Five => matches!(
+            element.namespace.as_deref(),
+            None | Some("http://www.w3.org/1999/xhtml")
+        ),
+    }
 }
 
 fn enter_element_namespace_scope<'a>(
@@ -1736,15 +1845,36 @@ fn is_html_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -
         .any(|local| name.local.eq_ignore_ascii_case(local))
 }
 
-fn is_minimized_html_boolean_attribute(attribute: &ResultAttribute) -> bool {
-    attribute.name.namespace.is_none()
-        && [
-            "checked", "compact", "declare", "defer", "disabled", "ismap", "multiple", "nohref",
-            "noresize", "noshade", "nowrap", "readonly", "selected",
-        ]
-        .iter()
-        .any(|name| attribute.name.local.eq_ignore_ascii_case(name))
-        && attribute.value.eq_ignore_ascii_case(&attribute.name.local)
+fn is_minimized_html_boolean_attribute(
+    element: &crate::xml::quick_xml_experiment::ExpandedName,
+    attribute: &ResultAttribute,
+) -> bool {
+    if attribute.name.namespace.is_some()
+        || !attribute.value.eq_ignore_ascii_case(&attribute.name.local)
+    {
+        return false;
+    }
+    let element = element.local.to_ascii_lowercase();
+    let attribute = attribute.name.local.to_ascii_lowercase();
+    match attribute.as_str() {
+        "checked" => element == "input",
+        "compact" => matches!(element.as_str(), "dir" | "dl" | "menu" | "ol" | "ul"),
+        "declare" => element == "object",
+        "defer" => element == "script",
+        "disabled" => matches!(
+            element.as_str(),
+            "button" | "input" | "optgroup" | "option" | "select" | "textarea"
+        ),
+        "ismap" => matches!(element.as_str(), "img" | "input"),
+        "multiple" => element == "select",
+        "nohref" => element == "area",
+        "noresize" => element == "frame",
+        "noshade" => element == "hr",
+        "nowrap" => matches!(element.as_str(), "td" | "th"),
+        "readonly" => matches!(element.as_str(), "input" | "textarea"),
+        "selected" => element == "option",
+        _ => false,
+    }
 }
 
 fn is_html_raw_text_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
@@ -2039,6 +2169,35 @@ fn escape_uri_attribute(value: &str, output: &mut BudgetedString) -> Result<(), 
             output.push_str("%22")?;
         } else if character.is_ascii() {
             escape_attribute_character(character, output)?;
+        } else {
+            let mut encoded = [0_u8; 4];
+            for byte in character.encode_utf8(&mut encoded).as_bytes() {
+                output.push('%')?;
+                output.push_str(&format!("{byte:02X}"))?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn escape_legacy_html_uri_attribute(
+    value: &str,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    let mut characters = value.nfc().peekable();
+    while let Some(character) = characters.next() {
+        if character == '"' {
+            output.push_str("%22")?;
+        } else if character == '&' && characters.peek() == Some(&'{') {
+            output.push('&')?;
+        } else if character.is_ascii() {
+            match character {
+                '&' => output.push_str("&amp;")?,
+                _ if is_c1_control(character) => {
+                    output.push_str(&format!("&#x{:X};", u32::from(character)))?;
+                }
+                _ => output.push(character)?,
+            }
         } else {
             let mut encoded = [0_u8; 4];
             for byte in character.encode_utf8(&mut encoded).as_bytes() {

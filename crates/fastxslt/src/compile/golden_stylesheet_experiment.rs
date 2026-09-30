@@ -21,6 +21,8 @@ mod attribute_set_linker;
 mod decimal_format_compiler;
 #[path = "instruction_compiler.rs"]
 mod instruction_compiler;
+#[path = "match_boolean_predicate_compiler.rs"]
+mod match_boolean_predicate_compiler;
 #[path = "match_sequence_predicate_compiler.rs"]
 mod match_sequence_predicate_compiler;
 #[path = "mode_declaration_compiler.rs"]
@@ -180,13 +182,32 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut namespace_aliases = Vec::new();
     let mut attribute_set_declarations = Vec::new();
     let mut key_definitions = Vec::new();
-    for child in top_level_children {
+    for (child_index, child) in top_level_children.iter().copied().enumerate() {
         let Some(name) = document.name(child) else {
             continue;
         };
         match (name.namespace.as_deref(), name.local.as_str()) {
             (Some(XSLT_NAMESPACE), "output") => {
-                let declaration = compile_output(document, child, &declared_version)?;
+                let allow_superseded_xslt10_extension_method = declared_version == "1.0"
+                    && optional_attribute(document, child, None, "name").is_none()
+                    && top_level_children[child_index + 1..]
+                        .iter()
+                        .copied()
+                        .any(|later| {
+                            is_xslt_element(document, later, "output")
+                                && optional_attribute(document, later, None, "name").is_none()
+                                && optional_attribute(document, later, None, "method").is_some_and(
+                                    |method| {
+                                        matches!(method.trim(), "xml" | "html" | "text" | "xhtml")
+                                    },
+                                )
+                        });
+                let declaration = compile_output(
+                    document,
+                    child,
+                    &declared_version,
+                    allow_superseded_xslt10_extension_method,
+                )?;
                 if let Some(name) = &declaration.name {
                     if named_output_names.contains(name) {
                         return Err(unsupported(
@@ -2210,19 +2231,16 @@ fn compile_matched_templates(
     lexical_pattern: &str,
 ) -> Result<Vec<MatchedTemplate>, CompileFailure> {
     let normalized_pattern = strip_outer_pattern_parentheses(lexical_pattern);
-    let alternatives = normalized_pattern
-        .split('|')
-        .map(str::trim)
-        .collect::<Vec<_>>();
-    if alternatives.len() == 1 {
+    let Some(alternatives) = instruction_compiler::split_top_level_union(normalized_pattern) else {
         return compile_matched_template(document, element, lexical_pattern).map(|rule| vec![rule]);
-    }
+    };
     if template_pattern_compiler::is_homogeneous_qualified_path_union(normalized_pattern) {
         return compile_matched_template(document, element, normalized_pattern)
             .map(|rule| vec![rule]);
     }
     let patterns = alternatives
         .into_iter()
+        .map(str::trim)
         .map(|alternative| compile_match_pattern(document, element, alternative))
         .collect::<Result<Vec<_>, _>>()?;
     if !template_pattern_compiler::alternatives_are_pairwise_disjoint(&patterns) {
@@ -2920,7 +2938,10 @@ fn is_ignored_xslt10_prefixed_instruction_attribute(
         .expect("attribute nodes have expanded names");
     instruction_compiler::uses_xslt10_compatibility(document, element)
         && element_name.namespace.as_deref() == Some(XSLT_NAMESPACE)
-        && element_name.local == "element"
+        && matches!(
+            element_name.local.as_str(),
+            "attribute-set" | "copy" | "element"
+        )
         && attribute_name.namespace.as_deref() == Some(XSLT_NAMESPACE)
         && attribute_name.local == "use-attribute-sets"
 }

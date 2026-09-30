@@ -90,7 +90,12 @@ pub(super) fn compile_computed_attribute(
     } else if let [value_of] = children.as_slice()
         && is_xslt_element(document, *value_of, "value-of")
     {
-        ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+        ensure_only_attributes(
+            document,
+            *value_of,
+            &["select", "disable-output-escaping"],
+            "xsl:value-of",
+        )?;
         ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
         let select = required_attribute(document, *value_of, None, "select")?;
         compile_computed_attribute_value(document, *value_of, select)?
@@ -334,7 +339,12 @@ fn compile_xslt10_local_source_path_count(
 ) -> Result<LiteralAttributeValue, CompileFailure> {
     ensure_only_attributes(document, variable, &["name", "select"], "xsl:variable")?;
     ensure_no_meaningful_children(document, variable, "xsl:variable")?;
-    ensure_only_attributes(document, value_of, &["select"], "xsl:value-of")?;
+    ensure_only_attributes(
+        document,
+        value_of,
+        &["select", "disable-output-escaping"],
+        "xsl:value-of",
+    )?;
     ensure_no_meaningful_children(document, value_of, "xsl:value-of")?;
     let name = required_attribute(document, variable, None, "name")?;
     if !is_ascii_ncname(name) {
@@ -385,7 +395,12 @@ pub(super) fn compile_for_each_string_value_path(
             document.location(for_each),
         ));
     }
-    ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+    ensure_only_attributes(
+        document,
+        *value_of,
+        &["select", "disable-output-escaping"],
+        "xsl:value-of",
+    )?;
     ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
     if required_attribute(document, *value_of, None, "select")?.trim() != "." {
         return Err(unsupported(

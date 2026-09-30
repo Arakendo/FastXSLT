@@ -2024,11 +2024,16 @@ fn path_boolean_predicate_compares_parent_attributes_with_string_literals() {
 
 #[test]
 fn path_boolean_predicate_compares_dynamic_node_sets_and_positional_children() {
+    assert!(super::path_boolean_predicate::parse("author[last-name][2] = 'Kimball'").is_some());
+    assert!(super::path_boolean_predicate::parse(
+        "book[author[last-name][2] = 'Kimball'] or @specialty='novel' and (not(book[title[1]='Unknown']) or book[title[1]='Book 1'])"
+    )
+    .is_some());
     let parsed = parse_document(
         "memory:source.xml",
-        b"<doc><a><inner>match</inner></a><peer>miss</peer><peer>match</peer><foo><bar>first</bar><bar>this</bar></foo><foo><bar>this</bar><bar>other</bar></foo><foo><bar><baz>x</baz><baz>goodbye</baz></bar></foo><foo><bar>x</bar><bar><baz>x</baz><baz>goodbye</baz></bar></foo></doc>",
+        b"<doc><a><inner>match</inner></a><peer>miss</peer><peer>match</peer><foo><bar>first</bar><bar>this</bar></foo><foo><bar>this</bar><bar>other</bar></foo><foo><bar><baz>x</baz><baz>goodbye</baz></bar></foo><foo><bar>x</bar><bar><baz>x</baz><baz>goodbye</baz></bar></foo><book><author><last-name>First</last-name></author><author><last-name>Kimball</last-name></author></book><book><author><last-name>Kimball</last-name></author></book></doc>",
         ParseLimits {
-            max_events: 64,
+            max_events: 96,
             max_depth: 4,
         },
     )
@@ -2060,6 +2065,33 @@ fn path_boolean_predicate_compares_dynamic_node_sets_and_positional_children() {
         &parse_location_path("foo[(bar[2][(baz[2])='goodbye'])]", location())
             .expect("nested positioned child equality predicate should parse"),
     );
+    let deep_nested = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("book[author[last-name][2] = 'Kimball']", location())
+            .expect("deep nested positioned child equality predicate should parse"),
+    );
+    let composed_source = parse_document(
+        "memory:composed.xml",
+        b"<doc><bookstore><book><author><last-name>First</last-name></author><author><last-name>Kimball</last-name></author></book></bookstore><bookstore specialty='novel'><book><title>Unknown</title></book></bookstore><bookstore specialty='novel'><book><title>Book 1</title></book></bookstore></doc>",
+        ParseLimits {
+            max_events: 64,
+            max_depth: 5,
+        },
+    )
+    .expect("composed predicate source should parse");
+    let composed_document =
+        Document::from_parsed(composed_source).expect("composed predicate XDM should build");
+    let composed_root = composed_document.children(composed_document.document_node())[0];
+    let composed_nested = evaluate_location_path(
+        &composed_document,
+        composed_root,
+        &parse_location_path(
+            "bookstore[book[author[last-name][2] = 'Kimball'] or @specialty='novel' and (not(book[title[1]='Unknown']) or book[title[1]='Book 1'])]",
+            location(),
+        )
+        .expect("composed nested positioned predicates should parse"),
+    );
 
     assert_eq!(sibling_match, [document.children(doc)[0]]);
     assert_eq!(positional_match, [document.children(doc)[3]]);
@@ -2068,6 +2100,14 @@ fn path_boolean_predicate_compares_dynamic_node_sets_and_positional_children() {
         [document.children(doc)[5], document.children(doc)[6]]
     );
     assert_eq!(nested_second, [document.children(doc)[6]]);
+    assert_eq!(deep_nested, [document.children(doc)[7]]);
+    assert_eq!(
+        composed_nested,
+        [
+            composed_document.children(composed_root)[0],
+            composed_document.children(composed_root)[2]
+        ]
+    );
 }
 
 #[test]

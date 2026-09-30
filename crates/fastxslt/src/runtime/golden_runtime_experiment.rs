@@ -41,6 +41,8 @@ mod dynamic_document;
 mod dynamic_element_name;
 #[path = "key_lookup.rs"]
 mod key_lookup;
+#[path = "match_boolean_predicate.rs"]
+mod match_boolean_predicate;
 #[path = "match_sequence_predicate.rs"]
 mod match_sequence_predicate;
 #[path = "number_executor.rs"]
@@ -101,8 +103,10 @@ use runtime_context::{
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
 pub(super) use serialization::serialize_xml;
-#[cfg(any(test, feature = "workbench"))]
+#[cfg(test)]
 pub(super) use serialization::serialize_xml_bytes;
+#[cfg(any(test, feature = "workbench"))]
+pub(super) use serialization::serialize_xml_bytes_with_stylesheet_version;
 #[cfg(test)]
 pub(super) use serialization::serialize_xml_complete_namespace_reference;
 use template_selector::{
@@ -811,8 +815,8 @@ fn execute_instruction(
             scope,
             control,
         )?),
-        Instruction::Text { value, .. } | Instruction::CopyOfStaticAtomicText { value, .. } => {
-            append_text(result, value, inputs.request_id, control)?;
+        Instruction::Text { .. } | Instruction::CopyOfStaticAtomicText { .. } => {
+            execute_text_instruction(inputs, instruction, result, control)?;
         }
         Instruction::ProcessingInstructionNode { .. }
         | Instruction::Xslt10ProcessingInstructionNode { .. }
@@ -825,10 +829,8 @@ fn execute_instruction(
             scope,
             control,
         )?),
-        Instruction::ValueOf {
-            select, separator, ..
-        } => {
-            execute_value_of(inputs, select, separator, execution, scope, result, control)?;
+        Instruction::ValueOf { .. } => {
+            execute_value_of_instruction(inputs, instruction, execution, scope, result, control)?;
         }
         Instruction::Xslt10Message {
             terminate,
@@ -887,6 +889,9 @@ fn execute_instruction(
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
         | Instruction::CopyOfDocument { .. }
+        | Instruction::CopyOfVariableDocument { .. }
+        | Instruction::CopyOfNestedDocuments { .. }
+        | Instruction::CopyOfSourceDocuments { .. }
         | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfVariable { .. }
@@ -898,6 +903,63 @@ fn execute_instruction(
             scope,
             control,
         )?),
+    }
+    Ok(())
+}
+
+fn execute_text_instruction(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (value, disable_output_escaping) = match instruction {
+        Instruction::Text {
+            value,
+            disable_output_escaping,
+            ..
+        } => (value, *disable_output_escaping),
+        Instruction::CopyOfStaticAtomicText { value, .. } => (value, false),
+        _ => unreachable!("text executor receives one text instruction"),
+    };
+    if disable_output_escaping {
+        append_disable_output_escaping_text(result, value, inputs.request_id, control)
+    } else {
+        append_text(result, value, inputs.request_id, control)
+    }
+}
+
+fn execute_value_of_instruction(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    execution: SequenceContext<'_>,
+    scope: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let Instruction::ValueOf {
+        select,
+        separator,
+        disable_output_escaping,
+        ..
+    } = instruction
+    else {
+        unreachable!("value-of executor receives one value-of instruction")
+    };
+    if !disable_output_escaping {
+        return execute_value_of(inputs, select, separator, execution, scope, result, control);
+    }
+    let mut value = Vec::new();
+    execute_value_of(
+        inputs, select, separator, execution, scope, &mut value, control,
+    )?;
+    for node in value {
+        match node {
+            ResultNode::Text(value) => {
+                append_disable_output_escaping_text(result, &value, inputs.request_id, control)?;
+            }
+            _ => unreachable!("the typed xsl:value-of evaluator emits only text"),
+        }
     }
     Ok(())
 }
@@ -967,7 +1029,9 @@ fn message_string_value(nodes: &[ResultNode]) -> String {
                     append(child, value);
                 }
             }
-            ResultNode::Text(text) => value.push_str(text),
+            ResultNode::Text(text) | ResultNode::Xslt10DisableOutputEscapingText(text) => {
+                value.push_str(text);
+            }
             ResultNode::PendingAttribute(_)
             | ResultNode::Xslt10RecoverableAttribute(_)
             | ResultNode::ProcessingInstruction { .. }
@@ -1045,7 +1109,9 @@ fn execute_xslt10_text_constructor_value(
     Ok(nodes
         .into_iter()
         .filter_map(|node| match node {
-            ResultNode::Text(text) => Some(text),
+            ResultNode::Text(text) | ResultNode::Xslt10DisableOutputEscapingText(text) => {
+                Some(text)
+            }
             _ => None,
         })
         .collect())
@@ -1147,6 +1213,9 @@ fn execute_result_instruction<'a>(
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
         | Instruction::CopyOfDocument { .. }
+        | Instruction::CopyOfVariableDocument { .. }
+        | Instruction::CopyOfNestedDocuments { .. }
+        | Instruction::CopyOfSourceDocuments { .. }
         | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfVariable { .. } => {
@@ -1217,14 +1286,29 @@ fn execute_copy_of_instruction<'a>(
             *recover_unattached_attributes,
             control,
         ),
-        Instruction::CopyOfDocument {
-            select,
+        Instruction::CopyOfDocument { .. } | Instruction::CopyOfVariableDocument { .. } => {
+            execute_copy_of_document_instruction(
+                inputs,
+                instruction,
+                execution.node,
+                scope,
+                control,
+            )
+        }
+        Instruction::CopyOfNestedDocuments { .. } => {
+            execute_copy_of_nested_documents(inputs, instruction, execution.node, control)
+        }
+        Instruction::CopyOfSourceDocuments {
+            references,
+            base,
             path,
             recover_unattached_attributes,
             ..
-        } => dynamic_document::copy_document(
+        } => execute_copy_of_source_documents(
             inputs,
-            select,
+            execution,
+            references,
+            base.as_ref(),
             path.as_ref(),
             *recover_unattached_attributes,
             control,
@@ -1252,20 +1336,153 @@ fn execute_copy_of_instruction<'a>(
             *recover_unattached_attributes,
             control,
         ),
-        Instruction::CopyOfVariable {
-            variable,
-            recover_unattached_attributes,
-            location,
-        } => execute_copy_of_variable(
-            inputs,
-            variable,
-            location,
-            scope,
-            *recover_unattached_attributes,
-            control,
-        ),
+        Instruction::CopyOfVariable { .. } => {
+            execute_copy_of_variable_instruction(inputs, instruction, scope, control)
+        }
         _ => unreachable!("copy-of dispatch receives only copy-of instructions"),
     }
+}
+
+fn execute_copy_of_nested_documents(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let Instruction::CopyOfNestedDocuments {
+        references,
+        path,
+        recover_unattached_attributes,
+        ..
+    } = instruction
+    else {
+        unreachable!("nested document dispatch requires a nested document instruction");
+    };
+    dynamic_document::copy_nested_documents(
+        inputs,
+        context,
+        references,
+        path.as_ref(),
+        *recover_unattached_attributes,
+        control,
+    )
+}
+
+fn execute_copy_of_document_instruction(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    context: Option<NodeId>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let Instruction::CopyOfDocument {
+        select,
+        base,
+        path,
+        recover_unattached_attributes,
+        ..
+    } = instruction
+    {
+        return dynamic_document::copy_document(
+            inputs,
+            context,
+            select,
+            base.as_ref(),
+            path.as_ref(),
+            *recover_unattached_attributes,
+            control,
+        );
+    }
+    execute_copy_of_variable_document(inputs, instruction, context, variables, control)
+}
+
+fn execute_copy_of_variable_document(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    context: Option<NodeId>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let Instruction::CopyOfVariableDocument {
+        variable,
+        static_base,
+        base,
+        path,
+        recover_unattached_attributes,
+        location,
+    } = instruction
+    else {
+        unreachable!("variable document dispatch requires a variable document instruction");
+    };
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = variables.atomics.get(variable).ok_or_else(|| {
+        failure_at(
+            "FXXP1003",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            location.clone(),
+            format!("document() variable argument is not a supported scalar: ${variable}"),
+        )
+    })?;
+    dynamic_document::copy_document(
+        inputs,
+        context,
+        &crate::xslt::golden_semantics_experiment::DocumentRootReference {
+            base: static_base.to_owned(),
+            reference: value.lexical().to_owned(),
+            descendant_name: None,
+        },
+        base.as_ref(),
+        path.as_ref(),
+        *recover_unattached_attributes,
+        control,
+    )
+}
+
+fn execute_copy_of_variable_instruction(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    scope: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let Instruction::CopyOfVariable {
+        variable,
+        recover_unattached_attributes,
+        location,
+    } = instruction
+    else {
+        unreachable!("variable copy dispatch requires a variable instruction");
+    };
+    execute_copy_of_variable(
+        inputs,
+        variable,
+        location,
+        scope,
+        *recover_unattached_attributes,
+        control,
+    )
+}
+
+fn execute_copy_of_source_documents(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    references: &LocationPath,
+    base: Option<&crate::xslt::golden_semantics_experiment::DocumentBaseReference>,
+    path: Option<&LocationPath>,
+    recover_unattached_attributes: bool,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    dynamic_document::copy_source_documents(
+        inputs,
+        execution.node,
+        references,
+        base,
+        path,
+        recover_unattached_attributes,
+        control,
+    )
 }
 
 fn execute_copy_of_xslt10_key_lookup(
@@ -1685,7 +1902,20 @@ fn execute_for_each_literal_document_root<'a>(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    validate_literal_document_context(inputs, variables.has_source_node_values())?;
+    let principal_source = inputs.source.ok_or_else(|| {
+        failure(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "document-root execution requires a principal source context",
+        )
+    })?;
+    let detached_variables = variables.detach_source_nodes_for_document_context(
+        principal_source,
+        inputs.request_id,
+        control,
+    )?;
+    validate_literal_document_context(inputs, detached_variables.has_source_node_values())?;
     let dynamic = dynamic_document::prepare_document(inputs, target.reference(), control)?;
     let effective_document = derive_effective_source(
         &inputs.program.source_whitespace,
@@ -1710,8 +1940,21 @@ fn execute_for_each_literal_document_root<'a>(
         denied_resources: inputs.denied_resources,
         dynamic_documents: inputs.dynamic_documents,
     };
-    let selected = select_literal_document_nodes(&external_inputs, document, target, control)?;
-    let selected = sort_selected_nodes(&external_inputs, selected, sorts, variables, control)?;
+    let selected = select_literal_document_nodes(
+        inputs,
+        &external_inputs,
+        document,
+        target,
+        variables,
+        control,
+    )?;
+    let selected = sort_selected_nodes(
+        &external_inputs,
+        selected,
+        sorts,
+        &detached_variables,
+        control,
+    )?;
     let focus_size = selected.len();
     let mut result = Vec::new();
     for (index, node) in selected.into_iter().enumerate() {
@@ -1726,7 +1969,7 @@ fn execute_for_each_literal_document_root<'a>(
                 focus_size,
                 ..execution
             },
-            variables,
+            &detached_variables,
             control,
         )?);
     }
@@ -1810,13 +2053,22 @@ fn sort_selected_nodes(
         }
         keyed.push((node, values));
     }
+    sort_keyed_items(inputs.request_id, keyed, &sort_controls, control)
+}
+
+fn sort_keyed_items<T>(
+    request_id: &str,
+    mut keyed: Vec<(T, Vec<EvaluatedSortKey>)>,
+    sort_controls: &[EvaluatedSortControl],
+    control: &mut InvocationControl,
+) -> Result<Vec<T>, ExecutionFailure> {
     let comparison_charge = keyed
         .len()
         .saturating_mul(keyed.len().ilog2() as usize + 1)
-        .saturating_mul(sorts.len());
+        .saturating_mul(sort_controls.len());
     control
         .charge(WorkDomain::XPathOperation, comparison_charge)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        .map_err(|failure| control_failure(failure, request_id))?;
     keyed.sort_by(|left, right| {
         for (index, sort_control) in sort_controls.iter().enumerate() {
             let ordering = compare_sort_keys(&left.1[index], &right.1[index]);
@@ -1830,7 +2082,7 @@ fn sort_selected_nodes(
         }
         std::cmp::Ordering::Equal
     });
-    Ok(keyed.into_iter().map(|(node, _)| node).collect())
+    Ok(keyed.into_iter().map(|(item, _)| item).collect())
 }
 
 fn evaluate_sort_key_value(
@@ -1887,6 +2139,9 @@ fn evaluate_sort_key_value(
         }
         SortSelect::Xslt10PathSubstring(expression) => {
             evaluate_xslt10_substring_sort_key(inputs, source, node, expression, control)
+        }
+        SortSelect::Xslt10PathSubstringAfter { path, delimiter } => {
+            evaluate_xslt10_substring_after_sort_key(inputs, source, node, path, delimiter, control)
         }
         SortSelect::PathUnion(alternatives) => {
             Ok(
@@ -2060,6 +2315,27 @@ fn evaluate_xslt10_substring_sort_key(
         f64::from_bits(expression.start_bits),
         expression.length_bits.map(f64::from_bits),
     ))
+}
+
+fn evaluate_xslt10_substring_after_sort_key(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    node: NodeId,
+    path: &LocationPath,
+    delimiter: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let nodes = evaluate_location_path_controlled(source, node, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = nodes
+        .first()
+        .map_or_else(String::new, |selected| source.string_value(*selected));
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(value
+        .split_once(delimiter)
+        .map_or_else(String::new, |(_, suffix)| suffix.to_owned()))
 }
 
 fn evaluate_xslt10_child_name_variable_sort(
@@ -3293,6 +3569,43 @@ fn execute_apply_templates(
         sorts,
         mode,
     } = plan;
+    if let Some(ApplySelection::Xslt10SourceDocumentsDescendants { references, name }) = select {
+        return execute_apply_source_document_descendants(
+            inputs,
+            execution.node,
+            references,
+            name,
+            sorts,
+            mode,
+            parameters,
+            variables,
+            control,
+        );
+    }
+    if let Some(ApplySelection::Xslt10SourceDocumentsChildren { references, base }) = select {
+        return execute_apply_source_document_children(
+            inputs,
+            execution.node,
+            references,
+            base,
+            mode,
+            parameters,
+            variables,
+            control,
+        );
+    }
+    if let Some(ApplySelection::Xslt10SourceDocumentsPath { references, path }) = select {
+        return execute_apply_source_document_path(
+            inputs,
+            execution.node,
+            references,
+            path,
+            mode,
+            parameters,
+            variables,
+            control,
+        );
+    }
     if sorts.is_empty()
         && let Some(result) = execute_special_apply_selection(
             inputs, select, mode, execution, parameters, variables, control,
@@ -3364,8 +3677,10 @@ fn execute_special_apply_selection(
     control: &mut InvocationControl,
 ) -> Result<Option<Vec<ResultNode>>, ExecutionFailure> {
     if let Some(target) = literal_document_target(select) {
-        return execute_apply_literal_document_root(inputs, target, mode, parameters, control)
-            .map(Some);
+        return execute_apply_literal_document_root(
+            inputs, target, mode, parameters, variables, control,
+        )
+        .map(Some);
     }
     if let Some(ApplySelection::AtomicIntegerRange { start, end }) = select {
         return atomic_template_executor::apply_integer_range(
@@ -3450,11 +3765,262 @@ fn execute_special_apply_selection(
     Ok(None)
 }
 
+#[allow(clippy::too_many_arguments)]
+fn execute_apply_source_document_descendants(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    references: &LocationPath,
+    name: &ExpandedName,
+    sorts: &[SortKey],
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let has_source_node_parameters = parameters.values().any(|parameter| {
+        matches!(
+            &parameter.value,
+            InvocationParameterValue::SourceNodes(nodes) if !nodes.is_empty()
+        )
+    });
+    validate_literal_document_context(
+        inputs,
+        variables.has_source_node_values() || has_source_node_parameters,
+    )?;
+    let prepared =
+        dynamic_document::prepare_source_documents(inputs, context, references, control)?;
+    let mut documents = Vec::with_capacity(prepared.len());
+    for dynamic in prepared {
+        let effective = derive_effective_source(
+            &inputs.program.source_whitespace,
+            dynamic.document.as_ref(),
+            WhitespaceRepresentation::VisibilityView,
+            inputs.request_id,
+            control,
+        )?;
+        documents.push(effective.map_or(dynamic.document, Arc::new));
+    }
+    let mut selected = Vec::new();
+    for (document_index, document) in documents.iter().enumerate() {
+        let mut pending = document
+            .children(document.document_node())
+            .iter()
+            .rev()
+            .copied()
+            .collect::<Vec<_>>();
+        while let Some(node) = pending.pop() {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            if document.kind(node) == NodeKind::Element && document.name(node) == Some(name) {
+                selected.push((document_index, node));
+            }
+            pending.extend(document.children(node).iter().rev().copied());
+        }
+    }
+    if !sorts.is_empty() && selected.len() >= 2 {
+        let sort_controls = sorts
+            .iter()
+            .map(|sort| evaluate_sort_control(inputs, sort, variables, control))
+            .collect::<Result<Vec<_>, ExecutionFailure>>()?;
+        let focus_size = selected.len();
+        let mut keyed = Vec::with_capacity(focus_size);
+        for (offset, (document_index, node)) in selected.into_iter().enumerate() {
+            let document = documents[document_index].as_ref();
+            let external_inputs = external_document_inputs(inputs, document);
+            let mut values = Vec::with_capacity(sorts.len());
+            for (sort, sort_control) in sorts.iter().zip(&sort_controls) {
+                let value = evaluate_sort_key_value(
+                    &external_inputs,
+                    SortFocus {
+                        source: document,
+                        node,
+                        position: offset + 1,
+                        size: focus_size,
+                    },
+                    sort,
+                    variables,
+                    control,
+                )?;
+                values.push(typed_sort_key(
+                    sort_control.data_type,
+                    sort.xslt10_numeric_conversion,
+                    value,
+                ));
+            }
+            keyed.push(((document_index, node), values));
+        }
+        selected = sort_keyed_items(inputs.request_id, keyed, &sort_controls, control)?;
+    }
+    let focus_size = selected.len();
+    let mut result = Vec::new();
+    for (index, (document_index, node)) in selected.into_iter().enumerate() {
+        let document = documents[document_index].as_ref();
+        let external_inputs = external_document_inputs(inputs, document);
+        result.extend(apply_template_at(
+            &external_inputs,
+            node,
+            mode,
+            parameters,
+            index + 1,
+            focus_size,
+            control,
+        )?);
+    }
+    Ok(result)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn execute_apply_source_document_children(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    references: &LocationPath,
+    base: &LocationPath,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let has_source_node_parameters = parameters.values().any(|parameter| {
+        matches!(
+            &parameter.value,
+            InvocationParameterValue::SourceNodes(nodes) if !nodes.is_empty()
+        )
+    });
+    validate_literal_document_context(
+        inputs,
+        variables.has_source_node_values() || has_source_node_parameters,
+    )?;
+    let base =
+        crate::xslt::golden_semantics_experiment::DocumentBaseReference::SourcePath(base.clone());
+    let prepared = dynamic_document::prepare_source_documents_with_base(
+        inputs,
+        context,
+        references,
+        Some(&base),
+        control,
+    )?;
+    let mut selected = Vec::new();
+    for dynamic in prepared {
+        let effective = derive_effective_source(
+            &inputs.program.source_whitespace,
+            dynamic.document.as_ref(),
+            WhitespaceRepresentation::VisibilityView,
+            inputs.request_id,
+            control,
+        )?;
+        let document = effective.map_or(dynamic.document, Arc::new);
+        let children = document.children(document.document_node()).to_vec();
+        for node in children {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            if document.kind(node) == NodeKind::Element {
+                selected.push((Arc::clone(&document), node));
+            }
+        }
+    }
+    let focus_size = selected.len();
+    let mut result = Vec::new();
+    for (offset, (document, node)) in selected.into_iter().enumerate() {
+        let external_inputs = external_document_inputs(inputs, document.as_ref());
+        result.extend(apply_template_at(
+            &external_inputs,
+            node,
+            mode,
+            parameters,
+            offset + 1,
+            focus_size,
+            control,
+        )?);
+    }
+    Ok(result)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn execute_apply_source_document_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    references: &LocationPath,
+    path: &LocationPath,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let has_source_node_parameters = parameters.values().any(|parameter| {
+        matches!(
+            &parameter.value,
+            InvocationParameterValue::SourceNodes(nodes) if !nodes.is_empty()
+        )
+    });
+    validate_literal_document_context(
+        inputs,
+        variables.has_source_node_values() || has_source_node_parameters,
+    )?;
+    let prepared =
+        dynamic_document::prepare_source_documents(inputs, context, references, control)?;
+    let mut selected = Vec::new();
+    for dynamic in prepared {
+        let effective = derive_effective_source(
+            &inputs.program.source_whitespace,
+            dynamic.document.as_ref(),
+            WhitespaceRepresentation::VisibilityView,
+            inputs.request_id,
+            control,
+        )?;
+        let document = effective.map_or(dynamic.document, Arc::new);
+        let nodes = evaluate_location_path_controlled(
+            document.as_ref(),
+            document.document_node(),
+            path,
+            control,
+        )
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        selected.extend(nodes.into_iter().map(|node| (Arc::clone(&document), node)));
+    }
+    let focus_size = selected.len();
+    let mut result = Vec::new();
+    for (offset, (document, node)) in selected.into_iter().enumerate() {
+        let external_inputs = external_document_inputs(inputs, document.as_ref());
+        result.extend(apply_template_at(
+            &external_inputs,
+            node,
+            mode,
+            parameters,
+            offset + 1,
+            focus_size,
+            control,
+        )?);
+    }
+    Ok(result)
+}
+
+fn external_document_inputs<'a>(
+    inputs: &SequenceInputs<'a>,
+    document: &'a Document,
+) -> SequenceInputs<'a> {
+    SequenceInputs {
+        program: inputs.program,
+        source: Some(document),
+        request_id: inputs.request_id,
+        globals: inputs.globals,
+        multiple_match_policy: inputs.multiple_match_policy,
+        document_rooted_matches: RefCell::default(),
+        key_indexes: RefCell::default(),
+        complete_atomic_frame_clones: inputs.complete_atomic_frame_clones,
+        resource_snapshot: inputs.resource_snapshot,
+        denied_resources: inputs.denied_resources,
+        dynamic_documents: inputs.dynamic_documents,
+    }
+}
+
 fn execute_apply_literal_document_root(
     inputs: &SequenceInputs<'_>,
     target: LiteralDocumentTarget<'_>,
     mode: Option<&str>,
     parameters: &BTreeMap<String, InvocationParameter>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let has_source_node_parameters = parameters.values().any(|parameter| {
@@ -3488,7 +4054,14 @@ fn execute_apply_literal_document_root(
         denied_resources: inputs.denied_resources,
         dynamic_documents: inputs.dynamic_documents,
     };
-    let selected = select_literal_document_nodes(&external_inputs, document, target, control)?;
+    let selected = select_literal_document_nodes(
+        inputs,
+        &external_inputs,
+        document,
+        target,
+        variables,
+        control,
+    )?;
     let focus_size = selected.len();
     let mut result = Vec::new();
     for (index, node) in selected.into_iter().enumerate() {
@@ -3506,9 +4079,11 @@ fn execute_apply_literal_document_root(
 }
 
 fn select_literal_document_nodes(
+    principal_inputs: &SequenceInputs<'_>,
     inputs: &SequenceInputs<'_>,
     document: &Document,
     target: LiteralDocumentTarget<'_>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
     match target {
@@ -3546,6 +4121,45 @@ fn select_literal_document_nodes(
             }
             Ok(selected)
         }
+        LiteralDocumentTarget::Path { path, .. } => {
+            evaluate_location_path_controlled(document, document.document_node(), path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))
+        }
+        LiteralDocumentTarget::VariableFilteredPath {
+            path,
+            attribute,
+            variable,
+            ..
+        } => {
+            let expected = value_evaluator::xslt10_variable_string_value(
+                principal_inputs,
+                variable,
+                variables,
+                control,
+            )?;
+            let candidates = evaluate_location_path_controlled(
+                document,
+                document.document_node(),
+                path,
+                control,
+            )
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let mut selected = Vec::new();
+            for candidate in candidates {
+                for candidate_attribute in document.attributes(candidate) {
+                    control
+                        .charge(WorkDomain::XPathNodeVisit, 1)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                    if document.name(*candidate_attribute) == Some(attribute)
+                        && document.string_value(*candidate_attribute) == expected
+                    {
+                        selected.push(candidate);
+                        break;
+                    }
+                }
+            }
+            Ok(selected)
+        }
     }
 }
 
@@ -3559,6 +4173,16 @@ enum LiteralDocumentTarget<'a> {
     Descendants {
         reference: &'a DocumentRootReference,
         name: &'a ExpandedName,
+    },
+    Path {
+        reference: &'a DocumentRootReference,
+        path: &'a LocationPath,
+    },
+    VariableFilteredPath {
+        reference: &'a DocumentRootReference,
+        path: &'a LocationPath,
+        attribute: &'a ExpandedName,
+        variable: &'a str,
     },
 }
 
@@ -3578,6 +4202,20 @@ fn literal_document_target(
         ApplySelection::LiteralDocumentDescendants { reference, name } => {
             Some(LiteralDocumentTarget::Descendants { reference, name })
         }
+        ApplySelection::LiteralDocumentPath { reference, path } => {
+            Some(LiteralDocumentTarget::Path { reference, path })
+        }
+        ApplySelection::Xslt10LiteralDocumentVariableFilteredPath {
+            reference,
+            path,
+            attribute,
+            variable,
+        } => Some(LiteralDocumentTarget::VariableFilteredPath {
+            reference,
+            path,
+            attribute,
+            variable,
+        }),
         _ => None,
     }
 }
@@ -3587,7 +4225,9 @@ impl LiteralDocumentTarget<'_> {
         match self {
             Self::Root(reference)
             | Self::Children { reference, .. }
-            | Self::Descendants { reference, .. } => reference,
+            | Self::Descendants { reference, .. }
+            | Self::Path { reference, .. }
+            | Self::VariableFilteredPath { reference, .. } => reference,
         }
     }
 }
@@ -5030,6 +5670,9 @@ fn evaluate_variable_effective_boolean_value(
     if let Some(nodes) = variables.source_nodes.get(variable) {
         return Ok(!nodes.is_empty());
     }
+    if let Some(values) = variables.detached_source_node_strings(variable) {
+        return Ok(!values.is_empty());
+    }
     if variables.allows_global_fallback(variable)
         && let Some(nodes) = inputs.globals.nodes.get(variable)
     {
@@ -5071,6 +5714,7 @@ fn ensure_variable_is_bound(
     let is_bound = variables.atomics.contains_key(variable)
         || variables.atomic_sequences.contains_key(variable)
         || variables.source_nodes.contains_key(variable)
+        || variables.detached_source_node_strings(variable).is_some()
         || variables.temporary_trees.contains_key(variable)
         || inputs.globals.atomics.contains_key(variable)
         || inputs.globals.empty_sequences.contains(variable)
@@ -5429,7 +6073,12 @@ fn select_apply_nodes(
         }
         ApplySelection::LiteralDocumentRoot(_)
         | ApplySelection::LiteralDocumentChildren { .. }
-        | ApplySelection::LiteralDocumentDescendants { .. } => {
+        | ApplySelection::LiteralDocumentDescendants { .. }
+        | ApplySelection::LiteralDocumentPath { .. }
+        | ApplySelection::Xslt10LiteralDocumentVariableFilteredPath { .. }
+        | ApplySelection::Xslt10SourceDocumentsDescendants { .. }
+        | ApplySelection::Xslt10SourceDocumentsChildren { .. }
+        | ApplySelection::Xslt10SourceDocumentsPath { .. } => {
             unreachable!("literal document selection is dispatched before source selection")
         }
         ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path } => {
@@ -6436,6 +7085,36 @@ fn append_text(
         existing.push_str(value);
     } else {
         nodes.push(ResultNode::Text(value.to_owned()));
+    }
+    Ok(())
+}
+
+fn append_disable_output_escaping_text(
+    nodes: &mut Vec<ResultNode>,
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    if value.is_empty() {
+        return Ok(());
+    }
+    if !matches!(
+        nodes.last(),
+        Some(ResultNode::Xslt10DisableOutputEscapingText(_))
+    ) {
+        control
+            .charge(WorkDomain::ResultNode, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+    }
+    control
+        .charge(WorkDomain::ResultTextByte, value.len())
+        .map_err(|failure| control_failure(failure, request_id))?;
+    if let Some(ResultNode::Xslt10DisableOutputEscapingText(existing)) = nodes.last_mut() {
+        existing.push_str(value);
+    } else {
+        nodes.push(ResultNode::Xslt10DisableOutputEscapingText(
+            value.to_owned(),
+        ));
     }
     Ok(())
 }

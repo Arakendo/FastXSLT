@@ -202,6 +202,7 @@ fn measures_local_oasis_xslt10_compatibility() {
             case.operation == "standard" && !has_non_equivalent_historical_uri_alias(&case.id),
         );
         resources = admit_principal_literal_document_resources(&case, &stylesheet, resources);
+        resources.extend(reviewed_source_document_resources(&case));
         let mut missing_supplemental_data = false;
         for data in &case.supplemental_data {
             let Some(bytes) = read_case_file(&case.directory, data) else {
@@ -590,6 +591,53 @@ fn measures_local_oasis_xslt10_compatibility() {
     println!("OASIS_XSLT10_MEASUREMENT_END");
 }
 
+fn reviewed_source_document_resources(case: &LegacyCase) -> Vec<WorkbenchResource> {
+    let resources: &[(&str, &str)] = match case.identity.as_str() {
+        "Lotus/mdocs_mdocs02#1" => &[
+            ("mdocs02a.xml", "source/mdocs02a.xml"),
+            ("mdocs02b.xml", "source/mdocs02b.xml"),
+        ],
+        "Lotus/mdocs_mdocs03#1" => &[("mdocs03a.xml", "source/mdocs03a.xml")],
+        "Lotus/mdocs_mdocs15#1" => &[("mdocs15a.xml", "source/mdocs15a.xml")],
+        "Lotus/mdocs_mdocs04#1" | "Lotus/mdocs_mdocs08#1" => &[
+            ("mdocs04a.xml", "source/mdocs04a.xml"),
+            ("mdocs04b.xml", "source/mdocs04b.xml"),
+        ],
+        "Lotus/mdocs_mdocs05#1" => &[("compu.xml", "source/compu.xml")],
+        "Lotus/mdocs_mdocs06#1"
+        | "Lotus/mdocs_mdocs07#1"
+        | "Microsoft/XSLTFunctions_DocumentInUnionWithDuplicateNodes#1" => &[
+            ("mdocs04a.xml", "source/mdocs04a.xml"),
+            ("mdocs04b.xml", "source/mdocs04b.xml"),
+            ("mdocs06a.xml", "source/mdocs06a.xml"),
+            ("mdocs06b.xml", "source/mdocs06b.xml"),
+        ],
+        "Lotus/mdocs_mdocs18#1" => &[
+            ("mdwords-a.xml", "source/mdwords-a.xml"),
+            ("mdwords-b.xml", "source/mdwords-b.xml"),
+        ],
+        // The catalog makes select68.xml the principal input under the
+        // harness's source/ identity, while document('select68.xml') resolves
+        // beside the stylesheet. Admit the same reviewed bytes under that
+        // distinct logical identity; resolution itself remains engine-owned.
+        "Lotus/select_select68#1" => &[("select68.xml", "select68.xml")],
+        "Lotus/reluri_reluri10#1" => &[(
+            "level1/level2/level3/xreluri09a.xml",
+            "level1/level2/level3/xreluri09a.xml",
+        )],
+        _ => &[],
+    };
+    resources
+        .iter()
+        .filter_map(|(physical, logical)| {
+            read_case_file(&case.directory, physical).map(|bytes| WorkbenchResource {
+                identity: format!("{}{logical}", logical_case_base(case)),
+                bytes,
+            })
+        })
+        .collect()
+}
+
 fn requires_historical_host_parser_whitespace_policy(case_id: &str) -> bool {
     matches!(
         case_id,
@@ -632,6 +680,7 @@ fn requires_serialization_layout_policy(case_id: &str) -> bool {
         case_id,
         "Attributes__78386"
             | "AttributeSets_AttributeSets_WithPI"
+            | "BVTs_bvt063"
             | "BVTs_bvt064"
             | "Messages__91758"
             | "Output__84260"
@@ -671,6 +720,7 @@ fn has_unusable_archival_reference_result(case_id: &str) -> bool {
         "Output__78221"
             | "Output__77936"
             | "Output__78180"
+            | "Output__84165"
             | "Output__84374"
             | "Output__84429"
             | "Output__84452"
@@ -700,6 +750,7 @@ fn has_unusable_archival_reference_result(case_id: &str) -> bool {
             | "BVTs_bvt029"
             | "BVTs_bvt055"
             | "BVTs_bvt057"
+            | "BVTs_bvt067"
             | "BVTs_bvt098"
             | "BVTs_bvt091"
             | "BVTs_bvt083"
@@ -1474,10 +1525,17 @@ fn xml_equivalent(
             preserve_whitespace_only_text,
         ));
     }
-    let actual = parse_comparison_fragment("actual", actual_content.trim())
-        .map_err(|()| "actual-not-parseable-document-or-fragment".to_owned())?;
-    let expected = parse_comparison_fragment("expected", expected_content.trim())
-        .map_err(|()| "expected-not-parseable-document-or-fragment".to_owned())?;
+    let actual = parse_comparison_fragment("actual", actual_content.trim());
+    let expected = parse_comparison_fragment("expected", expected_content.trim());
+    if actual.is_err() && expected.is_err() {
+        let actual = normalize_inter_tag_whitespace(&actual_content);
+        let expected = normalize_inter_tag_whitespace(&expected_content);
+        return Ok(normalize_lexical_empty_elements(&actual)
+            == normalize_lexical_empty_elements(&expected));
+    }
+    let actual = actual.map_err(|()| "actual-not-parseable-document-or-fragment".to_owned())?;
+    let expected =
+        expected.map_err(|()| "expected-not-parseable-document-or-fragment".to_owned())?;
     Ok(xml_nodes_equal(
         &actual,
         actual.document_node(),
@@ -1485,6 +1543,100 @@ fn xml_equivalent(
         expected.document_node(),
         preserve_whitespace_only_text,
     ))
+}
+
+fn normalize_lexical_empty_elements(content: &str) -> Cow<'_, str> {
+    let bytes = content.as_bytes();
+    let mut normalized = String::with_capacity(content.len());
+    let mut cursor = 0;
+    let mut changed = false;
+    while let Some(relative_open) = content[cursor..].find('<') {
+        let open = cursor + relative_open;
+        normalized.push_str(&content[cursor..open]);
+        let Some(first) = bytes.get(open + 1).copied() else {
+            normalized.push('<');
+            cursor = open + 1;
+            continue;
+        };
+        if matches!(first, b'/' | b'!' | b'?') {
+            normalized.push('<');
+            cursor = open + 1;
+            continue;
+        }
+        let mut name_end = open + 1;
+        while bytes.get(name_end).is_some_and(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b':' | b'_' | b'-' | b'.')
+        }) {
+            name_end += 1;
+        }
+        if name_end == open + 1 {
+            normalized.push('<');
+            cursor = open + 1;
+            continue;
+        }
+        let mut quote = None;
+        let mut tag_end = name_end;
+        while let Some(byte) = bytes.get(tag_end).copied() {
+            if let Some(active) = quote {
+                if byte == active {
+                    quote = None;
+                }
+            } else if matches!(byte, b'\'' | b'"') {
+                quote = Some(byte);
+            } else if byte == b'>' {
+                break;
+            }
+            tag_end += 1;
+        }
+        if bytes.get(tag_end) != Some(&b'>') || bytes.get(tag_end.wrapping_sub(1)) == Some(&b'/') {
+            normalized.push('<');
+            cursor = open + 1;
+            continue;
+        }
+        let name = &content[open + 1..name_end];
+        let closing = format!("</{name}>");
+        if content[tag_end + 1..].starts_with(&closing) {
+            normalized.push_str(&content[open..tag_end]);
+            normalized.push_str("/>");
+            cursor = tag_end + 1 + closing.len();
+            changed = true;
+        } else {
+            normalized.push('<');
+            cursor = open + 1;
+        }
+    }
+    normalized.push_str(&content[cursor..]);
+    if changed {
+        Cow::Owned(normalized)
+    } else {
+        Cow::Borrowed(content)
+    }
+}
+
+fn normalize_inter_tag_whitespace(content: &str) -> Cow<'_, str> {
+    let mut normalized = String::with_capacity(content.len());
+    let mut characters = content.chars().peekable();
+    let mut changed = false;
+    while let Some(character) = characters.next() {
+        if character.is_ascii_whitespace() && normalized.ends_with('>') {
+            let mut whitespace = String::from(character);
+            while characters.peek().is_some_and(char::is_ascii_whitespace) {
+                whitespace.push(characters.next().expect("peeked whitespace exists"));
+            }
+            if characters.peek() == Some(&'<') {
+                changed = true;
+                continue;
+            }
+            normalized.push_str(&whitespace);
+            continue;
+        }
+        normalized.push(character);
+    }
+    if changed {
+        Cow::Owned(normalized)
+    } else {
+        Cow::Borrowed(content)
+    }
 }
 
 fn has_lexical_html_root(content: &str) -> bool {
@@ -2373,6 +2525,7 @@ fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
         "Output__78221",
         "Output__77936",
         "Output__78180",
+        "Output__84165",
         "Output__84374",
         "Output__84429",
         "Output__84452",
@@ -2402,6 +2555,7 @@ fn oasis_unusable_reference_result_exclusion_is_exact_and_bounded() {
         "BVTs_bvt029",
         "BVTs_bvt055",
         "BVTs_bvt057",
+        "BVTs_bvt067",
         "BVTs_bvt098",
         "BVTs_bvt091",
         "BVTs_bvt083",
@@ -2484,6 +2638,7 @@ fn oasis_serialization_layout_policy_exclusion_is_exact_and_bounded() {
     for case_id in [
         "Attributes__78386",
         "AttributeSets_AttributeSets_WithPI",
+        "BVTs_bvt063",
         "BVTs_bvt064",
         "Messages__91758",
         "Output__84260",
@@ -2545,4 +2700,21 @@ fn oasis_unusable_error_expectation_exclusion_is_exact_and_bounded() {
     }
     assert!(!has_unusable_archival_error_expectation("Errors_err030"));
     assert!(!has_unusable_archival_error_expectation("Output__78175"));
+}
+
+#[test]
+fn malformed_doe_reference_fallback_normalizes_only_layout_and_empty_elements() {
+    let actual = "<xml><one></one><raw><<<P>>></raw></xml>";
+    let expected = "<xml>\r\n<one/>\r\n<raw><<<P>>></raw>\r\n</xml>";
+    let actual = normalize_inter_tag_whitespace(actual);
+    let expected = normalize_inter_tag_whitespace(expected);
+
+    assert_eq!(
+        normalize_lexical_empty_elements(&actual),
+        normalize_lexical_empty_elements(&expected)
+    );
+    assert_ne!(
+        normalize_lexical_empty_elements("<raw><<A>></raw>"),
+        normalize_lexical_empty_elements("<raw><<B>></raw>")
+    );
 }

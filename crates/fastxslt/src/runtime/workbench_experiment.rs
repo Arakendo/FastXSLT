@@ -6,7 +6,7 @@ use crate::execution_control_experiment::{
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::runtime::golden_runtime_experiment::{
     ExecutionFailure, StylesheetCompileLimits, compile_resource_with_denied_and_limits,
-    execute_program_with_resources, serialize_xml, serialize_xml_bytes,
+    execute_program_with_resources, serialize_xml, serialize_xml_bytes_with_stylesheet_version,
 };
 #[cfg(test)]
 use crate::runtime::golden_runtime_experiment::{
@@ -358,9 +358,10 @@ impl ExperimentalEngine {
             &mut control,
         )
         .map_err(|failure| project_execution(&failure))?;
-        serialize_xml_bytes(
+        serialize_xml_bytes_with_stylesheet_version(
             &semantic,
             &self.program.output,
+            &self.program.declared_version,
             request_id,
             self.limits.max_result_bytes,
             &mut control,
@@ -640,6 +641,43 @@ mod tests {
                 .expect("single-byte workbench transform should execute"),
             b"<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><out>ASCII result</out>"
         );
+    }
+
+    #[test]
+    fn xslt10_byte_transform_falls_back_to_utf8_for_an_unavailable_encoding() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:xslt10-encoding-fallback:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:xslt10-encoding-fallback:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output encoding="Big-Deal"/><xsl:template match="/"><out><test>Testing</test></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("XSLT 1.0 fallback engine should initialize");
+
+        assert_eq!(engine.selected_output_encoding(), Some("Big-Deal"));
+        assert_eq!(
+            engine
+                .transform_bytes("xslt10-encoding-fallback")
+                .expect("XSLT 1.0 permits UTF-8 fallback for an unavailable encoding"),
+            b"<?xml version=\"1.0\" encoding=\"UTF-8\"?><out><test>Testing</test></out>"
+        );
+    }
+
+    #[test]
+    fn modern_byte_transform_rejects_the_same_unavailable_encoding() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:modern-encoding-failure:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:modern-encoding-failure:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output encoding="Big-Deal"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("modern unavailable-encoding engine should initialize");
+
+        let failure = engine
+            .transform_bytes("modern-encoding-failure")
+            .expect_err("modern serialization must retain SESU0007");
+        assert_eq!(failure.code, "SESU0007");
     }
 
     #[test]
@@ -1194,7 +1232,7 @@ mod tests {
             "urn:fastxslt:diagnostic:source",
             source,
             "urn:fastxslt:diagnostic:unsupported-stylesheet",
-            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:message/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:future/></xsl:template></xsl:stylesheet>"#.to_vec(),
             WorkbenchLimits::default(),
         ) else {
             panic!("unsupported instruction should fail compilation");
@@ -1211,10 +1249,10 @@ mod tests {
             "urn:fastxslt:diagnostic:unsupported-stylesheet"
         );
         assert_eq!(location.start, 103);
-        assert_eq!(location.end, 117);
+        assert_eq!(location.end, 116);
         assert_eq!(
             unsupported.detail,
-            "unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117"
+            "unsupported XSLT instruction: xsl:future at urn:fastxslt:diagnostic:unsupported-stylesheet:103..116"
         );
     }
 

@@ -64,10 +64,10 @@ use crate::xpath::string_length_experiment::{
     StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
 };
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, ChooseBranch, ComputedAttribute, DynamicElementName, DynamicNamespaceValue,
-    ElementConstructorOrigin, FocusEqualityOperand, Instruction, LiteralAttributeValue,
-    SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, StringComparison,
-    TemplateArgument, ValueExpression,
+    BooleanExpression, ChooseBranch, ComputedAttribute, DocumentBaseReference, DynamicElementName,
+    DynamicNamespaceValue, ElementConstructorOrigin, FocusEqualityOperand, Instruction,
+    LiteralAttributeValue, NestedDocumentReferences, SequenceItemExpression, SortDataType, SortKey,
+    SortOrder, SortSelect, StringComparison, TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -312,6 +312,31 @@ pub(super) fn uses_xslt10_forward_compatible_processing(
     document: &Document,
     element: NodeId,
 ) -> bool {
+    if stylesheet_declares_xslt10(document, element) {
+        let mut current = Some(element);
+        while let Some(node) = current {
+            let name = document.name(node);
+            if name.is_some_and(|name| {
+                name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                    && matches!(name.local.as_str(), "stylesheet" | "transform")
+            }) {
+                return false;
+            }
+            if name.is_some_and(|name| name.namespace.as_deref() != Some(XSLT_NAMESPACE)) {
+                if let Some(version) =
+                    optional_attribute(document, node, Some(XSLT_NAMESPACE), "version")
+                {
+                    return version
+                        .trim()
+                        .parse::<f64>()
+                        .is_ok_and(|version| version > 1.0);
+                }
+            }
+            current = document.parent(node);
+        }
+        return false;
+    }
+
     let mut current = Some(element);
     while let Some(node) = current {
         if let Some(version) = optional_attribute(document, node, Some(XSLT_NAMESPACE), "version") {
@@ -323,6 +348,20 @@ pub(super) fn uses_xslt10_forward_compatible_processing(
         }) {
             return optional_attribute(document, node, None, "version")
                 .is_some_and(is_xslt10_forward_compatible_version);
+        }
+        current = document.parent(node);
+    }
+    false
+}
+
+fn stylesheet_declares_xslt10(document: &Document, element: NodeId) -> bool {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if document.name(node).is_some_and(|name| {
+            name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                && matches!(name.local.as_str(), "stylesheet" | "transform")
+        }) {
+            return optional_attribute(document, node, None, "version") == Some("1.0");
         }
         current = document.parent(node);
     }
@@ -447,7 +486,7 @@ fn compile_xslt_instruction(
         "call-template" => compile_call_template(document, element)?,
         "copy" => compile_copy(document, element)?,
         "copy-of" => compile_copy_of(document, element)?,
-        "message" => compile_xslt10_message(document, element)?,
+        "message" => compile_message_common_subset(document, element)?,
         _ => {
             return Err(unsupported(
                 "FXST1006",
@@ -459,18 +498,10 @@ fn compile_xslt_instruction(
     Ok(instruction)
 }
 
-fn compile_xslt10_message(
+fn compile_message_common_subset(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
-    if !uses_xslt10_compatibility(document, element) {
-        return Err(unsupported(
-            "FXST1006",
-            "unsupported XSLT instruction: xsl:message",
-            document.location(element),
-        ));
-    }
-
     ensure_only_attributes(document, element, &["terminate"], "xsl:message")?;
     let terminate = match optional_attribute(document, element, None, "terminate") {
         None | Some("no") => false,
@@ -516,12 +547,14 @@ fn compile_literal_text_node(
                     document.location(node),
                 )?,
                 separator: " ".to_owned(),
+                disable_output_escaping: false,
                 location: document.location(node).clone(),
             }));
         }
     }
     Ok(Some(Instruction::Text {
         value: value.to_owned(),
+        disable_output_escaping: false,
         location: document.location(node).clone(),
     }))
 }
@@ -1114,7 +1147,15 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     ensure_no_meaningful_children(document, element, "xsl:copy-of")?;
     let select = required_attribute(document, element, None, "select")?;
     let recover_unattached_attributes = uses_xslt10_compatibility(document, element);
-    if let Some(instruction) = compile_copy_of_literal_document(
+    if let Some(instruction) = compile_copy_of_document_family(
+        document,
+        element,
+        select.trim(),
+        recover_unattached_attributes,
+    )? {
+        return Ok(instruction);
+    }
+    if let Some(instruction) = compile_copy_of_source_documents(
         document,
         element,
         select.trim(),
@@ -1163,26 +1204,10 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
             location: document.location(element).clone(),
         });
     }
-    if let Some(alternatives) = split_top_level_union(select) {
-        let alternatives = alternatives
-            .into_iter()
-            .map(str::trim)
-            .map(|alternative| {
-                if alternative.is_empty() {
-                    return Err(invalid(
-                        "XPST0003",
-                        "xsl:copy-of path union contains an empty alternative",
-                        document.location(element),
-                    ));
-                }
-                parse_copy_of_path(document, element, alternative)
-            })
-            .collect::<Result<Vec<_>, CompileFailure>>()?;
-        return Ok(Instruction::CopyOfPathUnion {
-            alternatives,
-            recover_unattached_attributes,
-            location: document.location(element).clone(),
-        });
+    if let Some(instruction) =
+        compile_copy_of_path_union(document, element, select, recover_unattached_attributes)?
+    {
+        return Ok(instruction);
     }
     match select.trim() {
         "." | "current()" => Ok(Instruction::CopyOfCurrent {
@@ -1207,15 +1232,227 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     }
 }
 
+fn compile_copy_of_document_family(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    recover_unattached_attributes: bool,
+) -> Result<Option<Instruction>, CompileFailure> {
+    if let Some(instruction) = compile_copy_of_literal_document(
+        document,
+        element,
+        expression,
+        recover_unattached_attributes,
+    )? {
+        return Ok(Some(instruction));
+    }
+    if let Some(instruction) = compile_copy_of_nested_documents(
+        document,
+        element,
+        expression,
+        recover_unattached_attributes,
+    )? {
+        return Ok(Some(instruction));
+    }
+    compile_copy_of_variable_document(document, element, expression, recover_unattached_attributes)
+}
+
+fn compile_copy_of_nested_documents(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    recover_unattached_attributes: bool,
+) -> Result<Option<Instruction>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let Some((inner_expression, None, outer_tail)) = parse_document_call(expression) else {
+        return Ok(None);
+    };
+    let Some((inner_argument, None, inner_tail)) = parse_document_call(inner_expression.trim())
+    else {
+        return Ok(None);
+    };
+    let inner_path = compile_optional_document_path(document, element, inner_tail)?;
+    let inner_argument = inner_argument.trim();
+    let references = if let Some(reference) = unquote_xpath_string(inner_argument) {
+        NestedDocumentReferences::Literal {
+            reference: crate::xslt::golden_semantics_experiment::DocumentRootReference {
+                base: document.location(element).resource.clone(),
+                reference: reference.to_owned(),
+                descendant_name: None,
+            },
+            path: inner_path,
+        }
+    } else if !inner_argument.is_empty() && !inner_argument.contains(['(', ')', ',', '\'', '"']) {
+        NestedDocumentReferences::Source {
+            references: parse_xslt10_location_path(
+                inner_argument,
+                document.location(element).clone(),
+            )
+            .map_err(map_path_failure)?,
+            path: inner_path,
+        }
+    } else {
+        return Ok(None);
+    };
+    Ok(Some(Instruction::CopyOfNestedDocuments {
+        references,
+        path: compile_optional_document_path(document, element, outer_tail)?,
+        recover_unattached_attributes,
+        location: document.location(element).clone(),
+    }))
+}
+
+fn compile_optional_document_path(
+    document: &Document,
+    element: NodeId,
+    tail: &str,
+) -> Result<Option<LocationPath>, CompileFailure> {
+    if tail.is_empty() {
+        return Ok(None);
+    }
+    if !tail.starts_with('/') {
+        return Err(unsupported(
+            "FXXP1003",
+            "unsupported path following document()",
+            document.location(element),
+        ));
+    }
+    parse_copy_of_literal_document_path(document, element, tail).map(Some)
+}
+
+fn unquote_xpath_string(expression: &str) -> Option<&str> {
+    let quote = *expression.as_bytes().first()?;
+    (matches!(quote, b'\'' | b'"') && expression.as_bytes().last() == Some(&quote))
+        .then(|| &expression[1..expression.len() - 1])
+}
+
+fn compile_copy_of_variable_document(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    recover_unattached_attributes: bool,
+) -> Result<Option<Instruction>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let Some((argument, base_expression, tail)) = parse_document_call(expression) else {
+        return Ok(None);
+    };
+    let Some(variable) = argument
+        .trim()
+        .strip_prefix('$')
+        .filter(|name| is_ascii_ncname(name))
+    else {
+        return Ok(None);
+    };
+    if !tail.is_empty() && !tail.starts_with('/') {
+        return Ok(None);
+    }
+    let base = base_expression
+        .map(|base| compile_document_base_reference(document, element, base.trim()))
+        .transpose()?;
+    let path = if tail.is_empty() {
+        None
+    } else {
+        Some(parse_copy_of_literal_document_path(
+            document, element, tail,
+        )?)
+    };
+    Ok(Some(Instruction::CopyOfVariableDocument {
+        variable: variable.to_owned(),
+        static_base: document.location(element).resource.clone(),
+        base,
+        path,
+        recover_unattached_attributes,
+        location: document.location(element).clone(),
+    }))
+}
+
+fn compile_copy_of_path_union(
+    document: &Document,
+    element: NodeId,
+    select: &str,
+    recover_unattached_attributes: bool,
+) -> Result<Option<Instruction>, CompileFailure> {
+    let Some(alternatives) = split_top_level_union(select) else {
+        return Ok(None);
+    };
+    let alternatives = alternatives
+        .into_iter()
+        .map(str::trim)
+        .map(|alternative| {
+            if alternative.is_empty() {
+                return Err(invalid(
+                    "XPST0003",
+                    "xsl:copy-of path union contains an empty alternative",
+                    document.location(element),
+                ));
+            }
+            parse_copy_of_path(document, element, alternative)
+        })
+        .collect::<Result<Vec<_>, CompileFailure>>()?;
+    Ok(Some(Instruction::CopyOfPathUnion {
+        alternatives,
+        recover_unattached_attributes,
+        location: document.location(element).clone(),
+    }))
+}
+
+fn compile_copy_of_source_documents(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    recover_unattached_attributes: bool,
+) -> Result<Option<Instruction>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let Some((argument, base_expression, tail)) = parse_document_call(expression) else {
+        return Ok(None);
+    };
+    let argument = argument.trim();
+    if argument.is_empty()
+        || argument.contains(['(', ')', ',', '\'', '"'])
+        || (!tail.is_empty() && !tail.starts_with('/'))
+    {
+        return Ok(None);
+    }
+    let location = document.location(element).clone();
+    let references =
+        parse_xslt10_location_path(argument, location.clone()).map_err(map_path_failure)?;
+    let base = base_expression
+        .map(|base| compile_document_base_reference(document, element, base.trim()))
+        .transpose()?;
+    let path = if tail.is_empty() {
+        None
+    } else {
+        Some(parse_copy_of_literal_document_path(
+            document, element, tail,
+        )?)
+    };
+    Ok(Some(Instruction::CopyOfSourceDocuments {
+        references,
+        base,
+        path,
+        recover_unattached_attributes,
+        location,
+    }))
+}
+
 fn compile_copy_of_literal_document(
     document: &Document,
     element: NodeId,
     expression: &str,
     recover_unattached_attributes: bool,
 ) -> Result<Option<Instruction>, CompileFailure> {
-    let Some((reference, tail)) = parse_literal_document_call(expression) else {
+    let Some((reference, base_expression, tail)) = parse_literal_document_call(expression) else {
         return Ok(None);
     };
+    let base = base_expression
+        .map(|base| compile_document_base_reference(document, element, base))
+        .transpose()?;
     let (descendant_name, path) = if tail.is_empty() {
         (None, None)
     } else if let Some(name) = tail.strip_prefix("//").filter(|name| !name.contains('/')) {
@@ -1242,25 +1479,82 @@ fn compile_copy_of_literal_document(
             reference: reference.to_owned(),
             descendant_name,
         },
+        base,
         path,
         recover_unattached_attributes,
         location: document.location(element).clone(),
     }))
 }
 
-fn parse_literal_document_call(expression: &str) -> Option<(&str, &str)> {
-    let argument_and_tail = expression.strip_prefix("document(")?;
-    let quote = *argument_and_tail.as_bytes().first()?;
-    if !matches!(quote, b'\'' | b'"') {
+fn parse_literal_document_call(expression: &str) -> Option<(&str, Option<&str>, &str)> {
+    let (argument, base, tail) = parse_document_call(expression)?;
+    let argument = argument.trim();
+    let quote = *argument.as_bytes().first()?;
+    if !matches!(quote, b'\'' | b'"') || argument.as_bytes().last() != Some(&quote) {
         return None;
     }
-    let closing_quote = argument_and_tail.as_bytes()[1..]
-        .iter()
-        .position(|byte| *byte == quote)?
-        + 1;
-    let reference = &argument_and_tail[1..closing_quote];
-    let tail = argument_and_tail[closing_quote + 1..].strip_prefix(')')?;
-    Some((reference, tail))
+    Some((&argument[1..argument.len() - 1], base, tail))
+}
+
+fn parse_document_call(expression: &str) -> Option<(&str, Option<&str>, &str)> {
+    let expression = expression.strip_prefix("document(")?;
+    let mut quote = None;
+    let mut depth = 0_usize;
+    let mut comma = None;
+    for (index, character) in expression.char_indices() {
+        if let Some(active) = quote {
+            if character == active {
+                quote = None;
+            }
+            continue;
+        }
+        match character {
+            '\'' | '"' => quote = Some(character),
+            '(' => depth = depth.checked_add(1)?,
+            ',' if depth == 0 && comma.is_none() => comma = Some(index),
+            ')' if depth == 0 => {
+                return comma.map_or_else(
+                    || Some((&expression[..index], None, &expression[index + 1..])),
+                    |comma| {
+                        Some((
+                            &expression[..comma],
+                            Some(&expression[comma + 1..index]),
+                            &expression[index + 1..],
+                        ))
+                    },
+                );
+            }
+            ')' => depth -= 1,
+            _ => {}
+        }
+    }
+    None
+}
+
+fn compile_document_base_reference(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<DocumentBaseReference, CompileFailure> {
+    if let Some((reference, None, "")) = parse_literal_document_call(expression) {
+        return Ok(DocumentBaseReference::LiteralDocument(
+            crate::xslt::golden_semantics_experiment::DocumentRootReference {
+                base: document.location(element).resource.clone(),
+                reference: reference.to_owned(),
+                descendant_name: None,
+            },
+        ));
+    }
+    if expression.contains(['(', ')', ',', '\'', '"']) {
+        return Err(unsupported(
+            "FXXP1003",
+            "unsupported document() base expression",
+            document.location(element),
+        ));
+    }
+    parse_xslt10_location_path(expression, document.location(element).clone())
+        .map(DocumentBaseReference::SourcePath)
+        .map_err(map_path_failure)
 }
 
 fn parse_copy_of_literal_document_path(
@@ -1597,6 +1891,12 @@ fn compile_sort_select(
         )));
     }
     if xslt10_compatibility
+        && let Some((path, delimiter)) =
+            compile_xslt10_path_substring_after(document, sort, select, location)?
+    {
+        return Ok(SortSelect::Xslt10PathSubstringAfter { path, delimiter });
+    }
+    if xslt10_compatibility
         && let Some(expression) = value_expression_compiler::compile_xslt10_path_substring(
             document, sort, select, location,
         )?
@@ -1683,6 +1983,35 @@ fn compile_sort_select(
             )?))
         }
     }
+}
+
+fn compile_xslt10_path_substring_after(
+    document: &Document,
+    context: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<(LocationPath, String)>, CompileFailure> {
+    let expression = expression.trim();
+    let Some(arguments) = expression
+        .strip_prefix("substring-after(")
+        .and_then(|arguments| arguments.strip_suffix(')'))
+    else {
+        return Ok(None);
+    };
+    let Some(arguments) = crate::xpath::static_string_experiment::split_arguments(arguments, 2)
+    else {
+        return Ok(None);
+    };
+    let [path, delimiter] = arguments.as_slice() else {
+        return Ok(None);
+    };
+    let Some(delimiter) = xpath_string_literal(delimiter.trim()) else {
+        return Ok(None);
+    };
+    Ok(Some((
+        compile_sort_path(document, context, path.trim(), location)?,
+        delimiter.to_owned(),
+    )))
 }
 
 fn parse_xslt10_child_name_variable_sort(expression: &str) -> Option<String> {
@@ -1940,6 +2269,13 @@ pub(super) fn compile_text(
     let value = compile_text_value(document, element)?;
     Ok(Instruction::Text {
         value,
+        disable_output_escaping: optional_attribute(
+            document,
+            element,
+            None,
+            "disable-output-escaping",
+        ) == Some("yes")
+            && uses_xslt10_compatibility(document, element),
         location: document.location(element).clone(),
     })
 }
@@ -1958,13 +2294,7 @@ fn compile_text_value_with_ignored_escaping(
 ) -> Result<String, CompileFailure> {
     ensure_text_attributes(document, element)?;
     match optional_attribute(document, element, None, "disable-output-escaping") {
-        Some("yes") if !ignore_disable_output_escaping => {
-            return Err(unsupported(
-                "FXST1060",
-                "disable-output-escaping='yes' is outside the semantic result-tree slice",
-                document.location(element),
-            ));
-        }
+        Some("yes") if !ignore_disable_output_escaping => {}
         None | Some("no" | "yes") => {}
         Some(_) => {
             return Err(invalid(
@@ -2292,6 +2622,9 @@ pub(super) fn validate_extension_element_prefixes(
     document: &Document,
     element: NodeId,
 ) -> Result<(), CompileFailure> {
+    if uses_xslt10_forward_compatible_processing(document, element) {
+        return Ok(());
+    }
     let Some(prefixes) = optional_attribute(document, element, None, "extension-element-prefixes")
         .or_else(|| {
             optional_attribute(
@@ -2468,23 +2801,25 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         ],
         "xsl:value-of",
     )?;
-    match optional_attribute(document, element, None, "disable-output-escaping") {
-        None | Some("no") => {}
-        Some("yes") => {
-            return Err(unsupported(
-                "FXST1060",
-                "disable-output-escaping='yes' is outside the semantic result-tree slice",
-                document.location(element),
-            ));
-        }
-        Some(_) => {
-            return Err(invalid(
-                "XTSE0020",
-                "disable-output-escaping must be 'yes' or 'no'",
-                document.location(element),
-            ));
-        }
-    }
+    let disable_output_escaping =
+        match optional_attribute(document, element, None, "disable-output-escaping") {
+            None | Some("no") => false,
+            Some("yes") if uses_xslt10_compatibility(document, element) => true,
+            Some("yes") => {
+                return Err(unsupported(
+                    "FXST1060",
+                    "disable-output-escaping is outside the private non-XSLT-1.0 slice",
+                    document.location(element),
+                ));
+            }
+            Some(_) => {
+                return Err(invalid(
+                    "XTSE0020",
+                    "disable-output-escaping must be 'yes' or 'no'",
+                    document.location(element),
+                ));
+            }
+        };
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
@@ -2495,6 +2830,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     Ok(Instruction::ValueOf {
         select,
         separator,
+        disable_output_escaping,
         location,
     })
 }
@@ -2887,9 +3223,17 @@ pub(super) fn compile_xslt10_static_text_tree(
             value.push_str(document.value(child).unwrap_or_default());
             continue;
         }
-        let Instruction::Text { value: text, .. } = compile_text(document, child)? else {
+        let Instruction::Text {
+            value: text,
+            disable_output_escaping,
+            ..
+        } = compile_text(document, child)?
+        else {
             unreachable!("compile_text returns one text instruction")
         };
+        if disable_output_escaping {
+            return Ok(None);
+        }
         value.push_str(&text);
     }
     Ok(Some(value))
@@ -2911,6 +3255,9 @@ fn compile_xslt10_value_of_tree_variable(
         return Ok(None);
     };
     if !is_xslt_element(document, *value_of, "value-of") {
+        return Ok(None);
+    }
+    if optional_attribute(document, *value_of, None, "disable-output-escaping") == Some("yes") {
         return Ok(None);
     }
     ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;

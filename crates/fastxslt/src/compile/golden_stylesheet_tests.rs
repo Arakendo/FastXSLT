@@ -864,6 +864,30 @@ fn local_attribute_set_graph_rejects_undefined_and_circular_references() {
 }
 
 #[test]
+fn xslt10_attribute_set_lists_require_at_least_one_qname() {
+    for (label, declaration, body) in [
+        (
+            "declaration",
+            r#"<xsl:attribute-set name="empty" use-attribute-sets=" "/>"#,
+            "<out/>",
+        ),
+        ("literal-result", "", r#"<out xsl:use-attribute-sets=""/>"#),
+        ("source-copy", "", r#"<xsl:copy use-attribute-sets=" "/>"#),
+    ] {
+        let stylesheet = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{declaration}<xsl:template match="/">{body}</xsl:template></xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet(
+            &format!("memory:empty-attribute-set-list-{label}.xsl"),
+            stylesheet.as_bytes(),
+        );
+        let failure = compile_stylesheet(&document).expect_err("empty QName list must fail");
+        assert_eq!(failure.code, "XTSE0020", "{label}");
+        assert_eq!(failure.category, CompileCategory::Invalid, "{label}");
+    }
+}
+
+#[test]
 fn compiles_static_xsl_element_namespace_without_runtime_qname_work() {
     let document = parse_stylesheet(
         "memory:static-computed-element-namespace.xsl",
@@ -1291,6 +1315,32 @@ fn html_method_is_retained_for_shared_serializer_selection() {
 }
 
 #[test]
+fn output_method_distinguishes_invalid_null_namespace_from_unsupported_extension() {
+    for (method, expected_code) in [("", "XTSE0020"), ("custom", "XTSE1570")] {
+        let stylesheet = parse_stylesheet(
+            "memory:invalid-output-method.xsl",
+            format!(
+                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="{method}"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        let failure = compile_stylesheet(&stylesheet)
+            .expect_err("a null-namespace extension output method must be invalid");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+        assert_eq!(failure.code, expected_code);
+    }
+
+    let stylesheet = parse_stylesheet(
+        "memory:unsupported-output-method.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:example"><xsl:output method="e:custom"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&stylesheet)
+        .expect_err("a namespaced extension method remains outside the serializer slice");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+    assert_eq!(failure.code, "FXST1004");
+}
+
+#[test]
 fn retains_requested_normalization_for_serializer_capability_selection() {
     let none = parse_stylesheet(
             "memory:no-normalization.xsl",
@@ -1414,6 +1464,34 @@ fn rejects_overlapping_output_properties_during_bounded_merge() {
     assert_eq!(program.output.method.as_deref(), Some("text"));
     assert_eq!(program.output.encoding.as_deref(), Some("UTF-8"));
     assert!(!program.output.omit_xml_declaration);
+}
+
+#[test]
+fn xslt10_output_recovery_defers_a_superseded_extension_method() {
+    for (stylesheet, expected_method) in [
+        (
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:example"><xsl:output method="xml"/><xsl:output method="e:custom"/><xsl:output method="html"/><xsl:template match="/"><html/></xsl:template></xsl:stylesheet>"#.as_slice(),
+            "html",
+        ),
+        (
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:output method="xsl:custom"/><xsl:output method="text"/><xsl:template match="/">kept</xsl:template></xsl:stylesheet>"#.as_slice(),
+            "text",
+        ),
+    ] {
+        let stylesheet = parse_stylesheet("memory:xslt10-output-recovery.xsl", stylesheet);
+        let program = compile_stylesheet(&stylesheet)
+            .expect("a later standard method should supersede the extension method");
+        assert_eq!(program.output.method.as_deref(), Some(expected_method));
+    }
+
+    let stylesheet = parse_stylesheet(
+        "memory:xslt10-effective-extension-output.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:example"><xsl:output method="xml"/><xsl:output method="e:custom"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&stylesheet)
+        .expect_err("an effective extension output method must remain unsupported");
+    assert_eq!(failure.code, "FXST1004");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
 }
 
 #[test]
@@ -1788,6 +1866,36 @@ fn compiles_union_rules_with_individual_default_priorities() {
         overlapping_program.matched_templates[1].priority,
         TemplatePriority::PATH_DEFAULT
     );
+}
+
+#[test]
+fn template_union_splitter_preserves_a_nested_node_set_union_predicate() {
+    let stylesheet = parse_stylesheet(
+        "memory:nested-node-set-union-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="book[(title | @style) | price = 'textbook'] | book/title" priority="0.6"/></xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&stylesheet).expect("bounded nested union should compile");
+
+    assert_eq!(program.matched_templates.len(), 1);
+    let MatchPattern::UnionAlternatives(alternatives) = &program.matched_templates[0].pattern
+    else {
+        panic!("equal-priority overlapping union must remain one rule");
+    };
+    assert_eq!(alternatives.len(), 2);
+    assert!(matches!(
+        &alternatives[0],
+        MatchPattern::ElementNodeSetStringEquals {
+            element,
+            children,
+            attributes,
+            value,
+        } if element.local == "book"
+            && children.iter().map(|name| name.local.as_str()).collect::<Vec<_>>() == ["title", "price"]
+            && attributes.iter().map(|name| name.local.as_str()).collect::<Vec<_>>() == ["style"]
+            && value == "textbook"
+    ));
+    assert!(matches!(alternatives[1], MatchPattern::Path(_)));
 }
 
 #[test]
@@ -2592,7 +2700,7 @@ fn distinguishes_invalid_stylesheet_from_unsupported_instruction() {
 
     let unsupported = parse_stylesheet(
             "memory:unsupported.xsl",
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:message>unsupported</xsl:message></xsl:template></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:future>unsupported</xsl:future></xsl:template></xsl:stylesheet>"#,
         );
     let failure =
         compile_stylesheet(&unsupported).expect_err("unsupported instruction should fail");
@@ -2654,27 +2762,30 @@ fn distinguishes_invalid_stylesheet_from_unsupported_instruction() {
 }
 
 #[test]
-fn compiles_xslt10_message_after_validating_its_attributes() {
-    for terminate in [None, Some("no"), Some("yes")] {
-        let attribute = terminate
-            .map(|value| format!(r#" terminate="{value}""#))
-            .unwrap_or_default();
-        let stylesheet = parse_stylesheet(
-            "memory:valid-message.xsl",
-            format!(
-                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:message{attribute}>message</xsl:message></xsl:template></xsl:stylesheet>"#
-            )
-            .as_bytes(),
-        );
-        let program = compile_stylesheet(&stylesheet)
-            .expect("valid XSLT 1.0 messages should compile to invocation-owned observations");
-        assert!(matches!(
-            &program.root_template.as_ref().unwrap().body[..],
-            [crate::xslt::golden_semantics_experiment::Instruction::Xslt10Message {
-                terminate: compiled,
-                ..
-            }] if *compiled == (terminate == Some("yes"))
-        ));
+fn compiles_common_message_subset_after_validating_its_attributes() {
+    for version in ["1.0", "2.0", "3.0", "8.5"] {
+        for terminate in [None, Some("no"), Some("yes")] {
+            let attribute = terminate
+                .map(|value| format!(r#" terminate="{value}""#))
+                .unwrap_or_default();
+            let stylesheet = parse_stylesheet(
+                "memory:valid-message.xsl",
+                format!(
+                    r#"<xsl:stylesheet version="{version}" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:message{attribute}>message</xsl:message></xsl:template></xsl:stylesheet>"#
+                )
+                .as_bytes(),
+            );
+            let program = compile_stylesheet(&stylesheet).expect(
+                "the common message subset should compile to invocation-owned observations",
+            );
+            assert!(matches!(
+                &program.root_template.as_ref().unwrap().body[..],
+                [crate::xslt::golden_semantics_experiment::Instruction::Xslt10Message {
+                    terminate: compiled,
+                    ..
+                }] if *compiled == (terminate == Some("yes"))
+            ));
+        }
     }
 
     for terminate in ["", "true", "foobar", " yes "] {
@@ -2894,25 +3005,39 @@ fn literal_text_discards_only_xml_whitespace() {
 }
 
 #[test]
-fn xsl_text_accepts_only_the_semantically_inert_disable_output_escaping_value() {
+fn xsl_text_retains_the_xslt10_disable_output_escaping_plan_fact() {
     let no = parse_stylesheet(
         "memory:text-doe-no.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text disable-output-escaping="no">&lt;safe&gt;</xsl:text></xsl:template></xsl:stylesheet>"#,
     );
     let program = compile_stylesheet(&no).expect("the default escaping request should compile");
     let root_template = program.root_template.expect("root template");
-    let [Instruction::Text { value, .. }] = root_template.body.as_slice() else {
+    let [
+        Instruction::Text {
+            value,
+            disable_output_escaping,
+            ..
+        },
+    ] = root_template.body.as_slice()
+    else {
         panic!("xsl:text should retain one text instruction");
     };
     assert_eq!(value, "<safe>");
+    assert!(!disable_output_escaping);
 
     let yes = parse_stylesheet(
         "memory:text-doe-yes.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text disable-output-escaping="yes">&lt;unsafe&gt;</xsl:text></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&yes).expect_err("disabled escaping remains unsupported");
-    assert_eq!(failure.code, "FXST1060");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    let program = compile_stylesheet(&yes).expect("XSLT 1.0 marked text should compile");
+    assert!(matches!(
+        program.root_template.expect("root template").body.as_slice(),
+        [Instruction::Text {
+            value,
+            disable_output_escaping: true,
+            ..
+        }] if value == "<unsafe>"
+    ));
 
     let invalid = parse_stylesheet(
         "memory:text-doe-invalid.xsl",
@@ -3279,7 +3404,7 @@ fn xml_space_is_validated_and_controls_stylesheet_text_preservation() {
 }
 
 #[test]
-fn value_of_admits_only_semantically_inert_disable_output_escaping() {
+fn value_of_retains_the_xslt10_disable_output_escaping_plan_fact() {
     let disabled = parse_stylesheet(
         "memory:value-of-doe-no.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:value-of select="doc/value" disable-output-escaping="no"/></out></xsl:template></xsl:stylesheet>"#,
@@ -3290,9 +3415,18 @@ fn value_of_admits_only_semantically_inert_disable_output_escaping() {
         "memory:value-of-doe-yes.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="doc/value" disable-output-escaping="yes"/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&enabled).expect_err("DOE yes remains unsupported");
-    assert_eq!(failure.code, "FXST1060");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    let program = compile_stylesheet(&enabled).expect("XSLT 1.0 marked value should compile");
+    assert!(matches!(
+        program
+            .root_template
+            .expect("root template")
+            .body
+            .as_slice(),
+        [Instruction::ValueOf {
+            disable_output_escaping: true,
+            ..
+        }]
+    ));
 
     let invalid_lexical = parse_stylesheet(
         "memory:value-of-doe-invalid.xsl",
@@ -3304,9 +3438,10 @@ fn value_of_admits_only_semantically_inert_disable_output_escaping() {
 }
 
 #[test]
-fn number_admits_static_letter_values_only_when_existing_tokens_are_equivalent() {
+fn number_admits_static_letter_values_when_existing_tokens_are_unambiguous() {
     for (format, letter_value) in [
         ("i.I.a.A", "traditional"),
+        ("i.I", "alphabetic"),
         ("a.A", "alphabetic"),
         ("α", "alphabetic"),
         ("1", "alphabetic"),
@@ -3322,15 +3457,6 @@ fn number_admits_static_letter_values_only_when_existing_tokens_are_equivalent()
         );
         compile_stylesheet(&stylesheet).expect("equivalent static letter value should compile");
     }
-
-    let unsupported = parse_stylesheet(
-        "memory:number-alphabetic-roman.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:number value="1" format="i" letter-value="alphabetic"/></xsl:template></xsl:stylesheet>"#,
-    );
-    let failure = compile_stylesheet(&unsupported)
-        .expect_err("alphabetic Roman-token reinterpretation remains unsupported");
-    assert_eq!(failure.code, "FXST1049");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
 
     let invalid = parse_stylesheet(
         "memory:number-invalid-letter-value.xsl",
@@ -3632,6 +3758,42 @@ fn xslt10_forward_compatible_instructions_compile_fallback_or_deferred_failure()
         template.template.body.as_slice(),
         [Instruction::Xslt10DeferredFailure { code, .. }] if *code == "XTDE1450"
     )));
+}
+
+#[test]
+fn xslt10_literal_result_version_selects_local_forward_compatible_fallback() {
+    let stylesheet = parse_stylesheet(
+        "memory:xslt10-local-forward-compatible-fallback.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out xsl:version="2.0"><xsl:future xsl:version="1.0"><ignored/><xsl:fallback><selected/></xsl:fallback></xsl:future></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("a literal result element may select local forward-compatible processing");
+    let root = program.root_template.expect("root template");
+    assert!(matches!(
+        root.body.as_slice(),
+        [Instruction::LiteralElement { name, body, .. }]
+            if name.local == "out"
+                && matches!(body.as_slice(), [Instruction::LiteralElement { name, .. }]
+                    if name.local == "selected")
+    ));
+}
+
+#[test]
+fn xslt10_local_forward_compatible_literal_ignores_invalid_extension_prefixes() {
+    let stylesheet = parse_stylesheet(
+        "memory:xslt10-local-forward-compatible-extension-prefixes.xsl",
+        br##"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><strict/><future xmlns="" xsl:version="2.0" xsl:extension-element-prefixes="#default invalid:prefix"><child/></future></xsl:template></xsl:stylesheet>"##,
+    );
+    compile_stylesheet(&stylesheet)
+        .expect("invalid optional control values are ignored in local forward-compatible mode");
+
+    let strict = parse_stylesheet(
+        "memory:xslt10-strict-invalid-extension-prefixes.xsl",
+        br##"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><strict xmlns="" xsl:extension-element-prefixes="#default invalid:prefix"/></xsl:template></xsl:stylesheet>"##,
+    );
+    let failure = compile_stylesheet(&strict)
+        .expect_err("the same invalid control must remain an error in strict XSLT 1.0 mode");
+    assert_eq!(failure.code, "XTSE1430");
 }
 
 #[test]

@@ -60,6 +60,7 @@ pub(super) struct TemporaryTree {
     pub(super) identity: u64,
     pub(super) roots: Vec<usize>,
     pub(super) nodes: Vec<TemporaryNode>,
+    pub(super) xslt10_disable_output_escaping_text: HashSet<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,6 +94,7 @@ pub(super) struct RuntimeVariables {
     pub(super) atomics: Arc<BTreeMap<String, AtomicValue>>,
     pub(super) atomic_sequences: Arc<BTreeMap<String, Vec<AtomicValue>>>,
     pub(super) source_nodes: Arc<BTreeMap<String, Vec<NodeId>>>,
+    pub(super) detached_source_node_strings: Arc<BTreeMap<String, Vec<String>>>,
     pub(super) temporary_trees: Arc<BTreeMap<String, TemporaryTree>>,
     local_bindings: Arc<HashSet<String>>,
 }
@@ -524,6 +526,7 @@ impl RuntimeVariables {
             },
             atomic_sequences: Arc::new(BTreeMap::new()),
             source_nodes: Arc::new(BTreeMap::new()),
+            detached_source_node_strings: Arc::new(BTreeMap::new()),
             temporary_trees: Arc::new(BTreeMap::new()),
             local_bindings: Arc::new(HashSet::new()),
         }
@@ -538,6 +541,9 @@ impl RuntimeVariables {
         }
         if self.source_nodes.contains_key(name) {
             Arc::make_mut(&mut self.source_nodes).remove(name);
+        }
+        if self.detached_source_node_strings.contains_key(name) {
+            Arc::make_mut(&mut self.detached_source_node_strings).remove(name);
         }
         if self.temporary_trees.contains_key(name) {
             Arc::make_mut(&mut self.temporary_trees).remove(name);
@@ -562,6 +568,11 @@ impl RuntimeVariables {
         Arc::make_mut(&mut self.source_nodes).insert(name, nodes);
     }
 
+    fn bind_detached_source_node_strings(&mut self, name: String, values: Vec<String>) {
+        self.clear_value_kinds(&name);
+        Arc::make_mut(&mut self.detached_source_node_strings).insert(name, values);
+    }
+
     pub(super) fn bind_temporary_tree(&mut self, name: String, tree: TemporaryTree) {
         self.clear_value_kinds(&name);
         Arc::make_mut(&mut self.temporary_trees).insert(name, tree);
@@ -583,6 +594,10 @@ impl RuntimeVariables {
         }
         if let Some(nodes) = self.source_nodes.get(source).cloned() {
             self.bind_source_nodes(name, nodes);
+            return true;
+        }
+        if let Some(values) = self.detached_source_node_strings.get(source).cloned() {
+            self.bind_detached_source_node_strings(name, values);
             return true;
         }
         if let Some(tree) = self.temporary_trees.get(source).cloned() {
@@ -627,6 +642,31 @@ impl RuntimeVariables {
         self.source_nodes.values().any(|nodes| !nodes.is_empty())
     }
 
+    pub(super) fn detached_source_node_strings(&self, name: &str) -> Option<&Vec<String>> {
+        self.detached_source_node_strings.get(name)
+    }
+
+    pub(super) fn detach_source_nodes_for_document_context(
+        &self,
+        source: &Document,
+        request_id: &str,
+        control: &mut InvocationControl,
+    ) -> Result<Self, ExecutionFailure> {
+        let mut detached = self.clone();
+        for (name, nodes) in self.source_nodes.iter() {
+            let values = nodes
+                .iter()
+                .map(|node| {
+                    source
+                        .string_value_controlled(*node, control)
+                        .map_err(|failure| control_failure(failure, request_id))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            detached.bind_detached_source_node_strings(name.clone(), values);
+        }
+        Ok(detached)
+    }
+
     pub(super) fn temporary_tree<'a>(
         &'a self,
         globals: &'a RuntimeGlobals,
@@ -659,6 +699,9 @@ impl RuntimeVariables {
             atomics: Arc::new(self.atomics.as_ref().clone()),
             atomic_sequences: Arc::new(self.atomic_sequences.as_ref().clone()),
             source_nodes: Arc::new(self.source_nodes.as_ref().clone()),
+            detached_source_node_strings: Arc::new(
+                self.detached_source_node_strings.as_ref().clone(),
+            ),
             temporary_trees: Arc::new(self.temporary_trees.as_ref().clone()),
             local_bindings: Arc::new(self.local_bindings.as_ref().clone()),
         }
@@ -1200,6 +1243,7 @@ fn materialize_xslt10_temporary_source_copy(
         identity: allocate_temporary_tree_identity(control, request_id)?,
         roots: Vec::new(),
         nodes: Vec::new(),
+        xslt10_disable_output_escaping_text: HashSet::new(),
     };
     for selected in selected {
         append_source_copy_roots(source, selected, &mut tree, request_id, control)?;
@@ -1618,6 +1662,7 @@ pub(super) fn materialize_parentless_temporary_node(
             parent: None,
             children: Vec::new(),
         }],
+        xslt10_disable_output_escaping_text: HashSet::new(),
     })
 }
 
@@ -1630,6 +1675,7 @@ pub(super) fn materialize_temporary_tree(
         identity: allocate_temporary_tree_identity(control, request_id)?,
         roots: Vec::new(),
         nodes: Vec::new(),
+        xslt10_disable_output_escaping_text: HashSet::new(),
     };
     for element in elements {
         let root =
@@ -1649,6 +1695,7 @@ pub(super) fn materialize_temporary_nodes(
         identity: allocate_temporary_tree_identity(control, request_id)?,
         roots: Vec::new(),
         nodes: Vec::new(),
+        xslt10_disable_output_escaping_text: HashSet::new(),
     };
     for node in nodes {
         let root = materialize_temporary_node(node, source, None, &mut tree, request_id, control)?;
@@ -1666,6 +1713,7 @@ pub(super) fn materialize_result_nodes(
         identity: allocate_temporary_tree_identity(control, request_id)?,
         roots: Vec::new(),
         nodes: Vec::new(),
+        xslt10_disable_output_escaping_text: HashSet::new(),
     };
     for node in nodes {
         if matches!(node, ResultNode::Xslt10RecoverableAttribute(_)) {
@@ -1688,6 +1736,9 @@ fn materialize_result_node(
         .charge(WorkDomain::XdmNode, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
     let node = tree.nodes.len();
+    if matches!(result, ResultNode::Xslt10DisableOutputEscapingText(_)) {
+        tree.xslt10_disable_output_escaping_text.insert(node);
+    }
     let kind = match result {
         ResultNode::Element {
             name, namespaces, ..
@@ -1696,7 +1747,9 @@ fn materialize_result_node(
             namespaces: namespaces.to_vec(),
             attributes: Vec::new(),
         },
-        ResultNode::Text(value) => TemporaryNodeKind::Text(value.clone()),
+        ResultNode::Text(value) | ResultNode::Xslt10DisableOutputEscapingText(value) => {
+            TemporaryNodeKind::Text(value.clone())
+        }
         ResultNode::Comment(value) => TemporaryNodeKind::Comment(value.clone()),
         ResultNode::ProcessingInstruction { target, value } => {
             TemporaryNodeKind::ProcessingInstruction {
@@ -2103,6 +2156,7 @@ mod frame_sharing_tests {
                 identity: 1,
                 roots: Vec::new(),
                 nodes: Vec::new(),
+                xslt10_disable_output_escaping_text: std::collections::HashSet::new(),
             },
         );
 
@@ -2216,6 +2270,7 @@ mod frame_clone_measurement_tests {
                             children: Vec::new(),
                         })
                         .collect(),
+                    xslt10_disable_output_escaping_text: std::collections::HashSet::new(),
                 },
             );
             Arc::make_mut(&mut frame.local_bindings).insert(tree_name);

@@ -2981,6 +2981,22 @@ fn compile_count_value(
         return Ok(Some(ValueExpression::Xslt10CountCurrentNode));
     }
     if compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(
+            crate::xslt::golden_semantics_experiment::ApplySelection::Xslt10SourceDocumentsDescendants {
+                references,
+                name,
+            },
+        ) = super::template_invocation_compiler::compile_source_documents_descendant_selection(
+            document,
+            element,
+            argument.trim(),
+        )?
+    {
+        return Ok(Some(
+            ValueExpression::Xslt10CountSourceDocumentsDescendants { references, name },
+        ));
+    }
+    if compatibility == ValueCompatibilityMode::Xslt10
         && let Some(variable) = argument
             .trim()
             .strip_prefix('$')

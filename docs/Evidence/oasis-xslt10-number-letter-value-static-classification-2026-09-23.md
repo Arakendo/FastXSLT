@@ -41,6 +41,11 @@ improves diagnostic honesty without claiming those semantics.
 - This is compatibility evidence from a locally acquired archive, not a
   conformance claim.
 
+Subsequent standards review established that `i` and `I` are fixed Roman tokens
+and do not acquire alphabetic semantics from a valid static `letter-value`.
+That correction and its exact corpus pass are recorded in
+[OASIS XSLT 1.0 Unambiguous Roman `letter-value`](oasis-xslt10-unambiguous-roman-letter-value-2026-09-29.md).
+
 ## Reproduction
 
 ```powershell
