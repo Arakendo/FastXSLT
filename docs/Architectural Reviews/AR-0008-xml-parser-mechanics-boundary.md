@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-08-25 |
-| Last reviewed | 2026-09-27 |
+| Last reviewed | 2026-09-30 |
 | Scope | XML byte decoding, tokenization, namespaces, provenance, limits, and XDM handoff |
 | Trigger | M1's private transform slice needs to turn admitted bytes into FastXSLT-owned document semantics |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0003 |
@@ -173,6 +173,11 @@ or another physical input strategy requires a different event seam.
   stylesheets become exact under the measurement host's larger bounded policy.
   Production defaults and parser admission remain open.
   [Evidence](../Evidence/oasis-xslt10-host-owned-stylesheet-xml-limits-2026-09-27.md)
+- 2026-09-30 -- The 74% OASIS XSLT 1.0 checkpoint exposed 117 standard source
+  or stylesheet cases at deliberate DTD denial, plus related typed-ID and
+  unparsed-entity semantics. AR-0025 now owns the bounded internal-subset and
+  sealed-authority investigation; this review continues to deny DTDs by
+  default.
 - 2026-09-27 -- Added strict BOM-selected UTF-16LE and UTF-16BE decoding with
   parser offsets mapped back to the immutable admitted bytes. Twenty-two OASIS
   standard-operation cases leave the generic stylesheet-XML frontier, six

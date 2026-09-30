@@ -139,3 +139,7 @@ and add the record to this index. Never reuse a retired number.
   serialization request without turning authored markup into XDM structure or
   exposing a public result-node contract. Ordinary escaped text remains the
   reference path.
+- [AR-0025: Bounded DTD and Entity Semantics](AR-0025-bounded-dtd-and-entity-semantics.md)
+  -- Incubating; the post-74% OASIS frontier justifies a safe bounded
+  internal-subset experiment, while DTD denial remains the default and external
+  identifiers grant no acquisition authority.

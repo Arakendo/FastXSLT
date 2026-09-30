@@ -2496,7 +2496,15 @@ pub(super) fn compile_processing_instruction(
 ) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["name"], "xsl:processing-instruction")?;
     let target = required_attribute(document, element, None, "name")?;
-    if !is_ascii_ncname(target) || target.eq_ignore_ascii_case("xml") {
+    let target = literal_attribute_compiler::parse_literal_attribute_value_with_context(
+        target,
+        document.location(element),
+        Some((document, element)),
+    )?;
+    let dynamic_target = !matches!(target, LiteralAttributeValue::Text(_));
+    if let LiteralAttributeValue::Text(target) = &target
+        && (!is_ascii_ncname(target) || target.eq_ignore_ascii_case("xml"))
+    {
         return Err(invalid(
             "FXST0036",
             "the static processing-instruction target must be an NCName other than XML",
@@ -2538,7 +2546,7 @@ pub(super) fn compile_processing_instruction(
             }
         }
     }
-    if requires_dynamic_content {
+    if requires_dynamic_content || dynamic_target {
         const MAX_SEQUENCE_CONSTRUCTOR_CHILDREN: usize = 64;
         if children.len() > MAX_SEQUENCE_CONSTRUCTOR_CHILDREN {
             return Err(unsupported(
@@ -2551,7 +2559,7 @@ pub(super) fn compile_processing_instruction(
         }
         let excluded = xslt10_text_constructor_exclusions(document, &children);
         return Ok(Instruction::Xslt10ProcessingInstructionNode {
-            target: target.to_owned(),
+            target,
             body: compile_sequence_excluding(document, element, &excluded)?.into_boxed_slice(),
             location: document.location(element).clone(),
         });
@@ -2568,7 +2576,10 @@ pub(super) fn compile_processing_instruction(
         }
     }
     Ok(Instruction::ProcessingInstructionNode {
-        target: target.to_owned(),
+        target: match target {
+            LiteralAttributeValue::Text(target) => target,
+            _ => unreachable!("dynamic processing-instruction targets use the dynamic variant"),
+        },
         value,
         location: document.location(element).clone(),
     })

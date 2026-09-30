@@ -651,7 +651,7 @@ fn instruction_owned(value: &Instruction) -> usize {
             body,
             location,
         } => {
-            target.capacity()
+            literal_attribute_value_owned(target)
                 + size_of_val(body.as_ref())
                 + body.iter().map(instruction_owned).sum::<usize>()
                 + location_owned(location)

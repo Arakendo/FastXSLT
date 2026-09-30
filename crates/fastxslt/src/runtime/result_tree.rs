@@ -543,7 +543,46 @@ fn materialize_attribute(
     control: &mut InvocationControl,
 ) -> Result<ResultAttribute, ExecutionFailure> {
     charge_result_node(control, context.request_id)?;
-    let value = match value {
+    let value = materialize_attribute_value(value, location, context, control)?;
+    Ok(ResultAttribute {
+        name: name.clone(),
+        value,
+    })
+}
+
+pub(super) fn materialize_literal_attribute_value(
+    inputs: &SequenceInputs<'_>,
+    value: &LiteralAttributeValue,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    variables: &RuntimeVariables,
+    focus: LiteralAttributeFocus<'_>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    materialize_attribute_value(
+        value,
+        location,
+        &AttributeContext {
+            inputs,
+            variables,
+            focus_position: focus.position,
+            focus_size: focus.size,
+            context_name: focus.name,
+            context_value: focus.value,
+            source_focus: focus.source,
+            request_id,
+        },
+        control,
+    )
+}
+
+fn materialize_attribute_value(
+    value: &LiteralAttributeValue,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    Ok(match value {
         LiteralAttributeValue::Text(value) => value.clone(),
         LiteralAttributeValue::Variable(variable) => {
             attribute_variable_string(variable, location, context, control)?
@@ -602,10 +641,6 @@ fn materialize_attribute(
         LiteralAttributeValue::ContextIntegerIncrement(increment) => {
             materialize_context_integer_increment(*increment, location, context)?
         }
-    };
-    Ok(ResultAttribute {
-        name: name.clone(),
-        value,
     })
 }
 

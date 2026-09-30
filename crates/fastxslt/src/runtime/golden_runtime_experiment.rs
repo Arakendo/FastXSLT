@@ -93,7 +93,8 @@ pub(super) use resource_compiler::{
 };
 use result_tree::{
     LiteralAttributeFocus, ResultAttribute, ResultNode, literal_attributes_require_context_string,
-    materialize_computed_attributes, materialize_literal_attributes,
+    materialize_computed_attributes, materialize_literal_attribute_value,
+    materialize_literal_attributes,
 };
 use runtime_context::{
     InvocationParameter, InvocationParameterValue, RuntimeVariables, SequenceInputs,
@@ -1063,9 +1064,13 @@ fn execute_node_constructor(
         Instruction::ProcessingInstructionNode { target, value, .. } => {
             construct_processing_instruction(target, value, inputs.request_id, control)
         }
-        Instruction::Xslt10ProcessingInstructionNode { target, body, .. } => {
-            execute_xslt10_processing_instruction(inputs, target, body, execution, scope, control)
-        }
+        Instruction::Xslt10ProcessingInstructionNode {
+            target,
+            body,
+            location,
+        } => execute_xslt10_processing_instruction(
+            inputs, target, body, location, execution, scope, control,
+        ),
         Instruction::CommentNode { value, .. } => {
             construct_comment(value, inputs.request_id, control)
         }
@@ -1093,15 +1098,58 @@ fn execute_node_constructor(
 
 fn execute_xslt10_processing_instruction(
     inputs: &SequenceInputs<'_>,
-    target: &str,
+    target: &crate::xslt::golden_semantics_experiment::LiteralAttributeValue,
     body: &[Instruction],
+    location: &SourceLocation,
     execution: SequenceContext<'_>,
     scope: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<ResultNode, ExecutionFailure> {
+    let context_string = (target
+        == &crate::xslt::golden_semantics_experiment::LiteralAttributeValue::ContextStringValue)
+        .then(|| execution_context_string_value(inputs, execution, control))
+        .transpose()?
+        .flatten();
+    let target = materialize_literal_attribute_value(
+        inputs,
+        target,
+        location,
+        scope,
+        LiteralAttributeFocus {
+            position: execution.focus_position,
+            size: execution.focus_size,
+            name: execution_context_name(inputs, execution),
+            value: context_string
+                .as_deref()
+                .or_else(|| execution_context_value(inputs, execution)),
+            source: execution_source_focus(inputs, execution),
+        },
+        inputs.request_id,
+        control,
+    )?;
+    if !is_ascii_ncname(&target) || target.eq_ignore_ascii_case("xml") {
+        return Err(failure_at(
+            "XTDE0890",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "the processing-instruction target must evaluate to an NCName other than XML",
+        ));
+    }
     let value = execute_xslt10_text_constructor_value(inputs, body, execution, scope, control)?;
     let value = value.replace("?>", "? >");
-    construct_processing_instruction(target, &value, inputs.request_id, control)
+    construct_processing_instruction(&target, &value, inputs.request_id, control)
+}
+
+fn is_ascii_ncname(value: &str) -> bool {
+    let mut characters = value.chars();
+    matches!(characters.next(), Some(first) if first == '_' || first.is_ascii_alphabetic())
+        && characters.all(|character| {
+            character == '_'
+                || character == '-'
+                || character == '.'
+                || character.is_ascii_alphanumeric()
+        })
 }
 
 fn execute_xslt10_text_constructor_value(

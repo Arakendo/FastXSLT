@@ -5366,6 +5366,39 @@ fn xslt10_processing_instruction_sequence_runs_text_producers_and_recovers_delim
 }
 
 #[test]
+fn xslt10_processing_instruction_materializes_an_avt_target_at_execution() {
+    const SOURCE: &str = "urn:fastxslt:processing-instruction-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:processing-instruction-avt:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:processing-instruction name="{@target}"><xsl:value-of select="."/></xsl:processing-instruction></xsl:for-each></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item target=\"first\">one</item><item target=\"second\">two</item></doc>"
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("XSLT 1.0 processing-instruction target AVT should compile");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("processing-instruction-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("XSLT 1.0 processing-instruction target AVT should execute");
+
+    assert_eq!(
+        results.by_request["processing-instruction-avt"].serialized,
+        "<out><?first one?><?second two?></out>"
+    );
+}
+
+#[test]
 fn xslt10_comment_sequence_runs_text_producers_and_recovers_delimiters() {
     const SOURCE: &str = "urn:fastxslt:comment-sequence:source";
     const STYLESHEET: &str = "urn:fastxslt:comment-sequence:stylesheet";

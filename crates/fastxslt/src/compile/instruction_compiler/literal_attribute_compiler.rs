@@ -39,7 +39,7 @@ pub(crate) fn compile_literal_result_attributes(
     Ok(attributes)
 }
 
-fn parse_literal_attribute_value_with_context(
+pub(super) fn parse_literal_attribute_value_with_context(
     lexical: &str,
     location: &SourceLocation,
     static_context: Option<(&Document, NodeId)>,

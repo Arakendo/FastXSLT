@@ -804,7 +804,7 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     Xslt10ProcessingInstructionNode {
-        target: String,
+        target: LiteralAttributeValue,
         body: Box<[Instruction]>,
         location: SourceLocation,
     },
