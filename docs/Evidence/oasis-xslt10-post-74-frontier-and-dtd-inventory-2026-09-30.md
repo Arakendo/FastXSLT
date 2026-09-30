@@ -67,6 +67,29 @@ external-identifier, or general-reference pressure. Consequently, an
 "accept inert DTD and ignore it" shortcut cannot supply the 32 cases needed for
 75% and would not address the actual semantics dominating the corpus.
 
+The reproducible catalog inventory in
+`scripts/inventory-oasis-xslt10-dtd.ps1` separately follows each standard test
+case's selected principal inputs. Repeated references remain repeated because
+they represent distinct catalog pressure:
+
+| Property | Standard principal inputs |
+| --- | ---: |
+| Inputs containing `DOCTYPE` | 153 |
+| Principal sources | 125 |
+| Principal stylesheets | 28 |
+| Internal subsets | 146 |
+| External identifiers | 110 |
+| Entity declarations | 19 |
+| Attribute-list declarations | 55 |
+| ID-typing candidates | 27 |
+| Notation declarations | 2 |
+
+This catalog inventory is intentionally broader than the 117 current direct
+failures: some cases are excluded or fail earlier for another classified
+reason, and multiple cases reuse the same physical input. Correlating every
+direct failure with declaration-level semantic dependencies remains required
+before implementation.
+
 ## Architectural consequence
 
 AR-0008 deliberately denies DTDs and requires an authority/security review

@@ -9,7 +9,7 @@
 | Trigger | The 74% OASIS XSLT 1.0 checkpoint leaves 117 standard-operation cases at explicit source or stylesheet DTD denial, with related `id()` and `unparsed-entity-uri()` cases behind the same XML semantics |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007 |
 | Related reviews | AR-0008, AR-0014, AR-0019 |
-| Related evidence | Complete local OASIS XSLT 1.0 sweep at commit `d9e12c9f` and the 2026-09-30 post-checkpoint frontier sample |
+| Related evidence | [Post-74% frontier and DTD inventory](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md) |
 
 ## Architectural question
 
@@ -129,6 +129,8 @@ requires separate sealed-snapshot evidence and a later decision.
 
 ## Required follow-up
 
+- [x] Add a reproducible catalog inventory for standard principal source and
+  stylesheet inputs containing DTDs.
 - [ ] Inventory the 117 directly blocked standard cases by internal/external
   subset, declaration type, entity kind, typed-ID dependency, defaulted
   attribute dependency, and expected output method.
