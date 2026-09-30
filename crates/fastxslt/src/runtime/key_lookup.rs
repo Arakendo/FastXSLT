@@ -453,17 +453,7 @@ fn resolve_lexical_key_name(
 }
 
 fn is_ascii_ncname(value: &str) -> bool {
-    let mut characters = value.chars();
-    let Some(first) = characters.next() else {
-        return false;
-    };
-    (first == '_' || first.is_ascii_alphabetic())
-        && characters.all(|character| {
-            character == '_'
-                || character == '-'
-                || character == '.'
-                || character.is_ascii_alphanumeric()
-        })
+    crate::xml::names::is_ncname(value)
 }
 
 fn apply_predicate(

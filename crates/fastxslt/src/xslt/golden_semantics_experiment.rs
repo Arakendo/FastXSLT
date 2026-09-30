@@ -700,11 +700,32 @@ pub(crate) enum SortOrder {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum SortCaseOrder {
+    Default,
+    UpperFirst,
+    LowerFirst,
+    Variable(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum SortLanguage {
+    Codepoint,
+    English,
+    Spanish,
+    French,
+    Swedish,
+    Turkish,
+    Xslt10Concat(Box<Xslt10ConcatExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SortKey {
     pub(crate) select: SortSelect,
     pub(crate) data_type: SortDataType,
     pub(crate) xslt10_numeric_conversion: bool,
     pub(crate) order: SortOrder,
+    pub(crate) case_order: SortCaseOrder,
+    pub(crate) language: SortLanguage,
     pub(crate) location: SourceLocation,
 }
 
@@ -870,6 +891,11 @@ pub(crate) enum Instruction {
     Xslt10KeyVariable {
         name: String,
         select: Box<Xslt10KeyLookup>,
+        location: SourceLocation,
+    },
+    Xslt10LiteralDocumentVariable {
+        name: String,
+        select: DocumentRootReference,
         location: SourceLocation,
     },
     SourceNodeVariable {

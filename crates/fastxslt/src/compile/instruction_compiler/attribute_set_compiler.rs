@@ -10,7 +10,7 @@ use super::super::{
     CompileFailure, ensure_only_attributes, invalid, is_xslt_element, meaningful_children,
     optional_attribute, required_attribute, unsupported,
 };
-use super::compile_computed_attribute;
+use super::{compile_computed_attribute, uses_xslt10_compatibility};
 
 pub(super) fn validate_local_attribute_set(
     document: &Document,
@@ -55,7 +55,7 @@ pub(super) fn compile_attribute_set_use_names(
             super::super::compile_expanded_qname(document, element, name, "xsl:use-attribute-sets")
         })
         .collect::<Result<Vec<_>, _>>()?;
-    if requested.is_empty() {
+    if requested.is_empty() && !uses_xslt10_compatibility(document, element) {
         return Err(invalid(
             "XTSE0020",
             "xsl:use-attribute-sets must name at least one attribute set",
@@ -166,7 +166,7 @@ fn compile_attribute_set_reference_list(
             super::super::compile_expanded_qname(document, element, name, "xsl:use-attribute-sets")
         })
         .collect::<Result<Vec<_>, _>>()?;
-    if names.is_empty() {
+    if names.is_empty() && !uses_xslt10_compatibility(document, element) {
         return Err(invalid(
             "XTSE0020",
             "xsl:use-attribute-sets must name at least one attribute set",

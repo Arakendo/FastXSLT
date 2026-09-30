@@ -1,5 +1,6 @@
 # Evidence
 
+- [OASIS XSLT 1.0 74% Compatibility Tranche](oasis-xslt10-74-percent-compatibility-tranche-2026-09-30.md)
 Evidence records reproducible observations: peer reviews, audits, profiles,
 suite results, implementation checks, and environment-specific validation.
 

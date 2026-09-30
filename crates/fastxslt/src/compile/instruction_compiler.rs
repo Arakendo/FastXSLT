@@ -66,8 +66,9 @@ use crate::xpath::string_length_experiment::{
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, ChooseBranch, ComputedAttribute, DocumentBaseReference, DynamicElementName,
     DynamicNamespaceValue, ElementConstructorOrigin, FocusEqualityOperand, Instruction,
-    LiteralAttributeValue, NestedDocumentReferences, SequenceItemExpression, SortDataType, SortKey,
-    SortOrder, SortSelect, StringComparison, TemplateArgument, ValueExpression,
+    LiteralAttributeValue, NestedDocumentReferences, SequenceItemExpression, SortCaseOrder,
+    SortDataType, SortKey, SortLanguage, SortOrder, SortSelect, StringComparison, TemplateArgument,
+    ValueExpression, Xslt10ConcatPart,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -628,6 +629,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::Xslt10BinaryNumericVariable { name, .. }
     | Instruction::Xslt10ConcatVariable { name, .. }
     | Instruction::Xslt10KeyVariable { name, .. }
+    | Instruction::Xslt10LiteralDocumentVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
     | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { name, .. }
     | Instruction::SourceVariablePathVariable { name, .. }
@@ -1859,7 +1861,13 @@ pub(super) fn compile_sort_keys(
             optional_attribute(document, child, None, "data-type"),
             &location,
         )?;
-        validate_sort_collation_metadata(document, child, &data_type, &location)?;
+        let (case_order, language) = compile_sort_collation_metadata(
+            document,
+            child,
+            &data_type,
+            xslt10_numeric_conversion,
+            &location,
+        )?;
         let order = compile_sort_order(
             optional_attribute(document, child, None, "order"),
             &location,
@@ -1869,6 +1877,8 @@ pub(super) fn compile_sort_keys(
             data_type,
             xslt10_numeric_conversion,
             order,
+            case_order,
+            language,
             location,
         });
         sort_nodes.push(child);
@@ -2109,15 +2119,17 @@ fn compile_sort_control_variable(value: &str) -> Option<String> {
     is_ascii_ncname(variable).then(|| variable.to_owned())
 }
 
-fn validate_sort_collation_metadata(
+fn compile_sort_collation_metadata(
     document: &Document,
     sort: NodeId,
     data_type: &SortDataType,
+    xslt10_compatibility: bool,
     location: &SourceLocation,
-) -> Result<(), CompileFailure> {
+) -> Result<(SortCaseOrder, SortLanguage), CompileFailure> {
     let lang = optional_attribute(document, sort, None, "lang");
     let case_order = optional_attribute(document, sort, None, "case-order");
-    if matches!(data_type, SortDataType::Text | SortDataType::Variable(_))
+    if !xslt10_compatibility
+        && matches!(data_type, SortDataType::Text | SortDataType::Variable(_))
         && (lang.is_some() || case_order.is_some())
     {
         return Err(unsupported(
@@ -2138,7 +2150,127 @@ fn validate_sort_collation_metadata(
             location,
         ));
     }
-    Ok(())
+    if matches!(data_type, SortDataType::Number) {
+        return Ok((SortCaseOrder::Default, SortLanguage::Codepoint));
+    }
+    let language = compile_sort_language(document, sort, lang, xslt10_compatibility, location)?;
+    let case_order = compile_sort_case_order(case_order, xslt10_compatibility, location)?;
+    Ok((case_order, language))
+}
+
+fn compile_sort_language(
+    document: &Document,
+    sort: NodeId,
+    lang: Option<&str>,
+    xslt10_compatibility: bool,
+    location: &SourceLocation,
+) -> Result<SortLanguage, CompileFailure> {
+    let language = if let Some(lang) = lang {
+        if let Some(lang) = fold_static_sort_control_avt(lang) {
+            if !is_xslt10_language_tag(lang) {
+                return Err(invalid(
+                    "XTDE0030",
+                    format!("invalid xsl:sort language hint: {lang}"),
+                    location,
+                ));
+            }
+            let primary = lang.split('-').next().unwrap_or_default();
+            match primary.to_ascii_lowercase().as_str() {
+                "en" => SortLanguage::English,
+                "es" => SortLanguage::Spanish,
+                "fr" => SortLanguage::French,
+                "sv" => SortLanguage::Swedish,
+                "tr" => SortLanguage::Turkish,
+                _ => {
+                    return Err(unsupported(
+                        "FXST1063",
+                        format!("unsupported xsl:sort language hint: {lang}"),
+                        location,
+                    ));
+                }
+            }
+        } else {
+            let expression = lang
+                .strip_prefix('{')
+                .and_then(|value| value.strip_suffix('}'))
+                .map(str::trim);
+            let expression = match expression {
+                Some(expression) => value_expression_compiler::compile_xslt10_concat(
+                    document, sort, expression, location,
+                )?,
+                None => None,
+            };
+            let expression = expression.filter(|expression| {
+                expression.parts.iter().all(|part| {
+                    matches!(
+                        part,
+                        Xslt10ConcatPart::Literal(_) | Xslt10ConcatPart::Variable(_)
+                    )
+                })
+            });
+            SortLanguage::Xslt10Concat(Box::new(expression.ok_or_else(|| {
+                unsupported(
+                    "FXST1063",
+                    "dynamic xsl:sort lang is outside the admitted compatibility concat slice",
+                    location,
+                )
+            })?))
+        }
+    } else if xslt10_compatibility {
+        SortLanguage::English
+    } else {
+        SortLanguage::Codepoint
+    };
+    Ok(language)
+}
+
+fn compile_sort_case_order(
+    case_order: Option<&str>,
+    xslt10_compatibility: bool,
+    location: &SourceLocation,
+) -> Result<SortCaseOrder, CompileFailure> {
+    match case_order.map(fold_static_sort_control_avt) {
+        // The XSLT 1.0 compatibility collation used by the admitted OASIS
+        // processors orders lowercase before uppercase when primary and
+        // secondary weights are equal. Keep the modern no-hint path on the
+        // codepoint/default behavior rather than leaking this compatibility
+        // choice into later language versions.
+        None if xslt10_compatibility => Ok(SortCaseOrder::LowerFirst),
+        None => Ok(SortCaseOrder::Default),
+        Some(Some("upper-first")) => Ok(SortCaseOrder::UpperFirst),
+        Some(Some("lower-first")) => Ok(SortCaseOrder::LowerFirst),
+        Some(Some(value)) => Err(invalid(
+            "XTDE0030",
+            format!("invalid xsl:sort case-order: {value}"),
+            location,
+        )),
+        Some(None) => {
+            compile_sort_control_variable(case_order.expect("dynamic case-order control exists"))
+                .map(SortCaseOrder::Variable)
+                .ok_or_else(|| {
+                    unsupported(
+                        "FXST1063",
+                        "dynamic xsl:sort case-order is outside the admitted variable-only slice",
+                        location,
+                    )
+                })
+        }
+    }
+}
+
+fn is_xslt10_language_tag(value: &str) -> bool {
+    let mut parts = value.split('-');
+    let Some(primary) = parts.next() else {
+        return false;
+    };
+    !primary.is_empty()
+        && primary.len() <= 8
+        && primary.bytes().all(|byte| byte.is_ascii_alphabetic())
+        && parts.all(|part| {
+            !part.is_empty()
+                && part.len() <= 8
+                && part.bytes().all(|byte| byte.is_ascii_alphanumeric())
+        })
 }
 
 fn compile_sort_path(
@@ -2341,6 +2473,9 @@ fn ensure_text_attributes(document: &Document, element: NodeId) -> Result<(), Co
                     ));
                 }
             }
+        }
+        if super::is_ignored_xslt10_prefixed_instruction_attribute(document, element, *attribute) {
+            continue;
         }
         return Err(unsupported(
             "FXST1009",
@@ -2838,14 +2973,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
 fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["name", "select", "as"], "xsl:variable")?;
     let location = document.location(element).clone();
-    let lexical_name = required_attribute(document, element, None, "name")?;
-    let name = normalize_variable_qname(document, element, lexical_name).map_err(|_| {
-        invalid(
-            "FXST0016",
-            format!("invalid local variable name: {lexical_name}"),
-            &location,
-        )
-    })?;
+    let name = compile_local_variable_name(document, element, &location)?;
     let Some(expression) = optional_attribute(document, element, None, "select") else {
         return compile_content_variable(document, element, &name, location);
     };
@@ -2857,6 +2985,32 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             &location,
         ));
     }
+
+    compile_select_variable(document, element, name, expression, location)
+}
+
+fn compile_local_variable_name(
+    document: &Document,
+    element: NodeId,
+    location: &SourceLocation,
+) -> Result<String, CompileFailure> {
+    let lexical_name = required_attribute(document, element, None, "name")?;
+    normalize_variable_qname(document, element, lexical_name).map_err(|_| {
+        invalid(
+            "FXST0016",
+            format!("invalid local variable name: {lexical_name}"),
+            location,
+        )
+    })
+}
+
+fn compile_select_variable(
+    document: &Document,
+    element: NodeId,
+    name: String,
+    expression: &str,
+    location: SourceLocation,
+) -> Result<Instruction, CompileFailure> {
     if let Some(offset) = parse_context_position_offset(expression) {
         return Ok(Instruction::ContextPositionVariable {
             name: name.clone(),
@@ -2910,6 +3064,11 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             location,
         });
     }
+    if let Some(variable) =
+        compile_xslt10_literal_document_variable(document, element, &name, expression, &location)
+    {
+        return Ok(variable);
+    }
     if uses_xslt10_compatibility(document, element)
         && let Some(select) = value_expression_compiler::compile_xslt10_concat(
             document, element, expression, &location,
@@ -2932,6 +3091,30 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         return Ok(variable);
     }
     compile_local_node_or_cast_variable(document, element, &name, expression, location)
+}
+
+fn compile_xslt10_literal_document_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<Instruction> {
+    if !uses_xslt10_compatibility(document, element) {
+        return None;
+    }
+    let (reference, None, "") = parse_literal_document_call(expression.trim())? else {
+        return None;
+    };
+    Some(Instruction::Xslt10LiteralDocumentVariable {
+        name: name.to_owned(),
+        select: crate::xslt::golden_semantics_experiment::DocumentRootReference {
+            base: location.resource.clone(),
+            reference: reference.to_owned(),
+            descendant_name: None,
+        },
+        location: location.clone(),
+    })
 }
 
 fn compile_xslt10_numeric_literal_variable(

@@ -710,6 +710,11 @@ fn instruction_owned(value: &Instruction) -> usize {
             select,
             location,
         } => name.capacity() + xslt10_key_lookup_owned(select) + location_owned(location),
+        Instruction::Xslt10LiteralDocumentVariable {
+            name,
+            select,
+            location,
+        } => name.capacity() + document_root_reference_owned(select) + location_owned(location),
         instruction @ (Instruction::SourceNodeVariable { .. }
         | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { .. }
         | Instruction::SourceVariablePathVariable { .. }

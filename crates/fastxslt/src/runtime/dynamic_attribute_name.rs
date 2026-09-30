@@ -311,12 +311,5 @@ fn dynamic_name_failure(
 }
 
 fn is_ascii_ncname(value: &str) -> bool {
-    let mut characters = value.chars();
-    let Some(first) = characters.next() else {
-        return false;
-    };
-    (first.is_ascii_alphabetic() || first == '_')
-        && characters.all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
-        })
+    crate::xml::names::is_ncname(value)
 }

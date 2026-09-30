@@ -350,6 +350,7 @@ fn local_variable_body(instruction: &Instruction) -> LocalVariableBody<'_> {
         | Instruction::Xslt10BinaryNumericVariable { .. }
         | Instruction::Xslt10ConcatVariable { .. }
         | Instruction::Xslt10KeyVariable { .. }
+        | Instruction::Xslt10LiteralDocumentVariable { .. }
         | Instruction::SourceNodeVariable { .. }
         | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { .. }
         | Instruction::SourceVariablePathVariable { .. }

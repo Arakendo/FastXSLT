@@ -3,6 +3,7 @@ use std::{
     collections::{BTreeMap, HashSet},
     sync::Arc,
 };
+use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::resources::ResourceSnapshot;
@@ -21,9 +22,9 @@ use crate::xpath::path_experiment::{
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ComputedAttribute, DocumentRootReference, FocusComparison,
     FocusEqualityOperand, Instruction, LiteralAttribute, NodeTest, OnMultipleMatchPolicy,
-    OnNoMatchPolicy, SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect,
-    SourceWhitespacePolicy, StringComparison, StylesheetProgram, TemplateArgument,
-    Xslt10AncestorFilter, Xslt10ApplyUnionPart, Xslt10KeyLookup,
+    OnNoMatchPolicy, SequenceItemExpression, SortCaseOrder, SortDataType, SortKey, SortLanguage,
+    SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison, StylesheetProgram,
+    TemplateArgument, Xslt10AncestorFilter, Xslt10ApplyUnionPart, Xslt10KeyLookup,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -797,6 +798,10 @@ fn execute_sequence(
     Ok(result)
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the exhaustive instruction dispatcher keeps one visible owner for runtime routing"
+)]
 fn execute_instruction(
     inputs: &SequenceInputs<'_>,
     instruction: &Instruction,
@@ -856,6 +861,7 @@ fn execute_instruction(
         | Instruction::Xslt10BinaryNumericVariable { .. }
         | Instruction::Xslt10ConcatVariable { .. }
         | Instruction::Xslt10KeyVariable { .. }
+        | Instruction::Xslt10LiteralDocumentVariable { .. }
         | Instruction::SourceNodeVariable { .. }
         | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { .. }
         | Instruction::SourceVariablePathVariable { .. }
@@ -1594,6 +1600,14 @@ fn execute_copy_of_variable(
     if let Some(tree) = variables.temporary_tree(inputs.globals, variable) {
         return temporary_tree_executor::copy_temporary_tree(inputs, tree, control);
     }
+    if let Some(document) = variables.literal_document(variable) {
+        return dynamic_document::copy_prepared_variable_document(
+            inputs,
+            document,
+            recover_unattached_attributes,
+            control,
+        );
+    }
     if variables.allows_global_fallback(variable)
         && inputs.globals.empty_sequences.contains(variable)
     {
@@ -1986,6 +2000,8 @@ enum EvaluatedSortKey {
 struct EvaluatedSortControl {
     data_type: EvaluatedSortDataType,
     order: EvaluatedSortOrder,
+    case_order: EvaluatedSortCaseOrder,
+    language: EvaluatedSortLanguage,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1998,6 +2014,23 @@ enum EvaluatedSortDataType {
 enum EvaluatedSortOrder {
     Ascending,
     Descending,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum EvaluatedSortCaseOrder {
+    Default,
+    UpperFirst,
+    LowerFirst,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum EvaluatedSortLanguage {
+    Codepoint,
+    English,
+    Spanish,
+    French,
+    Swedish,
+    Turkish,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2071,7 +2104,12 @@ fn sort_keyed_items<T>(
         .map_err(|failure| control_failure(failure, request_id))?;
     keyed.sort_by(|left, right| {
         for (index, sort_control) in sort_controls.iter().enumerate() {
-            let ordering = compare_sort_keys(&left.1[index], &right.1[index]);
+            let ordering = compare_sort_keys(
+                &left.1[index],
+                &right.1[index],
+                sort_control.case_order,
+                sort_control.language,
+            );
             let ordering = match sort_control.order {
                 EvaluatedSortOrder::Ascending => ordering,
                 EvaluatedSortOrder::Descending => ordering.reverse(),
@@ -2411,7 +2449,97 @@ fn evaluate_sort_control(
             }
         }
     };
-    Ok(EvaluatedSortControl { data_type, order })
+    let case_order = match &sort.case_order {
+        SortCaseOrder::Default => EvaluatedSortCaseOrder::Default,
+        SortCaseOrder::UpperFirst => EvaluatedSortCaseOrder::UpperFirst,
+        SortCaseOrder::LowerFirst => EvaluatedSortCaseOrder::LowerFirst,
+        SortCaseOrder::Variable(variable) => {
+            match sort_variable(inputs, variable, variables, control)?.as_str() {
+                "upper-first" => EvaluatedSortCaseOrder::UpperFirst,
+                "lower-first" => EvaluatedSortCaseOrder::LowerFirst,
+                value => {
+                    return Err(failure_at(
+                        "XTDE0030",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        sort.location.clone(),
+                        format!("invalid dynamic xsl:sort case-order: {value}"),
+                    ));
+                }
+            }
+        }
+    };
+    let language = match &sort.language {
+        SortLanguage::Codepoint => EvaluatedSortLanguage::Codepoint,
+        SortLanguage::English => EvaluatedSortLanguage::English,
+        SortLanguage::Spanish => EvaluatedSortLanguage::Spanish,
+        SortLanguage::French => EvaluatedSortLanguage::French,
+        SortLanguage::Swedish => EvaluatedSortLanguage::Swedish,
+        SortLanguage::Turkish => EvaluatedSortLanguage::Turkish,
+        SortLanguage::Xslt10Concat(expression) => {
+            let lexical = value_evaluator::evaluate_xslt10_concat(
+                inputs, None, expression, variables, control,
+            )?;
+            evaluated_sort_language(&lexical, inputs, sort)?
+        }
+    };
+    Ok(EvaluatedSortControl {
+        data_type,
+        order,
+        case_order,
+        language,
+    })
+}
+
+fn evaluated_sort_language(
+    lexical: &str,
+    inputs: &SequenceInputs<'_>,
+    sort: &SortKey,
+) -> Result<EvaluatedSortLanguage, ExecutionFailure> {
+    if !is_dynamic_sort_language_tag(lexical) {
+        return Err(failure_at(
+            "XTDE0030",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            sort.location.clone(),
+            format!("invalid dynamic xsl:sort language hint: {lexical}"),
+        ));
+    }
+    match lexical
+        .split('-')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "en" => Ok(EvaluatedSortLanguage::English),
+        "es" => Ok(EvaluatedSortLanguage::Spanish),
+        "fr" => Ok(EvaluatedSortLanguage::French),
+        "sv" => Ok(EvaluatedSortLanguage::Swedish),
+        "tr" => Ok(EvaluatedSortLanguage::Turkish),
+        _ => Err(failure_at(
+            "FXST1063",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            sort.location.clone(),
+            format!("unsupported dynamic xsl:sort language hint: {lexical}"),
+        )),
+    }
+}
+
+fn is_dynamic_sort_language_tag(value: &str) -> bool {
+    let mut parts = value.split('-');
+    let Some(primary) = parts.next() else {
+        return false;
+    };
+    !primary.is_empty()
+        && primary.len() <= 8
+        && primary.bytes().all(|byte| byte.is_ascii_alphabetic())
+        && parts.all(|part| {
+            !part.is_empty()
+                && part.len() <= 8
+                && part.bytes().all(|byte| byte.is_ascii_alphanumeric())
+        })
 }
 
 fn typed_sort_key(
@@ -2525,10 +2653,15 @@ fn sort_variable(
     value_evaluator::xslt10_variable_string_value(inputs, variable, variables, control)
 }
 
-fn compare_sort_keys(left: &EvaluatedSortKey, right: &EvaluatedSortKey) -> std::cmp::Ordering {
+fn compare_sort_keys(
+    left: &EvaluatedSortKey,
+    right: &EvaluatedSortKey,
+    case_order: EvaluatedSortCaseOrder,
+    language: EvaluatedSortLanguage,
+) -> std::cmp::Ordering {
     match (left, right) {
         (EvaluatedSortKey::Text(left), EvaluatedSortKey::Text(right)) => {
-            left.to_ascii_lowercase().cmp(&right.to_ascii_lowercase())
+            compare_text_sort_keys(left, right, case_order, language)
         }
         (EvaluatedSortKey::Number(left), EvaluatedSortKey::Number(right)) => match (left, right) {
             (Some(left), Some(right)) => left
@@ -2540,6 +2673,121 @@ fn compare_sort_keys(left: &EvaluatedSortKey, right: &EvaluatedSortKey) -> std::
         },
         _ => unreachable!("a compiled sort key has one stable data type"),
     }
+}
+
+fn compare_text_sort_keys(
+    left: &str,
+    right: &str,
+    case_order: EvaluatedSortCaseOrder,
+    language: EvaluatedSortLanguage,
+) -> std::cmp::Ordering {
+    let primary =
+        text_collation_primary(left, language).cmp(&text_collation_primary(right, language));
+    if !primary.is_eq() {
+        return primary;
+    }
+    let secondary =
+        text_collation_secondary(left, language).cmp(&text_collation_secondary(right, language));
+    if !secondary.is_eq() || matches!(case_order, EvaluatedSortCaseOrder::Default) {
+        return secondary;
+    }
+    let left_case = text_case_signature(left, case_order);
+    let right_case = text_case_signature(right, case_order);
+    left_case.cmp(&right_case)
+}
+
+fn text_collation_primary(value: &str, language: EvaluatedSortLanguage) -> String {
+    if matches!(language, EvaluatedSortLanguage::Codepoint) {
+        return value.to_ascii_lowercase();
+    }
+    let mut primary = String::new();
+    let normalized_whitespace = normalize_internal_collation_whitespace(value);
+    for character in normalized_whitespace.chars() {
+        match (language, character) {
+            (EvaluatedSortLanguage::Swedish, 'å' | 'Å') => primary.push_str("{0"),
+            (EvaluatedSortLanguage::Swedish, 'ä' | 'Ä') => primary.push_str("{1"),
+            (EvaluatedSortLanguage::Swedish, 'ö' | 'Ö') => primary.push_str("{2"),
+            (EvaluatedSortLanguage::Swedish, 'ü' | 'Ü') => primary.push_str("yz"),
+            (EvaluatedSortLanguage::Turkish, 'ı' | 'I') | (_, 'ı') => primary.push_str("i0"),
+            (EvaluatedSortLanguage::Turkish, 'i' | 'İ') | (_, 'İ') => primary.push_str("i1"),
+            (_, 'æ' | 'Æ') => primary.push_str("ae"),
+            (_, 'œ' | 'Œ') => primary.push_str("oe"),
+            _ => {
+                for decomposed in character.to_lowercase().flat_map(char::to_lowercase).nfd() {
+                    if !is_combining_mark(decomposed) {
+                        primary.push(decomposed);
+                    }
+                }
+            }
+        }
+    }
+    if matches!(language, EvaluatedSortLanguage::Spanish) {
+        primary.replace("ch", "c{")
+    } else {
+        primary
+    }
+}
+
+fn normalize_internal_collation_whitespace(value: &str) -> String {
+    let characters = value.chars().collect::<Vec<_>>();
+    let mut normalized = String::with_capacity(value.len());
+    let mut index = 0;
+    while index < characters.len() {
+        if !characters[index].is_whitespace() {
+            normalized.push(characters[index]);
+            index += 1;
+            continue;
+        }
+        let start = index;
+        while index < characters.len() && characters[index].is_whitespace() {
+            index += 1;
+        }
+        if start > 0 && index < characters.len() {
+            normalized.push(' ');
+        } else {
+            normalized.extend(characters[start..index].iter());
+        }
+    }
+    normalized
+}
+
+fn text_collation_secondary(value: &str, language: EvaluatedSortLanguage) -> Vec<u8> {
+    if matches!(
+        language,
+        EvaluatedSortLanguage::Codepoint
+            | EvaluatedSortLanguage::Swedish
+            | EvaluatedSortLanguage::Turkish
+    ) {
+        return Vec::new();
+    }
+    let mut accents = Vec::with_capacity(value.chars().count());
+    for character in value.chars() {
+        if matches!(character, 'æ' | 'Æ' | 'œ' | 'Œ') {
+            accents.extend([0, 0]);
+        } else {
+            accents.push(u8::from(character.nfd().skip(1).any(is_combining_mark)));
+        }
+    }
+    if matches!(language, EvaluatedSortLanguage::French) {
+        accents.reverse();
+    }
+    accents
+}
+
+fn text_case_signature(value: &str, case_order: EvaluatedSortCaseOrder) -> Vec<u8> {
+    let mut signature = Vec::with_capacity(value.chars().count());
+    for character in value.chars().filter(|character| character.is_alphabetic()) {
+        let weight = match case_order {
+            EvaluatedSortCaseOrder::UpperFirst => u8::from(!character.is_uppercase()),
+            EvaluatedSortCaseOrder::LowerFirst => u8::from(character.is_uppercase()),
+            EvaluatedSortCaseOrder::Default => 0,
+        };
+        signature.push(weight);
+        if matches!(character, 'æ' | 'Æ' | 'œ' | 'Œ') {
+            signature.push(weight);
+        }
+    }
+    signature
 }
 
 fn execute_continuation_instruction(
@@ -2609,18 +2857,14 @@ fn execute_binding(
             bind_binary_numeric_variable(inputs, execution, name, select, scope, control)?;
         }
         Instruction::Xslt10ConcatVariable { name, select, .. } => {
-            let value = value_evaluator::xslt10_concat_value(
-                inputs,
-                execution.node,
-                select,
-                scope,
-                control,
-            )?;
-            scope.bind_atomic(name.clone(), AtomicValue::string(value));
+            bind_xslt10_concat_variable(inputs, execution, name, select, scope, control)?;
         }
         Instruction::Xslt10KeyVariable { name, select, .. } => {
             let selected = key_lookup::select(inputs, select, execution.node, scope, control)?;
             scope.bind_source_nodes(name.clone(), selected);
+        }
+        Instruction::Xslt10LiteralDocumentVariable { name, select, .. } => {
+            bind_literal_document_variable(inputs, name, select, scope, control)?;
         }
         Instruction::SourceNodeVariable { name, select, .. } => {
             bind_source_node_variable(inputs, execution, name, select, scope, control)?;
@@ -2666,6 +2910,32 @@ fn execute_binding(
         }
         _ => unreachable!("execute_binding receives a variable instruction"),
     }
+    Ok(())
+}
+
+fn bind_literal_document_variable(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    select: &DocumentRootReference,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let document = dynamic_document::prepare_document(inputs, select, control)?;
+    scope.bind_literal_document(name.to_owned(), document);
+    Ok(())
+}
+
+fn bind_xslt10_concat_variable(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    name: &str,
+    select: &crate::xslt::golden_semantics_experiment::Xslt10ConcatExpression,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value =
+        value_evaluator::xslt10_concat_value(inputs, execution.node, select, scope, control)?;
+    scope.bind_atomic(name.to_owned(), AtomicValue::string(value));
     Ok(())
 }
 

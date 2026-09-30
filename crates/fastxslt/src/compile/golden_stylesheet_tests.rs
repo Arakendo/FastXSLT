@@ -864,7 +864,7 @@ fn local_attribute_set_graph_rejects_undefined_and_circular_references() {
 }
 
 #[test]
-fn xslt10_attribute_set_lists_require_at_least_one_qname() {
+fn xslt10_attribute_set_lists_admit_empty_lists_but_modern_stylesheets_reject_them() {
     for (label, declaration, body) in [
         (
             "declaration",
@@ -881,9 +881,54 @@ fn xslt10_attribute_set_lists_require_at_least_one_qname() {
             &format!("memory:empty-attribute-set-list-{label}.xsl"),
             stylesheet.as_bytes(),
         );
-        let failure = compile_stylesheet(&document).expect_err("empty QName list must fail");
+        compile_stylesheet(&document).unwrap_or_else(|failure| {
+            panic!("XSLT 1.0 empty QName list should compile for {label}: {failure:?}")
+        });
+
+        let stylesheet = stylesheet.replacen("version=\"1.0\"", "version=\"3.0\"", 1);
+        let document = parse_stylesheet(
+            &format!("memory:modern-empty-attribute-set-list-{label}.xsl"),
+            stylesheet.as_bytes(),
+        );
+        let failure = compile_stylesheet(&document).expect_err("modern empty QName list must fail");
         assert_eq!(failure.code, "XTSE0020", "{label}");
         assert_eq!(failure.category, CompileCategory::Invalid, "{label}");
+    }
+}
+
+#[test]
+fn xslt10_recovers_known_misplaced_xslt_control_attributes_only_in_compatibility_mode() {
+    for (instruction, attribute) in [
+        (
+            r#"<xsl:template match="/" xsl:preserve-space="*"><out/></xsl:template>"#,
+            "preserve-space",
+        ),
+        (
+            r#"<xsl:template match="/"><out><xsl:value-of select="'ok'" xsl:extension-element-prefixes="ext"/></out></xsl:template>"#,
+            "extension-element-prefixes",
+        ),
+        (
+            r#"<xsl:template match="/" xsl:use-attribute-sets="unused"><out/></xsl:template>"#,
+            "use-attribute-sets",
+        ),
+        (
+            r#"<xsl:template match="/"><xsl:element name="out" xsl:use-attribute-set="ignored"/></xsl:template>"#,
+            "use-attribute-set",
+        ),
+    ] {
+        let xslt10 = format!(
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:ext="urn:example:extension" version="1.0">{instruction}</xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet("memory:xslt10-misplaced-control.xsl", xslt10.as_bytes());
+        compile_stylesheet(&document).unwrap_or_else(|failure| {
+            panic!("XSLT 1.0 should ignore xsl:{attribute}: {failure:?}")
+        });
+
+        let modern = xslt10.replace("version=\"1.0\"", "version=\"3.0\"");
+        let document = parse_stylesheet("memory:modern-misplaced-control.xsl", modern.as_bytes());
+        let failure = compile_stylesheet(&document)
+            .expect_err("modern stylesheets must reject misplaced XSLT control attributes");
+        assert_eq!(failure.code, "FXST1009", "{attribute}");
     }
 }
 
@@ -1064,7 +1109,7 @@ fn cyclic_global_dependencies_are_rejected() {
 }
 
 #[test]
-fn text_sort_collation_and_dynamic_numeric_metadata_remain_explicit() {
+fn xslt10_text_sort_collation_and_dynamic_numeric_metadata_are_bounded() {
     let text = parse_stylesheet(
         "memory:text-sort-collation.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="doc/n"><xsl:sort lang="en"/></xsl:for-each></xsl:template></xsl:stylesheet>"#,
@@ -1074,12 +1119,7 @@ fn text_sort_collation_and_dynamic_numeric_metadata_remain_explicit() {
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="doc/n"><xsl:sort data-type="number" lang="{$lang}"/></xsl:for-each></xsl:template></xsl:stylesheet>"#,
     );
 
-    assert_eq!(
-        compile_stylesheet(&text)
-            .expect_err("text collation should remain unsupported")
-            .code,
-        "FXST1063"
-    );
+    compile_stylesheet(&text).expect("bounded XSLT 1.0 language hint should compile");
     assert_eq!(
         compile_stylesheet(&dynamic_numeric)
             .expect_err("dynamic ignored metadata should remain unsupported")

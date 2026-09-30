@@ -655,11 +655,7 @@ fn namespace_for_prefix<'a>(
 }
 
 fn is_ascii_ncname(value: &str) -> bool {
-    let mut chars = value.chars();
-    chars
-        .next()
-        .is_some_and(|ch| ch.is_ascii_alphabetic() || ch == '_')
-        && chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.'))
+    crate::xml::names::is_ncname(value)
 }
 
 fn parse_standalone(

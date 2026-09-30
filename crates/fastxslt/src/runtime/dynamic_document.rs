@@ -502,6 +502,21 @@ fn copy_prepared_document(
     )
 }
 
+pub(super) fn copy_prepared_variable_document(
+    inputs: &SequenceInputs<'_>,
+    dynamic: &DynamicDocument,
+    recover_unattached_attributes: bool,
+    control: &mut InvocationControl,
+) -> Result<Vec<super::ResultNode>, ExecutionFailure> {
+    copy_prepared_document(
+        inputs,
+        dynamic,
+        None,
+        recover_unattached_attributes,
+        control,
+    )
+}
+
 fn copy_matching_descendants(
     document: &Document,
     parent: NodeId,

@@ -96,6 +96,7 @@ pub(super) struct RuntimeVariables {
     pub(super) source_nodes: Arc<BTreeMap<String, Vec<NodeId>>>,
     pub(super) detached_source_node_strings: Arc<BTreeMap<String, Vec<String>>>,
     pub(super) temporary_trees: Arc<BTreeMap<String, TemporaryTree>>,
+    literal_documents: Arc<BTreeMap<String, super::dynamic_document::DynamicDocument>>,
     local_bindings: Arc<HashSet<String>>,
 }
 
@@ -528,6 +529,7 @@ impl RuntimeVariables {
             source_nodes: Arc::new(BTreeMap::new()),
             detached_source_node_strings: Arc::new(BTreeMap::new()),
             temporary_trees: Arc::new(BTreeMap::new()),
+            literal_documents: Arc::new(BTreeMap::new()),
             local_bindings: Arc::new(HashSet::new()),
         }
     }
@@ -547,6 +549,9 @@ impl RuntimeVariables {
         }
         if self.temporary_trees.contains_key(name) {
             Arc::make_mut(&mut self.temporary_trees).remove(name);
+        }
+        if self.literal_documents.contains_key(name) {
+            Arc::make_mut(&mut self.literal_documents).remove(name);
         }
         if !self.local_bindings.contains(name) {
             Arc::make_mut(&mut self.local_bindings).insert(name.to_owned());
@@ -578,6 +583,22 @@ impl RuntimeVariables {
         Arc::make_mut(&mut self.temporary_trees).insert(name, tree);
     }
 
+    pub(super) fn bind_literal_document(
+        &mut self,
+        name: String,
+        document: super::dynamic_document::DynamicDocument,
+    ) {
+        self.clear_value_kinds(&name);
+        Arc::make_mut(&mut self.literal_documents).insert(name, document);
+    }
+
+    pub(super) fn literal_document(
+        &self,
+        name: &str,
+    ) -> Option<&super::dynamic_document::DynamicDocument> {
+        self.literal_documents.get(name)
+    }
+
     pub(super) fn bind_alias(
         &mut self,
         name: String,
@@ -602,6 +623,10 @@ impl RuntimeVariables {
         }
         if let Some(tree) = self.temporary_trees.get(source).cloned() {
             self.bind_temporary_tree(name, tree);
+            return true;
+        }
+        if let Some(document) = self.literal_documents.get(source).cloned() {
+            self.bind_literal_document(name, document);
             return true;
         }
         if !self.allows_global_fallback(source) {
@@ -703,6 +728,7 @@ impl RuntimeVariables {
                 self.detached_source_node_strings.as_ref().clone(),
             ),
             temporary_trees: Arc::new(self.temporary_trees.as_ref().clone()),
+            literal_documents: Arc::new(self.literal_documents.as_ref().clone()),
             local_bindings: Arc::new(self.local_bindings.as_ref().clone()),
         }
     }

@@ -4169,3 +4169,13 @@ maintained redistributable legacy suite becomes available.
   executions. Two visible mismatches and three comparator gaps remain explicit;
   expected-error credit remains 423 / 431.
   [Evidence](../Evidence/oasis-xslt10-disable-output-escaping-reference-marker-2026-09-30.md)
+- 2026-09-30: bounded language/case-aware XSLT 1.0 text sorting, one
+  invocation-owned local literal-`document()` variable, compatibility-only
+  empty attribute-set lists, and bounded recovery for known misplaced XSLT
+  control attributes move the complete sweep to 2,348 / 3,173 exact matches
+  (74.00%). The sweep initializes 2,537 cases and executes 2,491; 633
+  initialization failures, 46 execution failures, seven visible mismatches,
+  and four comparator gaps remain explicit. XML 1.0 non-ASCII NCNames are now
+  accepted, but the corresponding lossy archival reference remains uncredited.
+  Expected-error credit remains 423 / 431.
+  [Evidence](../Evidence/oasis-xslt10-74-percent-compatibility-tranche-2026-09-30.md)

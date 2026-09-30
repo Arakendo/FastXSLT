@@ -14244,6 +14244,80 @@ fn xslt10_numeric_sort_ignores_static_language_and_case_order() {
 }
 
 #[test]
+fn xslt10_text_sort_honors_static_and_variable_case_order() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-text-case-order:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-text-case-order:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 12_288, 20_480));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:variable name="lower" select="'lower-first'"/><xsl:variable name="language" select="'en'"/><xsl:variable name="country" select="'US'"/><xsl:for-each select="doc/n"><xsl:sort lang="en" case-order="upper-first"/><xsl:value-of select="."/><xsl:text>|</xsl:text></xsl:for-each><xsl:text>/</xsl:text><xsl:for-each select="doc/n"><xsl:sort lang="en-US" case-order="{$lower}"/><xsl:value-of select="."/><xsl:text>|</xsl:text></xsl:for-each><xsl:text>/</xsl:text><xsl:for-each select="doc/n"><xsl:sort lang="{concat($language, '-', $country)}"/><xsl:value-of select="."/><xsl:text>|</xsl:text></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><n>prefix</n><n>preFIX</n><n>Alpha</n><n>alpha</n></doc>".to_vec(),
+        )
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile text case order");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "xslt10-text-case-order",
+            "text-case-order-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute text case order");
+
+    assert_eq!(
+        results.by_request["xslt10-text-case-order"].serialized,
+        "Alpha|alpha|preFIX|prefix|/alpha|Alpha|prefix|preFIX|/alpha|Alpha|prefix|preFIX|"
+    );
+}
+
+#[test]
+fn xslt10_text_sort_uses_bounded_language_whitespace_and_turkish_i_weights() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-text-language:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-text-language:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 24_576));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="doc/word"><xsl:sort lang="en" case-order="lower-first"/><xsl:value-of select="."/><xsl:text>|</xsl:text></xsl:for-each><xsl:text>/</xsl:text><xsl:for-each select="doc/i"><xsl:sort lang="en" case-order="upper-first"/><xsl:value-of select="."/><xsl:text>|</xsl:text></xsl:for-each><xsl:text>/</xsl:text><xsl:for-each select="doc/i"><xsl:sort lang="tr" case-order="lower-first"/><xsl:value-of select="."/><xsl:text>|</xsl:text></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(
+            SOURCE,
+            "<doc><word>bar far</word><word>bAr\n\tfar</word><word>bar fAr</word><i>ı</i><i>I</i><i>i</i><i>İ</i></doc>"
+                .as_bytes()
+                .to_vec(),
+        )
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile language sort");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request(
+            "xslt10-text-language",
+            "text-language-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute language sort");
+
+    assert_eq!(
+        results.by_request["xslt10-text-language"].serialized,
+        "bar far|bar fAr|bAr\n\tfar|/I|i|ı|İ|/ı|I|i|İ|"
+    );
+}
+
+#[test]
 fn absent_method_selects_xhtml_for_an_xhtml_html_document_element() {
     let xhtml_name = |local: &str| crate::xml::quick_xml_experiment::ExpandedName {
         namespace: Some("http://www.w3.org/1999/xhtml".to_owned()),
@@ -16203,6 +16277,38 @@ fn xslt10_copy_of_literal_document_uses_only_the_sealed_snapshot() {
         .expect("execute literal sealed-snapshot document copy");
     assert_eq!(
         results.by_request["document-copy"].serialized,
+        "<out><extra><value>sealed</value></extra></out>"
+    );
+}
+
+#[test]
+fn xslt10_local_literal_document_variable_retains_invocation_owned_prepared_document() {
+    const SOURCE: &str = "https://example.test/job/source.xml";
+    const STYLESHEET: &str = "https://example.test/job/style.xsl";
+    const EXTRA: &str = "https://example.test/job/extra.xml";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:variable name="external" select="document('extra.xml')"/><out><xsl:copy-of select="$external"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<source/>".to_vec())
+        .expect("admit principal source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    resources
+        .admit(EXTRA, b"<extra><value>sealed</value></extra>".to_vec())
+        .expect("admit sealed supplemental document");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile local literal-document variable copy");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("local-document-variable", "result", SOURCE))
+        .expect("admit local-document-variable request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute local literal-document variable copy");
+    assert_eq!(
+        results.by_request["local-document-variable"].serialized,
         "<out><extra><value>sealed</value></extra></out>"
     );
 }

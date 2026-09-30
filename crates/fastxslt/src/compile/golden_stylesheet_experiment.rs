@@ -2925,7 +2925,7 @@ pub(super) fn ensure_only_attributes(
     Ok(())
 }
 
-fn is_ignored_xslt10_prefixed_instruction_attribute(
+pub(super) fn is_ignored_xslt10_prefixed_instruction_attribute(
     document: &Document,
     element: NodeId,
     attribute: NodeId,
@@ -2938,12 +2938,14 @@ fn is_ignored_xslt10_prefixed_instruction_attribute(
         .expect("attribute nodes have expanded names");
     instruction_compiler::uses_xslt10_compatibility(document, element)
         && element_name.namespace.as_deref() == Some(XSLT_NAMESPACE)
-        && matches!(
-            element_name.local.as_str(),
-            "attribute-set" | "copy" | "element"
-        )
         && attribute_name.namespace.as_deref() == Some(XSLT_NAMESPACE)
-        && attribute_name.local == "use-attribute-sets"
+        && matches!(
+            (element_name.local.as_str(), attribute_name.local.as_str()),
+            (_, "use-attribute-sets")
+                | ("template", "preserve-space")
+                | ("value-of", "extension-element-prefixes")
+                | ("element", "use-attribute-set")
+        )
 }
 
 pub(super) fn is_ignored_xslt10_extension_attribute(
@@ -3051,14 +3053,7 @@ fn optional_attribute<'a>(
 }
 
 fn is_ascii_ncname(value: &str) -> bool {
-    let mut chars = value.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-    (first.is_ascii_alphabetic() || first == '_')
-        && chars.all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
-        })
+    crate::xml::names::is_ncname(value)
 }
 
 fn map_path_failure(failure: PathFailure) -> CompileFailure {
