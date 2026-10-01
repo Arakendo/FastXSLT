@@ -1409,6 +1409,8 @@ fn reviewed_external_source_subset(
         ("plants.dtd", br#"SYSTEM "plants.dtd""#.as_slice())
     } else if case.id == "idkey_idkey04" {
         ("t04.dtd", br#"SYSTEM "t04.dtd""#.as_slice())
+    } else if case.id == "numbering_numbering91" {
+        ("iddata.dtd", br#"SYSTEM "iddata.dtd""#.as_slice())
     } else {
         return None;
     };

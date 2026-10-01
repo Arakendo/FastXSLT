@@ -902,6 +902,39 @@ mod tests {
     }
 
     #[test]
+    fn bounded_typed_id_lookup_drives_xslt10_number_count_patterns() {
+        let source = br#"<!DOCTYPE root [
+            <!ELEMENT root (item+)>
+            <!ELEMENT item EMPTY>
+            <!ATTLIST item id ID #REQUIRED>
+        ]><root><item id="a"/><item id="b"/><item id="c"/><item id="d"/></root>"#
+            .to_vec();
+        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="root/item"/></xsl:template><xsl:template match="item"><xsl:if test="@id='b' or @id='d'"><xsl:number level="single" count="id('b d')" format="(1)"/><xsl:text>|</xsl:text></xsl:if></xsl:template></xsl:stylesheet>"#.to_vec();
+        let engine = ExperimentalEngine::new_with_bounded_internal_source_subset(
+            "urn:fastxslt:dtd:id-number-source",
+            source,
+            "urn:fastxslt:dtd:id-number-stylesheet",
+            stylesheet,
+            WorkbenchStylesheetResources::default(),
+            WorkbenchLimits::default(),
+            crate::xml::internal_subset::InternalSubsetLimits {
+                declarations: 8,
+                nesting_depth: 8,
+                references: 32,
+                replacement_bytes: 1_024,
+            },
+        )
+        .expect("measurement-only typed-ID number pattern should initialize");
+
+        assert_eq!(
+            engine
+                .transform("bounded-typed-id-number")
+                .expect("typed-ID number pattern should execute"),
+            "(1)|(2)|"
+        );
+    }
+
+    #[test]
     fn bounded_internal_stylesheet_subset_is_explicit_and_default_denial_is_unchanged() {
         let source = b"<source/>".to_vec();
         let stylesheet = br#"<!DOCTYPE result [

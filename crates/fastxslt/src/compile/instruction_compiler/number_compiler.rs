@@ -270,6 +270,21 @@ fn compile_pattern_atom(
     pattern: &str,
     attribute: &str,
 ) -> Result<NumberPattern, CompileFailure> {
+    if uses_xslt10_compatibility(document, element) && pattern.trim_start().starts_with("id(") {
+        let lookup = super::value_expression_compiler::compile_xslt10_id_lookup(
+            pattern,
+            document.location(element),
+        )?
+        .ok_or_else(|| unsupported_pattern(document, element, pattern, attribute))?;
+        if !matches!(
+            lookup.argument,
+            crate::xslt::golden_semantics_experiment::Xslt10IdArgument::Literal(_)
+        ) || lookup.relative_path.is_some()
+        {
+            return Err(unsupported_pattern(document, element, pattern, attribute));
+        }
+        return Ok(NumberPattern::Xslt10IdLookup(Box::new(lookup)));
+    }
     if uses_xslt10_compatibility(document, element) && pattern.trim_start().starts_with("key(") {
         let lookup = super::value_expression_compiler::compile_xslt10_literal_key_lookup(
             document,

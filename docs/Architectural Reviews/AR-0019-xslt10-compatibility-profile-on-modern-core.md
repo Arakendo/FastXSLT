@@ -4265,3 +4265,11 @@ maintained redistributable legacy suite becomes available.
   2,664 initialized cases, and 2,617 successful executions without runtime
   stylesheet acquisition.
   [Evidence](../Evidence/oasis-xslt10-stylesheet-document-version-avt-2026-09-30.md)
+- 2026-09-30: literal XSLT 1.0 `id()` count patterns in `xsl:number` now reuse
+  the shared charged typed-ID selector. The unchanged
+  `Lotus/numbering_numbering91#1` case also admits its exact case-local
+  `iddata.dtd` through AR-0025's existing sealed external-subset path and
+  compares exactly. The sweep moves to 2,468 / 3,173 (77.78%), 2,665
+  initialized cases, and 2,618 successful executions without widening
+  production DTD policy.
+  [Evidence](../Evidence/oasis-xslt10-number-id-count-pattern-2026-09-30.md)

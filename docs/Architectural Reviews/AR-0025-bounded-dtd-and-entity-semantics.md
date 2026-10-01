@@ -436,3 +436,9 @@ unacceptable prepared-memory amplification.
   whitespace mismatch. Direct attribution is now 132 cases (30 internal
   parses, 93 sealed-external parses, nine unsupported). AR-0025 remains
   deferred.
+- 2026-09-30 -- Literal `id()` count patterns in `xsl:number` made one
+  case-local external-subset source executable and exact. The OASIS adapter
+  admits only the reviewed `iddata.dtd` bytes through the existing sealed,
+  single-subset path; no DTD grammar or authority changed. Direct attribution
+  is now 133 cases (30 internal parses, 94 sealed-external parses, nine
+  unsupported). AR-0025 remains deferred.

@@ -1130,6 +1130,9 @@ fn number_pattern_owned(pattern: &super::NumberPattern) -> usize {
             value,
         } => name_owned(element) + name_owned(attribute) + value.capacity(),
         super::NumberPattern::ElementAtSiblingPosition { element, .. } => name_owned(element),
+        super::NumberPattern::Xslt10IdLookup(lookup) => {
+            size_of_val(lookup.as_ref()) + xslt10_id_lookup_owned(lookup)
+        }
         super::NumberPattern::Xslt10KeyLookup(lookup) => {
             size_of_val(lookup.as_ref()) + xslt10_key_lookup_owned(lookup)
         }

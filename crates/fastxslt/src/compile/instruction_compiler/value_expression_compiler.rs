@@ -859,7 +859,7 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     })
 }
 
-pub(in crate::compile::golden_stylesheet_experiment) fn compile_xslt10_id_lookup(
+pub(in crate::compile) fn compile_xslt10_id_lookup(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<Option<Xslt10IdLookup>, CompileFailure> {

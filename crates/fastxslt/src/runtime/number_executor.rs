@@ -747,7 +747,7 @@ fn execute_multiple(
 
 enum EvaluatedNumberPattern<'a> {
     Direct(&'a NumberPattern),
-    KeyNodes(Vec<NodeId>),
+    SelectedNodes(Vec<NodeId>),
     ChildOf {
         parent: Box<EvaluatedNumberPattern<'a>>,
         child: Box<EvaluatedNumberPattern<'a>>,
@@ -762,8 +762,18 @@ fn evaluate_pattern<'a>(
     control: &mut InvocationControl,
 ) -> Result<EvaluatedNumberPattern<'a>, ExecutionFailure> {
     Ok(match pattern {
+        NumberPattern::Xslt10IdLookup(lookup) => {
+            EvaluatedNumberPattern::SelectedNodes(super::id_lookup::select(
+                source,
+                source.document_node(),
+                lookup,
+                None,
+                inputs.request_id,
+                control,
+            )?)
+        }
         NumberPattern::Xslt10KeyLookup(lookup) => {
-            EvaluatedNumberPattern::KeyNodes(super::key_lookup::select_static_pattern(
+            EvaluatedNumberPattern::SelectedNodes(super::key_lookup::select_static_pattern(
                 inputs.program,
                 source,
                 lookup,
@@ -842,7 +852,7 @@ fn pattern_matches(
                 && sibling_element_position(source, node, element, request_id, control)?
                     .is_some_and(|position| position_predicate_matches(position, *predicate))
         }
-        EvaluatedNumberPattern::KeyNodes(nodes) => nodes.contains(&node),
+        EvaluatedNumberPattern::SelectedNodes(nodes) => nodes.contains(&node),
         EvaluatedNumberPattern::ChildOf { parent, child } => {
             if !pattern_matches(source, node, child, request_id, control)? {
                 false
@@ -864,7 +874,8 @@ fn pattern_matches(
             matched
         }
         EvaluatedNumberPattern::Direct(
-            NumberPattern::Xslt10KeyLookup(_)
+            NumberPattern::Xslt10IdLookup(_)
+            | NumberPattern::Xslt10KeyLookup(_)
             | NumberPattern::ChildOf { .. }
             | NumberPattern::Alternatives(_),
         ) => unreachable!("composed number patterns are evaluated before execution"),
