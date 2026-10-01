@@ -278,7 +278,7 @@ supported external-resource profile requires a later decision.
 - [x] Inventory the 117 directly blocked standard cases by internal/external
   subset, declaration type, entity kind, typed-ID dependency, defaulted
   attribute dependency, and expected output method.
-- [ ] Identify related `id()` and `unparsed-entity-uri()` cases whose first
+- [x] Identify related `id()` and `unparsed-entity-uri()` cases whose first
   visible failure occurs after parsing.
 - [x] Build a safe internal-subset reference parser with explicit declaration,
   nesting, reference, replacement-size, and total-work limits.
@@ -384,3 +384,11 @@ memory amplification.
   two `stylesheet1.dtd` cases initialize and execute but remain visible output
   mismatches, leaving the exact lower bound at 77.25%; the conserved DTD
   frontier becomes 15 internal, 93 single-external, and nine unsupported.
+- 2026-09-30 -- Completed the related function inventory. The ten direct
+  typed-ID source cases all initialize and execute through `id()`; eight are
+  exact and two remain manual-comparator gaps. The archive contains 28
+  `unparsed-entity-uri()` stylesheets: 26 expected-error cases and two standard
+  cases. Representative traces for both groups stop during expression
+  compilation at the explicit unsupported-function boundary after XML parsing,
+  so notation/unparsed-entity metadata remains a separate language/XDM slice
+  rather than hidden DTD-parser fallout.

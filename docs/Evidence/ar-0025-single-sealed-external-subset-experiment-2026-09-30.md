@@ -162,6 +162,17 @@ both expose later whitespace-result mismatches. Exact coverage remains 2,451 /
 the DTD frontier becomes 15 internal parses, 93 single-external parses, and
 nine explicit unsupported outcomes.
 
+The related function inventory separates parser admission from later language
+surface. All ten directly DTD-dependent typed-ID source cases initialize and
+execute through the bounded `id()` implementation; eight compare exactly and
+two remain visible manual-comparator gaps. A lexical/catalog inventory finds 28
+stylesheets calling `unparsed-entity-uri()`: 26 are expected-error cases and two
+are standard cases (`expression_expression02` and `BVTs_bvt089`). Traces from
+both standard cases and a representative expected-error case show the first
+visible failure during expression compilation (`FXXP1001`), after XML parsing.
+FastXSLT therefore does not infer support for notation/unparsed-entity metadata
+from the external-subset parser experiment.
+
 ## Disposition
 
 Retain the private experiment as evidence for AR-0025. It proves that a narrow
