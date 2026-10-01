@@ -20,6 +20,13 @@ use crate::xml::quick_xml_experiment::{
 const SUITE_ROOT_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_ROOT";
 const TRACE_CASE_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_TRACE_CASE";
 const TRACE_FRONTIER_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER";
+const MAX_REVIEWED_EXTERNAL_SUBSET_BYTES: usize = 64 * 1_024;
+
+struct ReviewedExternalSubset {
+    reference: &'static str,
+    identity: String,
+    bytes: Vec<u8>,
+}
 
 #[derive(Debug)]
 struct LegacyCase {
@@ -279,6 +286,7 @@ impl Measurement {
         case: &LegacyCase,
         source_identity: &str,
         input_observations: &BTreeMap<String, (DtdProperties, &'static str)>,
+        used_reviewed_external_subset: bool,
     ) {
         if case.operation != "standard" {
             return;
@@ -294,6 +302,11 @@ impl Measurement {
                     .map(|(_, observation)| ("stylesheet", observation))
             });
         if let Some((role, (properties, reference_outcome))) = observation {
+            let reference_outcome = if used_reviewed_external_subset && role == "source" {
+                &"parsed-single-external-subset"
+            } else {
+                reference_outcome
+            };
             self.record_direct_dtd_case(case, role, properties, reference_outcome);
         }
     }
@@ -446,6 +459,16 @@ fn measures_local_oasis_xslt10_compatibility() {
             case.principal_source
         );
         let stylesheet_identity = logical_identity(&case, &case.principal_stylesheet);
+        let reviewed_external_subset =
+            reviewed_external_source_subset(&case, &source_identity, &source);
+        let used_reviewed_external_subset = reviewed_external_subset.is_some();
+        if let Some(external_subset) = &reviewed_external_subset {
+            resources.push(WorkbenchResource {
+                identity: external_subset.identity.clone(),
+                bytes: external_subset.bytes.clone(),
+            });
+            measurement.increment("reviewed-single-external-subset-case");
+        }
         let mut dtd_input_observations = BTreeMap::new();
         record_dtd_input_observation(&mut dtd_input_observations, &source_identity, &source);
         record_dtd_input_observation(
@@ -462,27 +485,46 @@ fn measures_local_oasis_xslt10_compatibility() {
         }
 
         let engine = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            ExperimentalEngine::new_with_bounded_internal_subsets(
-                format!(
-                    "{}source/{}",
-                    logical_case_base(&case),
-                    case.principal_source
+            let stylesheet_resources = WorkbenchStylesheetResources {
+                dependencies: resources,
+                denied_identities: Vec::new(),
+            };
+            match reviewed_external_subset {
+                Some(external_subset) => {
+                    ExperimentalEngine::new_with_bounded_single_external_source_subset(
+                        source_identity.clone(),
+                        source,
+                        stylesheet_identity,
+                        stylesheet,
+                        stylesheet_resources,
+                        measurement_limits(),
+                        (
+                            dtd_reference_limits(),
+                            external_subset.reference.to_owned(),
+                            MAX_REVIEWED_EXTERNAL_SUBSET_BYTES,
+                        ),
+                    )
+                }
+                None => ExperimentalEngine::new_with_bounded_internal_subsets(
+                    source_identity.clone(),
+                    source,
+                    stylesheet_identity,
+                    stylesheet,
+                    stylesheet_resources,
+                    measurement_limits(),
+                    dtd_reference_limits(),
                 ),
-                source,
-                logical_identity(&case, &case.principal_stylesheet),
-                stylesheet,
-                WorkbenchStylesheetResources {
-                    dependencies: resources,
-                    denied_identities: Vec::new(),
-                },
-                measurement_limits(),
-                dtd_reference_limits(),
-            )
+            }
         }));
         let engine = match engine {
             Ok(Ok(engine)) => {
                 measurement.increment("initialized");
-                measurement.direct_dtd_success(&case, &source_identity, &dtd_input_observations);
+                measurement.direct_dtd_success(
+                    &case,
+                    &source_identity,
+                    &dtd_input_observations,
+                    used_reviewed_external_subset,
+                );
                 engine
             }
             Ok(Err(failure)) => {
@@ -1311,6 +1353,48 @@ fn logical_identity(case: &LegacyCase, file: &str) -> String {
             identity
         },
     )
+}
+
+fn reviewed_external_source_subset(
+    case: &LegacyCase,
+    source_identity: &str,
+    source: &[u8],
+) -> Option<ReviewedExternalSubset> {
+    const REVIEWED_CASES: [&str; 8] = [
+        "Attributes__81543",
+        "Attributes__81544",
+        "Attributes__81545",
+        "Attributes__81546",
+        "Attributes__81547",
+        "Attributes__81548",
+        "Attributes__81550",
+        "Attributes__81551",
+    ];
+    const REFERENCE: &str = "plants.dtd";
+    const DECLARATION: &[u8] = br#"SYSTEM "plants.dtd""#;
+
+    if !REVIEWED_CASES.contains(&case.id.as_str())
+        || case.principal_source != "Plants.xml"
+        || !source
+            .windows(DECLARATION.len())
+            .any(|window| window == DECLARATION)
+    {
+        return None;
+    }
+    let bytes = read_case_file(&case.directory, REFERENCE)?;
+    if bytes.len() > MAX_REVIEWED_EXTERNAL_SUBSET_BYTES {
+        return None;
+    }
+    let (identity, fragment) =
+        crate::resources::resolve_reference(source_identity, REFERENCE).ok()?;
+    if fragment.is_some() {
+        return None;
+    }
+    Some(ReviewedExternalSubset {
+        reference: REFERENCE,
+        identity,
+        bytes,
+    })
 }
 
 fn read_case_file(directory: &Path, relative: &str) -> Option<Vec<u8>> {

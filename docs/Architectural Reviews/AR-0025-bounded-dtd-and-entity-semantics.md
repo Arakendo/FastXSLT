@@ -9,7 +9,7 @@
 | Trigger | The 74% OASIS XSLT 1.0 checkpoint leaves 117 standard-operation cases at explicit source or stylesheet DTD denial, with related `id()` and `unparsed-entity-uri()` cases behind the same XML semantics |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007 |
 | Related reviews | AR-0008, AR-0014, AR-0019 |
-| Related evidence | [Post-74% frontier and DTD inventory](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md); [bounded internal-entity reference path](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md); [bounded typed-ID reference path](../Evidence/ar-0025-bounded-typed-id-reference-path-2026-09-30.md); [bounded defaults and stylesheet path](../Evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md); [redundant namespace-default experiment](../Evidence/ar-0025-redundant-namespace-default-experiment-2026-09-30.md) |
+| Related evidence | [Post-74% frontier and DTD inventory](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md); [bounded internal-entity reference path](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md); [bounded typed-ID reference path](../Evidence/ar-0025-bounded-typed-id-reference-path-2026-09-30.md); [bounded defaults and stylesheet path](../Evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md); [redundant namespace-default experiment](../Evidence/ar-0025-redundant-namespace-default-experiment-2026-09-30.md); [single sealed external-subset experiment](../Evidence/ar-0025-single-sealed-external-subset-experiment-2026-09-30.md) |
 
 ## Architectural question
 
@@ -133,7 +133,7 @@ could introduce ambient I/O or unbounded expansion. Rejected.
   before the adapter can apply its entity table, so entity-bearing namespace
   values remain outside this slice rather than receiving partial semantics.
 - The exact direct frontier is now measurement-owned rather than inferred from
-  the broader catalog inventory: 113 cases have internal subsets, 94 name
+  the broader catalog inventory: 113 cases have internal subsets, 102 name
   external identifiers, 41 contain attribute-list declarations, 27 contain an
   explicit default candidate, 17 declare entities, 13 have internal general
   entities, five have external general entities, and 11 are typed-ID
@@ -145,9 +145,8 @@ could introduce ambient I/O or unbounded expansion. Rejected.
   resources, two source-default resources, and one stylesheet resource are
   syntactically admitted. The lower bound is now 2,361 / 3,173: eight typed-ID
   cases, both source-default cases, and the stylesheet case compare exactly;
-  two manual-comparator cases remain uncredited. The other 102 resources remain
-  at explicit unsupported declaration or external-identifier seams. The original
-  87-source/30-stylesheet denominator remains conserved.
+  two manual-comparator cases remain uncredited. The original 87-source/30-
+  stylesheet denominator remains conserved.
 - The remaining external-identifier-free stylesheet cases rely on
   fixed/defaulted namespace or version attributes. The stylesheet group must
   affect namespace resolution before ordinary start-event handling; it cannot
@@ -189,6 +188,13 @@ not change. A provenance-preserving pre-tokenization layer remains a candidate
 only if a real admitted case requires a missing or different binding before
 QName resolution.
 
+The implementation subsequently narrowed one more distinction: an unused
+prefixed declaration may be retained as metadata when the prefix is not yet in
+scope, because it cannot change tokenization of any QName in that start event.
+An element or attribute that actually uses an unbound prefix still fails in the
+tokenizer, while default-namespace establishment and changed existing bindings
+remain unsupported.
+
 Abort this experiment rather than widening it if it requires rewriting admitted
 bytes, duplicating XML well-formedness parsing, exposing quick-xml internals,
 mapping broad synthetic spans back to the original resource, or accepting a
@@ -196,13 +202,44 @@ binding whose equivalence cannot be established before XDM construction. A
 parser-boundary replacement remains a separate architectural decision and is
 not justified by a round coverage threshold.
 
+## Focused sealed external-subset experiment
+
+The next experiment asks a deliberately smaller question than general external
+DTD support:
+
+> Can one document resolve exactly one quoted `SYSTEM` external subset from an
+> already sealed snapshot, under independent byte, declaration, expansion, XML
+> work, and resolution-attempt bounds, without ambient acquisition?
+
+The private path now proves that shape. The host-side measurement adapter
+explicitly admits the sibling `plants.dtd` bytes and logical identity before
+sealing. Preparation resolves the relative reference through a one-attempt
+snapshot resolver; missing membership produces the existing structured
+missing-resource outcome. The XML boundary accepts only the supplied quoted
+`SYSTEM` reference, verifies it against the document declaration, attributes
+external declaration failures to the external logical resource, merges the
+bounded declaration tables, and constructs no partial XDM on failure.
+
+The experiment deliberately excludes `PUBLIC` identifiers, recursive external
+subsets, parameter entities, external general entities, validation, catalogs,
+live callbacks, and filesystem/network fallback. Cross-subset declaration
+shadowing also remains explicitly unsupported rather than approximating XML
+precedence rules.
+
+The complete hash-verified OASIS sweep opts in only the eight named Microsoft
+`Attributes__81543` through `81551` standard cases (with absent catalog ordinals
+excluded). All eight now initialize, execute, and compare exactly. The strict
+lower bound is 2,369 / 3,173 (74.66%). The conserved 117-case direct frontier is
+now 15 internal-subset parses, eight single sealed external-subset parses, and
+94 explicit unsupported outcomes.
+
 ## Disposition
 
-**Incubating.** Preserve DTD denial as the default and admit only a private,
-safe, bounded internal-subset experiment after case inventory. Do not enable a
-dependency resolver, ambient filesystem/network access, validation claims,
-public DTD types, or a conformance statement. External DTD/resource support
-requires separate sealed-snapshot evidence and a later decision.
+**Incubating.** Preserve DTD denial as the default and admit only private, safe,
+bounded internal-subset and single sealed-external-subset experiments after
+case inventory. Do not enable live resolution, ambient filesystem/network
+access, validation claims, public DTD types, or a conformance statement. A
+supported external-resource profile requires a later decision.
 
 ## Required follow-up
 
@@ -217,8 +254,10 @@ requires separate sealed-snapshot evidence and a later decision.
   nesting, reference, replacement-size, and total-work limits.
 - [x] Prove that DTD denial remains the default and that no URI or system/public
   identifier causes ambient acquisition.
-- [ ] Preserve original-byte provenance and deterministic diagnostics across
-  entity replacement and declaration failures.
+- [ ] Preserve precise original-byte provenance across entity replacement and
+  declaration failures. The single-external-subset experiment currently
+  preserves the owning logical resource and a deterministic whole-resource
+  span, not declaration-level external offsets.
 - [x] Inventory all eight internal-only Microsoft `22-8` stylesheet shapes and
   test the redundant-namespace/default-version semantics with exact frontier
   accounting and explicit rejection for any non-equivalent binding. Their
@@ -231,8 +270,10 @@ requires separate sealed-snapshot evidence and a later decision.
 - [x] Rerun the complete conserved OASIS denominator and report exact passes,
   later failures, mismatches, and exclusions without treating initialization as
   conformance.
-- [ ] Decide whether an internal-only profile is sufficient or whether sealed
-  external-resource resolution deserves a follow-up experiment and ADR.
+- [x] Test one bounded sealed external-subset resolution attempt against a real
+  corpus family without ambient acquisition or broader external DTD semantics.
+- [ ] Decide whether the demonstrated single-external-subset profile deserves
+  a supported ADR or should remain a private compatibility experiment.
 
 ## Reopening triggers
 
@@ -278,3 +319,8 @@ memory amplification.
   Missing or changed bindings remain rejected. The motivating `22-8` cases
   still stop at their shared source's external `plants.dtd` identifier, so the
   strict lower bound remains 2,361 / 3,173 (74.41%).
+- 2026-09-30 -- Added one private, bounded, sealed-snapshot `SYSTEM` external-
+  subset experiment. Exactly eight pre-inventoried Microsoft `22-8` cases opt
+  in; all eight compare exactly. The strict lower bound reaches 2,369 / 3,173
+  (74.66%), with 15 internal parses, eight single-external parses, and 94
+  explicit unsupported outcomes across the conserved 117-case DTD frontier.

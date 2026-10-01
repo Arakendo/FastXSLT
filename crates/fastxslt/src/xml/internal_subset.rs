@@ -60,6 +60,19 @@ pub(super) struct DefaultAttribute {
 
 type DeclaredAttributes = HashMap<(String, String), DeclaredAttribute>;
 type ParsedAttributeDeclaration = (String, String, DeclaredAttribute);
+type RawEntities = HashMap<String, String>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ExternalSubsetFailureOrigin {
+    Doctype,
+    ExternalSubset,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct ExternalSubsetFailure {
+    pub(super) origin: ExternalSubsetFailureOrigin,
+    pub(super) failure: InternalSubsetFailure,
+}
 
 impl InternalEntities {
     pub(super) fn resolve(&self, name: &str) -> Result<&str, InternalSubsetFailure> {
@@ -167,7 +180,80 @@ pub(super) fn parse_internal_subset(
         ));
     }
 
-    let (raw, attributes, declaration_count) = parse_declarations(subset, limits)?;
+    let declarations = parse_declarations(subset, limits)?;
+    build_entities(declarations, limits)
+}
+
+pub(super) fn parse_single_external_subset(
+    doctype: &str,
+    external_subset: &[u8],
+    max_external_bytes: usize,
+    limits: InternalSubsetLimits,
+) -> Result<(String, InternalEntities), ExternalSubsetFailure> {
+    let (head, internal) = split_doctype(doctype).map_err(|failure| ExternalSubsetFailure {
+        origin: ExternalSubsetFailureOrigin::Doctype,
+        failure,
+    })?;
+    let system_reference =
+        parse_system_identifier(head).map_err(|failure| ExternalSubsetFailure {
+            origin: ExternalSubsetFailureOrigin::Doctype,
+            failure,
+        })?;
+    if external_subset.len() > max_external_bytes {
+        return Err(ExternalSubsetFailure {
+            origin: ExternalSubsetFailureOrigin::ExternalSubset,
+            failure: InternalSubsetFailure::Limit(format!(
+                "external DTD byte limit is {max_external_bytes}"
+            )),
+        });
+    }
+    let external = std::str::from_utf8(external_subset).map_err(|error| ExternalSubsetFailure {
+        origin: ExternalSubsetFailureOrigin::ExternalSubset,
+        failure: InternalSubsetFailure::Unsupported(format!(
+            "external DTD encoding remains unsupported: {error}"
+        )),
+    })?;
+    let mut declarations =
+        parse_declarations(external, limits).map_err(|failure| ExternalSubsetFailure {
+            origin: ExternalSubsetFailureOrigin::ExternalSubset,
+            failure,
+        })?;
+    let remaining = limits
+        .declarations
+        .checked_sub(declarations.2)
+        .ok_or_else(|| ExternalSubsetFailure {
+            origin: ExternalSubsetFailureOrigin::ExternalSubset,
+            failure: InternalSubsetFailure::Limit(format!(
+                "DTD declaration limit is {}",
+                limits.declarations
+            )),
+        })?;
+    let internal_limits = InternalSubsetLimits {
+        declarations: remaining,
+        ..limits
+    };
+    let internal =
+        parse_declarations(internal, internal_limits).map_err(|failure| ExternalSubsetFailure {
+            origin: ExternalSubsetFailureOrigin::Doctype,
+            failure,
+        })?;
+    merge_declarations(&mut declarations, internal).map_err(|failure| ExternalSubsetFailure {
+        origin: ExternalSubsetFailureOrigin::Doctype,
+        failure,
+    })?;
+    let entities =
+        build_entities(declarations, limits).map_err(|failure| ExternalSubsetFailure {
+            origin: ExternalSubsetFailureOrigin::ExternalSubset,
+            failure,
+        })?;
+    Ok((system_reference, entities))
+}
+
+fn build_entities(
+    declarations: (RawEntities, DeclaredAttributes, usize),
+    limits: InternalSubsetLimits,
+) -> Result<InternalEntities, InternalSubsetFailure> {
+    let (raw, attributes, declaration_count) = declarations;
     let mut expanded = HashMap::with_capacity(raw.len());
     for name in raw.keys() {
         let mut active = Vec::new();
@@ -196,6 +282,71 @@ pub(super) fn parse_internal_subset(
         declaration_work,
         limits,
     })
+}
+
+fn merge_declarations(
+    target: &mut (RawEntities, DeclaredAttributes, usize),
+    additional: (RawEntities, DeclaredAttributes, usize),
+) -> Result<(), InternalSubsetFailure> {
+    let (entities, attributes, count) = additional;
+    for (name, value) in entities {
+        if target.0.insert(name, value).is_some() {
+            return Err(InternalSubsetFailure::Unsupported(
+                "declaration shadowing across external and internal subsets remains unsupported"
+                    .to_owned(),
+            ));
+        }
+    }
+    for (name, declaration) in attributes {
+        if target.1.insert(name, declaration).is_some() {
+            return Err(InternalSubsetFailure::Unsupported(
+                "attribute declaration merging across external and internal subsets remains unsupported"
+                    .to_owned(),
+            ));
+        }
+    }
+    target.2 = target.2.saturating_add(count);
+    Ok(())
+}
+
+fn parse_system_identifier(head: &str) -> Result<String, InternalSubsetFailure> {
+    let head = trim_xml_space(head);
+    let root_end = head.find(is_xml_space).unwrap_or(head.len());
+    let root = &head[..root_end];
+    if !is_xml_name(root) {
+        return Err(InternalSubsetFailure::Malformed(
+            "DOCTYPE root name is malformed".to_owned(),
+        ));
+    }
+    let remainder = head[root_end..].trim_start_matches(is_xml_space);
+    let Some(remainder) = remainder.strip_prefix("SYSTEM") else {
+        return Err(InternalSubsetFailure::Unsupported(
+            "only one SYSTEM external subset is admitted by this experiment".to_owned(),
+        ));
+    };
+    if !remainder.starts_with(is_xml_space) {
+        return Err(InternalSubsetFailure::Malformed(
+            "DOCTYPE SYSTEM identifier requires whitespace".to_owned(),
+        ));
+    }
+    let remainder = remainder.trim_start_matches(is_xml_space);
+    let Some(quote @ ('\'' | '"')) = remainder.chars().next() else {
+        return Err(InternalSubsetFailure::Malformed(
+            "DOCTYPE SYSTEM identifier must be quoted".to_owned(),
+        ));
+    };
+    let quoted = &remainder[quote.len_utf8()..];
+    let Some(end) = quoted.find(quote) else {
+        return Err(InternalSubsetFailure::Malformed(
+            "DOCTYPE SYSTEM identifier is not closed".to_owned(),
+        ));
+    };
+    if !trim_xml_space(&quoted[end + quote.len_utf8()..]).is_empty() {
+        return Err(InternalSubsetFailure::Unsupported(
+            "content after the SYSTEM identifier remains unsupported".to_owned(),
+        ));
+    }
+    Ok(quoted[..end].to_owned())
 }
 
 fn count_references(value: &str) -> usize {
@@ -245,6 +396,15 @@ fn parse_declarations(
                 InternalSubsetFailure::Malformed("DTD comment is not closed".to_owned())
             })?;
             remaining = &comment[end + 3..];
+            continue;
+        }
+        if let Some(instruction) = remaining.strip_prefix("<?") {
+            let end = instruction.find("?>").ok_or_else(|| {
+                InternalSubsetFailure::Malformed(
+                    "DTD processing instruction is not closed".to_owned(),
+                )
+            })?;
+            remaining = &instruction[end + 2..];
             continue;
         }
         if declaration_count >= limits.declarations {
@@ -837,7 +997,8 @@ mod tests {
     use std::collections::HashSet;
 
     use super::{
-        DeclaredAttributeType, InternalSubsetFailure, InternalSubsetLimits, parse_internal_subset,
+        DeclaredAttributeType, ExternalSubsetFailureOrigin, InternalSubsetFailure,
+        InternalSubsetLimits, parse_internal_subset, parse_single_external_subset,
     };
 
     const LIMITS: InternalSubsetLimits = InternalSubsetLimits {
@@ -857,6 +1018,68 @@ mod tests {
 
         assert_eq!(entities.resolve("outer"), Ok("left <middle> right"));
         assert_eq!(entities.reference_count(), 7);
+    }
+
+    #[test]
+    fn parses_one_bounded_system_external_subset_without_acquiring_it() {
+        let external = br"
+            <!ELEMENT Plant-Sheet (Author | item)*>
+            <!ELEMENT Author (#PCDATA)>
+            <!ELEMENT item (#PCDATA)>
+            <!ATTLIST Plant-Sheet xmlns:xsl CDATA #FIXED 'urn:legacy-xsl'>
+        ";
+        let (reference, declarations) = parse_single_external_subset(
+            "Plant-Sheet SYSTEM 'plants.dtd' [<?fixture local?> <!-- local -->]",
+            external,
+            1_024,
+            LIMITS,
+        )
+        .expect("one already supplied external subset should parse");
+
+        assert_eq!(reference, "plants.dtd");
+        let defaults = declarations
+            .default_attributes("Plant-Sheet", &HashSet::new())
+            .expect("external fixed attribute should be retained");
+        assert_eq!(defaults.len(), 1);
+        assert_eq!(defaults[0].name, "xmlns:xsl");
+        assert_eq!(defaults[0].value, "urn:legacy-xsl");
+    }
+
+    #[test]
+    fn bounds_and_classifies_the_single_external_subset_surface() {
+        let too_large = parse_single_external_subset(
+            "root SYSTEM 'root.dtd'",
+            b"<!ELEMENT root EMPTY>",
+            4,
+            LIMITS,
+        )
+        .expect_err("external bytes require an independent bound");
+        assert_eq!(
+            too_large.origin,
+            ExternalSubsetFailureOrigin::ExternalSubset
+        );
+        assert_eq!(
+            too_large.failure,
+            InternalSubsetFailure::Limit("external DTD byte limit is 4".to_owned())
+        );
+
+        for declaration in [
+            "root PUBLIC '-//EXAMPLE//DTD Root//EN' 'root.dtd'",
+            "root SYSTEM 'root.dtd' extra",
+        ] {
+            let failure = parse_single_external_subset(declaration, b"", 4, LIMITS)
+                .expect_err("broader external identifier forms remain unsupported");
+            assert_eq!(failure.origin, ExternalSubsetFailureOrigin::Doctype);
+        }
+
+        let duplicate = parse_single_external_subset(
+            "root SYSTEM 'root.dtd' [<!ATTLIST root value CDATA #IMPLIED>]",
+            b"<!ATTLIST root value CDATA #IMPLIED>",
+            128,
+            LIMITS,
+        )
+        .expect_err("cross-subset declaration merging remains explicit");
+        assert_eq!(duplicate.origin, ExternalSubsetFailureOrigin::Doctype);
     }
 
     #[test]

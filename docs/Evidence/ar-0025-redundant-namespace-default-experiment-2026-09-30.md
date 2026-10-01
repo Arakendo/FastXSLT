@@ -25,11 +25,13 @@ must not be mistaken for a failure of the narrower stylesheet experiment.
 
 ## Implemented private rule
 
-The reference parser now accepts a DTD-derived namespace declaration only when
-the tokenizer has already resolved the same prefix to the identical normalized
-namespace value. The declaration is retained as local XDM namespace metadata,
-but it is not credited with establishing or changing the binding used for QName
-resolution. Missing, unknown, or different bindings remain rejected.
+The reference parser accepts a DTD-derived namespace declaration when the
+tokenizer has already resolved the same prefix to the identical normalized
+namespace value. It may also retain an otherwise unused prefixed declaration
+when no QName in the start event depends on it. The declaration is retained as
+local XDM namespace metadata, but it is not credited with resolving a QName.
+An actually used missing prefix remains an unknown-prefix failure; default-
+namespace establishment and changed existing bindings remain rejected.
 
 Ordinary DTD-derived `version` attributes continue through the existing bounded
 default-attribute path. A focused compile-and-transform test proves a stylesheet
@@ -47,8 +49,9 @@ It does not admit general DTD namespace defaulting.
   accounting.
 - A focused parser test proves equivalent-binding admission and local namespace
   retention.
-- The same test proves that a missing binding remains an unknown-prefix failure
-  and that a different inherited binding remains explicitly unsupported.
+- The same test proves that a QName using a missing binding remains an unknown-
+  prefix failure, an unused prefixed declaration is metadata-only, and a
+  different inherited binding remains explicitly unsupported.
 - The complete hash-verified 3,173-case OASIS sweep remains unchanged at 2,361
   exact comparisons (74.41%), 2,552 initialized cases, and 2,506 successful
   executions. The direct DTD frontier remains 117 cases: 15 parsed and 102
@@ -65,4 +68,3 @@ build a byte-rewriting pre-tokenization layer for these cases. Reopen that
 larger option only when an admitted workload requires a DTD declaration to
 establish or change a namespace binding before QName resolution and can justify
 the provenance and diagnostic complexity.
-

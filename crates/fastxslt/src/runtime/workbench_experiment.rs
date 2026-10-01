@@ -3,7 +3,7 @@
 use crate::execution_control_experiment::{
     CancellationToken, ControlFailure, InvocationControl, WorkLimits,
 };
-use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::resources::{ResolutionFailure, ResourceLimits, ResourceSetBuilder};
 use crate::runtime::golden_runtime_experiment::{
     ExecutionFailure, StylesheetCompileLimits, compile_resource_with_denied_and_limits,
     execute_program_with_resources, serialize_xml, serialize_xml_bytes_with_stylesheet_version,
@@ -188,10 +188,11 @@ pub struct ExperimentalEngine {
     limits: WorkbenchLimits,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Default)]
 struct WorkbenchDtdLimits {
     source: Option<InternalSubsetLimits>,
     stylesheet: Option<InternalSubsetLimits>,
+    source_external_subset: Option<(String, usize)>,
 }
 
 impl ExperimentalEngine {
@@ -243,7 +244,7 @@ impl ExperimentalEngine {
             stylesheet,
             stylesheet_resources,
             limits,
-            WorkbenchDtdLimits::default(),
+            &WorkbenchDtdLimits::default(),
         )
     }
 
@@ -264,9 +265,10 @@ impl ExperimentalEngine {
             stylesheet,
             stylesheet_resources,
             limits,
-            WorkbenchDtdLimits {
+            &WorkbenchDtdLimits {
                 source: Some(dtd_limits),
                 stylesheet: None,
+                source_external_subset: None,
             },
         )
     }
@@ -288,9 +290,36 @@ impl ExperimentalEngine {
             stylesheet,
             stylesheet_resources,
             limits,
-            WorkbenchDtdLimits {
+            &WorkbenchDtdLimits {
                 source: Some(dtd_limits),
                 stylesheet: Some(dtd_limits),
+                source_external_subset: None,
+            },
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new_with_bounded_single_external_source_subset(
+        source_id: impl Into<String>,
+        source: Vec<u8>,
+        stylesheet_id: impl Into<String>,
+        stylesheet: Vec<u8>,
+        stylesheet_resources: WorkbenchStylesheetResources,
+        limits: WorkbenchLimits,
+        external_subset: (InternalSubsetLimits, String, usize),
+    ) -> Result<Self, WorkbenchFailure> {
+        let (dtd_limits, external_reference, max_external_bytes) = external_subset;
+        Self::new_with_stylesheet_resources_and_dtd(
+            source_id,
+            source,
+            stylesheet_id,
+            stylesheet,
+            stylesheet_resources,
+            limits,
+            &WorkbenchDtdLimits {
+                source: Some(dtd_limits),
+                stylesheet: Some(dtd_limits),
+                source_external_subset: Some((external_reference, max_external_bytes)),
             },
         )
     }
@@ -302,7 +331,7 @@ impl ExperimentalEngine {
         stylesheet: Vec<u8>,
         stylesheet_resources: WorkbenchStylesheetResources,
         limits: WorkbenchLimits,
-        dtd_limits: WorkbenchDtdLimits,
+        dtd_limits: &WorkbenchDtdLimits,
     ) -> Result<Self, WorkbenchFailure> {
         let source_id = source_id.into();
         let stylesheet_id = stylesheet_id.into();
@@ -371,13 +400,21 @@ impl ExperimentalEngine {
             },
         );
         #[cfg(test)]
-        let mut builder = match dtd_limits.source {
+        let builder = match dtd_limits.source {
             Some(dtd_limits) => builder.with_internal_subset_limits(dtd_limits),
+            None => builder,
+        };
+        #[cfg(test)]
+        let mut builder = match &dtd_limits.source_external_subset {
+            Some((reference, max_bytes)) => {
+                builder.with_single_external_subset(reference.clone(), *max_bytes)
+            }
             None => builder,
         };
         #[cfg(not(test))]
         let mut builder = {
             debug_assert!(dtd_limits.source.is_none());
+            debug_assert!(dtd_limits.source_external_subset.is_none());
             builder
         };
         let mut control = InvocationControl::new(CancellationToken::new(), work_limits(limits));
@@ -653,6 +690,14 @@ fn project_preparation(failure: &PreparationFailure) -> WorkbenchFailure {
         PreparationFailure::DuplicateResource { .. } => ("FXWB0006", "invalid"),
         PreparationFailure::InvalidXml { .. } => ("FXXM0002", "invalid"),
         PreparationFailure::InvalidXdm { .. } => ("FXXD0002", "invalid"),
+        PreparationFailure::ExternalSubsetResolution { failure, .. } => match failure {
+            ResolutionFailure::Missing { .. } => ("FXRS0002", "missing-resource"),
+            ResolutionFailure::Denied { .. } => ("FXRS0003", "denied-resource"),
+            ResolutionFailure::AttemptLimit { .. } => ("FXRS0005", "limit"),
+            ResolutionFailure::InvalidBase { .. }
+            | ResolutionFailure::InvalidReference { .. }
+            | ResolutionFailure::ResolutionFailed { .. } => ("FXRS0006", "invalid"),
+        },
         PreparationFailure::Control(ControlFailure::Cancelled { .. }) => ("FXCT0001", "cancelled"),
         PreparationFailure::Control(ControlFailure::BudgetExhausted { .. }) => {
             ("FXCT0002", "limit")
@@ -881,6 +926,61 @@ mod tests {
                 .expect("bounded stylesheet defaults should execute"),
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><result></result>"
         );
+    }
+
+    #[test]
+    fn bounded_external_source_subset_resolves_only_from_the_sealed_snapshot() {
+        const SOURCE_ID: &str = "https://example.invalid/publication/source.xml";
+        const DTD_ID: &str = "https://example.invalid/publication/source.dtd";
+        const STYLESHEET_ID: &str = "https://example.invalid/publication/main.xsl";
+        let source = br#"<!DOCTYPE root SYSTEM "source.dtd"><root/>"#.to_vec();
+        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="root/@value"/></xsl:template></xsl:stylesheet>"#.to_vec();
+        let dtd_limits = crate::xml::internal_subset::InternalSubsetLimits {
+            declarations: 8,
+            nesting_depth: 8,
+            references: 32,
+            replacement_bytes: 1_024,
+        };
+
+        let engine = ExperimentalEngine::new_with_bounded_single_external_source_subset(
+            SOURCE_ID,
+            source.clone(),
+            STYLESHEET_ID,
+            stylesheet.clone(),
+            WorkbenchStylesheetResources {
+                dependencies: vec![WorkbenchResource {
+                    identity: DTD_ID.to_owned(),
+                    bytes: br#"<!ELEMENT root EMPTY><!ATTLIST root value CDATA #FIXED "Hello">"#
+                        .to_vec(),
+                }],
+                denied_identities: Vec::new(),
+            },
+            WorkbenchLimits::default(),
+            (dtd_limits, "source.dtd".to_owned(), 1_024),
+        )
+        .expect("one admitted sibling external subset should initialize");
+        assert_eq!(
+            engine
+                .transform("bounded-external-source-subset")
+                .expect("defaulted source value should execute"),
+            "Hello"
+        );
+
+        let missing = ExperimentalEngine::new_with_bounded_single_external_source_subset(
+            SOURCE_ID,
+            source,
+            STYLESHEET_ID,
+            stylesheet,
+            WorkbenchStylesheetResources::default(),
+            WorkbenchLimits::default(),
+            (dtd_limits, "source.dtd".to_owned(), 1_024),
+        );
+        let Err(missing) = missing else {
+            panic!("the experiment must not acquire an absent external subset");
+        };
+        assert_eq!(missing.code, "FXRS0002");
+        assert_eq!(missing.category, "missing-resource");
+        assert!(missing.detail.contains(DTD_ID));
     }
 
     fn exact_for_004_engine() -> ExperimentalEngine {

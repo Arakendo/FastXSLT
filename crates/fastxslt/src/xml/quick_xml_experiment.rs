@@ -10,8 +10,8 @@ use quick_xml::reader::NsReader;
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xml::input_transcoding::ParserInput;
 use crate::xml::internal_subset::{
-    DeclaredAttributeType, InternalEntities, InternalSubsetFailure, InternalSubsetLimits,
-    parse_internal_subset,
+    DeclaredAttributeType, ExternalSubsetFailureOrigin, InternalEntities, InternalSubsetFailure,
+    InternalSubsetLimits, parse_internal_subset, parse_single_external_subset,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -162,17 +162,59 @@ impl ParsedDocument {
 
 #[derive(Debug, PartialEq, Eq)]
 enum ParseFailure {
-    Malformed { offset: usize, detail: String },
-    DtdForbidden { span: Range<usize> },
-    DtdUnsupported { span: Range<usize>, detail: String },
-    DtdLimit { span: Range<usize>, detail: String },
-    UnknownNamespacePrefix { offset: usize, prefix: Vec<u8> },
-    UnknownEntity { offset: usize, name: Vec<u8> },
-    MultipleRoots { span: Range<usize> },
+    Malformed {
+        offset: usize,
+        detail: String,
+    },
+    DtdForbidden {
+        span: Range<usize>,
+    },
+    DtdUnsupported {
+        span: Range<usize>,
+        detail: String,
+    },
+    DtdLimit {
+        span: Range<usize>,
+        detail: String,
+    },
+    ExternalDtdMalformed {
+        identity: String,
+        span: Range<usize>,
+        detail: String,
+    },
+    ExternalDtdUnsupported {
+        identity: String,
+        span: Range<usize>,
+        detail: String,
+    },
+    ExternalDtdLimit {
+        identity: String,
+        span: Range<usize>,
+        detail: String,
+    },
+    UnknownNamespacePrefix {
+        offset: usize,
+        prefix: Vec<u8>,
+    },
+    UnknownEntity {
+        offset: usize,
+        name: Vec<u8>,
+    },
+    MultipleRoots {
+        span: Range<usize>,
+    },
     MissingRoot,
-    ContentOutsideRoot { span: Range<usize> },
-    EventLimit { limit: usize, offset: usize },
-    DepthLimit { limit: usize, span: Range<usize> },
+    ContentOutsideRoot {
+        span: Range<usize>,
+    },
+    EventLimit {
+        limit: usize,
+        offset: usize,
+    },
+    DepthLimit {
+        limit: usize,
+        span: Range<usize>,
+    },
     Control(ControlFailure),
 }
 
@@ -199,6 +241,9 @@ impl LocatedFailure {
             ParseFailure::DtdForbidden { span }
             | ParseFailure::DtdUnsupported { span, .. }
             | ParseFailure::DtdLimit { span, .. }
+            | ParseFailure::ExternalDtdMalformed { span, .. }
+            | ParseFailure::ExternalDtdUnsupported { span, .. }
+            | ParseFailure::ExternalDtdLimit { span, .. }
             | ParseFailure::MultipleRoots { span }
             | ParseFailure::ContentOutsideRoot { span }
             | ParseFailure::DepthLimit { span, .. } => Some(span.clone()),
@@ -211,7 +256,8 @@ impl LocatedFailure {
         match &self.failure {
             ParseFailure::EventLimit { limit, .. } => Some(format!("XML event limit is {limit}")),
             ParseFailure::DepthLimit { limit, .. } => Some(format!("XML depth limit is {limit}")),
-            ParseFailure::DtdLimit { detail, .. } => Some(detail.clone()),
+            ParseFailure::DtdLimit { detail, .. }
+            | ParseFailure::ExternalDtdLimit { detail, .. } => Some(detail.clone()),
             _ => None,
         }
     }
@@ -221,6 +267,11 @@ impl LocatedFailure {
         match self.failure {
             ParseFailure::DtdUnsupported { .. } => "unsupported-declaration-semantics",
             ParseFailure::DtdLimit { .. } => "dtd-limit",
+            ParseFailure::ExternalDtdUnsupported { .. } => {
+                "unsupported-external-declaration-semantics"
+            }
+            ParseFailure::ExternalDtdLimit { .. } => "external-dtd-limit",
+            ParseFailure::ExternalDtdMalformed { .. } => "malformed-external-dtd",
             ParseFailure::Malformed { .. } => "malformed-xml-or-dtd",
             ParseFailure::UnknownEntity { .. } => "unknown-entity",
             ParseFailure::Control(_) => "control",
@@ -236,7 +287,15 @@ impl LocatedFailure {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum DtdPolicy {
+pub(crate) struct AdmittedExternalSubset<'a> {
+    pub(crate) identity: &'a str,
+    pub(crate) reference: &'a str,
+    pub(crate) bytes: &'a [u8],
+    pub(crate) max_bytes: usize,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum DtdPolicy<'a> {
     Deny,
     #[cfg_attr(
         not(test),
@@ -246,6 +305,10 @@ enum DtdPolicy {
         )
     )]
     BoundedInternalSubset(InternalSubsetLimits),
+    BoundedSingleExternalSubset {
+        limits: InternalSubsetLimits,
+        external: AdmittedExternalSubset<'a>,
+    },
 }
 
 pub(crate) fn parse_document(
@@ -313,6 +376,41 @@ pub(crate) fn parse_document_controlled_with_internal_subset(
     })
 }
 
+pub(crate) fn parse_document_controlled_with_single_external_subset(
+    resource: &str,
+    input: &[u8],
+    limits: ParseLimits,
+    dtd_limits: InternalSubsetLimits,
+    external: AdmittedExternalSubset<'_>,
+    control: &mut InvocationControl,
+) -> Result<ParsedDocument, LocatedFailure> {
+    parse_bytes(
+        input,
+        limits,
+        DtdPolicy::BoundedSingleExternalSubset {
+            limits: dtd_limits,
+            external,
+        },
+        control,
+    )
+    .map(|mut document| {
+        resource.clone_into(&mut document.resource);
+        document
+    })
+    .map_err(|failure| {
+        let failure_resource = match &failure {
+            ParseFailure::ExternalDtdMalformed { identity, .. }
+            | ParseFailure::ExternalDtdUnsupported { identity, .. }
+            | ParseFailure::ExternalDtdLimit { identity, .. } => identity.clone(),
+            _ => resource.to_owned(),
+        };
+        LocatedFailure {
+            resource: failure_resource,
+            failure,
+        }
+    })
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "keeping the experimental event loop together makes parser behavior auditable"
@@ -320,7 +418,7 @@ pub(crate) fn parse_document_controlled_with_internal_subset(
 fn parse_bytes(
     input: &[u8],
     limits: ParseLimits,
-    dtd_policy: DtdPolicy,
+    dtd_policy: DtdPolicy<'_>,
     control: &mut InvocationControl,
 ) -> Result<ParsedDocument, ParseFailure> {
     let parser_input = ParserInput::new(input).map_err(|failure| ParseFailure::Malformed {
@@ -547,6 +645,45 @@ fn parse_bytes(
                     charge_entity_references(control, entities.declaration_work())?;
                     internal_entities = Some(entities);
                 }
+                DtdPolicy::BoundedSingleExternalSubset { limits, external } => {
+                    if internal_entities.is_some() {
+                        return Err(ParseFailure::Malformed {
+                            offset: start,
+                            detail: "multiple DOCTYPE declarations are not permitted".to_owned(),
+                        });
+                    }
+                    let declaration = reader
+                        .decoder()
+                        .decode(doctype.as_ref())
+                        .map_err(|error| malformed(start, error))?;
+                    let (reference, entities) = parse_single_external_subset(
+                        &declaration,
+                        external.bytes,
+                        external.max_bytes,
+                        limits,
+                    )
+                    .map_err(|failure| {
+                        if failure.origin == ExternalSubsetFailureOrigin::Doctype {
+                            return map_dtd_failure(failure.failure, span.clone(), start);
+                        }
+                        map_external_dtd_failure(
+                            external.identity,
+                            external.bytes.len(),
+                            failure.failure,
+                        )
+                    })?;
+                    if reference != external.reference {
+                        return Err(ParseFailure::DtdUnsupported {
+                            span,
+                            detail: format!(
+                                "resolved external DTD reference differs from document declaration: expected {reference}, supplied {}",
+                                external.reference
+                            ),
+                        });
+                    }
+                    charge_entity_references(control, entities.declaration_work())?;
+                    internal_entities = Some(entities);
+                }
             },
             Event::Comment(comment) => {
                 let value = comment
@@ -751,10 +888,11 @@ fn redundant_dtd_namespace_binding(
     };
     let equivalent = current.as_deref() == Some(value)
         || (prefix.is_none() && value.is_empty() && current.is_none());
-    if !equivalent {
+    let unused_prefixed_binding = prefix.is_some() && current.is_none();
+    if !equivalent && !unused_prefixed_binding {
         return Err(ParseFailure::DtdUnsupported {
             span: offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
-            detail: "DTD-derived namespace declarations that establish or change a binding require pre-tokenization namespace semantics"
+            detail: "DTD-derived default namespaces or prefixed declarations that change an existing binding require pre-tokenization namespace semantics"
                 .to_owned(),
         });
     }
@@ -859,6 +997,33 @@ fn map_dtd_failure(
         InternalSubsetFailure::UnknownEntity(name) => ParseFailure::UnknownEntity {
             offset,
             name: name.into_bytes(),
+        },
+    }
+}
+
+fn map_external_dtd_failure(
+    identity: &str,
+    length: usize,
+    failure: InternalSubsetFailure,
+) -> ParseFailure {
+    let span = 0..length;
+    match failure {
+        InternalSubsetFailure::Malformed(detail) | InternalSubsetFailure::UnknownEntity(detail) => {
+            ParseFailure::ExternalDtdMalformed {
+                identity: identity.to_owned(),
+                span,
+                detail,
+            }
+        }
+        InternalSubsetFailure::Unsupported(detail) => ParseFailure::ExternalDtdUnsupported {
+            identity: identity.to_owned(),
+            span,
+            detail,
+        },
+        InternalSubsetFailure::Limit(detail) => ParseFailure::ExternalDtdLimit {
+            identity: identity.to_owned(),
+            span,
+            detail,
         },
     }
 }
@@ -1339,6 +1504,22 @@ mod tests {
                 namespace: "urn:x".to_owned(),
             }]
         );
+
+        let unused = parse_document_with_internal_subset(
+            "memory:unused-prefixed-default.xml",
+            br#"<!DOCTYPE root [
+                <!ELEMENT root EMPTY>
+                <!ATTLIST root xmlns:x CDATA #FIXED "urn:x">
+            ]><root/>"#,
+            LIMITS,
+            DTD_LIMITS,
+        )
+        .expect("an unused prefixed declaration cannot change QName tokenization");
+        let OwnedXmlEvent::Start { namespaces, .. } = &unused.events[0] else {
+            panic!("root start event");
+        };
+        assert_eq!(namespaces[0].prefix.as_deref(), Some("x"));
+        assert_eq!(namespaces[0].namespace, "urn:x");
 
         let missing = parse_document_with_internal_subset(
             "memory:missing-namespace-default.xml",

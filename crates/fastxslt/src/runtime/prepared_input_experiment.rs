@@ -3,11 +3,13 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl};
-use crate::resources::ResourceSnapshot;
+use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
 use crate::xdm::owned_tree_experiment::{BuildFailure, Document, SourceLocation};
 use crate::xml::internal_subset::InternalSubsetLimits;
 use crate::xml::quick_xml_experiment::{
-    ParseLimits, parse_document_controlled, parse_document_controlled_with_internal_subset,
+    AdmittedExternalSubset, ParseLimits, parse_document_controlled,
+    parse_document_controlled_with_internal_subset,
+    parse_document_controlled_with_single_external_subset,
 };
 
 #[cfg(test)]
@@ -33,7 +35,18 @@ pub(super) enum PreparationFailure {
         identity: String,
         detail: String,
     },
+    ExternalSubsetResolution {
+        source_identity: String,
+        reference: String,
+        failure: ResolutionFailure,
+    },
     Control(ControlFailure),
+}
+
+#[derive(Debug)]
+struct ExternalSubsetPolicy {
+    reference: String,
+    max_bytes: usize,
 }
 
 #[derive(Debug)]
@@ -43,6 +56,7 @@ pub(super) struct PreparedInputBuilder {
     documents: BTreeMap<String, Arc<Document>>,
     parsed_phase_capacity_bytes: BTreeMap<String, usize>,
     internal_subset_limits: Option<InternalSubsetLimits>,
+    external_subset: Option<ExternalSubsetPolicy>,
 }
 
 impl PreparedInputBuilder {
@@ -54,6 +68,7 @@ impl PreparedInputBuilder {
             documents: BTreeMap::new(),
             parsed_phase_capacity_bytes: BTreeMap::new(),
             internal_subset_limits: None,
+            external_subset: None,
         }
     }
 
@@ -64,6 +79,7 @@ impl PreparedInputBuilder {
             documents: BTreeMap::new(),
             parsed_phase_capacity_bytes: BTreeMap::new(),
             internal_subset_limits: None,
+            external_subset: None,
         }
     }
 
@@ -73,6 +89,19 @@ impl PreparedInputBuilder {
         limits: InternalSubsetLimits,
     ) -> Self {
         self.internal_subset_limits = Some(limits);
+        self
+    }
+
+    #[cfg(test)]
+    pub(super) fn with_single_external_subset(
+        mut self,
+        reference: impl Into<String>,
+        max_bytes: usize,
+    ) -> Self {
+        self.external_subset = Some(ExternalSubsetPolicy {
+            reference: reference.into(),
+            max_bytes,
+        });
         self
     }
 
@@ -92,6 +121,7 @@ impl PreparedInputBuilder {
             identity,
             control,
             self.internal_subset_limits,
+            self.external_subset.as_ref(),
         )?;
         self.documents.insert(identity.to_owned(), document);
         self.parsed_phase_capacity_bytes
@@ -122,7 +152,7 @@ pub(super) fn prepare_document(
     identity: &str,
     control: &mut InvocationControl,
 ) -> Result<(Arc<Document>, usize), PreparationFailure> {
-    prepare_document_with_policy(snapshot, parse_limits, identity, control, None)
+    prepare_document_with_policy(snapshot, parse_limits, identity, control, None, None)
 }
 
 fn prepare_document_with_policy(
@@ -131,21 +161,46 @@ fn prepare_document_with_policy(
     identity: &str,
     control: &mut InvocationControl,
     internal_subset_limits: Option<InternalSubsetLimits>,
+    external_subset: Option<&ExternalSubsetPolicy>,
 ) -> Result<(Arc<Document>, usize), PreparationFailure> {
     let bytes = snapshot
         .get(identity)
         .ok_or_else(|| PreparationFailure::MissingResource {
             identity: identity.to_owned(),
         })?;
-    let parsed = match internal_subset_limits {
-        Some(dtd_limits) => parse_document_controlled_with_internal_subset(
+    let parsed = match (internal_subset_limits, external_subset) {
+        (Some(dtd_limits), Some(external_policy)) => {
+            let mut resolver =
+                SnapshotResolver::new(snapshot, std::iter::empty(), ResolutionLimits::new(1));
+            let external = resolver
+                .resolve_from(identity, &external_policy.reference)
+                .map_err(|failure| PreparationFailure::ExternalSubsetResolution {
+                    source_identity: identity.to_owned(),
+                    reference: external_policy.reference.clone(),
+                    failure,
+                })?;
+            parse_document_controlled_with_single_external_subset(
+                identity,
+                bytes,
+                parse_limits,
+                dtd_limits,
+                AdmittedExternalSubset {
+                    identity: &external.identity,
+                    reference: &external_policy.reference,
+                    bytes: external.bytes,
+                    max_bytes: external_policy.max_bytes,
+                },
+                control,
+            )
+        }
+        (Some(dtd_limits), None) => parse_document_controlled_with_internal_subset(
             identity,
             bytes,
             parse_limits,
             dtd_limits,
             control,
         ),
-        None => parse_document_controlled(identity, bytes, parse_limits, control),
+        (None, _) => parse_document_controlled(identity, bytes, parse_limits, control),
     }
     .map_err(|failure| match failure.control_failure() {
         Some(failure) => PreparationFailure::Control(*failure),
@@ -282,6 +337,7 @@ mod tests {
     };
     use crate::resources::{ResourceLimits, ResourceSetBuilder, ResourceSnapshot};
     use crate::xdm::owned_tree_experiment::Document;
+    use crate::xml::internal_subset::InternalSubsetLimits;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
     use super::{PreparationFailure, PreparedInputBuilder};
@@ -607,6 +663,68 @@ mod tests {
                 identity: SOURCE_A.to_owned(),
             })
         );
+    }
+
+    #[test]
+    fn resolves_one_external_subset_only_from_the_sealed_snapshot() {
+        const SOURCE: &str = "https://example.invalid/publication/Plants.xml";
+        const DTD: &str = "https://example.invalid/publication/plants.dtd";
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+        resources
+            .admit(
+                SOURCE,
+                br#"<!DOCTYPE Plant-Sheet SYSTEM "plants.dtd" [<?local observation?>]>
+                    <Plant-Sheet><Author>FastXSLT</Author></Plant-Sheet>"#
+                    .to_vec(),
+            )
+            .expect("admit source");
+        resources
+            .admit(
+                DTD,
+                br"<!ELEMENT Plant-Sheet (Author)*>
+                    <!ELEMENT Author (#PCDATA)>
+                    <!ATTLIST Plant-Sheet xmlns:xsl CDATA #FIXED 'http://www.w3.org/TR/WD-xsl'>"
+                    .to_vec(),
+            )
+            .expect("admit external subset");
+        let snapshot = resources.seal();
+        let mut builder = PreparedInputBuilder::new(snapshot)
+            .with_internal_subset_limits(InternalSubsetLimits {
+                declarations: 8,
+                nesting_depth: 8,
+                references: 16,
+                replacement_bytes: 1_024,
+            })
+            .with_single_external_subset("plants.dtd", 1_024);
+        builder
+            .prepare(SOURCE, &mut InvocationControl::unbounded())
+            .expect("sealed sibling external subset should prepare");
+        let prepared = builder.seal();
+        let document = prepared.get(SOURCE).expect("prepared document");
+        assert_eq!(document.string_value(document.document_node()), "FastXSLT");
+
+        let mut missing_resources = ResourceSetBuilder::new(ResourceLimits::new(1, 4_096, 4_096));
+        missing_resources
+            .admit(
+                SOURCE,
+                br#"<!DOCTYPE Plant-Sheet SYSTEM "plants.dtd"><Plant-Sheet/>"#.to_vec(),
+            )
+            .expect("admit source without external subset");
+        let mut missing = PreparedInputBuilder::new(missing_resources.seal())
+            .with_internal_subset_limits(InternalSubsetLimits {
+                declarations: 8,
+                nesting_depth: 8,
+                references: 16,
+                replacement_bytes: 1_024,
+            })
+            .with_single_external_subset("plants.dtd", 1_024);
+        assert!(matches!(
+            missing.prepare(SOURCE, &mut InvocationControl::unbounded()),
+            Err(PreparationFailure::ExternalSubsetResolution {
+                failure: crate::resources::ResolutionFailure::Missing { identity },
+                ..
+            }) if identity == DTD
+        ));
     }
 
     #[test]
