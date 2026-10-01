@@ -11650,6 +11650,36 @@ fn binary_numeric_paths_share_execution_with_compiled_cardinality_policy() {
 }
 
 #[test]
+fn wildcard_subtraction_uses_the_shared_numeric_plan_in_both_versions() {
+    const SOURCE: &str = "urn:fastxslt:wildcard-arithmetic:source";
+    const STYLESHEET: &str = "urn:fastxslt:wildcard-arithmetic:stylesheet";
+    for version in ["1.0", "3.0"] {
+        let stylesheet = format!(
+            r#"<xsl:stylesheet version="{version}" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><xsl:value-of select="@*-5"/>|<xsl:value-of select="attribute::*-5"/>|<xsl:value-of select="*-5"/>|<xsl:value-of select="n*-5"/>|<xsl:value-of select="@* * -5"/></xsl:template></xsl:stylesheet>"#
+        );
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+        resources
+            .admit(SOURCE, br#"<doc value="20"><n>9</n></doc>"#.to_vec())
+            .expect("source");
+        resources
+            .admit(STYLESHEET, stylesheet.into_bytes())
+            .expect("stylesheet");
+        let snapshot = resources.seal();
+        let program = compile_resource(&snapshot, STYLESHEET).expect("compile wildcard arithmetic");
+        let mut transforms = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+        transforms
+            .add(request("wildcard-arithmetic", "result", SOURCE))
+            .expect("request");
+        let results =
+            execute_transform_set(transforms.seal()).expect("execute wildcard arithmetic");
+        assert_eq!(
+            results.by_request["wildcard-arithmetic"].serialized, "15|15|4|-45|-100",
+            "version {version}"
+        );
+    }
+}
+
+#[test]
 fn xpath_constant_integral_numeric_expressions_fold_exact_results() {
     const SOURCE: &str = "urn:fastxslt:integral-functions:source";
     const STYLESHEET: &str = "urn:fastxslt:integral-functions:stylesheet";

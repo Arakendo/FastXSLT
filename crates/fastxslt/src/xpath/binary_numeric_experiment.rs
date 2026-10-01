@@ -133,7 +133,7 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
             ')' => depth = depth.checked_sub(1)?,
             '+' | '-' | '*' if depth == 0 => {
                 if character == '*'
-                    && (expression[..index].ends_with('/')
+                    && (is_path_wildcard_left_context(&expression[..index])
                         || expression[index + 1..].starts_with('/')
                         || expression[index + 1..].trim().is_empty())
                 {
@@ -144,6 +144,10 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                         && (expression[index + 1..].starts_with(char::is_whitespace)
                             || expression[index + 1..].starts_with('-')))
                     && !is_left_spaced_binary_minus(expression, index)
+                    && !expression[..index]
+                        .trim_end()
+                        .strip_suffix('*')
+                        .is_some_and(is_path_wildcard_left_context)
                     && !(bytes[..index].last().is_some_and(u8::is_ascii_digit)
                         && bytes[index + 1..].first().is_some_and(|byte| {
                             byte.is_ascii_alphanumeric() || matches!(byte, b'$' | b'_')
@@ -207,6 +211,11 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
     let left = strip_balanced_parentheses(expression[..index].trim());
     let right = strip_balanced_parentheses(expression[right_index..].trim());
     (!left.is_empty() && !right.is_empty()).then_some((left, operator, right))
+}
+
+fn is_path_wildcard_left_context(left: &str) -> bool {
+    let left = left.trim_end();
+    left.is_empty() || left.ends_with(['/', '@']) || left.ends_with("::")
 }
 
 fn is_left_spaced_binary_minus(expression: &str, index: usize) -> bool {
@@ -837,6 +846,34 @@ mod tests {
         assert_eq!(signed_path("n-2"), Some(("n-2", false)));
         assert_eq!(signed_path("-n-2"), Some(("n-2", true)));
         assert_eq!(signed_path("-(n-2/@a)"), Some(("n-2/@a", true)));
+    }
+
+    #[test]
+    fn distinguishes_wildcard_steps_from_multiplication_before_subtraction() {
+        for (expression, left) in [
+            ("@*-5", "@*"),
+            ("@* -5", "@*"),
+            ("attribute::*-5", "attribute::*"),
+            ("child/*-5", "child/*"),
+            ("*-5", "*"),
+        ] {
+            assert_eq!(
+                split_paths(expression),
+                Some((left, BinaryNumericOperator::Subtract, "5")),
+                "{expression}"
+            );
+        }
+        assert_eq!(
+            split_paths("@* * -5"),
+            Some(("@*", BinaryNumericOperator::Multiply, "-5"))
+        );
+        assert_eq!(
+            split_paths("value*-5"),
+            Some(("value", BinaryNumericOperator::Multiply, "-5"))
+        );
+        for expression in ["@*", "attribute::*", "child/*", "*", "value-5"] {
+            assert_eq!(split_paths(expression), None, "{expression}");
+        }
     }
 
     #[test]

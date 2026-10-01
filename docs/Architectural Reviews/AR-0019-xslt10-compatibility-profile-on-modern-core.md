@@ -4288,3 +4288,9 @@ maintained redistributable legacy suite becomes available.
   scope, and unbound-prefix diagnostics. The sweep reaches 2,470 / 3,173
   (77.84%), 2,667 initialized, and 2,620 successful executions.
   [Evidence](../Evidence/oasis-xslt10-qualified-variable-paths-2026-10-01.md)
+- 2026-10-01: shared arithmetic token boundaries now distinguish wildcard
+  subtraction (`@*-5`) from multiplication while retaining negative operands
+  and hyphenated names. `Lotus/select_select26#1` becomes exact; the focused
+  compiled matrix passes under both XSLT 1.0 and 3.0. The sweep reaches 2,471 /
+  3,173 (77.88%), 2,668 initialized, and 2,621 successful executions.
+  [Evidence](../Evidence/oasis-xslt10-wildcard-subtraction-2026-10-01.md)
