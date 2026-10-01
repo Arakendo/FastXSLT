@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Incubating |
+| Status | Deferred |
 | Opened | 2026-09-30 |
 | Last reviewed | 2026-09-30 |
 | Scope | XML DTD declarations, entity expansion, typed IDs, parser authority, and resource limits |
@@ -35,10 +35,10 @@ DTDs before XDM construction. The complete runner now separates syntactic
 internal/external, declaration, entity-kind, default-attribute, and typed-ID
 pressure for the exact direct frontier. Whether each declaration is observable
 in its expected result, and whether external bytes are already sealed under a
-usable logical identity, still requires case interpretation. The first private
-reference path has bounded cycle, nesting, reference, replacement-byte,
-cancellation, and work-accounting tests; broad memory-pressure evidence does
-not yet exist.
+usable logical identity, still requires case interpretation. The private
+reference paths now have bounded cycle, nesting, reference, replacement-byte,
+external-byte, cancellation, malformed-declaration, provenance, and work-
+accounting tests.
 
 ## Ownership and constraints
 
@@ -265,11 +265,14 @@ outcomes.
 
 ## Disposition
 
-**Incubating.** Preserve DTD denial as the default and admit only private, safe,
-bounded internal-subset and single sealed-external-subset experiments after
-case inventory. Do not enable live resolution, ambient filesystem/network
-access, validation claims, public DTD types, or a conformance statement. A
-supported external-resource profile requires a later decision.
+**Deferred after successful bounded feasibility.** Preserve DTD denial as the
+production default and retain the private, safe internal-subset and single
+sealed-external-subset reference paths as corpus evidence. The experiment has
+answered its architectural question positively without selecting a supported
+DTD profile or public API. Do not enable live resolution, ambient filesystem or
+network access, validation claims, public DTD types, parameter entities,
+external general entities, or a conformance statement. The nine remaining
+direct-frontier cases do not justify those additional semantics.
 
 ## Required follow-up
 
@@ -302,16 +305,21 @@ supported external-resource profile requires a later decision.
   conformance.
 - [x] Test one bounded sealed external-subset resolution attempt against a real
   corpus family without ambient acquisition or broader external DTD semantics.
-- [ ] Decide whether the demonstrated single-external-subset profile deserves
-  a supported ADR or should remain a private compatibility experiment.
+- [x] Decide whether the demonstrated single-external-subset profile deserves
+  a supported ADR or should remain a private compatibility experiment. It
+  remains private; broader expansion is deferred until a named consumer or
+  materially larger standards denominator requires it.
 
 ## Reopening triggers
 
-Move toward an ADR only when the internal reference path has bounded adversarial
-evidence, exact corpus outcomes, deterministic accounting, and no ambient
-authority. Reject or retain full denial if useful semantics require implicit
-I/O, unbounded expansion, parser-owned public types, or unacceptable prepared
-memory amplification.
+Reopen only for a named consumer requiring parameter entities, external general
+entities, notation/unparsed-entity metadata, or a supported DTD profile; a
+materially larger standards denominator blocked by the same capability; or new
+evidence that declaration-level provenance is required for supported
+diagnostics. Any reopened path must retain deterministic accounting, explicit
+sealed authority, and production-default denial. Reject it if useful semantics
+require implicit I/O, unbounded expansion, parser-owned public types, or
+unacceptable prepared-memory amplification.
 
 ## Review history
 
@@ -392,3 +400,9 @@ memory amplification.
   compilation at the explicit unsupported-function boundary after XML parsing,
   so notation/unparsed-entity metadata remains a separate language/XDM slice
   rather than hidden DTD-parser fallout.
+- 2026-09-30 -- Concluded the review as successful bounded feasibility with
+  deferred expansion. The experiment reduced the conserved direct DTD frontier
+  from 117 unsupported cases to nine while keeping production denial and sealed
+  authority intact. The remaining cases require external general/parameter
+  entities or unavailable absolute subsets and do not justify a supported DTD
+  profile without new consumer or standards pressure.

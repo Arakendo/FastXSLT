@@ -13,19 +13,19 @@ local `plants.dtd` family, not by weakening XML semantics or authority. Two
 post-checkpoint safe slices—declared ISO-2022-JP input and dynamic
 `xsl:processing-instruction` target AVTs—are focused-tested but do not change
 the numerator because the affected archival input is malformed under strict
-decoding and the PI cases expose earlier unrelated AVT gaps. The next material frontier is no longer
-an isolated grammar shape: 117 standard-operation cases stop at deliberate DTD
-denial, with related typed-ID and unparsed-entity behavior behind the same XML
-boundary. AR-0025 therefore gates the next large tranche on a case-level
-inventory and a bounded internal-subset reference experiment; ambient or
-parser-owned external resolution remains forbidden. Smaller independent
-semantic slices may continue while that review matures. The first private
-reference path is now executable: bounded internal general entities expand in
-text and ordinary attributes, while the production parser still denies every
-DTD and the experiment rejects external identifiers, parameter entities,
-default attributes, notations, markup-producing replacement text, and
-entity-bearing namespace declarations. This establishes the safe ownership and
-accounting seam. A second bounded slice syntactically admits non-validating
+decoding and the PI cases expose earlier unrelated AVT gaps. AR-0025 has now
+concluded as successful bounded feasibility with deferred expansion: its
+private reference paths reduce the conserved 117-case direct DTD frontier to
+nine unsupported cases without changing production-default denial. Those nine
+require external general/parameter entities or unavailable absolute subsets,
+so ordinary non-DTD corpus breadth resumes instead of opening that larger XML
+subsystem. Ambient or parser-owned resolution remains forbidden. The first private
+reference path made bounded internal general entities executable in text and
+ordinary attributes while production still denied every DTD. Later private
+slices added sealed external subsets and bounded defaults, while parameter
+entities, external general entities, notations, and markup-producing external
+replacement text remain outside the profile. This establishes the safe
+ownership and accounting seam. A second bounded slice syntactically admits non-validating
 internal `ELEMENT` declarations without using them as validation authority.
 The unchanged `Lotus/select_select73` entity case and
 `Microsoft/Elements__89108` declaration-only case then initialize, execute,
@@ -48,8 +48,8 @@ compare exactly, and two manual-comparator cases remain deliberately
 uncredited. Bounded literal/fixed defaults then make both source-default cases
 exact, and selecting the same private parser for stylesheet compilation makes
 one simplified stylesheet with authored namespace/version attributes exact.
-Production DTD denial is unchanged. External identifiers still dominate the
-remaining frontier and remain denied. A focused follow-up showed that the eight
+Production DTD denial is unchanged. The remaining nine cases cluster behind
+external general/parameter entities or unavailable absolute subsets. A focused follow-up showed that the eight
 examined Microsoft `22-8` stylesheets do not require general pre-tokenization
 rewriting: their root XSLT binding is authored, descendant DTD defaults repeat
 that same binding, and two roots need only an ordinary defaulted version. The
@@ -81,6 +81,8 @@ shrinks to nine.
 Production DTD denial remains unchanged; `PUBLIC`, recursion, parameter
 entities, external general entities, validation, catalogs, and ambient I/O
 remain outside the experiment.
+AR-0025 expansion is deferred until a named consumer or materially larger
+standards denominator supplies reopening pressure.
 [Post-74% frontier evidence](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md)
 [DTD/entity review](../Architectural%20Reviews/AR-0025-bounded-dtd-and-entity-semantics.md)
 [Bounded entity evidence](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md)
