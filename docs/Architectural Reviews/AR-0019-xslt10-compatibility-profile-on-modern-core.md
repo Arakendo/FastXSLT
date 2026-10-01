@@ -4257,3 +4257,11 @@ maintained redistributable legacy suite becomes available.
   cross-document node-ownership seam. Coverage remains 2,466 / 3,173 rather
   than approximating that boundary.
   [Evidence](../Evidence/oasis-xslt10-context-local-name-parameter-default-2026-09-30.md)
+- 2026-09-30: the exact AVT path
+  `document('')/xsl:stylesheet/@version` now folds from the declaring module's
+  static stylesheet XDM and composes with `current()/...`. One unchanged case
+  becomes exact; its duplicated BVT case executes but remains a visible
+  archival whitespace mismatch. The sweep moves to 2,467 / 3,173 (77.75%),
+  2,664 initialized cases, and 2,617 successful executions without runtime
+  stylesheet acquisition.
+  [Evidence](../Evidence/oasis-xslt10-stylesheet-document-version-avt-2026-09-30.md)

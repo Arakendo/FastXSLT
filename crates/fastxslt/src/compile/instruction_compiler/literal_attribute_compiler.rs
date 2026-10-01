@@ -8,8 +8,9 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::{
-    CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, parse_xslt10_normalize_space_path,
-    split_top_level_union, unsupported, uses_xslt10_compatibility,
+    CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, namespace_for_prefix,
+    optional_attribute, parse_xslt10_normalize_space_path, split_top_level_union, unsupported,
+    uses_xslt10_compatibility,
 };
 
 pub(crate) fn compile_literal_result_attributes(
@@ -340,6 +341,30 @@ fn parse_avt_path_part(
     static_context: Option<(&Document, NodeId)>,
 ) -> Option<Xslt10AvtPart> {
     const MAX_UNION_ALTERNATIVES: usize = 8;
+    if expression.split_whitespace().collect::<String>() == "document('')/xsl:stylesheet/@version" {
+        let (document, element) = static_context?;
+        if namespace_for_prefix(document, element, "xsl") == Some(XSLT_NAMESPACE) {
+            let mut current = Some(element);
+            while let Some(node) = current {
+                if document.name(node).is_some_and(|name| {
+                    name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                        && matches!(name.local.as_str(), "stylesheet" | "transform")
+                }) {
+                    return optional_attribute(document, node, None, "version")
+                        .map(|version| Xslt10AvtPart::Text(version.to_owned()));
+                }
+                current = document.parent(node);
+            }
+        }
+        return None;
+    }
+    if static_context
+        .is_some_and(|(document, element)| uses_xslt10_compatibility(document, element))
+        && let Some(relative) = expression.trim().strip_prefix("current()/")
+        && let Ok(path) = super::parse_xslt10_location_path(relative, location.clone())
+    {
+        return Some(Xslt10AvtPart::Path(path));
+    }
     if let Some(alternatives) = split_top_level_union(expression) {
         if alternatives.len() > MAX_UNION_ALTERNATIVES {
             return None;

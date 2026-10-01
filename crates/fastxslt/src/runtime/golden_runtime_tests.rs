@@ -4282,6 +4282,35 @@ fn xslt10_template_parameter_default_observes_the_call_context_local_name() {
 }
 
 #[test]
+fn xslt10_avt_folds_the_current_stylesheet_version_document_lookup() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-avt-stylesheet-version:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-avt-stylesheet-version:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/book"/></out></xsl:template><xsl:template match="book"><entry detail="current: {current()/title}, document: {document('')/xsl:stylesheet/@version}"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><book><title>T</title></book></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet-document version AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("xslt10-avt-stylesheet-version", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute stylesheet-document version AVT");
+
+    assert_eq!(
+        results.by_request["xslt10-avt-stylesheet-version"].serialized,
+        "<out><entry detail=\"current: T, document: 1.0\"></entry></out>"
+    );
+}
+
+#[test]
 fn ignored_stylesheet_comments_do_not_split_literal_text_runs() {
     const SOURCE: &str = "urn:fastxslt:stylesheet-comment-text:source";
     const STYLESHEET: &str = "urn:fastxslt:stylesheet-comment-text:stylesheet";
