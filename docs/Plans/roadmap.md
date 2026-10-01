@@ -45,16 +45,21 @@ compare exactly, and two manual-comparator cases remain deliberately
 uncredited. Bounded literal/fixed defaults then make both source-default cases
 exact, and selecting the same private parser for stylesheet compilation makes
 one simplified stylesheet with authored namespace/version attributes exact.
-Production DTD denial is unchanged. External identifiers still dominate 94
-cases and remain denied. The residual external-free stylesheet cases require
-DTD-derived namespace/version attributes before namespace resolution; the
-current adapter rejects that pre-tokenization seam rather than injecting a
-semantically false post-tokenization binding.
+Production DTD denial is unchanged. External identifiers still dominate the
+remaining frontier and remain denied. A focused follow-up showed that the eight
+examined Microsoft `22-8` stylesheets do not require general pre-tokenization
+rewriting: their root XSLT binding is authored, descendant DTD defaults repeat
+that same binding, and two roots need only an ordinary defaulted version. The
+private parser now retains only an already-equivalent namespace default and
+continues to reject a missing or changed binding. The complete catalog cases
+still stop earlier at their shared source's external `plants.dtd` identifier,
+so the strict lower bound remains 2,361 / 3,173 (74.41%).
 [Post-74% frontier evidence](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md)
 [DTD/entity review](../Architectural%20Reviews/AR-0025-bounded-dtd-and-entity-semantics.md)
 [Bounded entity evidence](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md)
 [Bounded typed-ID evidence](../Evidence/ar-0025-bounded-typed-id-reference-path-2026-09-30.md)
 [Bounded default/style evidence](../Evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md)
+[Redundant namespace-default evidence](../Evidence/ar-0025-redundant-namespace-default-experiment-2026-09-30.md)
 
 The first P1 experiment from the 2026-09-04 performance review is complete and
 was deliberately not retained. A compile-selected monotonic child scan removed

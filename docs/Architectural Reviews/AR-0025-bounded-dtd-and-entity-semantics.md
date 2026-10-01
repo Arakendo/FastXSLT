@@ -9,7 +9,7 @@
 | Trigger | The 74% OASIS XSLT 1.0 checkpoint leaves 117 standard-operation cases at explicit source or stylesheet DTD denial, with related `id()` and `unparsed-entity-uri()` cases behind the same XML semantics |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007 |
 | Related reviews | AR-0008, AR-0014, AR-0019 |
-| Related evidence | [Post-74% frontier and DTD inventory](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md); [bounded internal-entity reference path](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md); [bounded typed-ID reference path](../Evidence/ar-0025-bounded-typed-id-reference-path-2026-09-30.md); [bounded defaults and stylesheet path](../Evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md) |
+| Related evidence | [Post-74% frontier and DTD inventory](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md); [bounded internal-entity reference path](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md); [bounded typed-ID reference path](../Evidence/ar-0025-bounded-typed-id-reference-path-2026-09-30.md); [bounded defaults and stylesheet path](../Evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md); [redundant namespace-default experiment](../Evidence/ar-0025-redundant-namespace-default-experiment-2026-09-30.md) |
 
 ## Architectural question
 
@@ -156,6 +156,46 @@ could introduce ambient I/O or unbounded expansion. Rejected.
   defaults and a stylesheet whose relevant namespace/version attributes are
   authored explicitly.
 
+## Focused namespace/version experiment
+
+The next experiment asks:
+
+> Can DTD-derived namespace/version defaults participate in stylesheet parsing
+> with original-byte provenance, bounded accounting, and deterministic
+> diagnostics, without replacing the XML boundary wholesale?
+
+The first inventory narrows that question. All eight examined internal-only
+Microsoft `22-8` stylesheets author the root `xmlns:xsl` binding. Their DTDs
+repeat the same fixed binding on selected descendant XSLT elements; only
+`Attributes__81545` and `Attributes__81551` omit the root `version="1.0"` that
+their DTD supplies. None of these eight cases requires a previously unbound
+prefix to be understood by the tokenizer.
+
+The leading experiment is therefore smaller than byte-stream rewriting:
+
+1. admit a DTD-derived namespace declaration only when the tokenizer's current
+   in-scope binding already has the identical normalized value;
+2. retain that redundant local declaration in XDM namespace metadata so the
+   derived tree does not erase where the declaration applies;
+3. inject ordinary `version` defaults through the existing bounded default-
+   attribute path; and
+4. continue to reject any declaration needed to bind or rebind a name before
+   tokenization.
+
+This semantic-equivalence experiment is now executable. It does not implement
+general namespace defaulting. The complete cases remain blocked earlier by the
+shared source's external `plants.dtd` identifier, so the OASIS numerator does
+not change. A provenance-preserving pre-tokenization layer remains a candidate
+only if a real admitted case requires a missing or different binding before
+QName resolution.
+
+Abort this experiment rather than widening it if it requires rewriting admitted
+bytes, duplicating XML well-formedness parsing, exposing quick-xml internals,
+mapping broad synthetic spans back to the original resource, or accepting a
+binding whose equivalence cannot be established before XDM construction. A
+parser-boundary replacement remains a separate architectural decision and is
+not justified by a round coverage threshold.
+
 ## Disposition
 
 **Incubating.** Preserve DTD denial as the default and admit only a private,
@@ -179,6 +219,10 @@ requires separate sealed-snapshot evidence and a later decision.
   identifier causes ambient acquisition.
 - [ ] Preserve original-byte provenance and deterministic diagnostics across
   entity replacement and declaration failures.
+- [x] Inventory all eight internal-only Microsoft `22-8` stylesheet shapes and
+  test the redundant-namespace/default-version semantics with exact frontier
+  accounting and explicit rejection for any non-equivalent binding. Their
+  shared external-subset source keeps the complete cases unsupported.
 - [x] Add typed-ID metadata to XDM only through a reviewed private
   representation; keep parser-native types contained. Unparsed-entity metadata
   remains a separate incomplete slice.
@@ -227,3 +271,10 @@ memory amplification.
   lower bound reaches 2,361 / 3,173 (74.41%); the conserved direct frontier is
   15 parsed and 102 explicitly unsupported. DTD-derived namespace declarations
   remain rejected at the pre-tokenization boundary.
+- 2026-09-30 -- Narrowed the apparent namespace seam without rewriting input
+  bytes. The private parser may retain a DTD-derived namespace declaration only
+  when an identical binding is already in scope, and ordinary defaulted
+  stylesheet version attributes compile through the existing bounded path.
+  Missing or changed bindings remain rejected. The motivating `22-8` cases
+  still stop at their shared source's external `plants.dtd` identifier, so the
+  strict lower bound remains 2,361 / 3,173 (74.41%).

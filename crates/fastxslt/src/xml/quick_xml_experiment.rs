@@ -380,7 +380,7 @@ fn parse_bytes(
             Event::Start(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
                 let prefix = lexical_prefix(reader.decoder(), element.name().as_ref(), start)?;
-                let attributes = resolve_attributes(
+                let (attributes, default_namespaces) = resolve_attributes(
                     &reader,
                     &element,
                     start,
@@ -393,6 +393,7 @@ fn parse_bytes(
                     start,
                     internal_entities.as_ref(),
                     control,
+                    default_namespaces,
                 )?;
                 if depth == 0 {
                     if root.is_some() {
@@ -424,7 +425,7 @@ fn parse_bytes(
             Event::Empty(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
                 let prefix = lexical_prefix(reader.decoder(), element.name().as_ref(), start)?;
-                let attributes = resolve_attributes(
+                let (attributes, default_namespaces) = resolve_attributes(
                     &reader,
                     &element,
                     start,
@@ -437,6 +438,7 @@ fn parse_bytes(
                     start,
                     internal_entities.as_ref(),
                     control,
+                    default_namespaces,
                 )?;
                 if depth == 0 {
                     if root.is_some() {
@@ -626,8 +628,9 @@ fn resolve_attributes(
     offset: usize,
     entities: Option<&InternalEntities>,
     control: &mut InvocationControl,
-) -> Result<Vec<XmlAttribute>, ParseFailure> {
+) -> Result<(Vec<XmlAttribute>, Vec<NamespaceBinding>), ParseFailure> {
     let mut names = Vec::new();
+    let mut default_namespaces = Vec::new();
     let mut expanded_names = HashSet::new();
     let mut lexical_names = HashSet::new();
     let lexical_element_name = decode_name(reader.decoder(), element.name().as_ref(), offset)?;
@@ -681,11 +684,13 @@ fn resolve_attributes(
             })?
         {
             if attribute.name == "xmlns" || attribute.name.starts_with("xmlns:") {
-                return Err(ParseFailure::DtdUnsupported {
-                    span: offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
-                    detail: "DTD-derived namespace declarations require pre-tokenization namespace semantics"
-                        .to_owned(),
-                });
+                default_namespaces.push(redundant_dtd_namespace_binding(
+                    reader,
+                    &attribute.name,
+                    &attribute.value,
+                    offset,
+                )?);
+                continue;
             }
             let qualified = QName(attribute.name.as_bytes());
             let (namespace, local) = reader.resolver().resolve_attribute(qualified);
@@ -708,7 +713,55 @@ fn resolve_attributes(
             });
         }
     }
-    Ok(names)
+    Ok((names, default_namespaces))
+}
+
+fn redundant_dtd_namespace_binding(
+    reader: &NsReader<&[u8]>,
+    name: &str,
+    value: &str,
+    offset: usize,
+) -> Result<NamespaceBinding, ParseFailure> {
+    let prefix = if name == "xmlns" {
+        None
+    } else {
+        let Some(prefix) = name.strip_prefix("xmlns:") else {
+            unreachable!("caller admits only namespace declaration names");
+        };
+        if prefix.is_empty() || prefix.contains(':') {
+            return Err(ParseFailure::DtdUnsupported {
+                span: offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
+                detail: "malformed DTD-derived namespace declaration remains unsupported"
+                    .to_owned(),
+            });
+        }
+        Some(prefix.to_owned())
+    };
+    let probe = prefix
+        .as_ref()
+        .map_or_else(|| "_".to_owned(), |prefix| format!("{prefix}:_"));
+    let (resolved, _) = reader.resolver().resolve_element(QName(probe.as_bytes()));
+    let current = match resolved {
+        ResolveResult::Unbound | ResolveResult::Unknown(_) => None,
+        ResolveResult::Bound(namespace) => Some(decode_resolved_namespace(
+            reader.decoder(),
+            namespace.as_ref(),
+            offset,
+        )?),
+    };
+    let equivalent = current.as_deref() == Some(value)
+        || (prefix.is_none() && value.is_empty() && current.is_none());
+    if !equivalent {
+        return Err(ParseFailure::DtdUnsupported {
+            span: offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
+            detail: "DTD-derived namespace declarations that establish or change a binding require pre-tokenization namespace semantics"
+                .to_owned(),
+        });
+    }
+    Ok(NamespaceBinding {
+        prefix,
+        namespace: value.to_owned(),
+    })
 }
 
 fn normalize_xml_tokenized_attribute(value: &str) -> String {
@@ -725,6 +778,7 @@ fn resolve_namespace_declarations(
     offset: usize,
     entities: Option<&InternalEntities>,
     control: &mut InvocationControl,
+    mut default_namespaces: Vec<NamespaceBinding>,
 ) -> Result<Vec<NamespaceBinding>, ParseFailure> {
     let mut bindings = Vec::new();
     for attribute in element.attributes() {
@@ -743,6 +797,7 @@ fn resolve_namespace_declarations(
         let namespace = resolve_attribute_value(reader, &attribute, offset, entities, control)?;
         bindings.push(NamespaceBinding { prefix, namespace });
     }
+    bindings.append(&mut default_namespaces);
     Ok(bindings)
 }
 
@@ -902,8 +957,9 @@ fn resolve_reference(
 #[cfg(test)]
 mod tests {
     use super::{
-        ExpandedName, LocatedFailure, OwnedXmlEvent, ParseFailure, ParseLimits, parse_document,
-        parse_document_controlled_with_internal_subset, parse_document_with_internal_subset,
+        ExpandedName, LocatedFailure, NamespaceBinding, OwnedXmlEvent, ParseFailure, ParseLimits,
+        parse_document, parse_document_controlled_with_internal_subset,
+        parse_document_with_internal_subset,
     };
     use crate::execution_control_experiment::{
         CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits,
@@ -1245,6 +1301,74 @@ mod tests {
                 (Some("default"), Some("fixed")),
                 (Some("authored"), Some("fixed"))
             ]
+        );
+    }
+
+    #[test]
+    fn bounded_internal_subset_retains_only_redundant_default_namespace_bindings() {
+        let document = parse_document_with_internal_subset(
+            "memory:redundant-default-namespace.xml",
+            br#"<!DOCTYPE x:root [
+                <!ELEMENT x:root (x:child)>
+                <!ELEMENT x:child EMPTY>
+                <!ATTLIST x:child xmlns:x CDATA #FIXED "urn:x">
+            ]><x:root xmlns:x="urn:x"><x:child/></x:root>"#,
+            LIMITS,
+            DTD_LIMITS,
+        )
+        .expect("an identical in-scope namespace binding is tokenizer-inert");
+
+        let child = document
+            .events
+            .iter()
+            .find(
+                |event| matches!(event, OwnedXmlEvent::Start { name, .. } if name.local == "child"),
+            )
+            .expect("child start event");
+        let OwnedXmlEvent::Start {
+            name, namespaces, ..
+        } = child
+        else {
+            unreachable!("selected a start event");
+        };
+        assert_eq!(name.namespace.as_deref(), Some("urn:x"));
+        assert_eq!(
+            namespaces,
+            &[NamespaceBinding {
+                prefix: Some("x".to_owned()),
+                namespace: "urn:x".to_owned(),
+            }]
+        );
+
+        let missing = parse_document_with_internal_subset(
+            "memory:missing-namespace-default.xml",
+            br#"<!DOCTYPE x:root [
+                <!ELEMENT x:root EMPTY>
+                <!ATTLIST x:root xmlns:x CDATA #FIXED "urn:x">
+            ]><x:root/>"#,
+            LIMITS,
+            DTD_LIMITS,
+        )
+        .expect_err("a missing binding cannot repair QName tokenization after the fact");
+        assert!(matches!(
+            missing.failure,
+            ParseFailure::UnknownNamespacePrefix { .. }
+        ));
+
+        let changed = parse_document_with_internal_subset(
+            "memory:changed-namespace-default.xml",
+            br#"<!DOCTYPE x:root [
+                <!ELEMENT x:root (x:child)>
+                <!ELEMENT x:child EMPTY>
+                <!ATTLIST x:child xmlns:x CDATA #FIXED "urn:changed">
+            ]><x:root xmlns:x="urn:x"><x:child/></x:root>"#,
+            LIMITS,
+            DTD_LIMITS,
+        )
+        .expect_err("a changed binding still requires pre-tokenization semantics");
+        assert_eq!(
+            changed.dtd_reference_category(),
+            "unsupported-declaration-semantics"
         );
     }
 

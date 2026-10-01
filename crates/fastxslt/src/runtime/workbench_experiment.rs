@@ -845,6 +845,44 @@ mod tests {
         );
     }
 
+    #[test]
+    fn bounded_stylesheet_defaults_version_and_retains_redundant_xsl_binding() {
+        let stylesheet = br#"<!DOCTYPE xsl:stylesheet [
+            <!ELEMENT xsl:stylesheet (xsl:template)>
+            <!ATTLIST xsl:stylesheet version CDATA #FIXED "1.0">
+            <!ELEMENT xsl:template ANY>
+            <!ATTLIST xsl:template xmlns:xsl CDATA #FIXED "http://www.w3.org/1999/XSL/Transform"
+                                   match CDATA #IMPLIED>
+        ]>
+        <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+            <xsl:template match="/"><result/></xsl:template>
+        </xsl:stylesheet>"#
+            .to_vec();
+
+        let engine = ExperimentalEngine::new_with_bounded_internal_subsets(
+            "urn:fastxslt:dtd:default-version-source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:dtd:default-version-stylesheet",
+            stylesheet,
+            WorkbenchStylesheetResources::default(),
+            WorkbenchLimits::default(),
+            crate::xml::internal_subset::InternalSubsetLimits {
+                declarations: 8,
+                nesting_depth: 8,
+                references: 32,
+                replacement_bytes: 1_024,
+            },
+        )
+        .expect("redundant namespace and defaulted version should compile");
+
+        assert_eq!(
+            engine
+                .transform("bounded-default-version-stylesheet")
+                .expect("bounded stylesheet defaults should execute"),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><result></result>"
+        );
+    }
+
     fn exact_for_004_engine() -> ExperimentalEngine {
         ExperimentalEngine::new(
             "urn:w3c:xslt30:for-004:source",
