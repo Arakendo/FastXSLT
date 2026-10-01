@@ -188,11 +188,20 @@ pub struct ExperimentalEngine {
     limits: WorkbenchLimits,
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 struct WorkbenchDtdLimits {
     source: Option<InternalSubsetLimits>,
     stylesheet: Option<InternalSubsetLimits>,
-    source_external_subset: Option<(String, usize)>,
+    source_external_subset: Option<(&'static str, usize)>,
+    stylesheet_external_subset: Option<(&'static str, usize)>,
+}
+
+#[cfg(test)]
+#[derive(Clone, Copy)]
+pub(crate) struct WorkbenchExternalSubsetLimits {
+    pub(crate) declarations: InternalSubsetLimits,
+    pub(crate) source: Option<(&'static str, usize)>,
+    pub(crate) stylesheet: Option<(&'static str, usize)>,
 }
 
 impl ExperimentalEngine {
@@ -269,6 +278,7 @@ impl ExperimentalEngine {
                 source: Some(dtd_limits),
                 stylesheet: None,
                 source_external_subset: None,
+                stylesheet_external_subset: None,
             },
         )
     }
@@ -294,21 +304,21 @@ impl ExperimentalEngine {
                 source: Some(dtd_limits),
                 stylesheet: Some(dtd_limits),
                 source_external_subset: None,
+                stylesheet_external_subset: None,
             },
         )
     }
 
     #[cfg(test)]
-    pub(crate) fn new_with_bounded_single_external_source_subset(
+    pub(crate) fn new_with_bounded_external_subsets(
         source_id: impl Into<String>,
         source: Vec<u8>,
         stylesheet_id: impl Into<String>,
         stylesheet: Vec<u8>,
         stylesheet_resources: WorkbenchStylesheetResources,
         limits: WorkbenchLimits,
-        external_subset: (InternalSubsetLimits, String, usize),
+        external_subsets: WorkbenchExternalSubsetLimits,
     ) -> Result<Self, WorkbenchFailure> {
-        let (dtd_limits, external_reference, max_external_bytes) = external_subset;
         Self::new_with_stylesheet_resources_and_dtd(
             source_id,
             source,
@@ -317,9 +327,10 @@ impl ExperimentalEngine {
             stylesheet_resources,
             limits,
             &WorkbenchDtdLimits {
-                source: Some(dtd_limits),
-                stylesheet: Some(dtd_limits),
-                source_external_subset: Some((external_reference, max_external_bytes)),
+                source: Some(external_subsets.declarations),
+                stylesheet: Some(external_subsets.declarations),
+                source_external_subset: external_subsets.source,
+                stylesheet_external_subset: external_subsets.stylesheet,
             },
         )
     }
@@ -384,7 +395,11 @@ impl ExperimentalEngine {
                 })?;
         }
         let snapshot = resources.seal();
-        let compile_limits = workbench_stylesheet_compile_limits(limits, dtd_limits.stylesheet);
+        let compile_limits = workbench_stylesheet_compile_limits(
+            limits,
+            dtd_limits.stylesheet,
+            dtd_limits.stylesheet_external_subset,
+        );
         let program = compile_resource_with_denied_and_limits(
             &snapshot,
             &stylesheet_id,
@@ -405,9 +420,9 @@ impl ExperimentalEngine {
             None => builder,
         };
         #[cfg(test)]
-        let mut builder = match &dtd_limits.source_external_subset {
+        let mut builder = match dtd_limits.source_external_subset {
             Some((reference, max_bytes)) => {
-                builder.with_single_external_subset(reference.clone(), *max_bytes)
+                builder.with_single_external_subset(reference, max_bytes)
             }
             None => builder,
         };
@@ -415,6 +430,7 @@ impl ExperimentalEngine {
         let mut builder = {
             debug_assert!(dtd_limits.source.is_none());
             debug_assert!(dtd_limits.source_external_subset.is_none());
+            debug_assert!(dtd_limits.stylesheet_external_subset.is_none());
             builder
         };
         let mut control = InvocationControl::new(CancellationToken::new(), work_limits(limits));
@@ -628,6 +644,7 @@ impl ExperimentalEngine {
 fn workbench_stylesheet_compile_limits(
     limits: WorkbenchLimits,
     internal_subset: Option<InternalSubsetLimits>,
+    external_subset: Option<(&'static str, usize)>,
 ) -> StylesheetCompileLimits {
     let compile_limits = StylesheetCompileLimits::new(
         limits.max_stylesheet_dependency_depth,
@@ -641,13 +658,17 @@ fn workbench_stylesheet_compile_limits(
     );
     #[cfg(test)]
     {
-        internal_subset.map_or(compile_limits, |dtd_limits| {
+        let compile_limits = internal_subset.map_or(compile_limits, |dtd_limits| {
             compile_limits.with_internal_subset(dtd_limits)
+        });
+        external_subset.map_or(compile_limits, |(reference, max_bytes)| {
+            compile_limits.with_external_subset(reference, max_bytes)
         })
     }
     #[cfg(not(test))]
     {
         debug_assert!(internal_subset.is_none());
+        debug_assert!(external_subset.is_none());
         compile_limits
     }
 }
@@ -738,8 +759,8 @@ mod tests {
     use std::mem::size_of;
 
     use super::{
-        ExperimentalEngine, WorkbenchCancellation, WorkbenchLimits, WorkbenchResource,
-        WorkbenchRetentionEstimate, WorkbenchStylesheetResources,
+        ExperimentalEngine, WorkbenchCancellation, WorkbenchExternalSubsetLimits, WorkbenchLimits,
+        WorkbenchResource, WorkbenchRetentionEstimate, WorkbenchStylesheetResources,
     };
 
     fn retention_source(items: usize) -> Vec<u8> {
@@ -942,7 +963,7 @@ mod tests {
             replacement_bytes: 1_024,
         };
 
-        let engine = ExperimentalEngine::new_with_bounded_single_external_source_subset(
+        let engine = ExperimentalEngine::new_with_bounded_external_subsets(
             SOURCE_ID,
             source.clone(),
             STYLESHEET_ID,
@@ -956,7 +977,11 @@ mod tests {
                 denied_identities: Vec::new(),
             },
             WorkbenchLimits::default(),
-            (dtd_limits, "source.dtd".to_owned(), 1_024),
+            WorkbenchExternalSubsetLimits {
+                declarations: dtd_limits,
+                source: Some(("source.dtd", 1_024)),
+                stylesheet: None,
+            },
         )
         .expect("one admitted sibling external subset should initialize");
         assert_eq!(
@@ -966,14 +991,18 @@ mod tests {
             "Hello"
         );
 
-        let missing = ExperimentalEngine::new_with_bounded_single_external_source_subset(
+        let missing = ExperimentalEngine::new_with_bounded_external_subsets(
             SOURCE_ID,
             source,
             STYLESHEET_ID,
             stylesheet,
             WorkbenchStylesheetResources::default(),
             WorkbenchLimits::default(),
-            (dtd_limits, "source.dtd".to_owned(), 1_024),
+            WorkbenchExternalSubsetLimits {
+                declarations: dtd_limits,
+                source: Some(("source.dtd", 1_024)),
+                stylesheet: None,
+            },
         );
         let Err(missing) = missing else {
             panic!("the experiment must not acquire an absent external subset");
@@ -981,6 +1010,44 @@ mod tests {
         assert_eq!(missing.code, "FXRS0002");
         assert_eq!(missing.category, "missing-resource");
         assert!(missing.detail.contains(DTD_ID));
+    }
+
+    #[test]
+    fn bounded_external_stylesheet_subset_uses_the_existing_compile_resolver() {
+        const STYLESHEET_ID: &str = "https://example.invalid/styles/main.xsl";
+        const DTD_ID: &str = "https://example.invalid/styles/stylesheet.dtd";
+        let engine = ExperimentalEngine::new_with_bounded_external_subsets(
+            "https://example.invalid/source.xml",
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            br#"<!DOCTYPE xsl:stylesheet SYSTEM "stylesheet.dtd"><xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><result/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchStylesheetResources {
+                dependencies: vec![WorkbenchResource {
+                    identity: DTD_ID.to_owned(),
+                    bytes: br#"<!ELEMENT xsl:stylesheet ANY><!ATTLIST xsl:stylesheet version CDATA #FIXED "1.0">"#.to_vec(),
+                }],
+                denied_identities: Vec::new(),
+            },
+            WorkbenchLimits::default(),
+            WorkbenchExternalSubsetLimits {
+                declarations: crate::xml::internal_subset::InternalSubsetLimits {
+                    declarations: 8,
+                    nesting_depth: 8,
+                    references: 32,
+                    replacement_bytes: 1_024,
+                },
+                source: None,
+                stylesheet: Some(("stylesheet.dtd", 1_024)),
+            },
+        )
+        .expect("the existing stylesheet resolver should admit the external subset");
+
+        assert_eq!(
+            engine
+                .transform("bounded-external-stylesheet-subset")
+                .expect("externally defaulted stylesheet should execute"),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><result></result>"
+        );
     }
 
     fn exact_for_004_engine() -> ExperimentalEngine {

@@ -237,10 +237,7 @@ pub(super) fn parse_single_external_subset(
             origin: ExternalSubsetFailureOrigin::Doctype,
             failure,
         })?;
-    merge_declarations(&mut declarations, internal).map_err(|failure| ExternalSubsetFailure {
-        origin: ExternalSubsetFailureOrigin::Doctype,
-        failure,
-    })?;
+    merge_declarations(&mut declarations, internal);
     let entities =
         build_entities(declarations, limits).map_err(|failure| ExternalSubsetFailure {
             origin: ExternalSubsetFailureOrigin::ExternalSubset,
@@ -287,26 +284,15 @@ fn build_entities(
 fn merge_declarations(
     target: &mut (RawEntities, DeclaredAttributes, usize),
     additional: (RawEntities, DeclaredAttributes, usize),
-) -> Result<(), InternalSubsetFailure> {
+) {
     let (entities, attributes, count) = additional;
     for (name, value) in entities {
-        if target.0.insert(name, value).is_some() {
-            return Err(InternalSubsetFailure::Unsupported(
-                "declaration shadowing across external and internal subsets remains unsupported"
-                    .to_owned(),
-            ));
-        }
+        target.0.insert(name, value);
     }
     for (name, declaration) in attributes {
-        if target.1.insert(name, declaration).is_some() {
-            return Err(InternalSubsetFailure::Unsupported(
-                "attribute declaration merging across external and internal subsets remains unsupported"
-                    .to_owned(),
-            ));
-        }
+        target.1.insert(name, declaration);
     }
     target.2 = target.2.saturating_add(count);
-    Ok(())
 }
 
 fn parse_system_identifier(head: &str) -> Result<String, InternalSubsetFailure> {
@@ -434,14 +420,9 @@ fn parse_declarations(
         } else if let Some(declaration) = remaining.strip_prefix("<!ATTLIST") {
             let (types, rest) = parse_attribute_list_declaration(declaration)?;
             for (element, attribute, declaration) in types {
-                if attributes
-                    .insert((element, attribute), declaration)
-                    .is_some()
-                {
-                    return Err(InternalSubsetFailure::Malformed(
-                        "duplicate DTD attribute declaration".to_owned(),
-                    ));
-                }
+                attributes
+                    .entry((element, attribute))
+                    .or_insert(declaration);
             }
             remaining = rest;
         } else {
@@ -1046,6 +1027,20 @@ mod tests {
     }
 
     #[test]
+    fn first_repeated_attribute_declaration_remains_binding() {
+        let entities = parse_internal_subset(
+            "root [<!ATTLIST root value CDATA 'first'><!ATTLIST root value CDATA 'second'>]",
+            LIMITS,
+        )
+        .expect("XML DTD first-declaration binding should remain deterministic");
+        let defaults = entities
+            .default_attributes("root", &HashSet::new())
+            .expect("first default should expand");
+        assert_eq!(defaults.len(), 1);
+        assert_eq!(defaults[0].value, "first");
+    }
+
+    #[test]
     fn bounds_and_classifies_the_single_external_subset_surface() {
         let too_large = parse_single_external_subset(
             "root SYSTEM 'root.dtd'",
@@ -1072,14 +1067,19 @@ mod tests {
             assert_eq!(failure.origin, ExternalSubsetFailureOrigin::Doctype);
         }
 
-        let duplicate = parse_single_external_subset(
+        let (_, duplicate) = parse_single_external_subset(
             "root SYSTEM 'root.dtd' [<!ATTLIST root value CDATA #IMPLIED>]",
-            b"<!ATTLIST root value CDATA #IMPLIED>",
+            b"<!ATTLIST root value CDATA 'external'>",
             128,
             LIMITS,
         )
-        .expect_err("cross-subset declaration merging remains explicit");
-        assert_eq!(duplicate.origin, ExternalSubsetFailureOrigin::Doctype);
+        .expect("internal declarations should take precedence over external declarations");
+        assert!(
+            duplicate
+                .default_attributes("root", &HashSet::new())
+                .expect("internal implied declaration has no default")
+                .is_empty()
+        );
     }
 
     #[test]

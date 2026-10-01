@@ -22,8 +22,9 @@ The private experiment admits only this shape:
 
 `PUBLIC` identifiers, parameter entities, external general entities, recursive
 external subsets, validation, catalogs, live resolver callbacks, filesystem
-fallback, and network fallback remain unsupported. Cross-subset declaration
-shadowing remains unsupported rather than approximating declaration precedence.
+fallback, and network fallback remain unsupported. Repeated declarations keep
+the first binding within a subset; internal declarations override external
+declarations, matching XML declaration precedence without adding validation.
 
 The production parser and ordinary workbench constructors continue to deny all
 DTDs. The experiment is reachable only through test-private preparation and
@@ -45,9 +46,9 @@ work and are not claimed.
 
 A focused transform proves that an external fixed attribute is incorporated
 before XDM construction and is visible to XPath. Focused parser tests prove the
-byte bound, reject `PUBLIC` and trailing identifier forms, reject cross-subset
-attribute shadowing, and accept processing instructions and comments in the
-document's internal subset.
+byte bound, reject `PUBLIC` and trailing identifier forms, preserve declaration
+precedence, and accept processing instructions and comments in the document's
+internal subset.
 
 ## Real corpus result
 
@@ -118,6 +119,16 @@ executed, 77 single-external-subset direct outcomes, and 25 explicit
 unsupported DTD outcomes. Broader source candidates using parameter entities,
 external general entities, notation/unparsed-entity metadata, or markup-
 producing replacement text remain unsupported.
+
+The same parser is now composed with the existing stylesheet dependency
+resolver for a principal stylesheet. The external subset consumes one ordinary
+resolution attempt, its independent byte ceiling, and the aggregate stylesheet
+dependency-byte budget. A focused workbench test proves defaulted stylesheet
+version semantics and retained DTD resource provenance. The reviewed
+`stylesheet.dtd` family selects 12 catalog cases; 11 standard cases initialize,
+execute, and compare exactly. Totals become 2,448 / 3,173 exact (77.15%), 2,640
+initialized, 2,594 executed, 88 single-external-subset direct outcomes, and 14
+explicit unsupported DTD outcomes.
 
 ## Disposition
 

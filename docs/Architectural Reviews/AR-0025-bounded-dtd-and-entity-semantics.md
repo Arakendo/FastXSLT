@@ -222,9 +222,10 @@ bounded declaration tables, and constructs no partial XDM on failure.
 
 The experiment deliberately excludes `PUBLIC` identifiers, recursive external
 subsets, parameter entities, external general entities, validation, catalogs,
-live callbacks, and filesystem/network fallback. Cross-subset declaration
-shadowing also remains explicitly unsupported rather than approximating XML
-precedence rules.
+live callbacks, and filesystem/network fallback. Repeated attribute
+declarations retain the first binding within one subset, while internal-subset
+declarations take precedence over external declarations, matching XML's
+declaration rules without adding validation.
 
 The first complete hash-verified OASIS replay opted in only the eight named
 Microsoft `Attributes__81543` through `81551` standard cases (with absent
@@ -244,6 +245,14 @@ internal-only baseline, with one additional newly executing case exposed as a
 visible mismatch. The conserved 117-case direct frontier is now 15 internal-
 subset parses, 77 single sealed external-subset parses, and 25 explicit
 unsupported outcomes.
+
+The stylesheet compiler then reused its existing sealed snapshot resolver for
+the reviewed `stylesheet.dtd` family. External DTD bytes consume a resolution
+attempt, their own byte ceiling, and the aggregate stylesheet dependency-byte
+budget; failures retain the DTD logical identity. Eleven unchanged cases become
+exact without a second resolver or parser path. The strict lower bound reaches
+2,448 / 3,173 (77.15%), and the conserved frontier becomes 15 internal parses,
+88 single-external parses, and 14 explicit unsupported outcomes.
 
 ## Disposition
 
@@ -345,3 +354,7 @@ memory amplification.
   the same one-attempt sealed path. `Lotus/idkey_idkey04` compares exactly, the
   lower bound reaches 2,437 / 3,173 (76.80%), and 25 direct DTD-frontier cases
   remain explicitly unsupported.
+- 2026-09-30 -- Reused the stylesheet dependency resolver for one bounded
+  principal-stylesheet external subset and applied XML declaration precedence.
+  Eleven `stylesheet.dtd` cases become exact. The lower bound reaches 2,448 /
+  3,173 (77.15%); 14 direct DTD-frontier cases remain explicitly unsupported.

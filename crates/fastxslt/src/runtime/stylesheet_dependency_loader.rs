@@ -7,8 +7,15 @@ use crate::resources::{ResolutionFailure, SnapshotResolver, resolve_reference};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::internal_subset::InternalSubsetLimits;
 use crate::xml::quick_xml_experiment::{
-    ParseLimits, parse_document, parse_document_with_internal_subset,
+    AdmittedExternalSubset, ParseLimits, ParsedDocument, parse_document,
+    parse_document_with_internal_subset, parse_document_with_single_external_subset,
 };
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct StylesheetExternalSubsetLimits {
+    pub(super) reference: &'static str,
+    pub(super) max_bytes: usize,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct DependencyLimits {
@@ -97,6 +104,7 @@ pub(super) fn load_stylesheet_dependency_graph(
     limits: DependencyLimits,
     xml_limits: ParseLimits,
     internal_subset_limits: Option<InternalSubsetLimits>,
+    external_subset_limits: Option<StylesheetExternalSubsetLimits>,
 ) -> Result<LoadedStylesheetModule, DependencyFailure> {
     let mut state = LoadState {
         limits,
@@ -105,6 +113,7 @@ pub(super) fn load_stylesheet_dependency_graph(
         active: Vec::new(),
         xml_limits,
         internal_subset_limits,
+        external_subset_limits,
     };
     load_module(resolver, principal_identity, "", None, 0, None, &mut state)
 }
@@ -116,6 +125,7 @@ struct LoadState {
     active: Vec<String>,
     xml_limits: ParseLimits,
     internal_subset_limits: Option<InternalSubsetLimits>,
+    external_subset_limits: Option<StylesheetExternalSubsetLimits>,
 }
 
 fn load_module(
@@ -152,43 +162,16 @@ fn load_module(
             location,
         });
     }
-    let attempted = state
-        .bytes
-        .checked_add(resource.bytes.len())
-        .ok_or_else(|| DependencyFailure::ByteCountOverflow {
-            location: location.clone(),
-        })?;
-    if attempted > state.limits.bytes {
-        return Err(DependencyFailure::ByteLimit {
-            attempted,
-            maximum: state.limits.bytes,
-            location,
-        });
-    }
+    charge_dependency_bytes(state, resource.bytes.len(), location.clone())?;
     state.modules += 1;
-    state.bytes = attempted;
-
-    let parsed = match state.internal_subset_limits {
-        Some(dtd_limits) => parse_document_with_internal_subset(
-            &resource.identity,
-            resource.bytes,
-            state.xml_limits,
-            dtd_limits,
-        ),
-        None => parse_document(&resource.identity, resource.bytes, state.xml_limits),
-    }
-    .map_err(|error| match error.structural_limit_detail() {
-        Some(detail) => DependencyFailure::XmlLimit {
-            identity: resource.identity.clone(),
-            detail,
-            location: location.clone(),
-        },
-        None => DependencyFailure::InvalidXml {
-            identity: resource.identity.clone(),
-            detail: format!("{error:?}"),
-            location: location.clone(),
-        },
-    })?;
+    let parsed = parse_module_document(
+        resolver,
+        &resource.identity,
+        resource.bytes,
+        depth,
+        location.clone(),
+        state,
+    )?;
     let document =
         Document::from_parsed(parsed).map_err(|error| DependencyFailure::InvalidXdm {
             identity: resource.identity.clone(),
@@ -225,6 +208,94 @@ fn load_module(
         root,
         dependency_kind,
         dependencies,
+    })
+}
+
+fn charge_dependency_bytes(
+    state: &mut LoadState,
+    additional: usize,
+    location: Option<SourceLocation>,
+) -> Result<(), DependencyFailure> {
+    let attempted = state.bytes.checked_add(additional).ok_or_else(|| {
+        DependencyFailure::ByteCountOverflow {
+            location: location.clone(),
+        }
+    })?;
+    if attempted > state.limits.bytes {
+        return Err(DependencyFailure::ByteLimit {
+            attempted,
+            maximum: state.limits.bytes,
+            location,
+        });
+    }
+    state.bytes = attempted;
+    Ok(())
+}
+
+fn parse_module_document(
+    resolver: &mut SnapshotResolver<'_>,
+    identity: &str,
+    bytes: &[u8],
+    depth: usize,
+    location: Option<SourceLocation>,
+    state: &mut LoadState,
+) -> Result<ParsedDocument, DependencyFailure> {
+    let external_subset = if depth == 0 {
+        state
+            .external_subset_limits
+            .map(|limits| {
+                resolver
+                    .resolve_from(identity, limits.reference)
+                    .map(|external| (limits, external))
+                    .map_err(|error| DependencyFailure::Resolution {
+                        error,
+                        location: location.clone(),
+                    })
+            })
+            .transpose()?
+    } else {
+        None
+    };
+    if let Some((limits, external)) = &external_subset {
+        if external.bytes.len() > limits.max_bytes {
+            return Err(DependencyFailure::ByteLimit {
+                attempted: external.bytes.len(),
+                maximum: limits.max_bytes,
+                location,
+            });
+        }
+        charge_dependency_bytes(state, external.bytes.len(), location.clone())?;
+    }
+
+    let parsed = match (state.internal_subset_limits, external_subset) {
+        (Some(dtd_limits), Some((limits, external))) => parse_document_with_single_external_subset(
+            identity,
+            bytes,
+            state.xml_limits,
+            dtd_limits,
+            AdmittedExternalSubset {
+                identity: &external.identity,
+                reference: limits.reference,
+                bytes: external.bytes,
+                max_bytes: limits.max_bytes,
+            },
+        ),
+        (Some(dtd_limits), None) => {
+            parse_document_with_internal_subset(identity, bytes, state.xml_limits, dtd_limits)
+        }
+        (None, _) => parse_document(identity, bytes, state.xml_limits),
+    };
+    parsed.map_err(|error| match error.structural_limit_detail() {
+        Some(detail) => DependencyFailure::XmlLimit {
+            identity: error.resource().to_owned(),
+            detail,
+            location,
+        },
+        None => DependencyFailure::InvalidXml {
+            identity: error.resource().to_owned(),
+            detail: format!("{error:?}"),
+            location,
+        },
     })
 }
 
@@ -398,6 +469,7 @@ mod tests {
             DependencyLimits::new(2, 3, 1_536),
             XML_LIMITS,
             None,
+            None,
         )
         .expect("bounded graph");
 
@@ -418,6 +490,7 @@ mod tests {
                 DependencyLimits::new(1, 3, 1_536),
                 XML_LIMITS,
                 None,
+                None,
             ),
             Err(DependencyFailure::DepthLimit {
                 maximum: 1,
@@ -432,6 +505,7 @@ mod tests {
                 ROOT,
                 DependencyLimits::new(2, 2, 1_536),
                 XML_LIMITS,
+                None,
                 None,
             ),
             Err(DependencyFailure::ModuleLimit {
@@ -449,6 +523,7 @@ mod tests {
                 DependencyLimits::new(2, 3, root_bytes),
                 XML_LIMITS,
                 None,
+                None,
             ),
             Err(DependencyFailure::ByteLimit { maximum, .. }) if maximum == root_bytes
         ));
@@ -461,6 +536,7 @@ mod tests {
                 ROOT,
                 DependencyLimits::new(3, 3, 1_536),
                 XML_LIMITS,
+                None,
                 None,
             ),
             Err(DependencyFailure::Cycle {

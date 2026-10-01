@@ -225,6 +225,10 @@ pub(crate) struct LocatedFailure {
 }
 
 impl LocatedFailure {
+    pub(crate) fn resource(&self) -> &str {
+        &self.resource
+    }
+
     pub(crate) fn control_failure(&self) -> Option<&ControlFailure> {
         match &self.failure {
             ParseFailure::Control(failure) => Some(failure),
@@ -409,6 +413,30 @@ pub(crate) fn parse_document_controlled_with_single_external_subset(
             failure,
         }
     })
+}
+
+#[cfg_attr(
+    not(test),
+    allow(
+        dead_code,
+        reason = "external-subset parsing remains a test-private AR-0025 experiment"
+    )
+)]
+pub(crate) fn parse_document_with_single_external_subset(
+    resource: &str,
+    input: &[u8],
+    limits: ParseLimits,
+    dtd_limits: InternalSubsetLimits,
+    external: AdmittedExternalSubset<'_>,
+) -> Result<ParsedDocument, LocatedFailure> {
+    parse_document_controlled_with_single_external_subset(
+        resource,
+        input,
+        limits,
+        dtd_limits,
+        external,
+        &mut InvocationControl::unbounded(),
+    )
 }
 
 #[allow(

@@ -16,7 +16,8 @@ use crate::xml::quick_xml_experiment::ParseLimits;
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
 use super::stylesheet_dependency_loader::{
-    DependencyFailure, DependencyLimits, LoadedStylesheetModule, load_stylesheet_dependency_graph,
+    DependencyFailure, DependencyLimits, LoadedStylesheetModule, StylesheetExternalSubsetLimits,
+    load_stylesheet_dependency_graph,
 };
 use super::{ExecutionFailure, FailureCategory, failure, failure_at};
 
@@ -31,6 +32,7 @@ pub(in crate::runtime) struct StylesheetCompileLimits {
     resolution_attempts: usize,
     xml: ParseLimits,
     internal_subset: Option<InternalSubsetLimits>,
+    external_subset: Option<StylesheetExternalSubsetLimits>,
 }
 
 impl StylesheetCompileLimits {
@@ -50,6 +52,7 @@ impl StylesheetCompileLimits {
             resolution_attempts: max_resolution_attempts,
             xml,
             internal_subset: None,
+            external_subset: None,
         }
     }
 
@@ -59,6 +62,19 @@ impl StylesheetCompileLimits {
         limits: InternalSubsetLimits,
     ) -> Self {
         self.internal_subset = Some(limits);
+        self
+    }
+
+    #[cfg(test)]
+    pub(in crate::runtime) const fn with_external_subset(
+        mut self,
+        reference: &'static str,
+        max_bytes: usize,
+    ) -> Self {
+        self.external_subset = Some(StylesheetExternalSubsetLimits {
+            reference,
+            max_bytes,
+        });
         self
     }
 }
@@ -108,6 +124,7 @@ pub(in crate::runtime) fn compile_resource_with_denied_and_limits(
         limits.dependency,
         limits.xml,
         limits.internal_subset,
+        limits.external_subset,
     )
 }
 
@@ -122,6 +139,7 @@ fn compile_resource_with_resolver(
         DEFAULT_DEPENDENCY_LIMITS,
         super::XML_LIMITS,
         None,
+        None,
     )
 }
 
@@ -131,6 +149,7 @@ fn compile_resource_with_resolver_and_limits(
     dependency_limits: DependencyLimits,
     xml_limits: ParseLimits,
     internal_subset_limits: Option<InternalSubsetLimits>,
+    external_subset_limits: Option<StylesheetExternalSubsetLimits>,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
     let graph = load_stylesheet_dependency_graph(
         resolver,
@@ -138,6 +157,7 @@ fn compile_resource_with_resolver_and_limits(
         dependency_limits,
         xml_limits,
         internal_subset_limits,
+        external_subset_limits,
     )
     .map_err(dependency_failure)?;
     debug_assert_eq!(graph.identity, stylesheet_id);

@@ -8,8 +8,8 @@ use encoding_rs::{BIG5, Encoding, ISO_2022_JP, SHIFT_JIS, WINDOWS_1252};
 
 use crate::runtime::oasis_html_comparator::normalize_for_xml_comparison;
 use crate::runtime::workbench_experiment::{
-    ExperimentalEngine, WorkbenchFailure, WorkbenchLimits, WorkbenchResource,
-    WorkbenchStylesheetResources,
+    ExperimentalEngine, WorkbenchExternalSubsetLimits, WorkbenchFailure, WorkbenchLimits,
+    WorkbenchResource, WorkbenchStylesheetResources,
 };
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::internal_subset::InternalSubsetLimits;
@@ -256,9 +256,9 @@ impl Measurement {
         failure: &WorkbenchFailure,
         source_identity: &str,
         input_observations: &BTreeMap<String, (DtdProperties, &'static str)>,
-    ) {
+    ) -> bool {
         if case.operation != "standard" {
-            return;
+            return false;
         }
         let observation = failure
             .location
@@ -271,7 +271,7 @@ impl Measurement {
                 })
             });
         let Some((identity, (properties, reference_outcome))) = observation else {
-            return;
+            return false;
         };
         let role = if identity == source_identity {
             "source"
@@ -279,6 +279,7 @@ impl Measurement {
             "stylesheet"
         };
         self.record_direct_dtd_case(case, role, properties, reference_outcome);
+        true
     }
 
     fn direct_dtd_success(
@@ -286,7 +287,8 @@ impl Measurement {
         case: &LegacyCase,
         source_identity: &str,
         input_observations: &BTreeMap<String, (DtdProperties, &'static str)>,
-        used_reviewed_external_subset: bool,
+        used_reviewed_source_external_subset: bool,
+        used_reviewed_stylesheet_external_subset: bool,
     ) {
         if case.operation != "standard" {
             return;
@@ -302,7 +304,9 @@ impl Measurement {
                     .map(|(_, observation)| ("stylesheet", observation))
             });
         if let Some((role, (properties, reference_outcome))) = observation {
-            let reference_outcome = if used_reviewed_external_subset && role == "source" {
+            let reference_outcome = if (used_reviewed_source_external_subset && role == "source")
+                || (used_reviewed_stylesheet_external_subset && role == "stylesheet")
+            {
                 &"parsed-single-external-subset"
             } else {
                 reference_outcome
@@ -461,13 +465,24 @@ fn measures_local_oasis_xslt10_compatibility() {
         let stylesheet_identity = logical_identity(&case, &case.principal_stylesheet);
         let reviewed_external_subset =
             reviewed_external_source_subset(&case, &source_identity, &source);
+        let reviewed_stylesheet_external_subset =
+            reviewed_external_stylesheet_subset(&case, &stylesheet_identity, &stylesheet);
         let used_reviewed_external_subset = reviewed_external_subset.is_some();
+        let used_reviewed_stylesheet_external_subset =
+            reviewed_stylesheet_external_subset.is_some();
         if let Some(external_subset) = &reviewed_external_subset {
             resources.push(WorkbenchResource {
                 identity: external_subset.identity.clone(),
                 bytes: external_subset.bytes.clone(),
             });
             measurement.increment("reviewed-single-external-subset-case");
+        }
+        if let Some(external_subset) = &reviewed_stylesheet_external_subset {
+            resources.push(WorkbenchResource {
+                identity: external_subset.identity.clone(),
+                bytes: external_subset.bytes.clone(),
+            });
+            measurement.increment("reviewed-external-stylesheet-subset-case");
         }
         let mut dtd_input_observations = BTreeMap::new();
         record_dtd_input_observation(&mut dtd_input_observations, &source_identity, &source);
@@ -489,23 +504,32 @@ fn measures_local_oasis_xslt10_compatibility() {
                 dependencies: resources,
                 denied_identities: Vec::new(),
             };
-            match reviewed_external_subset {
-                Some(external_subset) => {
-                    ExperimentalEngine::new_with_bounded_single_external_source_subset(
+            match (
+                reviewed_external_subset,
+                reviewed_stylesheet_external_subset,
+            ) {
+                (source_external, stylesheet_external)
+                    if source_external.is_some() || stylesheet_external.is_some() =>
+                {
+                    ExperimentalEngine::new_with_bounded_external_subsets(
                         source_identity.clone(),
                         source,
                         stylesheet_identity,
                         stylesheet,
                         stylesheet_resources,
                         measurement_limits(),
-                        (
-                            dtd_reference_limits(),
-                            external_subset.reference.to_owned(),
-                            MAX_REVIEWED_EXTERNAL_SUBSET_BYTES,
-                        ),
+                        WorkbenchExternalSubsetLimits {
+                            declarations: dtd_reference_limits(),
+                            source: source_external.map(|external| {
+                                (external.reference, MAX_REVIEWED_EXTERNAL_SUBSET_BYTES)
+                            }),
+                            stylesheet: stylesheet_external.map(|external| {
+                                (external.reference, MAX_REVIEWED_EXTERNAL_SUBSET_BYTES)
+                            }),
+                        },
                     )
                 }
-                None => ExperimentalEngine::new_with_bounded_internal_subsets(
+                _ => ExperimentalEngine::new_with_bounded_internal_subsets(
                     source_identity.clone(),
                     source,
                     stylesheet_identity,
@@ -524,17 +548,29 @@ fn measures_local_oasis_xslt10_compatibility() {
                     &source_identity,
                     &dtd_input_observations,
                     used_reviewed_external_subset,
+                    used_reviewed_stylesheet_external_subset,
                 );
                 engine
             }
             Ok(Err(failure)) => {
                 trace_case_failure(&case.identity, "initialization", &failure);
-                measurement.direct_dtd_failure(
+                let recorded_dtd_failure = measurement.direct_dtd_failure(
                     &case,
                     &failure,
                     &source_identity,
                     &dtd_input_observations,
                 );
+                if !recorded_dtd_failure
+                    && (used_reviewed_external_subset || used_reviewed_stylesheet_external_subset)
+                {
+                    measurement.direct_dtd_success(
+                        &case,
+                        &source_identity,
+                        &dtd_input_observations,
+                        used_reviewed_external_subset,
+                        used_reviewed_stylesheet_external_subset,
+                    );
+                }
                 measurement.initialization_failure(
                     &case.identity,
                     &failure,
@@ -1384,6 +1420,39 @@ fn reviewed_external_source_subset(
     }
     Some(ReviewedExternalSubset {
         reference,
+        identity,
+        bytes,
+    })
+}
+
+fn reviewed_external_stylesheet_subset(
+    case: &LegacyCase,
+    stylesheet_identity: &str,
+    stylesheet: &[u8],
+) -> Option<ReviewedExternalSubset> {
+    const REFERENCE: &str = "stylesheet.dtd";
+    let single_quoted = br"SYSTEM 'stylesheet.dtd'";
+    let double_quoted = br#"SYSTEM "stylesheet.dtd""#;
+    if !stylesheet
+        .windows(single_quoted.len())
+        .any(|window| window == single_quoted)
+        && !stylesheet
+            .windows(double_quoted.len())
+            .any(|window| window == double_quoted)
+    {
+        return None;
+    }
+    let bytes = read_case_file(&case.directory, REFERENCE)?;
+    if bytes.len() > MAX_REVIEWED_EXTERNAL_SUBSET_BYTES {
+        return None;
+    }
+    let (identity, fragment) =
+        crate::resources::resolve_reference(stylesheet_identity, REFERENCE).ok()?;
+    if fragment.is_some() {
+        return None;
+    }
+    Some(ReviewedExternalSubset {
+        reference: REFERENCE,
         identity,
         bytes,
     })
