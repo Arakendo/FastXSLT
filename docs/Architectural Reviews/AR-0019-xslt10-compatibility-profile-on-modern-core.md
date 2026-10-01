@@ -4200,3 +4200,13 @@ maintained redistributable legacy suite becomes available.
   DTD-derived namespace declarations remain rejected before they can be
   misrepresented at the post-tokenization adapter seam.
   [Evidence](../Evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md)
+- 2026-09-30: XSLT 1.0 `count()` now composes with the existing charged typed-ID
+  lookup, including node-set argument conversion, uniqueness, and document
+  order. Three unchanged Lotus cases become exact. The complete sweep reaches
+  2,454 / 3,173 exact matches (77.34%), 2,648 initialized cases, and 2,602
+  successful executions; initialization failures fall to 522, while execution
+  failures, visible mismatches, comparator gaps, and expected-error credit are
+  unchanged. Successful execution also reveals three principal-source DTDs
+  previously hidden behind stylesheet compile failures, expanding the observed
+  direct-DTD attribution set to 120 without widening DTD semantics.
+  [Evidence](../Evidence/oasis-xslt10-count-typed-id-lookup-2026-09-30.md)

@@ -1319,6 +1319,7 @@ pub(crate) enum FocusComparison {
 pub(crate) enum ValueExpression {
     LiteralString(String),
     Xslt10IdLookup(Box<Xslt10IdLookup>),
+    Xslt10CountIdLookup(Box<Xslt10IdLookup>),
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Xslt10CountKeyLookup(Box<Xslt10KeyLookup>),
     LocationPath(LocationPath),

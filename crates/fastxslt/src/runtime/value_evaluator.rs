@@ -353,6 +353,11 @@ pub(super) fn execute_value_of(
                 append_source_string_value(inputs, *node, result, control)?;
             }
         }
+        ValueExpression::Xslt10CountIdLookup(lookup) => {
+            let (_, context) = required_source_context(inputs, context)?;
+            let count = super::select_xslt10_id(inputs, context, lookup, control)?.len();
+            append_text(result, &count.to_string(), inputs.request_id, control)?;
+        }
         ValueExpression::Xslt10KeyLookup(lookup) => {
             append_xslt10_key_lookup(inputs, lookup, context, variables, result, control)?;
         }

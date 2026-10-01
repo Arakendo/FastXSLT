@@ -3001,6 +3001,11 @@ fn compile_count_value(
             variable.to_owned(),
         )));
     }
+    if compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(lookup) = compile_xslt10_id_lookup(argument.trim(), location)?
+    {
+        return Ok(Some(ValueExpression::Xslt10CountIdLookup(Box::new(lookup))));
+    }
     if compatibility == ValueCompatibilityMode::Xslt10 && argument.trim_start().starts_with("key(")
     {
         let lookup = compile_xslt10_literal_key_lookup(document, element, argument, location)?;

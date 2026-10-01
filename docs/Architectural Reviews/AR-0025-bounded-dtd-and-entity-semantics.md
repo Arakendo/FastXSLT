@@ -406,3 +406,11 @@ unacceptable prepared-memory amplification.
   authority intact. The remaining cases require external general/parameter
   entities or unavailable absolute subsets and do not justify a supported DTD
   profile without new consumer or standards pressure.
+- 2026-09-30 -- Post-disposition ordinary XPath breadth composed `count()` with
+  the already-admitted typed-ID lookup. Three unchanged cases became exact
+  without changing DTD parsing or authority. Because their former compile
+  failures were located in the stylesheet, the successful runs newly exposed
+  their principal-source DTDs to direct attribution: the observed set is now
+  120 cases (18 internal parses, 93 sealed-external parses, nine unsupported).
+  This corrects the observation boundary and does not reopen the deferred DTD
+  profile.

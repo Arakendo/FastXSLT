@@ -1499,7 +1499,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::BinaryNumeric(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }
-        ValueExpression::Xslt10IdLookup(lookup) => xslt10_id_lookup_owned(lookup),
+        ValueExpression::Xslt10IdLookup(lookup) | ValueExpression::Xslt10CountIdLookup(lookup) => {
+            xslt10_id_lookup_owned(lookup)
+        }
         ValueExpression::ContextNodeName
         | ValueExpression::ContextNodeLocalName
         | ValueExpression::ContextNodeNamespaceUri
