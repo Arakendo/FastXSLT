@@ -226,12 +226,22 @@ live callbacks, and filesystem/network fallback. Cross-subset declaration
 shadowing also remains explicitly unsupported rather than approximating XML
 precedence rules.
 
-The complete hash-verified OASIS sweep opts in only the eight named Microsoft
-`Attributes__81543` through `81551` standard cases (with absent catalog ordinals
-excluded). All eight now initialize, execute, and compare exactly. The strict
-lower bound is 2,369 / 3,173 (74.66%). The conserved 117-case direct frontier is
-now 15 internal-subset parses, eight single sealed external-subset parses, and
-94 explicit unsupported outcomes.
+The first complete hash-verified OASIS replay opted in only the eight named
+Microsoft `Attributes__81543` through `81551` standard cases (with absent
+catalog ordinals excluded); all eight initialized, executed, and compared
+exactly. A second replay generalized only the already-reviewed family: a
+principal source named `Plants.xml` (case-insensitive), the exact quoted sibling
+reference `SYSTEM "plants.dtd"`, a present case-local file no larger than 64
+KiB, and declarations accepted by the same bounded grammar. This admits 101
+catalog cases, including expected-error cases, without general external-subset
+discovery.
+
+Seventy-six standard cases now complete the single-external-subset parse. The
+strict lower bound is 2,436 / 3,173 (76.77%): 75 exact gains over the internal-
+only baseline, with one additional newly executing case exposed as a visible
+mismatch. The conserved 117-case direct frontier is now 15 internal-subset
+parses, 76 single sealed external-subset parses, and 26 explicit unsupported
+outcomes.
 
 ## Disposition
 
@@ -324,3 +334,8 @@ memory amplification.
   in; all eight compare exactly. The strict lower bound reaches 2,369 / 3,173
   (74.66%), with 15 internal parses, eight single-external parses, and 94
   explicit unsupported outcomes across the conserved 117-case DTD frontier.
+- 2026-09-30 -- Replayed the same mechanism across the reviewed case-local
+  `plants.dtd` family without widening the parser grammar or authority model.
+  The strict lower bound reaches 2,436 / 3,173 (76.77%); the DTD frontier is 15
+  internal parses, 76 single-external parses, and 26 explicit unsupported
+  outcomes. One newly executing case remains a visible mismatch.

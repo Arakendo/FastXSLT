@@ -1360,21 +1360,10 @@ fn reviewed_external_source_subset(
     source_identity: &str,
     source: &[u8],
 ) -> Option<ReviewedExternalSubset> {
-    const REVIEWED_CASES: [&str; 8] = [
-        "Attributes__81543",
-        "Attributes__81544",
-        "Attributes__81545",
-        "Attributes__81546",
-        "Attributes__81547",
-        "Attributes__81548",
-        "Attributes__81550",
-        "Attributes__81551",
-    ];
     const REFERENCE: &str = "plants.dtd";
     const DECLARATION: &[u8] = br#"SYSTEM "plants.dtd""#;
 
-    if !REVIEWED_CASES.contains(&case.id.as_str())
-        || case.principal_source != "Plants.xml"
+    if !case.principal_source.eq_ignore_ascii_case("plants.xml")
         || !source
             .windows(DECLARATION.len())
             .any(|window| window == DECLARATION)

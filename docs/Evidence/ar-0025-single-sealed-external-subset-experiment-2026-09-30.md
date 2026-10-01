@@ -51,8 +51,8 @@ document's internal subset.
 
 ## Real corpus result
 
-The complete hash-verified OASIS XSLT 1.0 runner opts in only these previously
-inventoried standard cases:
+The first complete hash-verified OASIS XSLT 1.0 replay opted in only these
+previously inventoried standard cases:
 
 - `Attributes__81543`
 - `Attributes__81544`
@@ -69,21 +69,44 @@ attribute; it contains no parameter entity or external general entity. The
 measurement adapter explicitly admits those bytes under the resolved sibling
 identity. No catalog-wide external-subset discovery is enabled.
 
-All eight cases initialize, execute, and compare exactly. The conserved result
-changes as follows:
+All eight cases initialized, executed, and compared exactly. That pilot moved
+the strict lower bound to 2,369 / 3,173 (74.66%).
+
+The second replay generalized the host-side admission rule only across the same
+reviewed resource family. A case is eligible when:
+
+- its principal source is named `Plants.xml`, case-insensitively;
+- its admitted bytes contain the exact quoted sibling reference
+  `SYSTEM "plants.dtd"`;
+- a case-local `plants.dtd` exists and is at most 64 KiB; and
+- the external declarations pass the same bounded engine grammar.
+
+The four available physical DTDs contain only non-validating element
+declarations and one fixed prefixed namespace attribute. Three are byte-
+identical; the fourth differs only in that fixed namespace value. None contains
+a parameter entity or external general entity. The measurement adapter admits
+only the case-local bytes under the resolved sibling logical identity. It does
+not discover arbitrary external references.
+
+This rule selects 101 catalog cases, including expected-error cases. Seventy-
+six standard direct-frontier cases complete the external parse. Relative to the
+internal-only baseline, 75 become exact, one newly executing case
+(`Completeness__84358`) becomes a visible mismatch, and the rest retain later
+or expected-error dispositions. The conserved result is:
 
 | Measurement | Before | After |
 | --- | ---: | ---: |
-| Exact OASIS comparisons | 2,361 | 2,369 |
-| Exact percentage of 3,173 | 74.41% | 74.66% |
-| Initialized cases | 2,552 | 2,560 |
-| Successfully executed cases | 2,506 | 2,514 |
+| Exact OASIS comparisons | 2,361 | 2,436 |
+| Exact percentage of 3,173 | 74.41% | 76.77% |
+| Initialized cases | 2,552 | 2,628 |
+| Successfully executed cases | 2,506 | 2,582 |
 | Internal-subset reference outcomes | 15 | 15 |
-| Single-external-subset reference outcomes | 0 | 8 |
-| Explicit unsupported DTD outcomes | 102 | 94 |
+| Single-external-subset reference outcomes | 0 | 76 |
+| Explicit unsupported DTD outcomes | 102 | 26 |
 
-The complete direct DTD frontier remains 117 cases. The eight exact gains are
-not extrapolated to the other external-identifier cases.
+The complete direct DTD frontier remains 117 cases. No outcome is extrapolated
+to a different DTD filename, declaration grammar, resolution topology, or
+authority model.
 
 ## Disposition
 
