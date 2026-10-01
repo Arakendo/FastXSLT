@@ -435,15 +435,15 @@ pub(super) fn parse_apply_selection(
         {
             return Ok(selection);
         }
-        if let Some(lookup) =
-            super::value_expression_compiler::compile_xslt10_id_lookup(expression, &location)?
-        {
-            return Ok(ApplySelection::Xslt10IdLookup(Box::new(lookup)));
-        }
         if let Some(selection) =
             parse_xslt10_key_selection(document, element, expression, &location)?
         {
             return Ok(selection);
+        }
+        if let Some(lookup) =
+            super::value_expression_compiler::compile_xslt10_id_lookup(expression, &location)?
+        {
+            return Ok(ApplySelection::Xslt10IdLookup(Box::new(lookup)));
         }
     }
     if let Some(selection) = compile_document_selection(document, element, expression)? {
@@ -1187,6 +1187,13 @@ fn parse_xslt10_key_selection(
                         location,
                     )?,
                 )));
+            } else if alternative.starts_with("id(") {
+                let lookup = super::value_expression_compiler::compile_xslt10_id_lookup(
+                    alternative,
+                    location,
+                )?
+                .expect("id() prefix was checked");
+                compiled.push(Xslt10ApplyUnionPart::Id(Box::new(lookup)));
             } else if let Some(variable) = alternative
                 .strip_prefix('$')
                 .filter(|name| is_ascii_ncname(name))

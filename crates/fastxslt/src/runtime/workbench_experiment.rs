@@ -865,6 +865,43 @@ mod tests {
     }
 
     #[test]
+    fn bounded_typed_id_lookup_composes_with_apply_templates_path_unions() {
+        let source = br#"<!DOCTYPE root [
+            <!ELEMENT root (a,b,c)>
+            <!ELEMENT a EMPTY>
+            <!ATTLIST a id ID #REQUIRED value CDATA #REQUIRED>
+            <!ELEMENT b EMPTY>
+            <!ATTLIST b id ID #REQUIRED value CDATA #REQUIRED>
+            <!ELEMENT c EMPTY>
+            <!ATTLIST c id ID #REQUIRED value CDATA #REQUIRED>
+        ]><root><a id="first" value="A"/><b id="second" value="B"/><c id="third" value="C"/></root>"#
+            .to_vec();
+        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="id('first') | root/c | id('second')"/></xsl:template><xsl:template match="a|b|c"><xsl:value-of select="@value"/></xsl:template></xsl:stylesheet>"#.to_vec();
+        let engine = ExperimentalEngine::new_with_bounded_internal_source_subset(
+            "urn:fastxslt:dtd:id-union-source",
+            source,
+            "urn:fastxslt:dtd:id-union-stylesheet",
+            stylesheet,
+            WorkbenchStylesheetResources::default(),
+            WorkbenchLimits::default(),
+            crate::xml::internal_subset::InternalSubsetLimits {
+                declarations: 8,
+                nesting_depth: 8,
+                references: 32,
+                replacement_bytes: 1_024,
+            },
+        )
+        .expect("measurement-only typed-ID union should initialize");
+
+        assert_eq!(
+            engine
+                .transform("bounded-typed-id-union")
+                .expect("typed-ID union should execute"),
+            "ABC"
+        );
+    }
+
+    #[test]
     fn bounded_internal_stylesheet_subset_is_explicit_and_default_denial_is_unchanged() {
         let source = b"<source/>".to_vec();
         let stylesheet = br#"<!DOCTYPE result [

@@ -4244,3 +4244,10 @@ maintained redistributable legacy suite becomes available.
   `Lotus/idkey_idkey58#1` case becomes exact, moving the sweep to 2,465 / 3,173
   (77.69%), 2,660 initialized cases, and 2,613 successful executions.
   [Evidence](../Evidence/oasis-xslt10-variable-id-lookup-2026-09-30.md)
+- 2026-09-30: `xsl:apply-templates` unions may now compose ordinary paths with
+  the existing charged typed-ID selector. The unchanged Lotus case becomes
+  exact; its duplicated Microsoft case executes the same semantic selection
+  but remains a visible archival whitespace mismatch. The complete sweep moves
+  to 2,466 / 3,173 (77.72%), 2,662 initialized cases, and 2,615 successful
+  executions.
+  [Evidence](../Evidence/oasis-xslt10-id-path-union-2026-09-30.md)

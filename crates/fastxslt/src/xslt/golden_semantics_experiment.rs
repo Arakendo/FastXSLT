@@ -663,6 +663,7 @@ pub(crate) enum Xslt10MuenchianSelection {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Xslt10ApplyUnionPart {
     Path(LocationPath),
+    Id(Box<Xslt10IdLookup>),
     Key(Box<Xslt10KeyLookup>),
     Variable(String),
 }

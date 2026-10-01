@@ -6828,6 +6828,27 @@ fn select_xslt10_mixed_union(
                 evaluate_location_path_controlled(source, context, path, control)
                     .map_err(|failure| control_failure(failure, inputs.request_id))?,
             ),
+            Xslt10ApplyUnionPart::Id(lookup) => {
+                let variable_value =
+                    if let crate::xslt::golden_semantics_experiment::Xslt10IdArgument::Variable(
+                        name,
+                    ) = &lookup.argument
+                    {
+                        Some(value_evaluator::xslt10_variable_string_value(
+                            inputs, name, variables, control,
+                        )?)
+                    } else {
+                        None
+                    };
+                selected.extend(id_lookup::select(
+                    source,
+                    context,
+                    lookup,
+                    variable_value.as_deref(),
+                    inputs.request_id,
+                    control,
+                )?);
+            }
             Xslt10ApplyUnionPart::Key(lookup) => selected.extend(key_lookup::select(
                 inputs,
                 lookup,

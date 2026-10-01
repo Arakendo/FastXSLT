@@ -430,3 +430,9 @@ unacceptable prepared-memory amplification.
   typed-ID case executable and exact through the unchanged parser/XDM profile.
   Direct attribution is now 130 cases (28 internal parses, 93 sealed-external
   parses, nine unsupported). AR-0025 remains deferred.
+- 2026-09-30 -- Composing typed-ID lookup with `xsl:apply-templates` path
+  unions made two more internal-subset cases executable without changing XML
+  semantics or authority. One is exact and one remains a visible archival
+  whitespace mismatch. Direct attribution is now 132 cases (30 internal
+  parses, 93 sealed-external parses, nine unsupported). AR-0025 remains
+  deferred.

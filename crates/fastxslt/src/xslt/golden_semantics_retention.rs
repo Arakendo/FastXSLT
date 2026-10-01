@@ -537,6 +537,7 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         ApplySelection::Xslt10MixedUnion(alternatives) => {
             vec_owned(alternatives, |alternative| match alternative {
                 Xslt10ApplyUnionPart::Path(path) => path.known_owned_capacity_bytes(),
+                Xslt10ApplyUnionPart::Id(lookup) => xslt10_id_lookup_owned(lookup),
                 Xslt10ApplyUnionPart::Key(lookup) => xslt10_key_lookup_owned(lookup),
                 Xslt10ApplyUnionPart::Variable(name) => name.capacity(),
             })
