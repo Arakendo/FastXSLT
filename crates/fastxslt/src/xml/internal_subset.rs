@@ -31,11 +31,35 @@ struct ExpandedEntity {
 #[derive(Debug)]
 pub(super) struct InternalEntities {
     values: HashMap<String, ExpandedEntity>,
+    attributes: HashMap<(String, String), DeclaredAttribute>,
     references: Cell<usize>,
     replacement_bytes: Cell<usize>,
     declaration_work: usize,
     limits: InternalSubsetLimits,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum DeclaredAttributeType {
+    Cdata,
+    Id,
+    IdRef,
+}
+
+#[derive(Debug)]
+struct DeclaredAttribute {
+    declared_type: DeclaredAttributeType,
+    default_value: Option<String>,
+}
+
+#[derive(Debug)]
+pub(super) struct DefaultAttribute {
+    pub(super) name: String,
+    pub(super) value: String,
+    pub(super) declared_type: DeclaredAttributeType,
+}
+
+type DeclaredAttributes = HashMap<(String, String), DeclaredAttribute>;
+type ParsedAttributeDeclaration = (String, String, DeclaredAttribute);
 
 impl InternalEntities {
     pub(super) fn resolve(&self, name: &str) -> Result<&str, InternalSubsetFailure> {
@@ -79,6 +103,47 @@ impl InternalEntities {
     pub(super) fn declaration_work(&self) -> usize {
         self.declaration_work
     }
+
+    pub(super) fn attribute_type(
+        &self,
+        element_name: &str,
+        attribute_name: &str,
+    ) -> Option<DeclaredAttributeType> {
+        self.attributes
+            .get(&(element_name.to_owned(), attribute_name.to_owned()))
+            .map(|attribute| attribute.declared_type)
+    }
+
+    pub(super) fn default_attributes(
+        &self,
+        element_name: &str,
+        present_names: &std::collections::HashSet<String>,
+    ) -> Result<Vec<DefaultAttribute>, InternalSubsetFailure> {
+        let mut defaults = Vec::new();
+        for ((element, name), declaration) in &self.attributes {
+            if element != element_name || present_names.contains(name) {
+                continue;
+            }
+            let Some(value) = &declaration.default_value else {
+                continue;
+            };
+            let replacement_bytes = self.replacement_bytes.get().saturating_add(value.len());
+            if replacement_bytes > self.limits.replacement_bytes {
+                return Err(InternalSubsetFailure::Limit(format!(
+                    "DTD replacement-byte limit is {}",
+                    self.limits.replacement_bytes
+                )));
+            }
+            self.replacement_bytes.set(replacement_bytes);
+            defaults.push(DefaultAttribute {
+                name: name.clone(),
+                value: value.clone(),
+                declared_type: declaration.declared_type,
+            });
+        }
+        defaults.sort_unstable_by(|left, right| left.name.cmp(&right.name));
+        Ok(defaults)
+    }
 }
 
 pub(super) fn parse_internal_subset(
@@ -102,7 +167,7 @@ pub(super) fn parse_internal_subset(
         ));
     }
 
-    let (raw, declaration_count) = parse_declarations(subset, limits)?;
+    let (raw, attributes, declaration_count) = parse_declarations(subset, limits)?;
     let mut expanded = HashMap::with_capacity(raw.len());
     for name in raw.keys() {
         let mut active = Vec::new();
@@ -125,6 +190,7 @@ pub(super) fn parse_internal_subset(
     let declaration_work = declaration_count.saturating_add(declared_references);
     Ok(InternalEntities {
         values: expanded,
+        attributes,
         references: Cell::new(declared_references),
         replacement_bytes: Cell::new(declared_replacement_bytes),
         declaration_work,
@@ -164,8 +230,9 @@ fn split_doctype(doctype: &str) -> Result<(&str, &str), InternalSubsetFailure> {
 fn parse_declarations(
     subset: &str,
     limits: InternalSubsetLimits,
-) -> Result<(HashMap<String, String>, usize), InternalSubsetFailure> {
+) -> Result<(HashMap<String, String>, DeclaredAttributes, usize), InternalSubsetFailure> {
     let mut declarations = HashMap::new();
+    let mut attributes = HashMap::new();
     let mut declaration_count = 0_usize;
     let mut remaining = subset;
     loop {
@@ -204,6 +271,19 @@ fn parse_declarations(
             remaining = rest;
         } else if let Some(declaration) = remaining.strip_prefix("<!ELEMENT") {
             remaining = parse_element_declaration(declaration, limits.nesting_depth)?;
+        } else if let Some(declaration) = remaining.strip_prefix("<!ATTLIST") {
+            let (types, rest) = parse_attribute_list_declaration(declaration)?;
+            for (element, attribute, declaration) in types {
+                if attributes
+                    .insert((element, attribute), declaration)
+                    .is_some()
+                {
+                    return Err(InternalSubsetFailure::Malformed(
+                        "duplicate DTD attribute declaration".to_owned(),
+                    ));
+                }
+            }
+            remaining = rest;
         } else {
             return Err(InternalSubsetFailure::Unsupported(
                 "the reference DTD profile currently admits only ELEMENT and general internal ENTITY declarations"
@@ -211,7 +291,194 @@ fn parse_declarations(
             ));
         }
     }
-    Ok((declarations, declaration_count))
+    Ok((declarations, attributes, declaration_count))
+}
+
+fn parse_attribute_list_declaration(
+    declaration: &str,
+) -> Result<(Vec<ParsedAttributeDeclaration>, &str), InternalSubsetFailure> {
+    if !declaration.starts_with(is_xml_space) {
+        return Err(InternalSubsetFailure::Malformed(
+            "ATTLIST declaration requires whitespace".to_owned(),
+        ));
+    }
+    let mut parser = AttributeListParser::new(declaration);
+    parser.skip_space();
+    let element = parser.take_name("ATTLIST element name is malformed")?;
+    let mut declarations = Vec::new();
+    loop {
+        let had_space = parser.skip_required_space();
+        if parser.peek() == Some('>') {
+            parser.position += 1;
+            return Ok((declarations, &declaration[parser.position..]));
+        }
+        if !had_space {
+            return Err(InternalSubsetFailure::Malformed(
+                "ATTLIST attribute declaration requires whitespace".to_owned(),
+            ));
+        }
+        let attribute = parser.take_name("ATTLIST attribute name is malformed")?;
+        if !parser.skip_required_space() {
+            return Err(InternalSubsetFailure::Malformed(
+                "ATTLIST attribute type is missing".to_owned(),
+            ));
+        }
+        let declared_type = parser.take_attribute_type()?;
+        if !parser.skip_required_space() {
+            return Err(InternalSubsetFailure::Malformed(
+                "ATTLIST default declaration is missing".to_owned(),
+            ));
+        }
+        let default_value = parser
+            .take_default_declaration()?
+            .map(|value| normalize_declared_attribute_value(&value, declared_type));
+        if declared_type == DeclaredAttributeType::Id && default_value.is_some() {
+            return Err(InternalSubsetFailure::Unsupported(
+                "defaulted ID attributes remain outside the bounded profile".to_owned(),
+            ));
+        }
+        declarations.push((
+            element.clone(),
+            attribute,
+            DeclaredAttribute {
+                declared_type,
+                default_value,
+            },
+        ));
+    }
+}
+
+struct AttributeListParser<'a> {
+    input: &'a str,
+    position: usize,
+}
+
+impl<'a> AttributeListParser<'a> {
+    const fn new(input: &'a str) -> Self {
+        Self { input, position: 0 }
+    }
+
+    fn take_attribute_type(&mut self) -> Result<DeclaredAttributeType, InternalSubsetFailure> {
+        let token = self.take_token();
+        match token {
+            "CDATA" => Ok(DeclaredAttributeType::Cdata),
+            "ID" => Ok(DeclaredAttributeType::Id),
+            "IDREF" => Ok(DeclaredAttributeType::IdRef),
+            _ => Err(InternalSubsetFailure::Unsupported(format!(
+                "DTD attribute type remains unsupported: {token}"
+            ))),
+        }
+    }
+
+    fn take_default_declaration(&mut self) -> Result<Option<String>, InternalSubsetFailure> {
+        if self.input[self.position..].starts_with("#REQUIRED") {
+            self.position += "#REQUIRED".len();
+            return Ok(None);
+        }
+        if self.input[self.position..].starts_with("#IMPLIED") {
+            self.position += "#IMPLIED".len();
+            return Ok(None);
+        }
+        if self.input[self.position..].starts_with("#FIXED") {
+            self.position += "#FIXED".len();
+            if !self.skip_required_space() {
+                return Err(InternalSubsetFailure::Malformed(
+                    "#FIXED requires an attribute value".to_owned(),
+                ));
+            }
+        }
+        self.take_default_value().map(Some)
+    }
+
+    fn take_default_value(&mut self) -> Result<String, InternalSubsetFailure> {
+        let Some(quote @ ('\'' | '"')) = self.peek() else {
+            return Err(InternalSubsetFailure::Malformed(
+                "ATTLIST default declaration is malformed".to_owned(),
+            ));
+        };
+        self.position += quote.len_utf8();
+        let start = self.position;
+        while self.peek().is_some_and(|character| character != quote) {
+            self.position += self.peek().expect("checked character").len_utf8();
+        }
+        if self.peek() != Some(quote) {
+            return Err(InternalSubsetFailure::Malformed(
+                "ATTLIST default value is not closed".to_owned(),
+            ));
+        }
+        let raw = &self.input[start..self.position];
+        self.position += quote.len_utf8();
+        if raw.contains('<') || raw.contains('%') {
+            return Err(InternalSubsetFailure::Unsupported(
+                "markup and parameter references in attribute defaults remain denied".to_owned(),
+            ));
+        }
+        quick_xml::escape::unescape(raw)
+            .map(std::borrow::Cow::into_owned)
+            .map_err(|error| {
+                InternalSubsetFailure::Unsupported(format!(
+                    "attribute-default entity semantics remain unsupported: {error}"
+                ))
+            })
+    }
+
+    fn take_name(&mut self, message: &str) -> Result<String, InternalSubsetFailure> {
+        let token = self.take_token();
+        if is_xml_name(token) {
+            Ok(token.to_owned())
+        } else {
+            Err(InternalSubsetFailure::Malformed(message.to_owned()))
+        }
+    }
+
+    fn take_token(&mut self) -> &str {
+        let start = self.position;
+        while let Some(character) = self.peek() {
+            if is_xml_space(character) || character == '>' {
+                break;
+            }
+            self.position += character.len_utf8();
+        }
+        &self.input[start..self.position]
+    }
+
+    fn skip_required_space(&mut self) -> bool {
+        let start = self.position;
+        self.skip_space();
+        self.position > start
+    }
+
+    fn skip_space(&mut self) {
+        while self.peek().is_some_and(is_xml_space) {
+            self.position += 1;
+        }
+    }
+
+    fn peek(&self) -> Option<char> {
+        self.input[self.position..].chars().next()
+    }
+}
+
+fn normalize_declared_attribute_value(value: &str, declared_type: DeclaredAttributeType) -> String {
+    let spaces_normalized = value
+        .chars()
+        .map(|character| {
+            if is_xml_space(character) {
+                ' '
+            } else {
+                character
+            }
+        })
+        .collect::<String>();
+    if declared_type == DeclaredAttributeType::Cdata {
+        spaces_normalized
+    } else {
+        spaces_normalized
+            .split(' ')
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
 }
 
 fn parse_element_declaration(
@@ -567,7 +834,11 @@ fn trim_xml_space(value: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{InternalSubsetFailure, InternalSubsetLimits, parse_internal_subset};
+    use std::collections::HashSet;
+
+    use super::{
+        DeclaredAttributeType, InternalSubsetFailure, InternalSubsetLimits, parse_internal_subset,
+    };
 
     const LIMITS: InternalSubsetLimits = InternalSubsetLimits {
         declarations: 8,
@@ -593,7 +864,6 @@ mod tests {
         for doctype in [
             "root SYSTEM 'file:///secret'",
             "root [<!ENTITY % shared 'value'>]",
-            "root [<!ATTLIST root value CDATA 'default'>]",
         ] {
             assert!(matches!(
                 parse_internal_subset(doctype, LIMITS),
@@ -655,6 +925,51 @@ mod tests {
         let entities = parse_internal_subset("root [<!ELEMENT root ANY><!ENTITY one '1'>]", LIMITS)
             .expect("both bounded declarations should parse");
         assert_eq!(entities.declaration_work(), 2);
+    }
+
+    #[test]
+    fn retains_only_non_defaulting_bounded_attribute_types() {
+        let subset = parse_internal_subset(
+            "root [<!ELEMENT root ANY><!ATTLIST root id ID #REQUIRED ref IDREF #IMPLIED note CDATA #IMPLIED>]",
+            LIMITS,
+        )
+        .expect("bounded non-defaulting ATTLIST should parse");
+
+        assert_eq!(
+            subset.attribute_type("root", "id"),
+            Some(DeclaredAttributeType::Id)
+        );
+        assert_eq!(
+            subset.attribute_type("root", "ref"),
+            Some(DeclaredAttributeType::IdRef)
+        );
+        assert_eq!(
+            subset.attribute_type("root", "note"),
+            Some(DeclaredAttributeType::Cdata)
+        );
+        assert_eq!(subset.declaration_work(), 2);
+    }
+
+    #[test]
+    fn retains_bounded_literal_defaults_and_rejects_unadmitted_attribute_types() {
+        let subset = parse_internal_subset(
+            "root [<!ATTLIST root value CDATA '  default  ' fixed CDATA #FIXED 'yes'>]",
+            LIMITS,
+        )
+        .expect("bounded literal defaults should parse");
+        let defaults = subset
+            .default_attributes("root", &HashSet::new())
+            .expect("defaults should remain within replacement budget");
+        assert_eq!(defaults.len(), 2);
+        assert_eq!(defaults[0].name, "fixed");
+        assert_eq!(defaults[0].value, "yes");
+        assert_eq!(defaults[1].name, "value");
+        assert_eq!(defaults[1].value, "  default  ");
+
+        assert!(matches!(
+            parse_internal_subset("root [<!ATTLIST root value NMTOKEN #IMPLIED>]", LIMITS),
+            Err(InternalSubsetFailure::Unsupported(_))
+        ));
     }
 
     #[test]

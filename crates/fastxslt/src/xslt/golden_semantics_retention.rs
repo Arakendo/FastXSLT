@@ -14,8 +14,8 @@ use super::{
     SourceLocation, SourceWhitespacePolicy, StylesheetProgram, Template, TemplateArgument,
     TemplateArgumentValue, TemplateParameter, TemplateParameterDefault, ValueExpression,
     VariableFilteredElementPath, Xslt10ApplyUnionPart, Xslt10AvtPart, Xslt10ConcatPart,
-    Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyValue, Xslt10MuenchianSelection,
-    Xslt10TemporaryTextPart,
+    Xslt10IdArgument, Xslt10IdLookup, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyValue,
+    Xslt10MuenchianSelection, Xslt10TemporaryTextPart,
 };
 
 impl StylesheetProgram {
@@ -512,9 +512,7 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
             .known_owned_capacity_bytes()
             .checked_add(path.known_owned_capacity_bytes())
             .expect("live source-document path selection capacity is representable"),
-        ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path } => argument_path
-            .as_ref()
-            .map_or(0, LocationPath::known_owned_capacity_bytes),
+        ApplySelection::Xslt10IdLookup(lookup) => xslt10_id_lookup_owned(lookup),
         ApplySelection::Xslt10KeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
         ApplySelection::Xslt10MuenchianKeyGroup { selection, first } => {
             (match selection {
@@ -619,6 +617,16 @@ fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
             .as_ref()
             .map_or(0, LocationPath::known_owned_capacity_bytes)
         + location_owned(&lookup.location)
+}
+
+fn xslt10_id_lookup_owned(lookup: &Xslt10IdLookup) -> usize {
+    (match &lookup.argument {
+        Xslt10IdArgument::Literal(value) => value.capacity(),
+        Xslt10IdArgument::Path(path) => path.known_owned_capacity_bytes(),
+    }) + lookup
+        .relative_path
+        .as_ref()
+        .map_or(0, LocationPath::known_owned_capacity_bytes)
 }
 
 #[expect(
@@ -1491,9 +1499,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::BinaryNumeric(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }
-        ValueExpression::Xslt10IdLookupWithoutTypedIds { argument_path } => argument_path
-            .as_ref()
-            .map_or(0, LocationPath::known_owned_capacity_bytes),
+        ValueExpression::Xslt10IdLookup(lookup) => xslt10_id_lookup_owned(lookup),
         ValueExpression::ContextNodeName
         | ValueExpression::ContextNodeLocalName
         | ValueExpression::ContextNodeNamespaceUri

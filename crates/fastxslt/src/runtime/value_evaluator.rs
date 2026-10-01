@@ -347,15 +347,11 @@ pub(super) fn execute_value_of(
         ValueExpression::LiteralString(value) => {
             append_text(result, value, inputs.request_id, control)?;
         }
-        ValueExpression::Xslt10IdLookupWithoutTypedIds { argument_path } => {
-            if let Some(argument_path) = argument_path {
-                let (source, context) = required_source_context(inputs, context)?;
-                evaluate_location_path_controlled(source, context, argument_path, control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        ValueExpression::Xslt10IdLookup(lookup) => {
+            let (_, context) = required_source_context(inputs, context)?;
+            if let Some(node) = super::select_xslt10_id(inputs, context, lookup, control)?.first() {
+                append_source_string_value(inputs, *node, result, control)?;
             }
-            control
-                .charge(WorkDomain::XPathOperation, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
         }
         ValueExpression::Xslt10KeyLookup(lookup) => {
             append_xslt10_key_lookup(inputs, lookup, context, variables, result, control)?;

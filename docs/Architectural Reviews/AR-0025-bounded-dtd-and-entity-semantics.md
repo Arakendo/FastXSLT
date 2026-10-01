@@ -9,7 +9,7 @@
 | Trigger | The 74% OASIS XSLT 1.0 checkpoint leaves 117 standard-operation cases at explicit source or stylesheet DTD denial, with related `id()` and `unparsed-entity-uri()` cases behind the same XML semantics |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007 |
 | Related reviews | AR-0008, AR-0014, AR-0019 |
-| Related evidence | [Post-74% frontier and DTD inventory](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md); [bounded internal-entity reference path](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md) |
+| Related evidence | [Post-74% frontier and DTD inventory](../Evidence/oasis-xslt10-post-74-frontier-and-dtd-inventory-2026-09-30.md); [bounded internal-entity reference path](../Evidence/ar-0025-bounded-internal-entity-reference-path-2026-09-30.md); [bounded typed-ID reference path](../Evidence/ar-0025-bounded-typed-id-reference-path-2026-09-30.md); [bounded defaults and stylesheet path](../Evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md) |
 
 ## Architectural question
 
@@ -118,9 +118,10 @@ could introduce ambient I/O or unbounded expansion. Rejected.
 - Ignoring declarations is not acceptable because `id()`, entity replacement,
   defaulted attributes, and unparsed-entity functions can make the DTD
   semantically observable.
-- It is unknown which declaration constructs dominate the corpus, how much
-  exact coverage each bounded slice unlocks, and whether the current parser can
-  remain the tokenization mechanism without taking ownership of policy.
+- The direct-frontier declaration constructs are now inventoried and the first
+  two bounded slices have exact corpus outcomes. It remains unknown how much of
+  the external-identifier frontier can be supported without parameter-entity,
+  validation, or ambient-authority semantics.
 - It is unknown whether a useful supported XML/XSLT profile can exclude
   external subsets while making a credible conformance statement.
 - A first safe reference path now proves bounded character-data general
@@ -139,19 +140,21 @@ could introduce ambient I/O or unbounded expansion. Rejected.
   candidates. No direct case contains parameter-entity, notation, or unparsed-
   entity pressure. These overlapping syntactic candidates do not yet prove
   that every declaration affects the expected result.
-- The bounded reference parser admits exactly two of the 117 exact-frontier
-  resources. The unchanged `Lotus/select_select73` internal-entity case and
-  `Microsoft/Elements__89108` declaration-only case initialize, execute, and
-  compare exactly through the measurement-only profile. The other 115 remain
-  at explicit unsupported declaration or external-identifier seams. The
-  original 87-source/30-stylesheet denominator remains conserved.
-- The remaining 21 external-identifier-free frontier cases split into three
-  materially different seams: ten source cases require typed-ID metadata, two
-  source cases require defaulted attributes, and nine stylesheet cases rely on
+- The bounded reference parser admits 15 of the 117 exact-frontier resources.
+  The first two entity/declaration-only resources, all ten typed-ID source
+  resources, two source-default resources, and one stylesheet resource are
+  syntactically admitted. The lower bound is now 2,361 / 3,173: eight typed-ID
+  cases, both source-default cases, and the stylesheet case compare exactly;
+  two manual-comparator cases remain uncredited. The other 102 resources remain
+  at explicit unsupported declaration or external-identifier seams. The original
+  87-source/30-stylesheet denominator remains conserved.
+- The remaining external-identifier-free stylesheet cases rely on
   fixed/defaulted namespace or version attributes. The stylesheet group must
   affect namespace resolution before ordinary start-event handling; it cannot
   be implemented honestly as post-XDM attribute injection at the current
-  tokenizer seam.
+  tokenizer seam. The private reference path now proves ordinary source
+  defaults and a stylesheet whose relevant namespace/version attributes are
+  authored explicitly.
 
 ## Disposition
 
@@ -176,11 +179,12 @@ requires separate sealed-snapshot evidence and a later decision.
   identifier causes ambient acquisition.
 - [ ] Preserve original-byte provenance and deterministic diagnostics across
   entity replacement and declaration failures.
-- [ ] Add typed-ID and unparsed-entity metadata to XDM only through a reviewed
-  private representation; keep parser-native types contained.
+- [x] Add typed-ID metadata to XDM only through a reviewed private
+  representation; keep parser-native types contained. Unparsed-entity metadata
+  remains a separate incomplete slice.
 - [ ] Run entity-expansion, cycle, malformed-declaration, cancellation, and
   memory-pressure adversarial tests.
-- [ ] Rerun the complete conserved OASIS denominator and report exact passes,
+- [x] Rerun the complete conserved OASIS denominator and report exact passes,
   later failures, mismatches, and exclusions without treating initialization as
   conformance.
 - [ ] Decide whether an internal-only profile is sufficient or whether sealed
@@ -211,3 +215,15 @@ memory amplification.
   `ELEMENT` declarations and a measurement-only prepared-source route. Two
   unchanged standard cases become exact; 115 cases remain explicitly
   unsupported, and production DTD denial is unchanged.
+- 2026-09-30 -- Added private non-defaulting `CDATA`/`ID`/`IDREF` declaration
+  metadata, a per-document XDM ID index, and charged XSLT 1.0 `id()` semantics.
+  All ten typed-ID source cases initialize and execute, eight compare exactly,
+  and two manual-comparator cases remain uncredited. The strict lower bound is
+  2,358 / 3,173 (74.31%); 105 direct DTD-frontier cases remain explicitly
+  unsupported.
+- 2026-09-30 -- Added bounded literal/fixed attribute defaults and enabled the
+  same private parser for explicitly selected stylesheet compilation. Two
+  source-default cases and one stylesheet-entity case become exact. The strict
+  lower bound reaches 2,361 / 3,173 (74.41%); the conserved direct frontier is
+  15 parsed and 102 explicitly unsupported. DTD-derived namespace declarations
+  remain rejected at the pre-tokenization boundary.

@@ -56,6 +56,7 @@ pub(crate) struct Document {
     nodes: Arc<Vec<Node>>,
     root: NodeId,
     child_overrides: Option<HashMap<NodeId, Box<[NodeId]>>>,
+    id_index: HashMap<String, Vec<NodeId>>,
 }
 
 #[cfg(test)]
@@ -73,6 +74,8 @@ pub(crate) struct DocumentCapacityAnatomy {
     pub(crate) namespace_prefixes: usize,
     pub(crate) namespace_uris: usize,
     pub(crate) location_resources: usize,
+    pub(crate) id_index_keys: usize,
+    pub(crate) id_index_nodes: usize,
     pub(crate) local_name_occurrences: usize,
     pub(crate) unique_local_names: usize,
     pub(crate) namespace_occurrences: usize,
@@ -98,6 +101,8 @@ impl DocumentCapacityAnatomy {
             + self.namespace_prefixes
             + self.namespace_uris
             + self.location_resources
+            + self.id_index_keys
+            + self.id_index_nodes
     }
 }
 
@@ -160,6 +165,7 @@ impl Document {
             }]),
             root: NodeId(0),
             child_overrides: None,
+            id_index: HashMap::new(),
         };
         let mut ancestors = vec![result.root];
 
@@ -190,6 +196,7 @@ impl Document {
                         control
                             .charge(WorkDomain::XdmNode, 1)
                             .map_err(BuildFailure::Control)?;
+                        let id_value = attribute.is_id.then(|| attribute.value.clone());
                         let attribute_id = result.push_node(Node {
                             kind: NodeKind::Attribute,
                             parent: Some(element),
@@ -206,6 +213,9 @@ impl Document {
                             document_order: None,
                         });
                         result.nodes_mut()[element.0].attributes.push(attribute_id);
+                        if let Some(id_value) = id_value {
+                            result.id_index.entry(id_value).or_default().push(element);
+                        }
                     }
                     ancestors.push(element);
                 }
@@ -345,6 +355,10 @@ impl Document {
         self.root
     }
 
+    pub(crate) fn elements_with_id(&self, value: &str) -> &[NodeId] {
+        self.id_index.get(value).map_or(&[], Vec::as_slice)
+    }
+
     #[cfg(test)]
     pub(crate) fn derive_stripping_all_element_whitespace(
         &self,
@@ -410,6 +424,7 @@ impl Document {
             nodes: Arc::new(nodes),
             root: self.root,
             child_overrides: None,
+            id_index: self.id_index.clone(),
         };
         let mut preserves_space = vec![false; self.nodes.len()];
         for index in 0..self.nodes.len() {
@@ -479,6 +494,10 @@ impl Document {
             }
             total += node.location.resource.capacity();
         }
+        for (value, nodes) in &self.id_index {
+            total += value.capacity();
+            total += nodes.capacity() * std::mem::size_of::<NodeId>();
+        }
         total
     }
 
@@ -497,6 +516,8 @@ impl Document {
             namespace_prefixes: 0,
             namespace_uris: 0,
             location_resources: 0,
+            id_index_keys: 0,
+            id_index_nodes: 0,
             local_name_occurrences: 0,
             unique_local_names: 0,
             namespace_occurrences: 0,
@@ -545,6 +566,10 @@ impl Document {
         anatomy.unique_namespaces = namespaces.len();
         anatomy.unique_values = values.len();
         anatomy.unique_resources = resources.len();
+        for (value, nodes) in &self.id_index {
+            anatomy.id_index_keys += value.capacity();
+            anatomy.id_index_nodes += nodes.capacity() * std::mem::size_of::<NodeId>();
+        }
         anatomy
     }
 

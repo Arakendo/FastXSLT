@@ -11,6 +11,7 @@ use crate::compile::golden_stylesheet_experiment::{
     compile_stylesheet_with_two_included_programs_at, validate_import_order_at,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
+use crate::xml::internal_subset::InternalSubsetLimits;
 use crate::xml::quick_xml_experiment::ParseLimits;
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
@@ -29,6 +30,7 @@ pub(in crate::runtime) struct StylesheetCompileLimits {
     dependency: DependencyLimits,
     resolution_attempts: usize,
     xml: ParseLimits,
+    internal_subset: Option<InternalSubsetLimits>,
 }
 
 impl StylesheetCompileLimits {
@@ -47,7 +49,17 @@ impl StylesheetCompileLimits {
             ),
             resolution_attempts: max_resolution_attempts,
             xml,
+            internal_subset: None,
         }
+    }
+
+    #[cfg(test)]
+    pub(in crate::runtime) const fn with_internal_subset(
+        mut self,
+        limits: InternalSubsetLimits,
+    ) -> Self {
+        self.internal_subset = Some(limits);
+        self
     }
 }
 
@@ -95,6 +107,7 @@ pub(in crate::runtime) fn compile_resource_with_denied_and_limits(
         stylesheet_id,
         limits.dependency,
         limits.xml,
+        limits.internal_subset,
     )
 }
 
@@ -108,6 +121,7 @@ fn compile_resource_with_resolver(
         stylesheet_id,
         DEFAULT_DEPENDENCY_LIMITS,
         super::XML_LIMITS,
+        None,
     )
 }
 
@@ -116,10 +130,16 @@ fn compile_resource_with_resolver_and_limits(
     stylesheet_id: &str,
     dependency_limits: DependencyLimits,
     xml_limits: ParseLimits,
+    internal_subset_limits: Option<InternalSubsetLimits>,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let graph =
-        load_stylesheet_dependency_graph(resolver, stylesheet_id, dependency_limits, xml_limits)
-            .map_err(dependency_failure)?;
+    let graph = load_stylesheet_dependency_graph(
+        resolver,
+        stylesheet_id,
+        dependency_limits,
+        xml_limits,
+        internal_subset_limits,
+    )
+    .map_err(dependency_failure)?;
     debug_assert_eq!(graph.identity, stylesheet_id);
     let mut program = compile_loaded_graph(&graph).map_err(compile_failure)?;
     crate::compile::golden_stylesheet_experiment::finalize_attribute_sets(&mut program)

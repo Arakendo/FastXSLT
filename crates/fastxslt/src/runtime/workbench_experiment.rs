@@ -15,7 +15,6 @@ use crate::runtime::golden_runtime_experiment::{
 use crate::runtime::prepared_input_experiment::{
     PreparationFailure, PreparedInputBuilder, PreparedInputSet,
 };
-#[cfg(test)]
 use crate::xml::internal_subset::InternalSubsetLimits;
 use crate::xml::quick_xml_experiment::ParseLimits;
 
@@ -189,6 +188,12 @@ pub struct ExperimentalEngine {
     limits: WorkbenchLimits,
 }
 
+#[derive(Clone, Copy, Default)]
+struct WorkbenchDtdLimits {
+    source: Option<InternalSubsetLimits>,
+    stylesheet: Option<InternalSubsetLimits>,
+}
+
 impl ExperimentalEngine {
     /// Imports bounded bytes, compiles the stylesheet, and prepares the source.
     ///
@@ -231,14 +236,14 @@ impl ExperimentalEngine {
         stylesheet_resources: WorkbenchStylesheetResources,
         limits: WorkbenchLimits,
     ) -> Result<Self, WorkbenchFailure> {
-        Self::new_with_stylesheet_resources_and_source_dtd(
+        Self::new_with_stylesheet_resources_and_dtd(
             source_id,
             source,
             stylesheet_id,
             stylesheet,
             stylesheet_resources,
             limits,
-            None,
+            WorkbenchDtdLimits::default(),
         )
     }
 
@@ -252,25 +257,52 @@ impl ExperimentalEngine {
         limits: WorkbenchLimits,
         dtd_limits: InternalSubsetLimits,
     ) -> Result<Self, WorkbenchFailure> {
-        Self::new_with_stylesheet_resources_and_source_dtd(
+        Self::new_with_stylesheet_resources_and_dtd(
             source_id,
             source,
             stylesheet_id,
             stylesheet,
             stylesheet_resources,
             limits,
-            Some(dtd_limits),
+            WorkbenchDtdLimits {
+                source: Some(dtd_limits),
+                stylesheet: None,
+            },
         )
     }
 
-    fn new_with_stylesheet_resources_and_source_dtd(
+    #[cfg(test)]
+    pub(crate) fn new_with_bounded_internal_subsets(
         source_id: impl Into<String>,
         source: Vec<u8>,
         stylesheet_id: impl Into<String>,
         stylesheet: Vec<u8>,
         stylesheet_resources: WorkbenchStylesheetResources,
         limits: WorkbenchLimits,
-        source_dtd_limits: Option<crate::xml::internal_subset::InternalSubsetLimits>,
+        dtd_limits: InternalSubsetLimits,
+    ) -> Result<Self, WorkbenchFailure> {
+        Self::new_with_stylesheet_resources_and_dtd(
+            source_id,
+            source,
+            stylesheet_id,
+            stylesheet,
+            stylesheet_resources,
+            limits,
+            WorkbenchDtdLimits {
+                source: Some(dtd_limits),
+                stylesheet: Some(dtd_limits),
+            },
+        )
+    }
+
+    fn new_with_stylesheet_resources_and_dtd(
+        source_id: impl Into<String>,
+        source: Vec<u8>,
+        stylesheet_id: impl Into<String>,
+        stylesheet: Vec<u8>,
+        stylesheet_resources: WorkbenchStylesheetResources,
+        limits: WorkbenchLimits,
+        dtd_limits: WorkbenchDtdLimits,
     ) -> Result<Self, WorkbenchFailure> {
         let source_id = source_id.into();
         let stylesheet_id = stylesheet_id.into();
@@ -323,20 +355,12 @@ impl ExperimentalEngine {
                 })?;
         }
         let snapshot = resources.seal();
+        let compile_limits = workbench_stylesheet_compile_limits(limits, dtd_limits.stylesheet);
         let program = compile_resource_with_denied_and_limits(
             &snapshot,
             &stylesheet_id,
             stylesheet_resources.denied_identities,
-            StylesheetCompileLimits::new(
-                limits.max_stylesheet_dependency_depth,
-                limits.max_stylesheet_modules,
-                limits.max_stylesheet_dependency_bytes,
-                limits.max_stylesheet_resolution_attempts,
-                ParseLimits {
-                    max_events: limits.max_xml_events,
-                    max_depth: limits.max_xml_depth,
-                },
-            ),
+            compile_limits,
         )
         .map_err(|failure| project_execution(&failure))?;
         let builder = PreparedInputBuilder::with_parse_limits(
@@ -347,13 +371,13 @@ impl ExperimentalEngine {
             },
         );
         #[cfg(test)]
-        let mut builder = match source_dtd_limits {
+        let mut builder = match dtd_limits.source {
             Some(dtd_limits) => builder.with_internal_subset_limits(dtd_limits),
             None => builder,
         };
         #[cfg(not(test))]
         let mut builder = {
-            debug_assert!(source_dtd_limits.is_none());
+            debug_assert!(dtd_limits.source.is_none());
             builder
         };
         let mut control = InvocationControl::new(CancellationToken::new(), work_limits(limits));
@@ -564,6 +588,33 @@ impl ExperimentalEngine {
     }
 }
 
+fn workbench_stylesheet_compile_limits(
+    limits: WorkbenchLimits,
+    internal_subset: Option<InternalSubsetLimits>,
+) -> StylesheetCompileLimits {
+    let compile_limits = StylesheetCompileLimits::new(
+        limits.max_stylesheet_dependency_depth,
+        limits.max_stylesheet_modules,
+        limits.max_stylesheet_dependency_bytes,
+        limits.max_stylesheet_resolution_attempts,
+        ParseLimits {
+            max_events: limits.max_xml_events,
+            max_depth: limits.max_xml_depth,
+        },
+    );
+    #[cfg(test)]
+    {
+        internal_subset.map_or(compile_limits, |dtd_limits| {
+            compile_limits.with_internal_subset(dtd_limits)
+        })
+    }
+    #[cfg(not(test))]
+    {
+        debug_assert!(internal_subset.is_none());
+        compile_limits
+    }
+}
+
 fn work_limits(limits: WorkbenchLimits) -> WorkLimits {
     WorkLimits {
         xml_events: limits.max_xml_events,
@@ -669,11 +720,12 @@ mod tests {
     #[test]
     fn bounded_internal_source_subset_is_explicit_and_default_denial_is_unchanged() {
         let source = br#"<!DOCTYPE root [
-            <!ELEMENT root (#PCDATA)>
-            <!ENTITY greeting "Hello">
-        ]><root>&greeting;</root>"#
+            <!ELEMENT root (item)>
+            <!ELEMENT item EMPTY>
+            <!ATTLIST item id ID #REQUIRED value CDATA #REQUIRED>
+        ]><root><item id="target" value="Hello"/></root>"#
             .to_vec();
-        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="/root"/></xsl:template></xsl:stylesheet>"#.to_vec();
+        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="id('target')/@value"/></xsl:template></xsl:stylesheet>"#.to_vec();
 
         let denied = ExperimentalEngine::new(
             "urn:fastxslt:dtd:source",
@@ -708,6 +760,88 @@ mod tests {
                 .transform("bounded-internal-source")
                 .expect("bounded internal source should execute"),
             "Hello"
+        );
+    }
+
+    #[test]
+    fn bounded_typed_id_lookup_uses_node_values_document_order_and_unique_nodes() {
+        let source = br#"<!DOCTYPE root [
+            <!ELEMENT root (lookup,item+)>
+            <!ELEMENT lookup EMPTY>
+            <!ATTLIST lookup ids IDREF #REQUIRED>
+            <!ELEMENT item EMPTY>
+            <!ATTLIST item id ID #REQUIRED value CDATA #REQUIRED>
+        ]><root><lookup ids="third first third"/><item id="first" value="A"/><item id="second" value="B"/><item id="third" value="C"/></root>"#
+            .to_vec();
+        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="id(root/lookup/@ids)"><xsl:value-of select="@value"/></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec();
+        let engine = ExperimentalEngine::new_with_bounded_internal_source_subset(
+            "urn:fastxslt:dtd:ordered-id-source",
+            source,
+            "urn:fastxslt:dtd:ordered-id-stylesheet",
+            stylesheet,
+            WorkbenchStylesheetResources::default(),
+            WorkbenchLimits::default(),
+            crate::xml::internal_subset::InternalSubsetLimits {
+                declarations: 8,
+                nesting_depth: 8,
+                references: 32,
+                replacement_bytes: 1_024,
+            },
+        )
+        .expect("measurement-only typed-ID source should initialize");
+
+        assert_eq!(
+            engine
+                .transform("bounded-typed-id-order")
+                .expect("typed-ID lookup should execute"),
+            "AC"
+        );
+    }
+
+    #[test]
+    fn bounded_internal_stylesheet_subset_is_explicit_and_default_denial_is_unchanged() {
+        let source = b"<source/>".to_vec();
+        let stylesheet = br#"<!DOCTYPE result [
+            <!ELEMENT result EMPTY>
+            <!ATTLIST result xsl:version CDATA #FIXED "1.0"
+                             xmlns:xsl CDATA #FIXED "http://www.w3.org/1999/XSL/Transform">
+            <!ENTITY content "middle">
+        ]><result xsl:version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" value="A&content;B"/>"#
+            .to_vec();
+
+        let denied = ExperimentalEngine::new(
+            "urn:fastxslt:dtd:stylesheet-source",
+            source.clone(),
+            "urn:fastxslt:dtd:stylesheet",
+            stylesheet.clone(),
+            WorkbenchLimits::default(),
+        );
+        let Err(denied) = denied else {
+            panic!("ordinary stylesheet compilation must retain DTD denial");
+        };
+        assert_eq!(denied.code, "FXXM0001");
+
+        let engine = ExperimentalEngine::new_with_bounded_internal_subsets(
+            "urn:fastxslt:dtd:stylesheet-source",
+            source,
+            "urn:fastxslt:dtd:stylesheet",
+            stylesheet,
+            WorkbenchStylesheetResources::default(),
+            WorkbenchLimits::default(),
+            crate::xml::internal_subset::InternalSubsetLimits {
+                declarations: 8,
+                nesting_depth: 8,
+                references: 32,
+                replacement_bytes: 1_024,
+            },
+        )
+        .expect("measurement-only bounded stylesheet profile should initialize");
+
+        assert_eq!(
+            engine
+                .transform("bounded-internal-stylesheet")
+                .expect("bounded internal stylesheet should execute"),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><result value=\"AmiddleB\"></result>"
         );
     }
 

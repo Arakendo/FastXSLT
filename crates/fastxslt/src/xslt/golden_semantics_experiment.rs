@@ -590,9 +590,7 @@ pub(crate) enum ApplySelection {
         references: LocationPath,
         path: LocationPath,
     },
-    Xslt10IdLookupWithoutTypedIds {
-        argument_path: Option<LocationPath>,
-    },
+    Xslt10IdLookup(Box<Xslt10IdLookup>),
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Xslt10MuenchianKeyGroup {
         selection: Xslt10MuenchianSelection,
@@ -1320,9 +1318,7 @@ pub(crate) enum FocusComparison {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
     LiteralString(String),
-    Xslt10IdLookupWithoutTypedIds {
-        argument_path: Option<LocationPath>,
-    },
+    Xslt10IdLookup(Box<Xslt10IdLookup>),
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Xslt10CountKeyLookup(Box<Xslt10KeyLookup>),
     LocationPath(LocationPath),
@@ -1535,6 +1531,18 @@ pub(crate) struct Xslt10KeyLookup {
     pub(crate) predicate: Option<Xslt10KeyNodePredicate>,
     pub(crate) tail: Option<LocationPath>,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10IdLookup {
+    pub(crate) argument: Xslt10IdArgument,
+    pub(crate) relative_path: Option<LocationPath>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10IdArgument {
+    Literal(String),
+    Path(LocationPath),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

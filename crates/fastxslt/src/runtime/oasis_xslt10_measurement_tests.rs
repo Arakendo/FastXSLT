@@ -283,11 +283,18 @@ impl Measurement {
         if case.operation != "standard" {
             return;
         }
-        let Some((properties, reference_outcome)) = input_observations.get(source_identity) else {
-            return;
-        };
-        if properties.has_dtd() {
-            self.record_direct_dtd_case(case, "source", properties, reference_outcome);
+        let observation = input_observations
+            .get(source_identity)
+            .filter(|(properties, _)| properties.has_dtd())
+            .map(|observation| ("source", observation))
+            .or_else(|| {
+                input_observations
+                    .iter()
+                    .find(|(_, (properties, _))| properties.has_dtd())
+                    .map(|(_, observation)| ("stylesheet", observation))
+            });
+        if let Some((role, (properties, reference_outcome))) = observation {
+            self.record_direct_dtd_case(case, role, properties, reference_outcome);
         }
     }
 
@@ -455,7 +462,7 @@ fn measures_local_oasis_xslt10_compatibility() {
         }
 
         let engine = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            ExperimentalEngine::new_with_bounded_internal_source_subset(
+            ExperimentalEngine::new_with_bounded_internal_subsets(
                 format!(
                     "{}source/{}",
                     logical_case_base(&case),

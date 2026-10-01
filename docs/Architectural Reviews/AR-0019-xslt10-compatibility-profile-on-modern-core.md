@@ -4179,3 +4179,24 @@ maintained redistributable legacy suite becomes available.
   accepted, but the corresponding lossy archival reference remains uncredited.
   Expected-error credit remains 423 / 431.
   [Evidence](../Evidence/oasis-xslt10-74-percent-compatibility-tranche-2026-09-30.md)
+- 2026-09-30: AR-0025's private bounded internal-subset path admits internal
+  character-data entities, non-validating element declarations, and
+  non-defaulting `CDATA`/`ID`/`IDREF` attribute declarations without changing
+  production DTD denial. Explicit typed-ID metadata crosses XML into a private
+  per-document XDM index, and charged XSLT 1.0 `id()` evaluation preserves
+  document order and uniqueness. The complete sweep reaches 2,358 / 3,173
+  exact matches (74.31%), 2,549 initialized cases, and 2,503 successful
+  executions. Of the conserved 117-case direct DTD frontier, 12 parse and 105
+  remain explicitly unsupported; two newly executable manual-comparator cases
+  receive no exact credit.
+  [Evidence](../Evidence/ar-0025-bounded-typed-id-reference-path-2026-09-30.md)
+- 2026-09-30: AR-0025's bounded reference path adds literal/fixed default
+  attributes and can be selected privately for stylesheet modules as well as
+  source preparation. Two source-default cases and one simplified stylesheet
+  entity case become exact. The complete sweep reaches 2,361 / 3,173 exact
+  matches (74.41%), 2,552 initialized cases, and 2,506 successful executions.
+  The original direct DTD frontier remains conserved at 117 cases: 15 parse
+  through the reference grammar and 102 remain explicitly unsupported.
+  DTD-derived namespace declarations remain rejected before they can be
+  misrepresented at the post-tokenization adapter seam.
+  [Evidence](../Evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md)

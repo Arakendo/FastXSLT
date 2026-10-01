@@ -92,6 +92,7 @@ impl Document {
             nodes: self.nodes.clone(),
             root: self.root,
             child_overrides: (!child_overrides.is_empty()).then_some(child_overrides),
+            id_index: self.id_index.clone(),
         })
     }
 

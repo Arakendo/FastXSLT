@@ -26,11 +26,11 @@ use super::{
 };
 use crate::xpath::binary_numeric_experiment::{BinaryNumericNode, BinaryNumericOperator};
 use crate::xslt::golden_semantics_experiment::{
-    Xslt10ComposedPathTranslate, Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup,
-    Xslt10KeyName, Xslt10KeyNodePredicate, Xslt10KeyValue, Xslt10NodePosition,
-    Xslt10NormalizedVariableTranslate, Xslt10PathStringFunction, Xslt10PathStringFunctionKind,
-    Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand,
-    Xslt10VariableStringFunction, Xslt10VariableSubstring,
+    Xslt10ComposedPathTranslate, Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10IdArgument,
+    Xslt10IdLookup, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyNodePredicate, Xslt10KeyValue,
+    Xslt10NodePosition, Xslt10NormalizedVariableTranslate, Xslt10PathStringFunction,
+    Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand,
+    Xslt10TranslateOperand, Xslt10VariableStringFunction, Xslt10VariableSubstring,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -42,11 +42,6 @@ enum ValueCompatibilityMode {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct ValueStaticContext {
     compatibility: ValueCompatibilityMode,
-}
-
-pub(super) enum Xslt10IdArgument {
-    Literal,
-    Path(LocationPath),
 }
 
 impl ValueStaticContext {
@@ -104,13 +99,9 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             .map(|lookup| ValueExpression::Xslt10KeyLookup(Box::new(lookup)));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
-        && let Some(argument) = compile_xslt10_id_without_typed_ids(expression, location)?
+        && let Some(argument) = compile_xslt10_id_lookup(expression, location)?
     {
-        let argument_path = match argument {
-            Xslt10IdArgument::Literal => None,
-            Xslt10IdArgument::Path(path) => Some(path),
-        };
-        return Ok(ValueExpression::Xslt10IdLookupWithoutTypedIds { argument_path });
+        return Ok(ValueExpression::Xslt10IdLookup(Box::new(argument)));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(value) = compile_xslt10_literal_document_path(expression, location)?
@@ -868,10 +859,10 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     })
 }
 
-pub(super) fn compile_xslt10_id_without_typed_ids(
+pub(super) fn compile_xslt10_id_lookup(
     expression: &str,
     location: &SourceLocation,
-) -> Result<Option<Xslt10IdArgument>, CompileFailure> {
+) -> Result<Option<Xslt10IdLookup>, CompileFailure> {
     let expression = expression.trim();
     let Some(arguments_and_tail) = expression.strip_prefix("id(") else {
         return Ok(None);
@@ -886,8 +877,8 @@ pub(super) fn compile_xslt10_id_without_typed_ids(
             location,
         ));
     }
-    let argument = if xpath_string_literal(argument).is_some() {
-        Xslt10IdArgument::Literal
+    let argument = if let Some(literal) = xpath_string_literal(argument) {
+        Xslt10IdArgument::Literal(literal.to_owned())
     } else {
         Xslt10IdArgument::Path(
             parse_xslt10_location_path(argument, location.clone()).map_err(map_path_failure)?,
@@ -895,30 +886,34 @@ pub(super) fn compile_xslt10_id_without_typed_ids(
     };
     let tail = arguments_and_tail[close + 1..].trim();
     let tail = tail.trim();
-    if tail.is_empty() {
-        return Ok(Some(argument));
-    }
-    let Some(relative) = tail.strip_prefix('/') else {
-        return Err(invalid(
-            "XPST0003",
-            "id() may be followed only by a relative path",
-            location,
-        ));
-    };
-    if relative.is_empty() {
-        return Err(invalid(
-            "XPST0003",
-            "id() path must contain a step after '/'",
-            location,
-        ));
-    }
-    if let Some(descendant) = relative.strip_prefix('/') {
-        parse_xslt10_location_path(&format!(".//{descendant}"), location.clone())
-            .map_err(map_path_failure)?;
+    let relative_path = if tail.is_empty() {
+        None
     } else {
-        parse_xslt10_location_path(relative, location.clone()).map_err(map_path_failure)?;
-    }
-    Ok(Some(argument))
+        let Some(relative) = tail.strip_prefix('/') else {
+            return Err(invalid(
+                "XPST0003",
+                "id() may be followed only by a relative path",
+                location,
+            ));
+        };
+        if relative.is_empty() {
+            return Err(invalid(
+                "XPST0003",
+                "id() path must contain a step after '/'",
+                location,
+            ));
+        }
+        Some(if let Some(descendant) = relative.strip_prefix('/') {
+            parse_xslt10_location_path(&format!(".//{descendant}"), location.clone())
+                .map_err(map_path_failure)?
+        } else {
+            parse_xslt10_location_path(relative, location.clone()).map_err(map_path_failure)?
+        })
+    };
+    Ok(Some(Xslt10IdLookup {
+        argument,
+        relative_path,
+    }))
 }
 
 fn matching_id_parenthesis(arguments_and_tail: &str) -> Option<usize> {

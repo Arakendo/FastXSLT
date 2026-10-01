@@ -24,7 +24,8 @@ use crate::xslt::golden_semantics_experiment::{
     FocusEqualityOperand, Instruction, LiteralAttribute, NodeTest, OnMultipleMatchPolicy,
     OnNoMatchPolicy, SequenceItemExpression, SortCaseOrder, SortDataType, SortKey, SortLanguage,
     SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison, StylesheetProgram,
-    TemplateArgument, Xslt10AncestorFilter, Xslt10ApplyUnionPart, Xslt10KeyLookup,
+    TemplateArgument, Xslt10AncestorFilter, Xslt10ApplyUnionPart, Xslt10IdArgument, Xslt10IdLookup,
+    Xslt10KeyLookup,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -6399,8 +6400,8 @@ fn select_apply_nodes(
         | ApplySelection::Xslt10SourceDocumentsPath { .. } => {
             unreachable!("literal document selection is dispatched before source selection")
         }
-        ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path } => {
-            select_xslt10_id_without_typed_ids(inputs, context, argument_path.as_ref(), control)
+        ApplySelection::Xslt10IdLookup(lookup) => {
+            select_xslt10_id(inputs, context, lookup, control)
         }
         ApplySelection::Xslt10KeyLookup(lookup) => {
             key_lookup::select(inputs, lookup, Some(context), variables, control)
@@ -6513,21 +6514,59 @@ fn select_xslt10_muenchian_key_group(
     key_lookup::retain_muenchian_first(inputs, first, candidates, variables, control)
 }
 
-fn select_xslt10_id_without_typed_ids(
+fn select_xslt10_id(
     inputs: &SequenceInputs<'_>,
     context: NodeId,
-    argument_path: Option<&LocationPath>,
+    lookup: &Xslt10IdLookup,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
-    if let Some(argument_path) = argument_path {
-        let source = inputs.source.expect("ID lookup requires a source");
-        evaluate_location_path_controlled(source, context, argument_path, control)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let source = inputs.source.expect("ID lookup requires a source");
+    let mut values = Vec::new();
+    match &lookup.argument {
+        Xslt10IdArgument::Literal(value) => values.push(value.clone()),
+        Xslt10IdArgument::Path(argument_path) => {
+            for node in evaluate_location_path_controlled(source, context, argument_path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?
+            {
+                values.push(
+                    source
+                        .string_value_controlled(node, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?,
+                );
+            }
+        }
     }
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    Ok(Vec::new())
+    let mut selected = Vec::new();
+    for value in values {
+        for token in value
+            .split([' ', '\t', '\r', '\n'])
+            .filter(|part| !part.is_empty())
+        {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            selected.extend_from_slice(source.elements_with_id(token));
+        }
+    }
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+
+    let Some(relative_path) = &lookup.relative_path else {
+        return Ok(selected);
+    };
+    let mut relative = Vec::new();
+    for node in selected {
+        relative.extend(
+            evaluate_location_path_controlled(source, node, relative_path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?,
+        );
+    }
+    relative.sort_unstable_by_key(|node| source.document_order(*node));
+    relative.dedup();
+    Ok(relative)
 }
 
 fn select_xslt10_children_of_named_elements(

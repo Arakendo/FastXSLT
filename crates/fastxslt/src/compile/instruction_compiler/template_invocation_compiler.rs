@@ -435,16 +435,10 @@ pub(super) fn parse_apply_selection(
         {
             return Ok(selection);
         }
-        if let Some(argument) =
-            super::value_expression_compiler::compile_xslt10_id_without_typed_ids(
-                expression, &location,
-            )?
+        if let Some(lookup) =
+            super::value_expression_compiler::compile_xslt10_id_lookup(expression, &location)?
         {
-            let argument_path = match argument {
-                super::value_expression_compiler::Xslt10IdArgument::Literal => None,
-                super::value_expression_compiler::Xslt10IdArgument::Path(path) => Some(path),
-            };
-            return Ok(ApplySelection::Xslt10IdLookupWithoutTypedIds { argument_path });
+            return Ok(ApplySelection::Xslt10IdLookup(Box::new(lookup)));
         }
         if let Some(selection) =
             parse_xslt10_key_selection(document, element, expression, &location)?

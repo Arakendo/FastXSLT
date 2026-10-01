@@ -5,7 +5,10 @@ use crate::compile::golden_stylesheet_experiment::{
 };
 use crate::resources::{ResolutionFailure, SnapshotResolver, resolve_reference};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
-use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xml::internal_subset::InternalSubsetLimits;
+use crate::xml::quick_xml_experiment::{
+    ParseLimits, parse_document, parse_document_with_internal_subset,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct DependencyLimits {
@@ -93,6 +96,7 @@ pub(super) fn load_stylesheet_dependency_graph(
     principal_identity: &str,
     limits: DependencyLimits,
     xml_limits: ParseLimits,
+    internal_subset_limits: Option<InternalSubsetLimits>,
 ) -> Result<LoadedStylesheetModule, DependencyFailure> {
     let mut state = LoadState {
         limits,
@@ -100,6 +104,7 @@ pub(super) fn load_stylesheet_dependency_graph(
         bytes: 0,
         active: Vec::new(),
         xml_limits,
+        internal_subset_limits,
     };
     load_module(resolver, principal_identity, "", None, 0, None, &mut state)
 }
@@ -110,6 +115,7 @@ struct LoadState {
     bytes: usize,
     active: Vec<String>,
     xml_limits: ParseLimits,
+    internal_subset_limits: Option<InternalSubsetLimits>,
 }
 
 fn load_module(
@@ -162,21 +168,27 @@ fn load_module(
     state.modules += 1;
     state.bytes = attempted;
 
-    let parsed =
-        parse_document(&resource.identity, resource.bytes, state.xml_limits).map_err(|error| {
-            match error.structural_limit_detail() {
-                Some(detail) => DependencyFailure::XmlLimit {
-                    identity: resource.identity.clone(),
-                    detail,
-                    location: location.clone(),
-                },
-                None => DependencyFailure::InvalidXml {
-                    identity: resource.identity.clone(),
-                    detail: format!("{error:?}"),
-                    location: location.clone(),
-                },
-            }
-        })?;
+    let parsed = match state.internal_subset_limits {
+        Some(dtd_limits) => parse_document_with_internal_subset(
+            &resource.identity,
+            resource.bytes,
+            state.xml_limits,
+            dtd_limits,
+        ),
+        None => parse_document(&resource.identity, resource.bytes, state.xml_limits),
+    }
+    .map_err(|error| match error.structural_limit_detail() {
+        Some(detail) => DependencyFailure::XmlLimit {
+            identity: resource.identity.clone(),
+            detail,
+            location: location.clone(),
+        },
+        None => DependencyFailure::InvalidXml {
+            identity: resource.identity.clone(),
+            detail: format!("{error:?}"),
+            location: location.clone(),
+        },
+    })?;
     let document =
         Document::from_parsed(parsed).map_err(|error| DependencyFailure::InvalidXdm {
             identity: resource.identity.clone(),
@@ -385,6 +397,7 @@ mod tests {
             ROOT,
             DependencyLimits::new(2, 3, 1_536),
             XML_LIMITS,
+            None,
         )
         .expect("bounded graph");
 
@@ -404,6 +417,7 @@ mod tests {
                 ROOT,
                 DependencyLimits::new(1, 3, 1_536),
                 XML_LIMITS,
+                None,
             ),
             Err(DependencyFailure::DepthLimit {
                 maximum: 1,
@@ -418,6 +432,7 @@ mod tests {
                 ROOT,
                 DependencyLimits::new(2, 2, 1_536),
                 XML_LIMITS,
+                None,
             ),
             Err(DependencyFailure::ModuleLimit {
                 maximum: 2,
@@ -433,6 +448,7 @@ mod tests {
                 ROOT,
                 DependencyLimits::new(2, 3, root_bytes),
                 XML_LIMITS,
+                None,
             ),
             Err(DependencyFailure::ByteLimit { maximum, .. }) if maximum == root_bytes
         ));
@@ -445,6 +461,7 @@ mod tests {
                 ROOT,
                 DependencyLimits::new(3, 3, 1_536),
                 XML_LIMITS,
+                None,
             ),
             Err(DependencyFailure::Cycle {
                 identity,

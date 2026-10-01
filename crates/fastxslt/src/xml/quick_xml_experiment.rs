@@ -4,13 +4,14 @@ use std::ops::Range;
 use quick_xml::XmlVersion;
 use quick_xml::encoding::Decoder;
 use quick_xml::events::{BytesStart, Event};
-use quick_xml::name::ResolveResult;
+use quick_xml::name::{QName, ResolveResult};
 use quick_xml::reader::NsReader;
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xml::input_transcoding::ParserInput;
 use crate::xml::internal_subset::{
-    InternalEntities, InternalSubsetFailure, InternalSubsetLimits, parse_internal_subset,
+    DeclaredAttributeType, InternalEntities, InternalSubsetFailure, InternalSubsetLimits,
+    parse_internal_subset,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -30,6 +31,7 @@ pub(crate) struct XmlAttribute {
     pub(crate) name: ExpandedName,
     pub(crate) prefix: Option<String>,
     pub(crate) value: String,
+    pub(crate) is_id: bool,
     pub(crate) span: Range<usize>,
 }
 
@@ -272,7 +274,6 @@ pub(crate) fn parse_document_controlled(
         })
 }
 
-#[cfg(test)]
 pub(crate) fn parse_document_with_internal_subset(
     resource: &str,
     input: &[u8],
@@ -628,19 +629,32 @@ fn resolve_attributes(
 ) -> Result<Vec<XmlAttribute>, ParseFailure> {
     let mut names = Vec::new();
     let mut expanded_names = HashSet::new();
+    let mut lexical_names = HashSet::new();
+    let lexical_element_name = decode_name(reader.decoder(), element.name().as_ref(), offset)?;
 
     for attribute in element.attributes() {
         let attribute = attribute.map_err(|error| ParseFailure::Malformed {
             offset,
             detail: error.to_string(),
         })?;
-        let value = resolve_attribute_value(reader, &attribute, offset, entities, control)?;
+        let lexical_attribute_name = decode_name(reader.decoder(), attribute.key.as_ref(), offset)?;
+        lexical_names.insert(lexical_attribute_name.clone());
+        let mut value = resolve_attribute_value(reader, &attribute, offset, entities, control)?;
         if attribute.key.as_ref() == b"xmlns" || attribute.key.as_ref().starts_with(b"xmlns:") {
             continue;
         }
         let (namespace, local) = reader.resolver().resolve_attribute(attribute.key);
         let name = expanded_name(reader.decoder(), namespace, local.as_ref(), offset)?;
         let prefix = lexical_prefix(reader.decoder(), attribute.key.as_ref(), offset)?;
+        let declared_type = entities.and_then(|entities| {
+            entities.attribute_type(&lexical_element_name, &lexical_attribute_name)
+        });
+        if matches!(
+            declared_type,
+            Some(DeclaredAttributeType::Id | DeclaredAttributeType::IdRef)
+        ) {
+            value = normalize_xml_tokenized_attribute(&value);
+        }
         if !expanded_names.insert(name.clone()) {
             return Err(ParseFailure::Malformed {
                 offset,
@@ -651,10 +665,58 @@ fn resolve_attributes(
             name,
             prefix,
             value,
+            is_id: declared_type == Some(DeclaredAttributeType::Id),
             span: offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
         });
     }
+    if let Some(entities) = entities {
+        for attribute in entities
+            .default_attributes(&lexical_element_name, &lexical_names)
+            .map_err(|failure| {
+                map_dtd_failure(
+                    failure,
+                    offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
+                    offset,
+                )
+            })?
+        {
+            if attribute.name == "xmlns" || attribute.name.starts_with("xmlns:") {
+                return Err(ParseFailure::DtdUnsupported {
+                    span: offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
+                    detail: "DTD-derived namespace declarations require pre-tokenization namespace semantics"
+                        .to_owned(),
+                });
+            }
+            let qualified = QName(attribute.name.as_bytes());
+            let (namespace, local) = reader.resolver().resolve_attribute(qualified);
+            let name = expanded_name(reader.decoder(), namespace, local.as_ref(), offset)?;
+            if !expanded_names.insert(name.clone()) {
+                return Err(ParseFailure::Malformed {
+                    offset,
+                    detail: format!("duplicate expanded attribute name: {name:?}"),
+                });
+            }
+            names.push(XmlAttribute {
+                name,
+                prefix: attribute
+                    .name
+                    .split_once(':')
+                    .map(|(prefix, _)| prefix.to_owned()),
+                value: attribute.value,
+                is_id: attribute.declared_type == DeclaredAttributeType::Id,
+                span: offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
+            });
+        }
+    }
     Ok(names)
+}
+
+fn normalize_xml_tokenized_attribute(value: &str) -> String {
+    value
+        .split([' ', '\t', '\r', '\n'])
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn resolve_namespace_declarations(
@@ -1108,23 +1170,113 @@ mod tests {
     }
 
     #[test]
+    fn bounded_internal_subset_marks_ids_and_normalizes_tokenized_values() {
+        let document = parse_document_with_internal_subset(
+            "memory:typed-attributes.xml",
+            br#"<!DOCTYPE root [
+                <!ELEMENT root EMPTY>
+                <!ATTLIST root id ID #REQUIRED ref IDREF #IMPLIED note CDATA #IMPLIED>
+            ]><root id="  target&#x9;" ref="&#xA; target  " note="  unchanged  "/>"#,
+            LIMITS,
+            DTD_LIMITS,
+        )
+        .expect("bounded typed attributes should be admitted explicitly");
+
+        let OwnedXmlEvent::Start { attributes, .. } = &document.events[0] else {
+            panic!("root start event");
+        };
+        let id = attributes
+            .iter()
+            .find(|attribute| attribute.name.local == "id")
+            .expect("ID attribute");
+        assert!(id.is_id);
+        assert_eq!(id.value, "target");
+        let reference = attributes
+            .iter()
+            .find(|attribute| attribute.name.local == "ref")
+            .expect("IDREF attribute");
+        assert!(!reference.is_id);
+        assert_eq!(reference.value, "target");
+        let cdata = attributes
+            .iter()
+            .find(|attribute| attribute.name.local == "note")
+            .expect("CDATA attribute");
+        assert!(!cdata.is_id);
+        assert_eq!(cdata.value, "  unchanged  ");
+    }
+
+    #[test]
+    fn bounded_internal_subset_injects_defaults_without_overriding_authored_attributes() {
+        let document = parse_document_with_internal_subset(
+            "memory:default-attributes.xml",
+            br#"<!DOCTYPE root [
+                <!ELEMENT root (item,item)>
+                <!ELEMENT item EMPTY>
+                <!ATTLIST item value CDATA "default" fixed CDATA #FIXED "fixed">
+            ]><root><item/><item value="authored"/></root>"#,
+            LIMITS,
+            DTD_LIMITS,
+        )
+        .expect("bounded default attributes should be admitted explicitly");
+
+        let item_attributes = document.events.iter().filter_map(|event| match event {
+            OwnedXmlEvent::Start {
+                name, attributes, ..
+            } if name.local == "item" => Some(attributes),
+            _ => None,
+        });
+        let values = item_attributes
+            .map(|attributes| {
+                (
+                    attributes
+                        .iter()
+                        .find(|attribute| attribute.name.local == "value")
+                        .map(|attribute| attribute.value.as_str()),
+                    attributes
+                        .iter()
+                        .find(|attribute| attribute.name.local == "fixed")
+                        .map(|attribute| attribute.value.as_str()),
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            values,
+            vec![
+                (Some("default"), Some("fixed")),
+                (Some("authored"), Some("fixed"))
+            ]
+        );
+    }
+
+    #[test]
+    fn bounded_internal_subset_charges_each_injected_default_value() {
+        let failure = parse_document_with_internal_subset(
+            "memory:bounded-defaults.xml",
+            br#"<!DOCTYPE root [
+                <!ELEMENT root (item,item)>
+                <!ELEMENT item EMPTY>
+                <!ATTLIST item value CDATA "xx">
+            ]><root><item/><item/></root>"#,
+            LIMITS,
+            InternalSubsetLimits {
+                replacement_bytes: 3,
+                ..DTD_LIMITS
+            },
+        )
+        .expect_err("two injected defaults must exceed the cumulative byte limit");
+
+        assert_eq!(
+            failure.structural_limit_detail().as_deref(),
+            Some("DTD replacement-byte limit is 3")
+        );
+    }
+
+    #[test]
     fn bounded_internal_subset_still_denies_external_authority() {
         assert!(matches!(
             parse_document_with_internal_subset(
                 "memory:no-authority.xml",
                 b"<!DOCTYPE root SYSTEM 'file:///secret'><root/>",
-                LIMITS,
-                DTD_LIMITS,
-            ),
-            Err(LocatedFailure {
-                failure: ParseFailure::DtdUnsupported { .. },
-                ..
-            })
-        ));
-        assert!(matches!(
-            parse_document_with_internal_subset(
-                "memory:no-defaults.xml",
-                b"<!DOCTYPE root [<!ATTLIST root value CDATA 'secret'>]><root/>",
                 LIMITS,
                 DTD_LIMITS,
             ),
