@@ -148,6 +148,20 @@ external-byte and cumulative replacement ceilings. These tests establish
 bounded failure behavior; they do not close the remaining declaration-level
 external-offset provenance gap.
 
+The loader experiment now applies one explicitly configured reviewed reference
+to a matching included or imported stylesheet module as well as the principal
+module. It does not discover arbitrary DTD names: an ASCII `SYSTEM` reference
+must match the reviewed configuration, and the XML parser independently
+validates the declaration after the DTD is resolved. A focused include test
+proves success through the existing resolver and proves that an absent module
+DTD returns the existing sealed-snapshot missing-resource diagnostic without
+ambient fallback. The unchanged Microsoft `Import__84615` and
+`Include__77751` cases then initialize and execute with `stylesheet1.dtd`, but
+both expose later whitespace-result mismatches. Exact coverage remains 2,451 /
+3,173 (77.25%); initialized cases rise to 2,645, executed cases to 2,599, and
+the DTD frontier becomes 15 internal parses, 93 single-external parses, and
+nine explicit unsupported outcomes.
+
 ## Disposition
 
 Retain the private experiment as evidence for AR-0025. It proves that a narrow

@@ -1050,6 +1050,84 @@ mod tests {
         );
     }
 
+    #[test]
+    fn bounded_external_subset_applies_to_an_included_stylesheet_module() {
+        const STYLESHEET_ID: &str = "https://example.invalid/styles/main.xsl";
+        let engine = ExperimentalEngine::new_with_bounded_external_subsets(
+            "https://example.invalid/source.xml",
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:include href="included.xsl"/><xsl:template match="/"><xsl:apply-templates select="source"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchStylesheetResources {
+                dependencies: vec![
+                    WorkbenchResource {
+                        identity: "https://example.invalid/styles/included.xsl".to_owned(),
+                        bytes: br#"<!DOCTYPE xsl:stylesheet SYSTEM "stylesheet.dtd"><xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="source"><result/></xsl:template></xsl:stylesheet>"#.to_vec(),
+                    },
+                    WorkbenchResource {
+                        identity: "https://example.invalid/styles/stylesheet.dtd".to_owned(),
+                        bytes: br#"<!ELEMENT xsl:stylesheet ANY><!ATTLIST xsl:stylesheet version CDATA #FIXED "1.0">"#.to_vec(),
+                    },
+                ],
+                denied_identities: Vec::new(),
+            },
+            WorkbenchLimits::default(),
+            WorkbenchExternalSubsetLimits {
+                declarations: crate::xml::internal_subset::InternalSubsetLimits {
+                    declarations: 8,
+                    nesting_depth: 8,
+                    references: 32,
+                    replacement_bytes: 1_024,
+                },
+                source: None,
+                stylesheet: Some(("stylesheet.dtd", 1_024)),
+            },
+        )
+        .expect("the included module should resolve its DTD through the compile resolver");
+
+        assert_eq!(
+            engine
+                .transform("bounded-included-stylesheet-subset")
+                .expect("the included template should execute"),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><result></result>"
+        );
+
+        let missing = ExperimentalEngine::new_with_bounded_external_subsets(
+            "https://example.invalid/source.xml",
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:include href="included.xsl"/></xsl:stylesheet>"#.to_vec(),
+            WorkbenchStylesheetResources {
+                dependencies: vec![WorkbenchResource {
+                    identity: "https://example.invalid/styles/included.xsl".to_owned(),
+                    bytes: br#"<!DOCTYPE xsl:stylesheet SYSTEM "stylesheet.dtd"><xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"/>"#.to_vec(),
+                }],
+                denied_identities: Vec::new(),
+            },
+            WorkbenchLimits::default(),
+            WorkbenchExternalSubsetLimits {
+                declarations: crate::xml::internal_subset::InternalSubsetLimits {
+                    declarations: 8,
+                    nesting_depth: 8,
+                    references: 32,
+                    replacement_bytes: 1_024,
+                },
+                source: None,
+                stylesheet: Some(("stylesheet.dtd", 1_024)),
+            },
+        );
+        let Err(missing) = missing else {
+            panic!("a dependency DTD absent from the snapshot must not be acquired");
+        };
+        assert_eq!(missing.code, "FXRS0002");
+        assert_eq!(missing.category, "missing-resource");
+        assert!(
+            missing
+                .detail
+                .contains("https://example.invalid/styles/stylesheet.dtd")
+        );
+    }
+
     fn exact_for_004_engine() -> ExperimentalEngine {
         ExperimentalEngine::new(
             "urn:w3c:xslt30:for-004:source",

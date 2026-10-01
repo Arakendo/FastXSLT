@@ -255,7 +255,13 @@ exact without a second resolver or parser path. The strict lower bound reaches
 case-local 3,139-byte `htmllat1.dtd` character-entity set makes three more
 unchanged cases exact without widening authority or grammar. The current lower
 bound is 2,451 / 3,173 (77.25%), and the conserved frontier becomes 15 internal
-parses, 91 single-external parses, and 11 explicit unsupported outcomes.
+parses, 91 single-external parses, and 11 explicit unsupported outcomes. The
+same opt-in reference may now be used by an included or imported stylesheet
+module, still through the existing dependency resolver. Two `stylesheet1.dtd`
+cases then initialize and execute but expose later whitespace-result
+mismatches; the exact lower bound remains 77.25%, while the DTD frontier moves
+to 15 internal parses, 93 single-external parses, and nine explicit unsupported
+outcomes.
 
 ## Disposition
 
@@ -372,3 +378,9 @@ memory amplification.
   all fail deterministically. External declaration failures retain the owning
   logical DTD identity and whole-resource span; declaration-level offsets
   remain an explicit provenance gap.
+- 2026-09-30 -- Extended the same explicitly configured sealed external subset
+  to matching included/imported stylesheet modules. Missing dependency DTDs
+  fail through the existing missing-resource diagnostic with no fallback. The
+  two `stylesheet1.dtd` cases initialize and execute but remain visible output
+  mismatches, leaving the exact lower bound at 77.25%; the conserved DTD
+  frontier becomes 15 internal, 93 single-external, and nine unsupported.

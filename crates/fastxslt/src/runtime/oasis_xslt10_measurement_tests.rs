@@ -465,8 +465,12 @@ fn measures_local_oasis_xslt10_compatibility() {
         let stylesheet_identity = logical_identity(&case, &case.principal_stylesheet);
         let reviewed_external_subset =
             reviewed_external_source_subset(&case, &source_identity, &source);
-        let reviewed_stylesheet_external_subset =
-            reviewed_external_stylesheet_subset(&case, &stylesheet_identity, &stylesheet);
+        let reviewed_stylesheet_external_subset = reviewed_external_stylesheet_subset(
+            &case,
+            &stylesheet_identity,
+            &stylesheet,
+            &resources,
+        );
         let used_reviewed_external_subset = reviewed_external_subset.is_some();
         let used_reviewed_stylesheet_external_subset =
             reviewed_stylesheet_external_subset.is_some();
@@ -478,10 +482,15 @@ fn measures_local_oasis_xslt10_compatibility() {
             measurement.increment("reviewed-single-external-subset-case");
         }
         if let Some(external_subset) = &reviewed_stylesheet_external_subset {
-            resources.push(WorkbenchResource {
-                identity: external_subset.identity.clone(),
-                bytes: external_subset.bytes.clone(),
-            });
+            if !resources
+                .iter()
+                .any(|resource| resource.identity == external_subset.identity)
+            {
+                resources.push(WorkbenchResource {
+                    identity: external_subset.identity.clone(),
+                    bytes: external_subset.bytes.clone(),
+                });
+            }
             measurement.increment("reviewed-external-stylesheet-subset-case");
         }
         let mut dtd_input_observations = BTreeMap::new();
@@ -1429,24 +1438,25 @@ fn reviewed_external_stylesheet_subset(
     case: &LegacyCase,
     stylesheet_identity: &str,
     stylesheet: &[u8],
+    resources: &[WorkbenchResource],
 ) -> Option<ReviewedExternalSubset> {
-    const REVIEWED_REFERENCES: [&str; 2] = ["stylesheet.dtd", "htmllat1.dtd"];
-    let reference = REVIEWED_REFERENCES.into_iter().find(|reference| {
-        let single_quoted = format!("SYSTEM '{reference}'");
-        let double_quoted = format!("SYSTEM \"{reference}\"");
-        stylesheet
-            .windows(single_quoted.len())
-            .any(|window| window == single_quoted.as_bytes())
-            || stylesheet
-                .windows(double_quoted.len())
-                .any(|window| window == double_quoted.as_bytes())
-    })?;
+    const REVIEWED_REFERENCES: [&str; 3] = ["stylesheet.dtd", "stylesheet1.dtd", "htmllat1.dtd"];
+    let (reference, declaring_identity) =
+        REVIEWED_REFERENCES.into_iter().find_map(|reference| {
+            if declares_system_reference(stylesheet, reference) {
+                return Some((reference, stylesheet_identity));
+            }
+            resources
+                .iter()
+                .find(|resource| declares_system_reference(&resource.bytes, reference))
+                .map(|resource| (reference, resource.identity.as_str()))
+        })?;
     let bytes = read_case_file(&case.directory, reference)?;
     if bytes.len() > MAX_REVIEWED_EXTERNAL_SUBSET_BYTES {
         return None;
     }
     let (identity, fragment) =
-        crate::resources::resolve_reference(stylesheet_identity, reference).ok()?;
+        crate::resources::resolve_reference(declaring_identity, reference).ok()?;
     if fragment.is_some() {
         return None;
     }
@@ -1455,6 +1465,17 @@ fn reviewed_external_stylesheet_subset(
         identity,
         bytes,
     })
+}
+
+fn declares_system_reference(bytes: &[u8], reference: &str) -> bool {
+    let single_quoted = format!("SYSTEM '{reference}'");
+    let double_quoted = format!("SYSTEM \"{reference}\"");
+    bytes
+        .windows(single_quoted.len())
+        .any(|window| window == single_quoted.as_bytes())
+        || bytes
+            .windows(double_quoted.len())
+            .any(|window| window == double_quoted.as_bytes())
 }
 
 fn read_case_file(directory: &Path, relative: &str) -> Option<Vec<u8>> {

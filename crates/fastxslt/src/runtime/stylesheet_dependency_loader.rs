@@ -168,7 +168,6 @@ fn load_module(
         resolver,
         &resource.identity,
         resource.bytes,
-        depth,
         location.clone(),
         state,
     )?;
@@ -236,26 +235,22 @@ fn parse_module_document(
     resolver: &mut SnapshotResolver<'_>,
     identity: &str,
     bytes: &[u8],
-    depth: usize,
     location: Option<SourceLocation>,
     state: &mut LoadState,
 ) -> Result<ParsedDocument, DependencyFailure> {
-    let external_subset = if depth == 0 {
-        state
-            .external_subset_limits
-            .map(|limits| {
-                resolver
-                    .resolve_from(identity, limits.reference)
-                    .map(|external| (limits, external))
-                    .map_err(|error| DependencyFailure::Resolution {
-                        error,
-                        location: location.clone(),
-                    })
-            })
-            .transpose()?
-    } else {
-        None
-    };
+    let external_subset = state
+        .external_subset_limits
+        .filter(|limits| declares_system_reference(bytes, limits.reference))
+        .map(|limits| {
+            resolver
+                .resolve_from(identity, limits.reference)
+                .map(|external| (limits, external))
+                .map_err(|error| DependencyFailure::Resolution {
+                    error,
+                    location: location.clone(),
+                })
+        })
+        .transpose()?;
     if let Some((limits, external)) = &external_subset {
         if external.bytes.len() > limits.max_bytes {
             return Err(DependencyFailure::ByteLimit {
@@ -297,6 +292,17 @@ fn parse_module_document(
             location,
         },
     })
+}
+
+fn declares_system_reference(bytes: &[u8], reference: &str) -> bool {
+    let single_quoted = format!("SYSTEM '{reference}'");
+    let double_quoted = format!("SYSTEM \"{reference}\"");
+    bytes
+        .windows(single_quoted.len())
+        .any(|window| window == single_quoted.as_bytes())
+        || bytes
+            .windows(double_quoted.len())
+            .any(|window| window == double_quoted.as_bytes())
 }
 
 fn effective_base_identity(
