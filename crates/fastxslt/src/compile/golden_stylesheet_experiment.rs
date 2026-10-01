@@ -2619,6 +2619,11 @@ fn compile_template_parameter_default(
         return Ok(TemplateParameterDefault::Variable(variable.to_owned()));
     }
     if instruction_compiler::uses_xslt10_compatibility(document, child)
+        && select.split_whitespace().collect::<String>() == "local-name(.)"
+    {
+        return Ok(TemplateParameterDefault::ContextLocalName);
+    }
+    if instruction_compiler::uses_xslt10_compatibility(document, child)
         && let ValueExpression::BinaryNumeric(expression) =
             instruction_compiler::compile_value_expression(
                 document,

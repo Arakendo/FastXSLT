@@ -170,7 +170,7 @@ fn template_parameter_owned(value: &TemplateParameter) -> usize {
             TemplateParameterDefault::Text(text) | TemplateParameterDefault::Variable(text) => {
                 text.capacity()
             }
-            TemplateParameterDefault::Integer(_) => 0,
+            TemplateParameterDefault::Integer(_) | TemplateParameterDefault::ContextLocalName => 0,
             TemplateParameterDefault::SourcePath(path) => path.known_owned_capacity_bytes(),
             TemplateParameterDefault::SourceVariablePath { variable, path } => {
                 variable.capacity() + path.known_owned_capacity_bytes()

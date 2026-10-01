@@ -4251,3 +4251,9 @@ maintained redistributable legacy suite becomes available.
   to 2,466 / 3,173 (77.72%), 2,662 initialized cases, and 2,615 successful
   executions.
   [Evidence](../Evidence/oasis-xslt10-id-path-union-2026-09-30.md)
+- 2026-09-30: the exact XSLT 1.0 template-parameter default `local-name(.)`
+  now observes and charges the call's source context. The focused runtime path
+  passes, while unchanged `Lotus/mdocs_mdocs16#1` advances to the unresolved
+  cross-document node-ownership seam. Coverage remains 2,466 / 3,173 rather
+  than approximating that boundary.
+  [Evidence](../Evidence/oasis-xslt10-context-local-name-parameter-default-2026-09-30.md)

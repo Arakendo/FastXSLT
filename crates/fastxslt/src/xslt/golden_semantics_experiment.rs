@@ -286,6 +286,7 @@ pub(crate) enum TemplateParameterDefault {
         path: LocationPath,
     },
     Variable(String),
+    ContextLocalName,
     Xslt10BinaryNumeric(Box<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>),
     Xslt10SequenceConstructor(Box<[Instruction]>),
     Xslt10TextChoice {

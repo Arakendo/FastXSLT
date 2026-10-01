@@ -2126,6 +2126,16 @@ fn bind_template_parameter_default(
         TemplateParameterDefault::Variable(variable) => {
             copy_parameter_default_variable(frame, parameter, variable, inputs)?;
         }
+        TemplateParameterDefault::ContextLocalName => {
+            let (source, context) = required_source_context(inputs, context)?;
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let value = source
+                .name(context)
+                .map_or_else(String::new, |name| name.local.clone());
+            frame.bind_atomic(parameter.name.clone(), AtomicValue::string(value));
+        }
         TemplateParameterDefault::Xslt10BinaryNumeric(expression) => {
             let value =
                 evaluate_binary_numeric_value(inputs, context, None, expression, frame, control)?;

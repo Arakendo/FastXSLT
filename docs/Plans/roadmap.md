@@ -121,6 +121,11 @@ Microsoft case executes but remains a visible archival whitespace mismatch.
 The current lower bound is 2,466 / 3,173 (77.72%), with 2,662 initialized
 cases, 2,615 successful executions, 508 initialization failures, and 47
 execution failures.
+The exact XSLT 1.0 template-parameter default `local-name(.)` now observes the
+call's source context through one typed dynamic default. Its unchanged OASIS
+case advances to the unresolved cross-document node-ownership seam, so the
+numerator is deliberately unchanged rather than approximating secondary-
+document nodes as principal-source IDs.
 Production DTD denial remains unchanged; `PUBLIC`, recursion, parameter
 entities, external general entities, validation, catalogs, and ambient I/O
 remain outside the experiment.
