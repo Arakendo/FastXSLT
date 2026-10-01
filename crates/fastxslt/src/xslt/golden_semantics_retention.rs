@@ -324,6 +324,9 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         MatchPattern::AnyElementBooleanPredicate(predicate) => {
             match_boolean_predicate_owned(predicate)
         }
+        MatchPattern::ElementBooleanPredicate { element, predicate } => {
+            name_owned(element) + match_boolean_predicate_owned(predicate)
+        }
         MatchPattern::ElementNodeSetStringEquals {
             element,
             children,
@@ -423,6 +426,7 @@ fn match_boolean_predicate_owned(
         MatchBooleanPredicate::AttributeEquals { attribute, value } => {
             name_owned(attribute) + value.capacity()
         }
+        MatchBooleanPredicate::AttributeNumber { attribute, .. } => name_owned(attribute),
         MatchBooleanPredicate::And(left, right) | MatchBooleanPredicate::Or(left, right) => {
             size_of_val(left.as_ref())
                 + match_boolean_predicate_owned(left)

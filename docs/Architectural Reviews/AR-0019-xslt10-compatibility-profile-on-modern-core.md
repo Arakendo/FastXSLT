@@ -4219,3 +4219,12 @@ maintained redistributable legacy suite becomes available.
   Initialization failures fall to 516; all later-failure, mismatch, comparator,
   and expected-error counters remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-id-match-patterns-2026-09-30.md)
+- 2026-09-30: bounded numeric attribute comparisons now share one typed
+  predicate across ordinary location paths and named match patterns. The match
+  runtime preserves source/temporary-tree parity, including boolean predicates
+  on parentless temporary roots. Three unchanged Lotus cases become exact,
+  moving the sweep to 2,463 / 3,173 (77.62%), 2,657 initialized cases, and
+  2,611 successful executions. Initialization failures fall to 513; execution
+  failures, mismatches, comparator gaps, and expected-error credit are
+  unchanged.
+  [Evidence](../Evidence/oasis-xslt10-numeric-attribute-predicates-2026-09-30.md)

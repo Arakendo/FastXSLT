@@ -13,6 +13,12 @@ pub(super) trait Context {
         name: &crate::xml::quick_xml_experiment::ExpandedName,
         value: &str,
     ) -> Result<bool, Self::Error>;
+    fn attribute_number(
+        &mut self,
+        name: &crate::xml::quick_xml_experiment::ExpandedName,
+        relation: MatchNumericRelation,
+        value: i32,
+    ) -> Result<bool, Self::Error>;
 }
 
 pub(super) fn evaluate<C: Context>(
@@ -28,6 +34,11 @@ pub(super) fn evaluate<C: Context>(
         MatchBooleanPredicate::AttributeEquals { attribute, value } => {
             context.attribute_equals(attribute, value)
         }
+        MatchBooleanPredicate::AttributeNumber {
+            attribute,
+            relation,
+            value,
+        } => context.attribute_number(attribute, *relation, *value),
         MatchBooleanPredicate::And(left, right) => {
             if !evaluate(left, context)? {
                 return Ok(false);
@@ -41,6 +52,16 @@ pub(super) fn evaluate<C: Context>(
             evaluate(right, context)
         }
         MatchBooleanPredicate::Not(inner) => Ok(!evaluate(inner, context)?),
+    }
+}
+
+pub(super) fn compare_number(left: f64, right: i32, relation: MatchNumericRelation) -> bool {
+    match relation {
+        MatchNumericRelation::Equal => left
+            .partial_cmp(&f64::from(right))
+            .is_some_and(std::cmp::Ordering::is_eq),
+        MatchNumericRelation::Greater => left > f64::from(right),
+        MatchNumericRelation::Less => left < f64::from(right),
     }
 }
 

@@ -51,6 +51,11 @@ pub(super) enum PathBooleanPredicate {
         name: String,
         length: usize,
     },
+    AttributeNumberComparison {
+        name: String,
+        value: i32,
+        operator: NumberComparison,
+    },
     DescendantElementComparison {
         value: String,
         equal: bool,
@@ -146,6 +151,7 @@ impl PathBooleanPredicate {
             | Self::ChildElementCountEquals { name, .. }
             | Self::AttributeStringLengthEquals { name, .. }
             | Self::AttributeStringLengthGreaterThan { name, .. }
+            | Self::AttributeNumberComparison { name, .. }
             | Self::ChildElementIntegerEquals {
                 name: Some(name), ..
             }
@@ -271,6 +277,13 @@ fn parse_scalar_predicate(predicate: &str) -> Option<PathBooleanPredicate> {
         return Some(PathBooleanPredicate::Equals {
             name: name.to_owned(),
             value,
+        });
+    }
+    if let Some((name, value, operator)) = parse_attribute_number_comparison(predicate) {
+        return Some(PathBooleanPredicate::AttributeNumberComparison {
+            name,
+            value,
+            operator,
         });
     }
     if let Some(comparison) = parse_relative_path_comparison(predicate) {
@@ -561,6 +574,11 @@ fn evaluate_atomic(
         PathBooleanPredicate::AttributeStringLengthGreaterThan { name, length } => {
             attribute_string_length_compare(document, node, name, *length, true, control)
         }
+        PathBooleanPredicate::AttributeNumberComparison {
+            name,
+            value,
+            operator,
+        } => attribute_number_compare(document, node, name, *value, *operator, control),
         PathBooleanPredicate::DescendantElementComparison { value, equal } => {
             descendant_element_comparison(document, node, value, *equal, control)
         }
@@ -1551,6 +1569,30 @@ fn child_integer_equals(
     Ok(false)
 }
 
+fn attribute_number_compare(
+    document: &Document,
+    node: NodeId,
+    name: &str,
+    expected: i32,
+    operator: NumberComparison,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for attribute in document.attributes(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if !unnamespaced_attribute_named(document, attribute, name) {
+            continue;
+        }
+        control.charge(WorkDomain::XPathOperation, 1)?;
+        return Ok(
+            crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                document.value(attribute).unwrap_or_default(),
+            )
+            .is_some_and(|actual| operator.evaluate(actual, f64::from(expected))),
+        );
+    }
+    Ok(false)
+}
+
 fn attribute_string_length_compare(
     document: &Document,
     node: NodeId,
@@ -1748,6 +1790,40 @@ fn parse_attribute_string_length_equality(predicate: &str) -> Option<(String, us
     let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
     parse_attribute_string_length_operand(left.trim(), right.trim())
         .or_else(|| parse_attribute_string_length_operand(right.trim(), left.trim()))
+}
+
+fn parse_attribute_number_comparison(predicate: &str) -> Option<(String, i32, NumberComparison)> {
+    const OPERATORS: [(&str, NumberComparison); 6] = [
+        ("!=", NumberComparison::NotEqual),
+        ("<=", NumberComparison::LessThanOrEqual),
+        (">=", NumberComparison::GreaterThanOrEqual),
+        ("=", NumberComparison::Equal),
+        ("<", NumberComparison::LessThan),
+        (">", NumberComparison::GreaterThan),
+    ];
+
+    for (token, operator) in OPERATORS {
+        let Some((left, right)) = split_top_level_predicate_operator(predicate, token) else {
+            continue;
+        };
+        if let Some(parsed) = parse_attribute_number_operands(left, right, operator) {
+            return Some(parsed);
+        }
+        if let Some(parsed) = parse_attribute_number_operands(right, left, operator.reversed()) {
+            return Some(parsed);
+        }
+    }
+    None
+}
+
+fn parse_attribute_number_operands(
+    attribute: &str,
+    integer: &str,
+    operator: NumberComparison,
+) -> Option<(String, i32, NumberComparison)> {
+    let name = attribute.trim().strip_prefix('@')?;
+    is_ncname(name).then_some(())?;
+    Some((name.to_owned(), integer.trim().parse().ok()?, operator))
 }
 
 fn parse_attribute_string_length_greater_than(predicate: &str) -> Option<(String, usize)> {

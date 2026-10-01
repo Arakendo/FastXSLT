@@ -406,6 +406,10 @@ pub(crate) enum MatchPattern {
         value: i32,
     },
     AnyElementBooleanPredicate(MatchBooleanPredicate),
+    ElementBooleanPredicate {
+        element: ExpandedName,
+        predicate: MatchBooleanPredicate,
+    },
     ElementNodeSetStringEquals {
         element: ExpandedName,
         children: Vec<ExpandedName>,
@@ -493,6 +497,11 @@ pub(crate) enum MatchBooleanPredicate {
     AttributeEquals {
         attribute: ExpandedName,
         value: String,
+    },
+    AttributeNumber {
+        attribute: ExpandedName,
+        relation: MatchNumericRelation,
+        value: i32,
     },
     And(Box<MatchBooleanPredicate>, Box<MatchBooleanPredicate>),
     Or(Box<MatchBooleanPredicate>, Box<MatchBooleanPredicate>),

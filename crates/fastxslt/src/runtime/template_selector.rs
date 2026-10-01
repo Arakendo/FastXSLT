@@ -314,6 +314,13 @@ pub(super) fn matches_pattern(
         MatchPattern::AnyElementBooleanPredicate(predicate) => {
             matches_boolean_predicate(source, node, predicate, request_id, control)
         }
+        MatchPattern::ElementBooleanPredicate { element, predicate } => {
+            if source.name(node) == Some(element) {
+                matches_boolean_predicate(source, node, predicate, request_id, control)
+            } else {
+                Ok(false)
+            }
+        }
         MatchPattern::ElementNodeSetStringEquals {
             element,
             children,
@@ -638,6 +645,30 @@ impl super::match_boolean_predicate::Context for SourceBooleanContext<'_> {
                 && self.source.string_value(*attribute) == value
             {
                 return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    fn attribute_number(
+        &mut self,
+        name: &crate::xml::quick_xml_experiment::ExpandedName,
+        relation: crate::xslt::golden_semantics_experiment::MatchNumericRelation,
+        value: i32,
+    ) -> Result<bool, Self::Error> {
+        for attribute in self.source.attributes(self.node) {
+            self.control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, self.request_id))?;
+            if self.source.name(*attribute) == Some(name) {
+                return Ok(
+                    crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                        &self.source.string_value(*attribute),
+                    )
+                    .is_some_and(|actual| {
+                        super::match_boolean_predicate::compare_number(actual, value, relation)
+                    }),
+                );
             }
         }
         Ok(false)

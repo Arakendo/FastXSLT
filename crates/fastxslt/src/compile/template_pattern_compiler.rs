@@ -7,7 +7,9 @@ use crate::xslt::golden_semantics_experiment::{
     TemplatePriority,
 };
 
-use super::match_boolean_predicate_compiler::parse as parse_match_boolean_predicate;
+use super::match_boolean_predicate_compiler::{
+    parse as parse_match_boolean_predicate, parse_named as parse_named_match_boolean_predicate,
+};
 use super::match_sequence_predicate_compiler::parse as parse_match_sequence_predicates;
 use super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::{
@@ -158,6 +160,18 @@ pub(super) fn compile_match_pattern(
                     local: element_name.to_owned(),
                 },
                 predicates,
+            }
+        }
+        predicate if parse_named_match_boolean_predicate(predicate).is_some() => {
+            let (element_name, predicate) = parse_named_match_boolean_predicate(predicate)
+                .expect("named boolean predicate shape was checked");
+            MatchPattern::ElementBooleanPredicate {
+                element: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: effective_xpath_default_namespace(document, element)
+                        .map(str::to_owned),
+                    local: element_name.to_owned(),
+                },
+                predicate,
             }
         }
         predicate if parse_element_attribute_predicate(predicate).is_some() => {
@@ -1144,6 +1158,7 @@ fn compile_template_priority(
             | MatchPattern::AnyElementNumberEquals(_)
             | MatchPattern::AnyElementWithAttributeNumberEquals { .. }
             | MatchPattern::AnyElementBooleanPredicate(_)
+            | MatchPattern::ElementBooleanPredicate { .. }
             | MatchPattern::ElementNodeSetStringEquals { .. }
             | MatchPattern::AttributeNameEquals(_)
             | MatchPattern::NodeStringPredicate { .. }

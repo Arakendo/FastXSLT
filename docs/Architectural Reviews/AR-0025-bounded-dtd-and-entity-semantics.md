@@ -420,3 +420,9 @@ unacceptable prepared-memory amplification.
   compile failures had likewise hidden six principal-source DTDs, so the
   observed attribution set is now 126 cases (24 internal parses, 93 sealed-
   external parses, nine unsupported). AR-0025 remains deferred.
+- 2026-09-30 -- Ordinary numeric attribute predicates subsequently made three
+  more internal typed-ID cases executable and exact without changing the DTD
+  profile. Their earlier stylesheet expression/pattern failures had hidden the
+  source declarations from direct attribution, so the observed set is now 129
+  cases (27 internal parses, 93 sealed-external parses, nine unsupported).
+  This remains observation growth after disposition, not renewed DTD work.

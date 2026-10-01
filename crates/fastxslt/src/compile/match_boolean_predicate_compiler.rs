@@ -10,6 +10,14 @@ pub(super) fn parse(pattern: &str) -> Option<MatchBooleanPredicate> {
     parse_expression(predicate)
 }
 
+pub(super) fn parse_named(pattern: &str) -> Option<(&str, MatchBooleanPredicate)> {
+    let (element, predicate) = pattern.split_once('[')?;
+    if !is_ascii_ncname(element) {
+        return None;
+    }
+    Some((element, parse_expression(predicate.strip_suffix(']')?)?))
+}
+
 fn parse_expression(lexical: &str) -> Option<MatchBooleanPredicate> {
     let lexical = strip_outer_parentheses(lexical.trim());
     if let Some((left, right)) = split_top_level(lexical, "or") {
@@ -34,6 +42,7 @@ fn parse_expression(lexical: &str) -> Option<MatchBooleanPredicate> {
     }
     parse_context_number(lexical)
         .or_else(|| parse_position(lexical))
+        .or_else(|| parse_attribute_number(lexical))
         .or_else(|| parse_attribute_equals(lexical))
 }
 
@@ -79,6 +88,28 @@ fn parse_attribute_equals(lexical: &str) -> Option<MatchBooleanPredicate> {
             local: attribute.to_owned(),
         },
         value: value.to_owned(),
+    })
+}
+
+fn parse_attribute_number(lexical: &str) -> Option<MatchBooleanPredicate> {
+    let (left, relation, right) = split_numeric_relation(lexical)?;
+    let (attribute, relation, value) = if let Some(attribute) = left.trim().strip_prefix('@') {
+        (attribute, relation, right.trim().parse().ok()?)
+    } else if let Some(attribute) = right.trim().strip_prefix('@') {
+        (attribute, reverse(relation), left.trim().parse().ok()?)
+    } else {
+        return None;
+    };
+    if !is_ascii_ncname(attribute) {
+        return None;
+    }
+    Some(MatchBooleanPredicate::AttributeNumber {
+        attribute: ExpandedName {
+            namespace: None,
+            local: attribute.to_owned(),
+        },
+        relation,
+        value,
     })
 }
 
@@ -207,6 +238,8 @@ mod tests {
             "position() > 225",
             "(position() > 225) and (position() < 375)",
             "@century='yes'",
+            "@size > 17",
+            "17 < @size",
             "(@century='yes') or (@foo='nope')",
         ] {
             assert!(
@@ -216,6 +249,7 @@ mod tests {
         }
         let pattern = "*[(not(.=117) and ((position() > 225) and (position() < 375))) and ((@century='yes') or (@foo='nope'))]";
         assert!(parse(pattern).is_some());
+        assert!(parse_named("r[@size > 17]").is_some());
     }
 
     #[test]

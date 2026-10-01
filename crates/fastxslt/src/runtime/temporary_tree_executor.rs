@@ -987,6 +987,12 @@ fn temporary_matches(
         ) => temporary_matches_boolean_predicate(tree, node, predicate, request_id, control)?,
         (
             TemporaryNodeKind::Element { name, .. },
+            MatchPattern::ElementBooleanPredicate { element, predicate },
+        ) if name == element => {
+            temporary_matches_boolean_predicate(tree, node, predicate, request_id, control)?
+        }
+        (
+            TemporaryNodeKind::Element { name, .. },
             MatchPattern::ElementNodeSetStringEquals {
                 element,
                 children,
@@ -1112,6 +1118,35 @@ impl super::match_boolean_predicate::Context for TemporaryBooleanContext<'_> {
         }
         Ok(false)
     }
+
+    fn attribute_number(
+        &mut self,
+        required: &ExpandedName,
+        relation: crate::xslt::golden_semantics_experiment::MatchNumericRelation,
+        expected: i32,
+    ) -> Result<bool, Self::Error> {
+        let TemporaryNodeKind::Element { attributes, .. } = &self.tree.nodes[self.node].kind else {
+            return Ok(false);
+        };
+        for attribute in attributes {
+            self.control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, self.request_id))?;
+            if let TemporaryNodeKind::Attribute { name, value } = &self.tree.nodes[*attribute].kind
+                && name == required
+            {
+                return Ok(
+                    crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(value)
+                        .is_some_and(|actual| {
+                            super::match_boolean_predicate::compare_number(
+                                actual, expected, relation,
+                            )
+                        }),
+                );
+            }
+        }
+        Ok(false)
+    }
 }
 
 fn temporary_matches_boolean_predicate(
@@ -1121,11 +1156,13 @@ fn temporary_matches_boolean_predicate(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
-    let Some(parent) = tree.nodes[node].parent else {
-        return Ok(false);
-    };
+    let siblings = tree.nodes[node]
+        .parent
+        .map_or(tree.roots.as_slice(), |parent| {
+            tree.nodes[parent].children.as_slice()
+        });
     let mut position = 0usize;
-    for sibling in &tree.nodes[parent].children {
+    for sibling in siblings {
         control
             .charge(WorkDomain::XPathNodeVisit, 1)
             .map_err(|failure| control_failure(failure, request_id))?;

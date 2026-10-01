@@ -2290,6 +2290,39 @@ fn path_boolean_predicates_count_children_and_measure_attributes() {
 }
 
 #[test]
+fn path_boolean_predicates_compare_numeric_attributes() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><row size='18'/><row size='17'/><row size='not-a-number'/><row/></doc>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let path = parse_location_path("row[@size > 17]", location())
+        .expect("numeric attribute comparison should parse");
+    let reversed = parse_location_path("*[17 < @size]", location())
+        .expect("reversed numeric attribute comparison should parse");
+    let inclusive = parse_location_path("row[@size >= 18]", location())
+        .expect("inclusive numeric attribute comparison should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, doc, &path, &mut control)
+        .expect("numeric attribute comparison should evaluate");
+    let reversed_selected = evaluate_location_path(&document, doc, &reversed);
+    let inclusive_selected = evaluate_location_path(&document, doc, &inclusive);
+
+    assert_eq!(selected, [document.children(doc)[0]]);
+    assert_eq!(reversed_selected, selected);
+    assert_eq!(inclusive_selected, selected);
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+    assert_eq!(control.consumed(WorkDomain::XPathOperation), 3);
+}
+
+#[test]
 fn path_boolean_predicates_compare_relative_element_path_counts() {
     let parsed = parse_document(
         "memory:source.xml",
