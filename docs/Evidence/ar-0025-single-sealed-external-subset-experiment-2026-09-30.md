@@ -139,6 +139,15 @@ authority or parser grammar. Current totals are 2,451 / 3,173 exact (77.25%),
 2,643 initialized, 2,597 executed, 91 single-external-subset direct outcomes,
 and 11 explicit unsupported DTD outcomes.
 
+Focused adversarial tests retain the same boundedness model. They reject
+entity cycles spanning the external and internal subsets, apply one aggregate
+declaration ceiling across both subsets, reject malformed external
+declarations with the admitted DTD's logical identity and deterministic whole-
+resource span, observe pre-existing XML cancellation, and enforce independent
+external-byte and cumulative replacement ceilings. These tests establish
+bounded failure behavior; they do not close the remaining declaration-level
+external-offset provenance gap.
+
 ## Disposition
 
 Retain the private experiment as evidence for AR-0025. It proves that a narrow

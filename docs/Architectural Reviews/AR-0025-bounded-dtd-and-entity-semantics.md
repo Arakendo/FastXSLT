@@ -289,7 +289,7 @@ supported external-resource profile requires a later decision.
 - [x] Add typed-ID metadata to XDM only through a reviewed private
   representation; keep parser-native types contained. Unparsed-entity metadata
   remains a separate incomplete slice.
-- [ ] Run entity-expansion, cycle, malformed-declaration, cancellation, and
+- [x] Run entity-expansion, cycle, malformed-declaration, cancellation, and
   memory-pressure adversarial tests.
 - [x] Rerun the complete conserved OASIS denominator and report exact passes,
   later failures, mismatches, and exclusions without treating initialization as
@@ -366,3 +366,9 @@ memory amplification.
   cases become exact. The lower bound reaches 2,451 / 3,173 (77.25%); the
   conserved DTD frontier is 15 internal parses, 91 single-external parses, and
   11 explicit unsupported outcomes.
+- 2026-09-30 -- Completed the bounded-path adversarial tranche. Cross-subset
+  entity cycles, aggregate declaration and replacement ceilings, malformed
+  external declarations, pre-existing cancellation, and external byte limits
+  all fail deterministically. External declaration failures retain the owning
+  logical DTD identity and whole-resource span; declaration-level offsets
+  remain an explicit provenance gap.

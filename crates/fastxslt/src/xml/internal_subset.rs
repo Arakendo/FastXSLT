@@ -1080,6 +1080,32 @@ mod tests {
                 .expect("internal implied declaration has no default")
                 .is_empty()
         );
+
+        let cycle = parse_single_external_subset(
+            "root SYSTEM 'root.dtd' [<!ENTITY internal '&external;'>]",
+            b"<!ENTITY external '&internal;'>",
+            128,
+            LIMITS,
+        )
+        .expect_err("cycles spanning external and internal declarations must be rejected");
+        assert_eq!(cycle.origin, ExternalSubsetFailureOrigin::ExternalSubset);
+        assert!(matches!(cycle.failure, InternalSubsetFailure::Malformed(_)));
+
+        let aggregate_limit = parse_single_external_subset(
+            "root SYSTEM 'root.dtd' [<!ENTITY internal 'two'>]",
+            b"<!ENTITY external 'one'>",
+            128,
+            InternalSubsetLimits {
+                declarations: 1,
+                ..LIMITS
+            },
+        )
+        .expect_err("external and internal declarations share one aggregate ceiling");
+        assert_eq!(aggregate_limit.origin, ExternalSubsetFailureOrigin::Doctype);
+        assert!(matches!(
+            aggregate_limit.failure,
+            InternalSubsetFailure::Limit(_)
+        ));
     }
 
     #[test]

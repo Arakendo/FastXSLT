@@ -1150,9 +1150,10 @@ fn resolve_reference(
 #[cfg(test)]
 mod tests {
     use super::{
-        ExpandedName, LocatedFailure, NamespaceBinding, OwnedXmlEvent, ParseFailure, ParseLimits,
-        parse_document, parse_document_controlled_with_internal_subset,
-        parse_document_with_internal_subset,
+        AdmittedExternalSubset, ExpandedName, LocatedFailure, NamespaceBinding, OwnedXmlEvent,
+        ParseFailure, ParseLimits, parse_document, parse_document_controlled_with_internal_subset,
+        parse_document_controlled_with_single_external_subset, parse_document_with_internal_subset,
+        parse_document_with_single_external_subset,
     };
     use crate::execution_control_experiment::{
         CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits,
@@ -1660,6 +1661,60 @@ mod tests {
                 b"<!DOCTYPE root [<!ENTITY value 'content'>]><root>&value;</root>",
                 LIMITS,
                 DTD_LIMITS,
+                &mut control,
+            ),
+            Err(LocatedFailure {
+                failure: ParseFailure::Control(ControlFailure::Cancelled {
+                    domain: WorkDomain::XmlEvent,
+                }),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn bounded_external_subset_preserves_failure_identity_and_span() {
+        let external = b"<!ENTITY value 'unterminated>";
+        let failure = parse_document_with_single_external_subset(
+            "memory:source.xml",
+            b"<!DOCTYPE root SYSTEM 'source.dtd'><root/>",
+            LIMITS,
+            DTD_LIMITS,
+            AdmittedExternalSubset {
+                identity: "memory:source.dtd",
+                reference: "source.dtd",
+                bytes: external,
+                max_bytes: 128,
+            },
+        )
+        .expect_err("malformed external declarations must retain DTD provenance");
+
+        assert_eq!(failure.resource(), "memory:source.dtd");
+        assert_eq!(failure.source_span(), Some(0..external.len()));
+        assert!(matches!(
+            failure.failure,
+            ParseFailure::ExternalDtdMalformed { .. }
+        ));
+    }
+
+    #[test]
+    fn bounded_external_subset_observes_existing_xml_cancellation() {
+        let cancellation = CancellationToken::new();
+        cancellation.cancel();
+        let mut control = InvocationControl::new(cancellation, WorkLimits::unbounded());
+
+        assert!(matches!(
+            parse_document_controlled_with_single_external_subset(
+                "memory:cancelled.xml",
+                b"<!DOCTYPE root SYSTEM 'source.dtd'><root>&value;</root>",
+                LIMITS,
+                DTD_LIMITS,
+                AdmittedExternalSubset {
+                    identity: "memory:source.dtd",
+                    reference: "source.dtd",
+                    bytes: b"<!ENTITY value 'content'>",
+                    max_bytes: 128,
+                },
                 &mut control,
             ),
             Err(LocatedFailure {
