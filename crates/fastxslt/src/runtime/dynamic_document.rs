@@ -559,36 +559,49 @@ pub(super) fn prepare_document(
     reference: &DocumentRootReference,
     control: &mut InvocationControl,
 ) -> Result<DynamicDocument, ExecutionFailure> {
-    let snapshot = inputs.resource_snapshot.ok_or_else(|| {
+    prepare_document_from_snapshot(
+        inputs.resource_snapshot,
+        inputs.denied_resources,
+        inputs.dynamic_documents,
+        inputs.request_id,
+        reference,
+        control,
+    )
+}
+
+pub(super) fn prepare_document_from_snapshot(
+    resource_snapshot: Option<&crate::resources::ResourceSnapshot>,
+    denied_resources: Option<&HashSet<String>>,
+    dynamic_documents: &std::cell::RefCell<std::collections::BTreeMap<String, DynamicDocument>>,
+    request_id: &str,
+    reference: &DocumentRootReference,
+    control: &mut InvocationControl,
+) -> Result<DynamicDocument, ExecutionFailure> {
+    let snapshot = resource_snapshot.ok_or_else(|| {
         failure(
             "FXRT1015",
             FailureCategory::Unsupported,
-            Some(inputs.request_id),
+            Some(request_id),
             "document() requires an explicitly supplied sealed resource snapshot",
         )
     })?;
-    let denied = inputs
-        .denied_resources
+    let denied = denied_resources
         .into_iter()
         .flat_map(|denied| denied.iter().cloned());
     let mut resolver = SnapshotResolver::new(snapshot, denied, ResolutionLimits::new(1));
     let resource = resolver
         .resolve_from(&reference.base, &reference.reference)
-        .map_err(|error| document_resolution_failure(&error, inputs.request_id))?;
+        .map_err(|error| document_resolution_failure(&error, request_id))?;
     if resource.fragment.is_some() {
         return Err(failure(
             "FXRT1016",
             FailureCategory::Unsupported,
-            Some(inputs.request_id),
+            Some(request_id),
             "fragment-bearing document() references are outside the admitted runtime slice",
         ));
     }
     let identity_key = resource.identity;
-    if !inputs
-        .dynamic_documents
-        .borrow()
-        .contains_key(&identity_key)
-    {
+    if !dynamic_documents.borrow().contains_key(&identity_key) {
         let parsed = crate::xml::quick_xml_experiment::parse_document_controlled(
             &identity_key,
             resource.bytes,
@@ -601,20 +614,20 @@ pub(super) fn prepare_document(
                     failure(
                         "FXXM0002",
                         FailureCategory::Invalid,
-                        Some(inputs.request_id),
+                        Some(request_id),
                         format!("document() resource XML is invalid: {error:?}"),
                     )
                 },
-                |failure| control_failure(*failure, inputs.request_id),
+                |failure| control_failure(*failure, request_id),
             )
         })?;
         let document = Arc::new(Document::from_parsed_controlled(parsed, control).map_err(
             |error| match error {
-                BuildFailure::Control(failure) => control_failure(failure, inputs.request_id),
+                BuildFailure::Control(failure) => control_failure(failure, request_id),
                 _ => failure(
                     "FXXD0002",
                     FailureCategory::Invalid,
-                    Some(inputs.request_id),
+                    Some(request_id),
                     format!("document() resource XDM construction failed: {error:?}"),
                 ),
             },
@@ -623,17 +636,15 @@ pub(super) fn prepare_document(
             failure(
                 "FXRT0016",
                 FailureCategory::Limit,
-                Some(inputs.request_id),
+                Some(request_id),
                 "invocation-local document identity space is exhausted",
             )
         })?;
-        inputs
-            .dynamic_documents
+        dynamic_documents
             .borrow_mut()
             .insert(identity_key.clone(), DynamicDocument { identity, document });
     }
-    Ok(inputs
-        .dynamic_documents
+    Ok(dynamic_documents
         .borrow()
         .get(&identity_key)
         .expect("resolved dynamic document was inserted")

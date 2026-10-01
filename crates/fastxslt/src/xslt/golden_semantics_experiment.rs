@@ -178,6 +178,7 @@ pub(crate) enum GlobalBindingDefault {
     LocationPath(LocationPath),
     Xslt10NumberLocationPath(LocationPath),
     SourceNodeIdentity(LocationPath),
+    Xslt10LiteralDocument(DocumentRootReference),
     Variable(String),
     SourceVariablePath {
         variable: String,

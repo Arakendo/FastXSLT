@@ -16351,6 +16351,43 @@ fn xslt10_local_literal_document_variable_retains_invocation_owned_prepared_docu
 }
 
 #[test]
+fn xslt10_global_literal_document_variable_uses_declaring_module_base_and_sealed_snapshot() {
+    const SOURCE: &str = "https://example.test/job/source.xml";
+    const STYLESHEET: &str = "https://example.test/job/style.xsl";
+    const MODULE: &str = "https://example.test/job/modules/globals.xsl";
+    const EXTRA: &str = "https://example.test/job/modules/extra.xml";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:include href="modules/globals.xsl"/><xsl:template match="/"><out><xsl:call-template name="emit"/></out></xsl:template></xsl:stylesheet>"#;
+    let module = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="external" select="document('extra.xml')"/><xsl:template name="emit"><xsl:value-of select="$external/doc/value"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 16_384, 32_768));
+    resources
+        .admit(SOURCE, b"<source/>".to_vec())
+        .expect("admit principal source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit principal stylesheet");
+    resources
+        .admit(MODULE, module.to_vec())
+        .expect("admit included module");
+    resources
+        .admit(EXTRA, b"<doc><value>module-relative</value></doc>".to_vec())
+        .expect("admit sealed module-relative document");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile included global literal-document variable");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("global-document-variable", "result", SOURCE))
+        .expect("admit global-document-variable request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute included global literal-document variable");
+    assert_eq!(
+        results.by_request["global-document-variable"].serialized,
+        "<out>module-relative</out>"
+    );
+}
+
+#[test]
 fn xslt10_copy_of_literal_document_descendants_preserves_order_and_no_namespace_test() {
     const SOURCE: &str = "https://example.test/job/source.xml";
     const STYLESHEET: &str = "https://example.test/job/style.xsl";

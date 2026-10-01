@@ -99,10 +99,10 @@ use result_tree::{
     materialize_literal_attributes,
 };
 use runtime_context::{
-    InvocationParameter, InvocationParameterValue, RuntimeVariables, SequenceInputs,
-    TemporaryNodeKind, TemporaryTree, bind_template_parameters, evaluate_template_arguments,
-    materialize_global_defaults, materialize_result_nodes, materialize_temporary_tree,
-    required_source_context,
+    GlobalDocumentContext, InvocationParameter, InvocationParameterValue, RuntimeVariables,
+    SequenceInputs, TemporaryNodeKind, TemporaryTree, bind_template_parameters,
+    evaluate_template_arguments, materialize_global_defaults, materialize_result_nodes,
+    materialize_temporary_tree, required_source_context,
 };
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
@@ -385,9 +385,19 @@ fn execute_program_with_parameters_using(
         control,
     )?;
     let source = effective_source.as_ref().unwrap_or(source);
-    let globals =
-        materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
     let dynamic_documents = RefCell::default();
+    let globals = materialize_global_defaults(
+        program,
+        Some(source),
+        parameters,
+        request_id,
+        &GlobalDocumentContext {
+            resource_snapshot,
+            denied_resources,
+            dynamic_documents: &dynamic_documents,
+        },
+        control,
+    )?;
     let inputs = SequenceInputs {
         program,
         source: Some(source),
@@ -485,9 +495,19 @@ fn execute_initial_mode(
         control,
     )?;
     let source = effective_source.as_ref().unwrap_or(source);
-    let globals =
-        materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
     let dynamic_documents = RefCell::default();
+    let globals = materialize_global_defaults(
+        program,
+        Some(source),
+        parameters,
+        request_id,
+        &GlobalDocumentContext {
+            resource_snapshot: None,
+            denied_resources: None,
+            dynamic_documents: &dynamic_documents,
+        },
+        control,
+    )?;
     let inputs = SequenceInputs {
         program,
         source: Some(source),
@@ -633,8 +653,19 @@ fn execute_initial_template_with_optional_source(
         .iter()
         .find(|template| template.name == name)
         .expect("initial-template entries are validated during request admission");
-    let globals = materialize_global_defaults(program, source, parameters, request_id, control)?;
     let dynamic_documents = RefCell::default();
+    let globals = materialize_global_defaults(
+        program,
+        source,
+        parameters,
+        request_id,
+        &GlobalDocumentContext {
+            resource_snapshot: None,
+            denied_resources: None,
+            dynamic_documents: &dynamic_documents,
+        },
+        control,
+    )?;
     let inputs = SequenceInputs {
         program,
         source,
@@ -1650,7 +1681,7 @@ fn execute_copy_of_variable(
     if let Some(tree) = variables.temporary_tree(inputs.globals, variable) {
         return temporary_tree_executor::copy_temporary_tree(inputs, tree, control);
     }
-    if let Some(document) = variables.literal_document(variable) {
+    if let Some(document) = variables.literal_document(inputs.globals, variable) {
         return dynamic_document::copy_prepared_variable_document(
             inputs,
             document,

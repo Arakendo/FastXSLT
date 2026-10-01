@@ -47,12 +47,19 @@ pub(super) struct SequenceInputs<'a> {
     pub(super) dynamic_documents: &'a RefCell<BTreeMap<String, DynamicDocument>>,
 }
 
+pub(super) struct GlobalDocumentContext<'a> {
+    pub(super) resource_snapshot: Option<&'a ResourceSnapshot>,
+    pub(super) denied_resources: Option<&'a HashSet<String>>,
+    pub(super) dynamic_documents: &'a RefCell<BTreeMap<String, DynamicDocument>>,
+}
+
 #[derive(Debug, Default)]
 pub(super) struct RuntimeGlobals {
     pub(super) atomics: Arc<BTreeMap<String, AtomicValue>>,
     pub(super) empty_sequences: HashSet<String>,
     pub(super) nodes: BTreeMap<String, Vec<NodeId>>,
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
+    pub(super) literal_documents: BTreeMap<String, DynamicDocument>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -592,11 +599,16 @@ impl RuntimeVariables {
         Arc::make_mut(&mut self.literal_documents).insert(name, document);
     }
 
-    pub(super) fn literal_document(
-        &self,
+    pub(super) fn literal_document<'a>(
+        &'a self,
+        globals: &'a RuntimeGlobals,
         name: &str,
-    ) -> Option<&super::dynamic_document::DynamicDocument> {
-        self.literal_documents.get(name)
+    ) -> Option<&'a super::dynamic_document::DynamicDocument> {
+        self.literal_documents.get(name).or_else(|| {
+            (!self.local_bindings.contains(name))
+                .then(|| globals.literal_documents.get(name))
+                .flatten()
+        })
     }
 
     pub(super) fn bind_alias(
@@ -646,6 +658,10 @@ impl RuntimeVariables {
         }
         if let Some(tree) = globals.temporary_trees.get(source).cloned() {
             self.bind_temporary_tree(name, tree);
+            return true;
+        }
+        if let Some(document) = globals.literal_documents.get(source).cloned() {
+            self.bind_literal_document(name, document);
             return true;
         }
         false
@@ -739,6 +755,7 @@ pub(super) fn materialize_global_defaults(
     source: Option<&Document>,
     parameters: &BTreeMap<String, InvocationParameter>,
     request_id: &str,
+    documents: &GlobalDocumentContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<RuntimeGlobals, ExecutionFailure> {
     let mut globals = RuntimeGlobals::default();
@@ -781,7 +798,18 @@ pub(super) fn materialize_global_defaults(
                 ));
             }
         }
-        materialize_global_default(&mut globals, binding, source, request_id, control)?;
+        if let GlobalBindingDefault::Xslt10LiteralDocument(reference) = &binding.default {
+            materialize_global_literal_document(
+                &mut globals,
+                binding,
+                reference,
+                request_id,
+                documents,
+                control,
+            )?;
+        } else {
+            materialize_global_default(&mut globals, binding, source, request_id, control)?;
+        }
     }
     Ok(globals)
 }
@@ -825,6 +853,7 @@ fn materialize_global_default(
         GlobalBindingDefault::SourceNodeIdentity(path) => {
             materialize_source_node_identity(globals, binding, path, source, request_id, control)?;
         }
+        GlobalBindingDefault::Xslt10LiteralDocument(_) => unreachable!(),
         GlobalBindingDefault::Variable(name) => {
             materialize_global_alias(globals, binding, name, request_id)?;
         }
@@ -890,6 +919,28 @@ fn materialize_global_default(
             materialize_parentless_global(globals, binding, request_id, control)?;
         }
     }
+    Ok(())
+}
+
+fn materialize_global_literal_document(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    reference: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
+    request_id: &str,
+    documents: &GlobalDocumentContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let document = super::dynamic_document::prepare_document_from_snapshot(
+        documents.resource_snapshot,
+        documents.denied_resources,
+        documents.dynamic_documents,
+        request_id,
+        reference,
+        control,
+    )?;
+    globals
+        .literal_documents
+        .insert(binding.name.clone(), document);
     Ok(())
 }
 

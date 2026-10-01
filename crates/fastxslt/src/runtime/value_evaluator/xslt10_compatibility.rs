@@ -139,6 +139,26 @@ pub(super) fn append_variable_path(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    if let Some(dynamic) = variables.literal_document(inputs.globals, variable) {
+        let effective = super::super::derive_effective_source(
+            &inputs.program.source_whitespace,
+            dynamic.document.as_ref(),
+            super::super::WhitespaceRepresentation::VisibilityView,
+            inputs.request_id,
+            control,
+        )?;
+        let document = effective.as_ref().unwrap_or(dynamic.document.as_ref());
+        let selected =
+            evaluate_location_path_controlled(document, document.document_node(), path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if let Some(node) = selected.first() {
+            let value = document
+                .string_value_controlled(*node, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            append_text(result, &value, inputs.request_id, control)?;
+        }
+        return Ok(());
+    }
     let source = required_comparison_source(inputs)?;
     let roots = variables
         .source_nodes(inputs.globals, variable)

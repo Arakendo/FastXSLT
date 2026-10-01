@@ -1253,6 +1253,10 @@ fn compile_global_default(
             Ok(count)
         } else if let Some(number) = compile_xslt10_number_path_global(document, element, select)? {
             Ok(number)
+        } else if let Some(reference) =
+            compile_xslt10_literal_document_global(document, element, select)
+        {
+            Ok(GlobalBindingDefault::Xslt10LiteralDocument(reference))
         } else if let Some(path) = select
             .strip_prefix("generate-id(")
             .and_then(|path| path.strip_suffix(')'))
@@ -1296,6 +1300,31 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::TemporaryText(value))
         }
     }
+}
+
+fn compile_xslt10_literal_document_global(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Option<crate::xslt::golden_semantics_experiment::DocumentRootReference> {
+    if !instruction_compiler::uses_xslt10_compatibility(document, element) {
+        return None;
+    }
+    let expression = expression.trim();
+    let argument = expression.strip_prefix("document(")?.strip_suffix(')')?;
+    let argument = argument.trim();
+    let quote = argument.as_bytes().first().copied()?;
+    if !matches!(quote, b'\'' | b'"') || argument.as_bytes().last().copied() != Some(quote) {
+        return None;
+    }
+    let reference = &argument[1..argument.len() - 1];
+    Some(
+        crate::xslt::golden_semantics_experiment::DocumentRootReference {
+            base: document.location(element).resource.clone(),
+            reference: reference.to_owned(),
+            descendant_name: None,
+        },
+    )
 }
 
 fn compile_xslt10_global_concat(

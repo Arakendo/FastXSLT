@@ -4228,3 +4228,13 @@ maintained redistributable legacy suite becomes available.
   failures, mismatches, comparator gaps, and expected-error credit are
   unchanged.
   [Evidence](../Evidence/oasis-xslt10-numeric-attribute-predicates-2026-09-30.md)
+- 2026-09-30: top-level XSLT 1.0 variables may now retain a literal
+  `document()` reference as stylesheet-derived static state and prepare its
+  target into invocation-local global state through the existing sealed
+  snapshot resolver. The declaring stylesheet module supplies the static base;
+  no ambient acquisition or compiled prepared document is introduced. The
+  unchanged included-module case `Lotus/impincl_impincl08#1` becomes exact,
+  moving the sweep to 2,464 / 3,173 (77.65%), 2,659 initialized cases, and
+  2,612 successful executions. A newly exposed cross-document node-ownership
+  case remains a visible execution failure rather than being approximated.
+  [Evidence](../Evidence/oasis-xslt10-global-literal-document-variable-2026-09-30.md)
