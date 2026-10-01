@@ -1360,27 +1360,30 @@ fn reviewed_external_source_subset(
     source_identity: &str,
     source: &[u8],
 ) -> Option<ReviewedExternalSubset> {
-    const REFERENCE: &str = "plants.dtd";
-    const DECLARATION: &[u8] = br#"SYSTEM "plants.dtd""#;
-
-    if !case.principal_source.eq_ignore_ascii_case("plants.xml")
-        || !source
-            .windows(DECLARATION.len())
-            .any(|window| window == DECLARATION)
+    let (reference, declaration) = if case.principal_source.eq_ignore_ascii_case("plants.xml") {
+        ("plants.dtd", br#"SYSTEM "plants.dtd""#.as_slice())
+    } else if case.id == "idkey_idkey04" {
+        ("t04.dtd", br#"SYSTEM "t04.dtd""#.as_slice())
+    } else {
+        return None;
+    };
+    if !source
+        .windows(declaration.len())
+        .any(|window| window == declaration)
     {
         return None;
     }
-    let bytes = read_case_file(&case.directory, REFERENCE)?;
+    let bytes = read_case_file(&case.directory, reference)?;
     if bytes.len() > MAX_REVIEWED_EXTERNAL_SUBSET_BYTES {
         return None;
     }
     let (identity, fragment) =
-        crate::resources::resolve_reference(source_identity, REFERENCE).ok()?;
+        crate::resources::resolve_reference(source_identity, reference).ok()?;
     if fragment.is_some() {
         return None;
     }
     Some(ReviewedExternalSubset {
-        reference: REFERENCE,
+        reference,
         identity,
         bytes,
     })

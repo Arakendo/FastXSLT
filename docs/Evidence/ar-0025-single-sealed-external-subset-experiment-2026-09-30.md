@@ -108,6 +108,17 @@ The complete direct DTD frontier remains 117 cases. No outcome is extrapolated
 to a different DTD filename, declaration grammar, resolution topology, or
 authority model.
 
+A subsequent source-side inventory found one additional resource with the same
+bounded shape. `Lotus/idkey_idkey04` names the 120-byte sibling `t04.dtd`, whose
+only semantic metadata beyond element declarations is one `ID` attribute. The
+same one-attempt snapshot path admits it, and the unchanged case compares
+exactly through the existing XDM typed-ID index and XSLT 1.0 `id()` evaluator.
+The resulting totals are 2,437 / 3,173 exact (76.80%), 2,629 initialized, 2,583
+executed, 77 single-external-subset direct outcomes, and 25 explicit
+unsupported DTD outcomes. Broader source candidates using parameter entities,
+external general entities, notation/unparsed-entity metadata, or markup-
+producing replacement text remain unsupported.
+
 ## Disposition
 
 Retain the private experiment as evidence for AR-0025. It proves that a narrow

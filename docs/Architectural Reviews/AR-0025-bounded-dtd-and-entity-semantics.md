@@ -236,12 +236,14 @@ KiB, and declarations accepted by the same bounded grammar. This admits 101
 catalog cases, including expected-error cases, without general external-subset
 discovery.
 
-Seventy-six standard cases now complete the single-external-subset parse. The
-strict lower bound is 2,436 / 3,173 (76.77%): 75 exact gains over the internal-
-only baseline, with one additional newly executing case exposed as a visible
-mismatch. The conserved 117-case direct frontier is now 15 internal-subset
-parses, 76 single sealed external-subset parses, and 26 explicit unsupported
-outcomes.
+The same mechanism also admits the 120-byte case-local `t04.dtd` used by
+`Lotus/idkey_idkey04`; it contains only element declarations and one typed `ID`
+attribute. Seventy-seven standard cases now complete the single-external-subset
+parse. The strict lower bound is 2,437 / 3,173 (76.80%): 76 exact gains over the
+internal-only baseline, with one additional newly executing case exposed as a
+visible mismatch. The conserved 117-case direct frontier is now 15 internal-
+subset parses, 77 single sealed external-subset parses, and 25 explicit
+unsupported outcomes.
 
 ## Disposition
 
@@ -339,3 +341,7 @@ memory amplification.
   The strict lower bound reaches 2,436 / 3,173 (76.77%); the DTD frontier is 15
   internal parses, 76 single-external parses, and 26 explicit unsupported
   outcomes. One newly executing case remains a visible mismatch.
+- 2026-09-30 -- Admitted the separate 120-byte `t04.dtd` typed-ID source through
+  the same one-attempt sealed path. `Lotus/idkey_idkey04` compares exactly, the
+  lower bound reaches 2,437 / 3,173 (76.80%), and 25 direct DTD-frontier cases
+  remain explicitly unsupported.
