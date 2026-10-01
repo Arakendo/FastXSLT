@@ -477,7 +477,8 @@ pub(super) fn matches_pattern(
             {
                 return Ok(matches);
             }
-            let selected = super::id_lookup::select(source, node, lookup, request_id, control)?;
+            let selected =
+                super::id_lookup::select(source, node, lookup, None, request_id, control)?;
             let matches = selected.contains(&node);
             selection.document_rooted_matches.borrow_mut().insert(
                 template_index,

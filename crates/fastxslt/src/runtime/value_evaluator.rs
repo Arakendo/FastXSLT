@@ -349,18 +349,32 @@ pub(super) fn execute_value_of(
         }
         ValueExpression::Xslt10IdLookup(lookup) => {
             let (source, context) = required_source_context(inputs, context)?;
-            if let Some(node) =
-                super::id_lookup::select(source, context, lookup, inputs.request_id, control)?
-                    .first()
+            let variable_value = xslt10_id_variable_value(inputs, lookup, variables, control)?;
+            if let Some(node) = super::id_lookup::select(
+                source,
+                context,
+                lookup,
+                variable_value.as_deref(),
+                inputs.request_id,
+                control,
+            )?
+            .first()
             {
                 append_source_string_value(inputs, *node, result, control)?;
             }
         }
         ValueExpression::Xslt10CountIdLookup(lookup) => {
             let (source, context) = required_source_context(inputs, context)?;
-            let count =
-                super::id_lookup::select(source, context, lookup, inputs.request_id, control)?
-                    .len();
+            let variable_value = xslt10_id_variable_value(inputs, lookup, variables, control)?;
+            let count = super::id_lookup::select(
+                source,
+                context,
+                lookup,
+                variable_value.as_deref(),
+                inputs.request_id,
+                control,
+            )?
+            .len();
             append_text(result, &count.to_string(), inputs.request_id, control)?;
         }
         ValueExpression::Xslt10KeyLookup(lookup) => {
@@ -966,6 +980,20 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn xslt10_id_variable_value(
+    inputs: &SequenceInputs<'_>,
+    lookup: &crate::xslt::golden_semantics_experiment::Xslt10IdLookup,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Option<String>, ExecutionFailure> {
+    let crate::xslt::golden_semantics_experiment::Xslt10IdArgument::Variable(name) =
+        &lookup.argument
+    else {
+        return Ok(None);
+    };
+    xslt10_compatibility::variable_string_value(inputs, name, variables, control).map(Some)
 }
 
 fn append_binary_numeric(

@@ -631,7 +631,7 @@ fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
 
 fn xslt10_id_lookup_owned(lookup: &Xslt10IdLookup) -> usize {
     (match &lookup.argument {
-        Xslt10IdArgument::Literal(value) => value.capacity(),
+        Xslt10IdArgument::Literal(value) | Xslt10IdArgument::Variable(value) => value.capacity(),
         Xslt10IdArgument::Path(path) => path.known_owned_capacity_bytes(),
     }) + lookup
         .relative_path

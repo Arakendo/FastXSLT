@@ -426,3 +426,7 @@ unacceptable prepared-memory amplification.
   source declarations from direct attribution, so the observed set is now 129
   cases (27 internal parses, 93 sealed-external parses, nine unsupported).
   This remains observation growth after disposition, not renewed DTD work.
+- 2026-09-30 -- Variable-valued `id()` subsequently made one additional
+  typed-ID case executable and exact through the unchanged parser/XDM profile.
+  Direct attribution is now 130 cases (28 internal parses, 93 sealed-external
+  parses, nine unsupported). AR-0025 remains deferred.

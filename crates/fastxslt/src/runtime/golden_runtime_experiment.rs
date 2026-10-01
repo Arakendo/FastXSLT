@@ -6432,13 +6432,26 @@ fn select_apply_nodes(
         | ApplySelection::Xslt10SourceDocumentsPath { .. } => {
             unreachable!("literal document selection is dispatched before source selection")
         }
-        ApplySelection::Xslt10IdLookup(lookup) => id_lookup::select(
-            inputs.source.expect("ID lookup requires a source"),
-            context,
-            lookup,
-            inputs.request_id,
-            control,
-        ),
+        ApplySelection::Xslt10IdLookup(lookup) => {
+            let variable_value =
+                if let crate::xslt::golden_semantics_experiment::Xslt10IdArgument::Variable(name) =
+                    &lookup.argument
+                {
+                    Some(value_evaluator::xslt10_variable_string_value(
+                        inputs, name, variables, control,
+                    )?)
+                } else {
+                    None
+                };
+            id_lookup::select(
+                inputs.source.expect("ID lookup requires a source"),
+                context,
+                lookup,
+                variable_value.as_deref(),
+                inputs.request_id,
+                control,
+            )
+        }
         ApplySelection::Xslt10KeyLookup(lookup) => {
             key_lookup::select(inputs, lookup, Some(context), variables, control)
         }

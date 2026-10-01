@@ -1554,6 +1554,7 @@ pub(crate) struct Xslt10IdLookup {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Xslt10IdArgument {
     Literal(String),
+    Variable(String),
     Path(LocationPath),
 }
 

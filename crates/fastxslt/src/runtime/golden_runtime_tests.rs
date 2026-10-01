@@ -4223,6 +4223,36 @@ fn xslt10_id_path_argument_is_evaluated_before_the_empty_typed_id_lookup() {
 }
 
 #[test]
+fn xslt10_id_variable_argument_uses_the_xslt10_scalar_conversion_path() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-id-variable-without-dtd:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-id-variable-without-dtd:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="ids" select="'a b'"/><xsl:template match="/"><out><xsl:for-each select="id($ids)"><unexpected/></xsl:for-each><xsl:value-of select="count(id($ids))"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><item id="a"/><item id="b"/></doc>"#.to_vec(),
+        )
+        .expect("admit source without typed IDs");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable-valued id()");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("xslt10-id-variable", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable-valued id()");
+
+    assert_eq!(
+        results.by_request["xslt10-id-variable"].serialized,
+        "<out>0</out>"
+    );
+}
+
+#[test]
 fn ignored_stylesheet_comments_do_not_split_literal_text_runs() {
     const SOURCE: &str = "urn:fastxslt:stylesheet-comment-text:source";
     const STYLESHEET: &str = "urn:fastxslt:stylesheet-comment-text:stylesheet";

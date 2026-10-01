@@ -4238,3 +4238,9 @@ maintained redistributable legacy suite becomes available.
   2,612 successful executions. A newly exposed cross-document node-ownership
   case remains a visible execution failure rather than being approximated.
   [Evidence](../Evidence/oasis-xslt10-global-literal-document-variable-2026-09-30.md)
+- 2026-09-30: variable-valued XSLT 1.0 `id()` calls now reuse the established
+  scalar conversion and charged typed-ID selector. Literal and path arguments
+  are unchanged, and match patterns remain literal-only. The unchanged
+  `Lotus/idkey_idkey58#1` case becomes exact, moving the sweep to 2,465 / 3,173
+  (77.69%), 2,660 initialized cases, and 2,613 successful executions.
+  [Evidence](../Evidence/oasis-xslt10-variable-id-lookup-2026-09-30.md)

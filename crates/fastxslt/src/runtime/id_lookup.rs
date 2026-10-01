@@ -5,18 +5,31 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{Xslt10IdArgument, Xslt10IdLookup};
 
-use super::runtime_failure::{ExecutionFailure, control_failure};
+use super::runtime_failure::{ExecutionFailure, FailureCategory, control_failure, failure};
 
 pub(super) fn select(
     source: &Document,
     context: NodeId,
     lookup: &Xslt10IdLookup,
+    variable_value: Option<&str>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
     let mut values = Vec::new();
     match &lookup.argument {
         Xslt10IdArgument::Literal(value) => values.push(value.clone()),
+        Xslt10IdArgument::Variable(name) => values.push(
+            variable_value
+                .ok_or_else(|| {
+                    failure(
+                        "FXRT0002",
+                        FailureCategory::Invalid,
+                        Some(request_id),
+                        format!("unbound variable in id() argument: ${name}"),
+                    )
+                })?
+                .to_owned(),
+        ),
         Xslt10IdArgument::Path(argument_path) => {
             for node in evaluate_location_path_controlled(source, context, argument_path, control)
                 .map_err(|failure| control_failure(failure, request_id))?

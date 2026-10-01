@@ -879,6 +879,11 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_xslt10_id_lookup
     }
     let argument = if let Some(literal) = xpath_string_literal(argument) {
         Xslt10IdArgument::Literal(literal.to_owned())
+    } else if let Some(variable) = argument
+        .strip_prefix('$')
+        .filter(|name| is_ascii_ncname(name))
+    {
+        Xslt10IdArgument::Variable(variable.to_owned())
     } else {
         Xslt10IdArgument::Path(
             parse_xslt10_location_path(argument, location.clone()).map_err(map_path_failure)?,
