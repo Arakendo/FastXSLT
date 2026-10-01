@@ -4281,3 +4281,10 @@ maintained redistributable legacy suite becomes available.
   Non-child chained patterns remain unsupported; temporary-node path patterns
   now produce structured unsupported diagnostics instead of silent non-match.
   [Evidence](../Evidence/oasis-xslt10-chained-child-match-predicates-2026-10-01.md)
+- 2026-10-01: qualified XSLT 1.0 variable paths now normalize lexical QNames
+  through the existing static namespace resolver before shared runtime lookup.
+  The unchanged `Microsoft/BVTs_bvt073#1` becomes exact; focused tests preserve
+  namespace-alias identity, different-namespace isolation, qualified parameter
+  scope, and unbound-prefix diagnostics. The sweep reaches 2,470 / 3,173
+  (77.84%), 2,667 initialized, and 2,620 successful executions.
+  [Evidence](../Evidence/oasis-xslt10-qualified-variable-paths-2026-10-01.md)

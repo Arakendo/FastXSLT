@@ -2921,6 +2921,21 @@ fn xslt10_variable_position_predicates_do_not_approximate_multi_step_focus() {
 }
 
 #[test]
+fn xslt10_qualified_variable_path_rejects_unbound_prefix_with_provenance() {
+    let stylesheet = parse_stylesheet(
+        "memory:unbound-variable-path.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="$missing:nodes/value"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&stylesheet).expect_err("unbound variable prefix");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+    assert_eq!(failure.code, "FXST0012");
+    assert_eq!(
+        failure.location.resource,
+        "memory:unbound-variable-path.xsl"
+    );
+}
+
+#[test]
 fn compiles_strip_all_and_exact_expanded_name_whitespace_policies() {
     let stylesheet = parse_stylesheet(
             "memory:strip-all.xsl",

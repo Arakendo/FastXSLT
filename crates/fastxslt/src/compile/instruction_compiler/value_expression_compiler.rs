@@ -1645,9 +1645,14 @@ pub(super) fn compile_xslt10_variable_path(
     else {
         return Ok(None);
     };
-    if !is_ascii_ncname(variable) || relative.is_empty() {
+    let valid_name = is_ascii_ncname(variable)
+        || variable
+            .split_once(':')
+            .is_some_and(|(prefix, local)| is_ascii_ncname(prefix) && is_ascii_ncname(local));
+    if !valid_name || relative.is_empty() {
         return Ok(None);
     }
+    let variable = normalize_variable_qname(document, element, variable)?;
     let descendant_path;
     let relative = if let Some(descendant) = relative.strip_prefix('/') {
         descendant_path = format!(".//{descendant}");
@@ -1666,7 +1671,7 @@ pub(super) fn compile_xslt10_variable_path(
             }
         }
     }
-    Ok(Some((variable.to_owned(), path)))
+    Ok(Some((variable, path)))
 }
 
 fn compile_xslt10_path_string_function(

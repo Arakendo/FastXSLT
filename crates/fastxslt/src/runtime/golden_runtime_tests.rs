@@ -6748,6 +6748,33 @@ fn xslt10_local_node_variables_compose_with_relative_paths() {
 }
 
 #[test]
+fn xslt10_qualified_variable_paths_use_expanded_binding_identity() {
+    const SOURCE: &str = "urn:fastxslt:qualified-variable-path:source";
+    const STYLESHEET: &str = "urn:fastxslt:qualified-variable-path:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><left><value>A</value></left><right><value>B</value></right></doc>".to_vec(),
+        )
+        .expect("source");
+    resources.admit(STYLESHEET, br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:a="urn:binding" xmlns:b="urn:binding" xmlns:c="urn:other"><xsl:output method="text"/><xsl:variable name="a:nodes" select="doc/left"/><xsl:variable name="c:nodes" select="doc/right"/><xsl:template match="/"><xsl:value-of select="$b:nodes/value"/><xsl:value-of select="$c:nodes/value"/><xsl:call-template name="emit"><xsl:with-param name="a:selected" select="doc/right"/></xsl:call-template></xsl:template><xsl:template name="emit"><xsl:param name="b:selected"/><xsl:for-each select="$a:selected/value"><xsl:value-of select="$b:selected/value"/></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec()).expect("stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile qualified variable paths");
+    let mut transforms = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    transforms
+        .add(request("qualified-variable-path", "result", SOURCE))
+        .expect("request");
+    let results =
+        execute_transform_set(transforms.seal()).expect("execute qualified variable paths");
+    assert_eq!(
+        results.by_request["qualified-variable-path"].serialized,
+        "ABB"
+    );
+}
+
+#[test]
 fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:wildcard-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:wildcard-attribute-pattern:stylesheet";
