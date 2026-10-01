@@ -1430,29 +1430,28 @@ fn reviewed_external_stylesheet_subset(
     stylesheet_identity: &str,
     stylesheet: &[u8],
 ) -> Option<ReviewedExternalSubset> {
-    const REFERENCE: &str = "stylesheet.dtd";
-    let single_quoted = br"SYSTEM 'stylesheet.dtd'";
-    let double_quoted = br#"SYSTEM "stylesheet.dtd""#;
-    if !stylesheet
-        .windows(single_quoted.len())
-        .any(|window| window == single_quoted)
-        && !stylesheet
-            .windows(double_quoted.len())
-            .any(|window| window == double_quoted)
-    {
-        return None;
-    }
-    let bytes = read_case_file(&case.directory, REFERENCE)?;
+    const REVIEWED_REFERENCES: [&str; 2] = ["stylesheet.dtd", "htmllat1.dtd"];
+    let reference = REVIEWED_REFERENCES.into_iter().find(|reference| {
+        let single_quoted = format!("SYSTEM '{reference}'");
+        let double_quoted = format!("SYSTEM \"{reference}\"");
+        stylesheet
+            .windows(single_quoted.len())
+            .any(|window| window == single_quoted.as_bytes())
+            || stylesheet
+                .windows(double_quoted.len())
+                .any(|window| window == double_quoted.as_bytes())
+    })?;
+    let bytes = read_case_file(&case.directory, reference)?;
     if bytes.len() > MAX_REVIEWED_EXTERNAL_SUBSET_BYTES {
         return None;
     }
     let (identity, fragment) =
-        crate::resources::resolve_reference(stylesheet_identity, REFERENCE).ok()?;
+        crate::resources::resolve_reference(stylesheet_identity, reference).ok()?;
     if fragment.is_some() {
         return None;
     }
     Some(ReviewedExternalSubset {
-        reference: REFERENCE,
+        reference,
         identity,
         bytes,
     })

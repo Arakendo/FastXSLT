@@ -130,6 +130,15 @@ execute, and compare exactly. Totals become 2,448 / 3,173 exact (77.15%), 2,640
 initialized, 2,594 executed, 88 single-external-subset direct outcomes, and 14
 explicit unsupported DTD outcomes.
 
+The same principal-stylesheet mechanism was then replayed for the two
+case-local copies of `htmllat1.dtd`. Each reviewed resource is 3,139 bytes and
+contains the ISO Latin-1 internal general-character entity declarations used
+by the unchanged `copy19`, `copy20`, and `string130` stylesheets. All three
+cases initialize, execute, and compare exactly without any new acquisition
+authority or parser grammar. Current totals are 2,451 / 3,173 exact (77.25%),
+2,643 initialized, 2,597 executed, 91 single-external-subset direct outcomes,
+and 11 explicit unsupported DTD outcomes.
+
 ## Disposition
 
 Retain the private experiment as evidence for AR-0025. It proves that a narrow

@@ -251,8 +251,11 @@ the reviewed `stylesheet.dtd` family. External DTD bytes consume a resolution
 attempt, their own byte ceiling, and the aggregate stylesheet dependency-byte
 budget; failures retain the DTD logical identity. Eleven unchanged cases become
 exact without a second resolver or parser path. The strict lower bound reaches
-2,448 / 3,173 (77.15%), and the conserved frontier becomes 15 internal parses,
-88 single-external parses, and 14 explicit unsupported outcomes.
+2,448 / 3,173 (77.15%). Replaying that already-bounded stylesheet path for the
+case-local 3,139-byte `htmllat1.dtd` character-entity set makes three more
+unchanged cases exact without widening authority or grammar. The current lower
+bound is 2,451 / 3,173 (77.25%), and the conserved frontier becomes 15 internal
+parses, 91 single-external parses, and 11 explicit unsupported outcomes.
 
 ## Disposition
 
@@ -358,3 +361,8 @@ memory amplification.
   principal-stylesheet external subset and applied XML declaration precedence.
   Eleven `stylesheet.dtd` cases become exact. The lower bound reaches 2,448 /
   3,173 (77.15%); 14 direct DTD-frontier cases remain explicitly unsupported.
+- 2026-09-30 -- Admitted the reviewed case-local `htmllat1.dtd` character-
+  entity set through the same principal-stylesheet path. Three unchanged Lotus
+  cases become exact. The lower bound reaches 2,451 / 3,173 (77.25%); the
+  conserved DTD frontier is 15 internal parses, 91 single-external parses, and
+  11 explicit unsupported outcomes.
