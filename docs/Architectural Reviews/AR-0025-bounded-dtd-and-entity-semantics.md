@@ -414,3 +414,9 @@ unacceptable prepared-memory amplification.
   120 cases (18 internal parses, 93 sealed-external parses, nine unsupported).
   This corrects the observation boundary and does not reopen the deferred DTD
   profile.
+- 2026-09-30 -- Literal-only XSLT 1.0 `id()` match patterns then reused the
+  same selector and bounded invocation-owned membership cache. Six unchanged
+  cases became exact without changing DTD semantics. Their former stylesheet
+  compile failures had likewise hidden six principal-source DTDs, so the
+  observed attribution set is now 126 cases (24 internal parses, 93 sealed-
+  external parses, nine unsupported). AR-0025 remains deferred.

@@ -348,14 +348,19 @@ pub(super) fn execute_value_of(
             append_text(result, value, inputs.request_id, control)?;
         }
         ValueExpression::Xslt10IdLookup(lookup) => {
-            let (_, context) = required_source_context(inputs, context)?;
-            if let Some(node) = super::select_xslt10_id(inputs, context, lookup, control)?.first() {
+            let (source, context) = required_source_context(inputs, context)?;
+            if let Some(node) =
+                super::id_lookup::select(source, context, lookup, inputs.request_id, control)?
+                    .first()
+            {
                 append_source_string_value(inputs, *node, result, control)?;
             }
         }
         ValueExpression::Xslt10CountIdLookup(lookup) => {
-            let (_, context) = required_source_context(inputs, context)?;
-            let count = super::select_xslt10_id(inputs, context, lookup, control)?.len();
+            let (source, context) = required_source_context(inputs, context)?;
+            let count =
+                super::id_lookup::select(source, context, lookup, inputs.request_id, control)?
+                    .len();
             append_text(result, &count.to_string(), inputs.request_id, control)?;
         }
         ValueExpression::Xslt10KeyLookup(lookup) => {

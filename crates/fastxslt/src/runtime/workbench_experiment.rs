@@ -839,7 +839,7 @@ mod tests {
             <!ATTLIST item id ID #REQUIRED value CDATA #REQUIRED>
         ]><root><lookup ids="third first third"/><item id="first" value="A"/><item id="second" value="B"/><item id="third" value="C"/></root>"#
             .to_vec();
-        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="id(root/lookup/@ids)"><xsl:value-of select="@value"/></xsl:for-each><xsl:value-of select="count(id(root/lookup/@ids))"/></xsl:template></xsl:stylesheet>"#.to_vec();
+        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="id(root/lookup/@ids)"><xsl:value-of select="@value"/></xsl:for-each><xsl:value-of select="count(id(root/lookup/@ids))"/><xsl:apply-templates select="id(root/lookup/@ids)/@value"/></xsl:template><xsl:template match="id('third')/@value"><xsl:text>T</xsl:text></xsl:template></xsl:stylesheet>"#.to_vec();
         let engine = ExperimentalEngine::new_with_bounded_internal_source_subset(
             "urn:fastxslt:dtd:ordered-id-source",
             source,
@@ -860,7 +860,7 @@ mod tests {
             engine
                 .transform("bounded-typed-id-order")
                 .expect("typed-ID lookup should execute"),
-            "AC2"
+            "AC2AT"
         );
     }
 

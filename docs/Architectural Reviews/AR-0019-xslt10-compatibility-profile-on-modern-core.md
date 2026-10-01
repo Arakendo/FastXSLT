@@ -4210,3 +4210,12 @@ maintained redistributable legacy suite becomes available.
   previously hidden behind stylesheet compile failures, expanding the observed
   direct-DTD attribution set to 120 without widening DTD semantics.
   [Evidence](../Evidence/oasis-xslt10-count-typed-id-lookup-2026-09-30.md)
+- 2026-09-30: literal-only XSLT 1.0 `id()` match patterns reuse the shared
+  charged typed-ID selector and bounded invocation-owned document-rooted
+  membership cache. Relative child, descendant, text, and attribute tails stay
+  in the existing typed location-path evaluator; non-literal pattern arguments
+  remain invalid. Six unchanged cases become exact, moving the sweep to 2,460 /
+  3,173 (77.53%), 2,654 initialized cases, and 2,608 successful executions.
+  Initialization failures fall to 516; all later-failure, mismatch, comparator,
+  and expected-error counters remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-id-match-patterns-2026-09-30.md)

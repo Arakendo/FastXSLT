@@ -2318,7 +2318,7 @@ fn compiles_attribute_name_predicate_with_path_priority() {
 }
 
 #[test]
-fn distinguishes_invalid_match_grammar_from_unimplemented_id_semantics() {
+fn distinguishes_invalid_match_grammar_and_compiles_literal_id_patterns() {
     for lexical in ["$var", "key(bookstore, bookstore)"] {
         let stylesheet = parse_stylesheet(
             "memory:invalid-match-grammar.xsl",
@@ -2333,13 +2333,23 @@ fn distinguishes_invalid_match_grammar_from_unimplemented_id_semantics() {
     }
 
     let stylesheet = parse_stylesheet(
-        "memory:unsupported-match-capability.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="id('b')"/></xsl:stylesheet>"#,
+        "memory:literal-id-match.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="id('b')/child/text()"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet).expect("literal id() match pattern compiles");
+    assert!(matches!(
+        program.matched_templates[0].pattern,
+        MatchPattern::Xslt10IdLookup(_)
+    ));
+
+    let stylesheet = parse_stylesheet(
+        "memory:invalid-id-match.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="id(child/@ref)"/></xsl:stylesheet>"#,
     );
     let failure = compile_stylesheet(&stylesheet)
-        .expect_err("valid but unimplemented id() semantics must fail");
+        .expect_err("XSLT 1.0 id() match arguments must be literals");
     assert_eq!(failure.code, "FXST1005");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    assert_eq!(failure.category, CompileCategory::Invalid);
 }
 
 #[test]

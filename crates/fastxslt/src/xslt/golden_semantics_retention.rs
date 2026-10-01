@@ -400,6 +400,9 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         MatchPattern::DescendantElementAtNamedSiblingBoundary {
             ancestor, element, ..
         } => name_owned(ancestor) + name_owned(element),
+        MatchPattern::Xslt10IdLookup(lookup) => {
+            size_of_val(lookup.as_ref()) + xslt10_id_lookup_owned(lookup)
+        }
         MatchPattern::Xslt10KeyLookup(lookup) => {
             size_of_val(lookup.as_ref()) + xslt10_key_lookup_owned(lookup)
         }

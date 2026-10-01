@@ -462,6 +462,23 @@ pub(super) fn matches_pattern(
         } => matches_descendant_sibling_boundary(
             source, node, ancestor, element, *boundary, request_id, control,
         ),
+        MatchPattern::Xslt10IdLookup(lookup) => {
+            if let Some(matches) = selection
+                .document_rooted_matches
+                .borrow()
+                .lookup(template_index, node)
+            {
+                return Ok(matches);
+            }
+            let selected = super::id_lookup::select(source, node, lookup, request_id, control)?;
+            let matches = selected.contains(&node);
+            selection.document_rooted_matches.borrow_mut().insert(
+                template_index,
+                source.node_count(),
+                &selected,
+            );
+            Ok(matches)
+        }
         MatchPattern::Xslt10KeyLookup(lookup) => {
             if let Some(matches) = selection
                 .document_rooted_matches

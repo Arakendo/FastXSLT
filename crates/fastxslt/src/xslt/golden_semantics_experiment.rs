@@ -466,6 +466,7 @@ pub(crate) enum MatchPattern {
         element: ExpandedName,
         boundary: NamedSiblingBoundary,
     },
+    Xslt10IdLookup(Box<Xslt10IdLookup>),
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     QualifiedElementPathAlternatives(Vec<Vec<ExpandedName>>),
     UnionAlternatives(Vec<MatchPattern>),

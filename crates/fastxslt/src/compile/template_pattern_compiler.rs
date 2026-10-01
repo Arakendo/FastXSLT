@@ -330,6 +330,28 @@ pub(super) fn compile_match_pattern(
                 document.location(element),
             ));
         }
+        id_pattern
+            if super::instruction_compiler::uses_xslt10_compatibility(document, element)
+                && id_pattern.trim_start().starts_with("id(") =>
+        {
+            let lookup =
+                super::instruction_compiler::value_expression_compiler::compile_xslt10_id_lookup(
+                    id_pattern,
+                    document.location(element),
+                )?
+                .expect("id() pattern shape was checked");
+            if !matches!(
+                lookup.argument,
+                crate::xslt::golden_semantics_experiment::Xslt10IdArgument::Literal(_)
+            ) {
+                return Err(invalid(
+                    "FXST1005",
+                    "XSLT 1.0 id() match-pattern argument must be a string literal",
+                    document.location(element),
+                ));
+            }
+            MatchPattern::Xslt10IdLookup(Box::new(lookup))
+        }
         key_pattern
             if super::instruction_compiler::uses_xslt10_compatibility(document, element)
                 && key_pattern.trim_start().starts_with("key(") =>
@@ -1138,6 +1160,7 @@ fn compile_template_priority(
             | MatchPattern::ElementWithSequentialPredicates { .. }
             | MatchPattern::DescendantElementPathAtPosition { .. }
             | MatchPattern::DescendantElementAtNamedSiblingBoundary { .. }
+            | MatchPattern::Xslt10IdLookup(_)
             | MatchPattern::Xslt10KeyLookup(_)
             | MatchPattern::UnionAlternatives(_)
             | MatchPattern::DocumentChildElement(_) => TemplatePriority::PATH_DEFAULT,
