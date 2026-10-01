@@ -14103,6 +14103,23 @@ fn xslt10_boolean_wildcard_match_predicate_preserves_focus_and_short_circuiting(
 }
 
 #[test]
+fn chained_child_match_predicates_recompute_focus_after_each_filter() {
+    const SOURCE: &str = "urn:fastxslt:chained-match:source";
+    const STYLESHEET: &str = "urn:fastxslt:chained-match:stylesheet";
+    let mut builder = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    builder.admit(SOURCE, br#"<bookstore specialty="novel"><book id="1"><title>Book 1</title></book><book id="2"><title>Book 2</title></book><book id="3"><title>Book 3</title></book><book id="4"><title>Book 4</title></book></bookstore>"#.to_vec()).expect("source");
+    builder.admit(STYLESHEET, br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="bookstore/book" mode="a"/><xsl:text>|</xsl:text><xsl:apply-templates select="bookstore/book" mode="b"/><xsl:text>|</xsl:text><xsl:apply-templates select="bookstore/book" mode="c"/></xsl:template><xsl:template match="bookstore[@specialty='novel'][1]/book[position() &lt; 4][title != 'Book 1']" mode="a"><xsl:value-of select="@id"/></xsl:template><xsl:template match="bookstore[1][@specialty='novel']/book[title != 'Book 1'][position() &lt; 4]" mode="b"><xsl:value-of select="@id"/></xsl:template><xsl:template match="node()[position() = last()][name() = 'bookstore']/book[title != 'Book 1'][position() &lt; last()][position() &lt; last()]" mode="c"><xsl:value-of select="@id"/></xsl:template><xsl:template match="*" mode="a"/><xsl:template match="*" mode="b"/><xsl:template match="*" mode="c"/></xsl:stylesheet>"#.to_vec()).expect("stylesheet");
+    let snapshot = builder.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile");
+    let mut transforms = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    transforms
+        .add(request("chained-match", "result", SOURCE))
+        .expect("request");
+    let results = execute_transform_set(transforms.seal()).expect("execute");
+    assert_eq!(results.by_request["chained-match"].serialized, "23|234|2");
+}
+
+#[test]
 fn xslt10_match_predicate_compares_a_child_attribute_union_to_a_string() {
     const SOURCE: &str = "urn:fastxslt:node-set-union-match:source";
     const STYLESHEET: &str = "urn:fastxslt:node-set-union-match:stylesheet";

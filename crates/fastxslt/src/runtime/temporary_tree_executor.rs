@@ -780,6 +780,15 @@ fn temporary_matches(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    if let MatchPattern::Path(path) = pattern {
+        return Err(failure_at(
+            "FXRT1007",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            path.location.clone(),
+            "location-path match patterns on temporary nodes are outside the private evaluator slice",
+        ));
+    }
     let kind = &tree.nodes[node].kind;
     let matched = match (kind, pattern) {
         (TemporaryNodeKind::Element { name, .. }, MatchPattern::Element(expected))
@@ -1639,4 +1648,38 @@ fn copy_temporary_processing_instruction(
         target: target.to_owned(),
         value: value.to_owned(),
     }])
+}
+
+#[cfg(test)]
+mod chained_match_tests {
+    use super::*;
+    use crate::xdm::owned_tree_experiment::SourceLocation;
+    use crate::xpath::path_experiment::parse_location_path;
+
+    #[test]
+    fn unsupported_temporary_chained_match_does_not_silently_return_false() {
+        let location = SourceLocation {
+            resource: "memory:chained-match.xsl".to_owned(),
+            span: 20..45,
+        };
+        let path = parse_location_path("a/b[position() < last()]", location.clone())
+            .expect("bounded path");
+        let tree = TemporaryTree {
+            identity: 1,
+            roots: Vec::new(),
+            nodes: Vec::new(),
+            xslt10_disable_output_escaping_text: std::collections::HashSet::default(),
+        };
+        let failure = temporary_matches(
+            &tree,
+            0,
+            &MatchPattern::Path(path),
+            "chained-match",
+            &mut InvocationControl::unbounded(),
+        )
+        .expect_err("reject before reading a temporary node or applying fallback");
+        assert_eq!(failure.category, FailureCategory::Unsupported);
+        assert_eq!(failure.code, "FXRT1007");
+        assert_eq!(failure.location, Some(location));
+    }
 }

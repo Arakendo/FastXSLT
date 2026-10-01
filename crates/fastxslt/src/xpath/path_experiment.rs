@@ -133,17 +133,35 @@ impl LocationPath {
 
     pub(crate) fn has_non_simple_position_predicate(&self) -> bool {
         self.sequence_position_predicate.is_some()
+            || self.final_boolean_predicate.is_some()
+            || self.final_context_predicate.is_some()
             || self.step_position_predicates.iter().any(|predicates| {
                 predicates.len() > 1
                     || predicates.iter().any(|predicate| {
                         matches!(
                             predicate,
                             StepPredicate::Position(
-                                PositionPredicate::Compare { .. } | PositionPredicate::LastMinus(_)
+                                PositionPredicate::Compare { .. }
+                                    | PositionPredicate::CompareLast { .. }
+                                    | PositionPredicate::LastMinus(_)
                             ) | StepPredicate::ContextName(_)
                                 | StepPredicate::Boolean(_)
                         )
                     })
+            })
+    }
+
+    pub(crate) fn is_child_axis_match_path(&self) -> bool {
+        self.sequence_position_predicate.is_none()
+            && self.steps.iter().all(|step| {
+                matches!(
+                    step,
+                    PathStep::ChildNamed(_)
+                        | PathStep::ChildLocalName(_)
+                        | PathStep::ChildExpandedName(_)
+                        | PathStep::ChildAnyElement
+                        | PathStep::ChildAnyNode
+                )
             })
     }
 
@@ -691,6 +709,9 @@ enum PositionPredicate {
     Compare {
         operator: PositionComparison,
         value: i64,
+    },
+    CompareLast {
+        operator: PositionComparison,
     },
     Last,
     LastMinus(usize),
@@ -1976,11 +1997,24 @@ fn parse_position_predicate(predicate: &str) -> Option<PositionPredicate> {
             ("<", PositionComparison::LessThan),
         ] {
             if let Some(operand) = remainder.strip_prefix(token) {
+                if operand.trim() == "last()" {
+                    return Some(PositionPredicate::CompareLast { operator });
+                }
                 let value = constant_integer_experiment::evaluate(operand.trim()).ok()?;
                 return Some(PositionPredicate::Compare { operator, value });
             }
         }
         if let Some(operand) = remainder.strip_prefix('=') {
+            if let Some(offset) = operand.trim().strip_prefix("last()") {
+                if offset.trim().is_empty() {
+                    return Some(PositionPredicate::Last);
+                }
+                let offset = offset.trim().strip_prefix('-')?.trim();
+                let offset = constant_integer_experiment::evaluate(offset).ok()?;
+                return usize::try_from(offset)
+                    .ok()
+                    .map(PositionPredicate::LastMinus);
+            }
             let value = constant_integer_experiment::evaluate(operand.trim()).ok()?;
             return Some(
                 usize::try_from(value)
@@ -2011,6 +2045,9 @@ fn position_predicate_matches(
         Some(PositionPredicate::Select(selected)) => *selected == position,
         Some(PositionPredicate::Compare { operator, value }) => {
             compare_position(position, *operator, *value)
+        }
+        Some(PositionPredicate::CompareLast { operator }) => {
+            i64::try_from(size).is_ok_and(|size| compare_position(position, *operator, size))
         }
         Some(PositionPredicate::Last) => position == size,
         Some(PositionPredicate::LastMinus(offset)) => size.checked_sub(*offset) == Some(position),

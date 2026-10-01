@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-09-04 |
-| Last reviewed | 2026-09-29 |
+| Last reviewed | 2026-10-01 |
 | Scope | Named XSLT 1.0 compatibility, backwards-compatible behavior, and shared modern execution |
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
@@ -4273,3 +4273,11 @@ maintained redistributable legacy suite becomes available.
   initialized cases, and 2,618 successful executions without widening
   production DTD policy.
   [Evidence](../Evidence/oasis-xslt10-number-id-count-pattern-2026-09-30.md)
+- 2026-10-01: chained child-axis match predicates reuse the shared charged
+  per-step evaluator, including relational `last()` comparisons, repeated
+  filtering, and boolean last/penultimate selection. The unchanged
+  `Microsoft/BVTs_bvt099#1` compares exactly, moving the sweep to 2,469 /
+  3,173 (77.81%), 2,666 initialized, and 2,619 successful executions.
+  Non-child chained patterns remain unsupported; temporary-node path patterns
+  now produce structured unsupported diagnostics instead of silent non-match.
+  [Evidence](../Evidence/oasis-xslt10-chained-child-match-predicates-2026-10-01.md)

@@ -6,8 +6,8 @@ standards scope are decided.
 
 ## Current critical path
 
-The XSLT 1.0 compatibility track has reached 2,468 / 3,173 exact OASIS
-comparisons (77.78%). The provisional 75% checkpoint was crossed by replaying
+The XSLT 1.0 compatibility track has reached 2,469 / 3,173 exact OASIS
+comparisons (77.81%). The provisional 75% checkpoint was crossed by replaying
 one already-proven sealed external-subset mechanism across the reviewed case-
 local `plants.dtd` family, not by weakening XML semantics or authority. Two
 post-checkpoint safe slices—declared ISO-2022-JP input and dynamic
@@ -135,7 +135,7 @@ failures, and 47 execution failures.
 Literal XSLT 1.0 `id()` count patterns in `xsl:number` now reuse the same
 charged typed-ID selector. The unchanged `Lotus/numbering_numbering91#1` case
 uses one reviewed case-local `iddata.dtd` admitted through AR-0025's existing
-sealed external-subset path and compares exactly. The current lower bound is
+sealed external-subset path and compares exactly. That checkpoint lower bound is
 2,468 / 3,173 (77.78%), with 2,665 initialized cases, 2,618 successful
 executions, 505 initialization failures, and 47 execution failures. Direct DTD
 attribution is now 133 cases: 30 internal parses, 94 sealed-external parses,
@@ -158,6 +158,15 @@ standards denominator supplies reopening pressure.
 [Global literal document-variable evidence](../Evidence/oasis-xslt10-global-literal-document-variable-2026-09-30.md)
 [Variable-valued ID evidence](../Evidence/oasis-xslt10-variable-id-lookup-2026-09-30.md)
 [Number ID-pattern evidence](../Evidence/oasis-xslt10-number-id-count-pattern-2026-09-30.md)
+
+Chained child-axis match predicates now reuse the shared charged per-step
+evaluator, including relational `last()` tests and repeated filtering. The
+unchanged `Microsoft/BVTs_bvt099#1` becomes exact. Current totals are 2,469 /
+3,173 exact matches (77.81%), 2,666 initialized, 2,619 successfully executed,
+504 initialization failures, and 47 execution failures. Temporary-node
+location-path matching is explicitly unsupported rather than silently falling
+through to a non-match; non-child chained patterns remain unsupported.
+[Chained child-match evidence](../Evidence/oasis-xslt10-chained-child-match-predicates-2026-10-01.md)
 
 The first P1 experiment from the 2026-09-04 performance review is complete and
 was deliberately not retained. A compile-selected monotonic child scan removed
@@ -2304,7 +2313,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are conserved. The current strict lower bound is 2,468 exact matches (77.78%); 2,665 cases initialize and 2,618 execute successfully. Every non-pass has a named policy, infrastructure, invalid/unsupported, mismatch, comparator, or unusable-reference disposition; twelve visible mismatches and four comparator gaps remain. Expected-error credit is independently conserved at 423 / 431 (98.14%). The archive remains non-redistributed, and AR-0019/AR-0024/AR-0025 plus their linked evidence own the detailed semantic, authority, encoding, DTD/entity, and historical-reference boundaries. This is compatibility evidence, not a conformance claim. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are conserved. The current strict lower bound is 2,469 exact matches (77.81%); 2,666 cases initialize and 2,619 execute successfully. Every non-pass has a named policy, infrastructure, invalid/unsupported, mismatch, comparator, or unusable-reference disposition; twelve visible mismatches and four comparator gaps remain. Expected-error credit is independently conserved at 423 / 431 (98.14%). The archive remains non-redistributed, and AR-0019/AR-0024/AR-0025 plus their linked evidence own the detailed semantic, authority, encoding, DTD/entity, and historical-reference boundaries. This is compatibility evidence, not a conformance claim. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -2352,8 +2361,8 @@ rather than Unicode whitespace makes three further cases exact. The lower
 bound reaches 2,261 / 3,173 (71.26%). A subsequent normative HTML
 serialization correction deliberately withdraws one former exact pass whose
 archival expectation minimized non-Boolean element/attribute pairs. The
-current lower bound is 2,468 / 3,173 (77.78%). Current totals are 2,665
-initialized, 2,618 successfully executed, 505 initialization failures,
+current lower bound is 2,469 / 3,173 (77.81%). Current totals are 2,666
+initialized, 2,619 successfully executed, 504 initialization failures,
 47 execution failures, 4 comparator gaps, and 12 visible mismatches.
 Host-parser-policy exclusions are 24, XSLT 1.0 discretionary-policy exclusions
 are five, host-collation-policy exclusions are five,
@@ -2361,7 +2370,7 @@ serialization-layout-policy exclusions are 18, and unusable archival reference
 dispositions are 70. These counters
 supersede the corresponding values embedded in the summary row above; the
 detailed tranche is recorded below and in
-[the number ID-pattern evidence record](../Evidence/oasis-xslt10-number-id-count-pattern-2026-09-30.md).
+[the chained child-match evidence record](../Evidence/oasis-xslt10-chained-child-match-predicates-2026-10-01.md).
 
 The QT3 and XSLT30 submodules remain development/test inputs outside the MIT
 library artifact. Verification checks their exact revisions and clean state,

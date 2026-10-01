@@ -2751,6 +2751,14 @@ fn last_minus_constant_selects_relative_to_the_typed_step_focus() {
         ("a[1][last()]", "1"),
         ("a[last()-1][1]", "3"),
         ("a[last()-1][last()]", "3"),
+        ("a[position() = last()]", "4"),
+        ("a[position() = last() - 1]", "3"),
+        ("a[position() < last()][position() < last()]", "12"),
+        ("a[position() <= last()]", "1234"),
+        ("a[position() > last()]", ""),
+        ("a[position() >= last()]", "4"),
+        ("a[position() != last()]", "123"),
+        ("a[position() = last() or position() = last() - 1]", "34"),
         ("a[number('3')]", "3"),
     ] {
         let path = parse_location_path(expression, location()).expect("last-minus predicate");

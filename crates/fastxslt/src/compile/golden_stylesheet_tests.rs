@@ -2421,6 +2421,18 @@ fn compiles_ordered_position_and_attribute_match_predicates() {
 }
 
 #[test]
+fn chained_match_predicates_do_not_admit_non_child_axis_patterns() {
+    let stylesheet = parse_stylesheet(
+        "memory:non-child-chained-match.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="a/b[position() &lt; last()][1]/parent::c"/></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&stylesheet)
+        .expect_err("non-child context reconstruction is not admitted");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+    assert_eq!(failure.code, "FXST1005");
+}
+
+#[test]
 fn compiles_namespace_aware_descendant_path_with_positioned_middle_step() {
     let stylesheet = parse_stylesheet(
         "memory:qualified-descendant-position-pattern.xsl",
@@ -2523,28 +2535,34 @@ fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
         "memory:last-minus-position-pattern.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="chapter/footnote[last()-1]"><out/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&last_minus_position)
-        .expect_err("last-minus position needs match-pattern-specific semantics");
-    assert_eq!(failure.code, "FXST1005");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    let program = compile_stylesheet(&last_minus_position)
+        .expect("child-axis last-minus pattern uses the charged per-step evaluator");
+    assert!(matches!(
+        program.matched_templates[0].pattern,
+        MatchPattern::Path(_)
+    ));
 
     let chained_position = parse_stylesheet(
         "memory:chained-position-pattern.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="chapter/footnote[1][last()]"><out/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&chained_position)
-        .expect_err("chained position needs match-pattern-specific semantics");
-    assert_eq!(failure.code, "FXST1005");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    let program = compile_stylesheet(&chained_position)
+        .expect("chained child-axis positions use the charged per-step evaluator");
+    assert!(matches!(
+        program.matched_templates[0].pattern,
+        MatchPattern::Path(_)
+    ));
 
     let position_then_name = parse_stylesheet(
         "memory:position-name-pattern.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="chapter/footnote[last()][name()='footnote']"><out/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&position_then_name)
-        .expect_err("position/name chains need match-pattern-specific semantics");
-    assert_eq!(failure.code, "FXST1005");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    let program = compile_stylesheet(&position_then_name)
+        .expect("position/name child-axis chains use the per-step evaluator");
+    assert!(matches!(
+        program.matched_templates[0].pattern,
+        MatchPattern::Path(_)
+    ));
 
     let named_descendant = parse_stylesheet(
             "memory:named-descendant-pattern.xsl",

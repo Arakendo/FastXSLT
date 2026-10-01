@@ -413,7 +413,7 @@ pub(super) fn compile_match_pattern(
                 parse_location_path(path, document.location(element).clone())
                     .map_err(map_path_failure)?
             };
-            if path.has_non_simple_position_predicate() {
+            if path.has_non_simple_position_predicate() && !path.is_child_axis_match_path() {
                 return Err(unsupported(
                     "FXST1005",
                     "non-simple position predicates in multi-step match patterns are outside the private pattern slice",
