@@ -40,6 +40,12 @@ controls, not additions to the OASIS denominator.
 
 ## Open temporary path regression
 
+Follow-up: the [separate dispatch repair](ar-0027-temporary-for-each-dispatch-repair-2026-10-03.md)
+removes the panic described below. The subsequent
+[attribute-value repair](ar-0027-temporary-attribute-value-parity-2026-10-03.md)
+also closes the ordinary attribute-value blocker; the unchanged regression is
+now enabled and passing. This section records the original checkpoint.
+
 The second probe constructs an XSLT 2.0 temporary document:
 
 ```xml

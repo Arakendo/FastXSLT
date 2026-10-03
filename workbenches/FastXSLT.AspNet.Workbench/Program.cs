@@ -1,5 +1,15 @@
 using System.Diagnostics;
 
+if (args.Contains("--creation-placement-probe", StringComparer.Ordinal))
+{
+    var root = FindRepositoryRoot(Directory.GetCurrentDirectory());
+    var orderOption = args.SingleOrDefault(value => value.StartsWith("--creation-order=", StringComparison.Ordinal));
+    var order = orderOption is null ? 0 : int.Parse(orderOption.Split('=')[1], System.Globalization.CultureInfo.InvariantCulture);
+    var report = await CreationPlacementProbe.RunAsync(root, order);
+    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(report));
+    return;
+}
+
 if (args.Contains("--native-quota-smoke", StringComparer.Ordinal))
 {
     NativeFastXsltClient.ConfigureRegistryPolicy(new NativeRegistryPolicy(

@@ -132,7 +132,6 @@ fn capacity_execution_preserves_sealed_external_defaults_ids_and_views() {
 }
 
 #[test]
-#[ignore = "open AR-0027 baseline blocker: temporary-path for-each reaches source-only unreachable dispatch"]
 fn capacity_execution_preserves_temporary_focus_paths_and_result_retirement() {
     let stylesheet = br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:strip-space elements="*"/><xsl:template match="/"><xsl:variable name="t"><box><xsl:copy-of select="/r/item"/></box></xsl:variable><out><xsl:for-each select="$t/box/item"><v><xsl:value-of select="position()"/><xsl:text>/</xsl:text><xsl:value-of select="last()"/><xsl:text>:</xsl:text><xsl:value-of select="@key"/></v></xsl:for-each><xsl:text>|</xsl:text><xsl:value-of select="count(/r/item/..)"/></out></xsl:template></xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 8192, 8192));

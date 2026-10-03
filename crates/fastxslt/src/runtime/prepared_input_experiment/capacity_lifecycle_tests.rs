@@ -11,6 +11,12 @@ use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
 use super::{Fixture, IDENTITY, LIMITS, fixtures};
 
+const REUSE_COUNTS: [usize; 7] = [1, 2, 4, 8, 16, 32, 64];
+
+#[cfg(feature = "allocation-observation")]
+#[path = "capacity_transform_peak_tests.rs"]
+mod capacity_transform_peak_tests;
+
 #[derive(Clone, Copy, Debug)]
 enum Capacity {
     Growth,
@@ -129,7 +135,7 @@ fn capacity_lifecycle_candidates_return_exact_results_on_all_shapes() {
     let program = compiled();
     for fixture in fixtures() {
         for capacity in [Capacity::Growth, Capacity::Frozen, Capacity::Presized] {
-            for reuses in [1, 8] {
+            for reuses in REUSE_COUNTS {
                 sample(&program, &fixture, capacity, reuses);
             }
         }
@@ -190,8 +196,17 @@ fn measure_capacity_single_use_and_reuse_lifecycle() {
     }
     let program = compiled();
     let candidates = [Capacity::Growth, Capacity::Frozen, Capacity::Presized];
-    for fixture in fixtures() {
-        for reuses in [1, 8] {
+    // Test-only ordering input: it changes measurement order, not engine work.
+    let rotation = std::env::var("AR0027_REUSE_ROTATION").map_or(0, |value| {
+        value
+            .parse::<usize>()
+            .expect("reuse rotation must be an integer")
+    });
+    assert!(rotation < REUSE_COUNTS.len());
+    println!("ar0027 lifecycle_reuse_rotation={rotation}");
+    for (shape, fixture) in fixtures().into_iter().enumerate() {
+        for group in 0..REUSE_COUNTS.len() {
+            let reuses = REUSE_COUNTS[(group + shape + rotation) % REUSE_COUNTS.len()];
             let mut samples: [Vec<Phases>; 3] = std::array::from_fn(|_| Vec::with_capacity(201));
             for index in 0..217 {
                 // Rotate the first lane, rather than letting one always receive the freshest state.

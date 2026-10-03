@@ -263,6 +263,10 @@ its broader profiling program or AR-0009's retention policy review.
     ordinary/observed parity over the pinned source and synthetic 5/50/500 items.
   - [ ] Compare existing native/isolated adapters before selecting a staging
     change; replay representative distinct sources.
+    - [x] Establish matched fresh full-engine creation controls in direct Rust,
+      native .NET and isolated workers, including compilation, exact first
+      results, disposal and ordinary/measured diagnostic parity. Three process
+      repetitions recorded; reusable and distinct-source host lanes remain open.
 - [ ] Measure that boundary phase by phase, nominate one real managed staging
   cost, then compare its current and Rust-owned implementations independently
   of any tree-layout change.
@@ -294,10 +298,12 @@ its broader profiling program or AR-0009's retention policy review.
     - [x] Compare two sealed external-subset fixtures through five constructors,
       preserving typed IDs/default precedence, effective whitespace, parent-path
       deduplication, provenance and exact execution charges.
-    - [ ] Resolve the ordinary-reference temporary-path `xsl:for-each` panic,
-      re-enable its explicitly ignored regression, then complete candidate
-      focus/path/result-retirement comparison. No temporary-tree parity pass
-      follows from the successful sealed-subset control.
+    - [x] Repair the temporary-path `xsl:for-each` dispatch panic using the
+      shared charged temporary selector; verify nested focus and empty paths.
+    - [x] Resolve plain relative attribute-value paths under temporary focus,
+      re-enable the unchanged regression, and compare growth/pre-sized/frozen
+      focus, output charges and result retirement on that fixture. General
+      temporary axes, predicates and sorting remain outside this proof.
 - [ ] Exercise cancellation, exact/one-less budgets, construction failure,
   concurrent reuse, and independent overlapping generation retirement.
   - [x] Exercise candidate construction/view controls and four-thread shared
@@ -320,8 +326,18 @@ its broader profiling program or AR-0009's retention policy review.
   - [x] Measure direct Rust admission/preparation/execution/serialization/release
     for all six shapes at one/eight reuses, with rotated candidate order and
     exact output; retain timing reversals and decline a general speedup claim.
-  - [ ] Measure full transform peaks, more reuse points and representative host
-    creation/ingestion before deriving a break-even or adoption decision.
+  - [x] Measure full-transform requested-allocation peaks on six count and six
+    copy shapes, with prepared/result/serialized retention and scope release.
+  - [x] Resolve the default-debug-stack failure on the 256-deep copy reference
+    through safe ancestor-cursor serialization. Retain the shallow recursive
+    oracle, promote the deep reference to an ordinary regression and replay
+    all six copy shapes. No arbitrary-depth guarantee is inferred.
+  - [x] Extend the direct count lifecycle to 1/2/4/8/16/32/64 uses across six
+    shapes, with fresh-process reuse-group rotation and exact output. Record
+    timing reversals rather than selecting a universal break-even.
+  - [ ] Measure result-heavy reuse and representative host creation/ingestion
+    before deriving a break-even or adoption decision. Match compilation scope
+    and separate isolated process startup from preparation.
 - [ ] Validate the official WASM target, distinguishing host-width layout and
   memory limits; retain ordinary-path controls and unchanged corpus cases.
 - [ ] Record a retained candidate or negative result. Require an ADR before
@@ -335,6 +351,75 @@ bottleneck, a safe candidate earns repeatable end-to-end benefit, or an access
 change would alter identity, public lifecycle, generation ownership or authority.
 
 ## Review history
+
+- 2026-10-03 -- Added matched full-engine creation measurements through existing
+  adapters and direct Rust. Three repetitions conserve 1,152 timed exact results,
+  ordinary/measured failure parity and native registry release. At 500 items,
+  creation medians are 0.99–1.04 ms Rust, 1.05–1.17 ms native and 15.1–16.3 ms
+  fresh isolated worker. Pipe writes absorb startup waiting; no internal phase
+  or removable managed cost is inferred. Full gates pass with 1,539 core tests
+  and WASM. No new export, production capacity choice or corpus credit.
+  [Evidence](../Evidence/ar-0027-matched-engine-creation-2026-10-03.md)
+
+- 2026-10-03 -- Extended reuse observations to seven points. Three recorded
+  fresh processes validate 459,486 timed outputs each. Pre-sized wide-source
+  single-use totals improve 7.6–11.1%, falling to 0.6–3.1% at 64 uses; 18 of
+  42 shape/reuse groups reverse between runs. No universal timing or break-even
+  is selected. Adapter inspection confirms existing creation combines admission,
+  compilation and preparation, with process startup additionally present in the
+  isolated path. Matched host attribution remains pending. Full gates and WASM
+  pass; production policy and corpus counts are unchanged.
+  [Evidence](../Evidence/ar-0027-capacity-reuse-sweep-and-ingestion-attribution-2026-10-03.md)
+
+- 2026-10-03 -- Resolved the localized serialization blocker with safe borrowed
+  ancestor cursors; the unchanged 256-deep copy passes on the default debug
+  stack. Differential output, charge, failure-prefix, cancellation and namespace
+  unwind controls pass. Three release processes reproduce all 144 allocation
+  records identically with 36 zero-retention full-release scopes per run.
+  Pre-sized deep-copy peak falls 20.4%; serializer scratch has a small measured
+  transient allocation cost. Full gates pass with 1,538 core tests and 48 ignored
+  probes; the official WASM target builds. Capacity adoption remains open.
+  [Evidence](../Evidence/ar-0027-stack-safe-serialization-and-allocation-replay-2026-10-03.md)
+
+- 2026-10-03 -- Localized the 256-deep default-debug overflow to serialization,
+  after successful execution and source retirement. Extracted the recursive
+  node writer unchanged into a private 309-line child before attempting the
+  repair. Full gates pass with 1,535 core tests and 49 ignored probes; the
+  official WASM target builds. The sacrificial crash remains reproducible and
+  the deep-copy allocation cell remains excluded. No repair or gain claimed.
+  [Evidence](../Evidence/ar-0027-serialization-stack-localization-2026-10-03.md)
+
+- 2026-10-03 -- Extended allocation observation through preparation, semantic
+  result, serialized result and release. Three release processes reproduce all
+  132 prefix scopes identically, with 33 full-release scopes per run returning
+  tracked ownership to zero. Pre-sized full-copy peak falls 19.0% on wide and
+  47.7% on attribute-heavy, but just 1.9% on text-heavy. A 256-deep growth-copy
+  reference overflows the default debug test-thread stack; the isolated release
+  reproducer passes. That cell remains excluded and explicitly unresolved.
+  Full gates pass with 1,535 core tests and 49 ignored probes; WASM builds.
+  No timing, capacity adoption or corpus gain is claimed.
+  [Evidence](../Evidence/ar-0027-full-transform-allocation-peaks-2026-10-03.md)
+
+- 2026-10-03 -- Closed the temporary attribute-value blocker with a narrow
+  private projection of eligible relative attribute paths. The unchanged
+  AR-0027 regression now passes through growth, pre-sized and frozen inputs,
+  including all-domain output charges and serialization after source retirement.
+  Source/temporary comparisons cover unqualified and expanded names, wildcard
+  attributes and missing values; control tests cover exact/one-less budgets and
+  cancellation during selection. Predicate paths remain explicitly unsupported.
+  Full gates pass with 1,534 core tests and 47 ignored probes; WASM builds.
+  No capacity policy, parser authority or corpus numerator changes.
+  [Evidence](../Evidence/ar-0027-temporary-attribute-value-parity-2026-10-03.md)
+
+- 2026-10-03 -- Committed the parity checkpoint at `1e04cc7f`, then extracted
+  for-each dispatch into a cohesive private owner and verified it unchanged.
+  Temporary-path iteration now uses the existing charged selector and shared
+  body evaluator. Three focused golden/control tests pass. The unchanged
+  broader probe now reaches an `XPDY0002` failure at ordinary `@key` value
+  selection rather than the source-only dispatch panic; it remains explicitly
+  ignored and uncredited. Sorted temporary paths are explicitly unsupported
+  with sort provenance. No capacity policy or corpus numerator is changed.
+  [Evidence](../Evidence/ar-0027-temporary-for-each-dispatch-repair-2026-10-03.md)
 
 - 2026-10-03 -- Committed prior work at `74daf64b`, then extended sealed-subset
   parity across five constructors and twenty exact transforms. A broader

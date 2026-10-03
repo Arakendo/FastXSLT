@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
 
-public sealed class NativeFastXsltClient : IDisposable
+public sealed partial class NativeFastXsltClient : IDisposable
 {
     private const ulong AdmissionStatusTag = 1UL << 63;
     private const ulong AdmissionStatusCodeMask = (1UL << 56) - 1;

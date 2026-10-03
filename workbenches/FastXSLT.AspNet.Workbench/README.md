@@ -16,6 +16,23 @@ The script defaults to `net10.0`. A diagnostic target comparison may pass
 `-TargetFramework net8.0`; this overrides the workbench target for that local
 run without changing the checked-in project default.
 
+The private AR-0027 creation probe runs without starting ASP.NET:
+
+```powershell
+dotnet build workbenches/FastXSLT.AspNet.Workbench -c Release
+cargo build --release -p fastxslt-worker -p fastxslt-dotnet-workbench
+Copy-Item target/release/fastxslt_dotnet_workbench.dll workbenches/FastXSLT.AspNet.Workbench/bin/Release/net10.0 -Force
+dotnet workbenches/FastXSLT.AspNet.Workbench/bin/Release/net10.0/FastXSLT.AspNet.Workbench.dll --creation-placement-probe --creation-order=0
+```
+
+Repeat in fresh processes with orders 1 and 2. Acquisition and fixture generation
+are outside timing; fresh engine creation includes compilation and preparation,
+followed by one exact transform and disposal. Isolated creation also starts a
+fresh process. Pipe-write and readiness clocks can both include startup waiting;
+neither is a standalone engine preparation measurement. These short exploratory
+runs always report `PublicationEligible=false`. The instrumentation is private,
+uses existing exports/framing, and does not change ordinary creation methods.
+
 The workbench currently loads the pinned XSLT30 `for-004` source and stylesheet
 once, retains one compiled stylesheet and prepared input in the worker, and
 offers:

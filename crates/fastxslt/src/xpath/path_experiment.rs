@@ -35,6 +35,21 @@ pub(crate) struct LocationPath {
 }
 
 impl LocationPath {
+    pub(crate) fn plain_relative_attribute_step(&self) -> Option<&PathStep> {
+        if self.origin != PathOrigin::Relative || !self.has_no_predicates() {
+            return None;
+        }
+        match self.steps.as_slice() {
+            [
+                step @ (PathStep::AttributeNamed(_)
+                | PathStep::AttributeExpandedName(_)
+                | PathStep::AttributeNamespace(_)
+                | PathStep::AttributeAny),
+            ] => Some(step),
+            _ => None,
+        }
+    }
+
     pub(crate) fn is_bare_context_item(&self) -> bool {
         self.origin == PathOrigin::ContextItem && self.steps.is_empty() && self.has_no_predicates()
     }

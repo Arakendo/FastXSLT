@@ -1,0 +1,1488 @@
+{
+  "managed": [
+    {
+      "Runtime": "10.0.12",
+      "Order": 0,
+      "Samples": 32,
+      "Warmups": 8,
+      "Scope": "fresh-engine compile+prepare; one transform+validation; disposal; supplied bytes",
+      "PublicationEligible": false,
+      "NativeRegistryReturnedToBaseline": true,
+      "PositiveParityCreations": 16,
+      "FailureParityCreations": 8,
+      "TimedExactTransforms": 256,
+      "Measurements": [
+        {
+          "Name": "pinned-for-004",
+          "SourceBytes": 216,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.2,
+              "P95": 0.9,
+              "Minimum": 0,
+              "Maximum": 1.1
+            },
+            "IdentityEncodingUs": {
+              "Median": 0.85,
+              "P95": 3.7,
+              "Minimum": 0.1,
+              "Maximum": 3.8
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 89.1,
+              "P95": 214.7,
+              "Minimum": 38.9,
+              "Maximum": 220.8
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 0.9,
+              "P95": 2.9,
+              "Minimum": 0.2,
+              "Maximum": 3.5
+            },
+            "CreationUs": {
+              "Median": 91.6,
+              "P95": 219.2,
+              "Minimum": 39.4,
+              "Maximum": 227.6
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 18.700000000000003,
+              "P95": 41,
+              "Minimum": 4.8,
+              "Maximum": 56.5
+            },
+            "DisposalUs": {
+              "Median": 4.15,
+              "P95": 9.6,
+              "Minimum": 1.9,
+              "Maximum": 11.4
+            },
+            "LifecycleUs": {
+              "Median": 110.94999999999999,
+              "P95": 262.3,
+              "Minimum": 46.9,
+              "Maximum": 297.3
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 288,
+              "P95": 288,
+              "Minimum": 288,
+              "Maximum": 288
+            },
+            "SuppliedCopyBytes": 664
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 1.15,
+              "P95": 3.5,
+              "Minimum": 0.2,
+              "Maximum": 4.8
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 1906.8,
+              "P95": 2622.5,
+              "Minimum": 1577.9,
+              "Maximum": 2636.7
+            },
+            "RequestWriteUs": {
+              "Median": 48.35,
+              "P95": 68.6,
+              "Minimum": 30.3,
+              "Maximum": 75.1
+            },
+            "RequestFlushUs": {
+              "Median": 0.8,
+              "P95": 1.4,
+              "Minimum": 0.5,
+              "Maximum": 4.8
+            },
+            "ReadinessWaitUs": {
+              "Median": 12034.6,
+              "P95": 16223.3,
+              "Minimum": 11192,
+              "Maximum": 16667.7
+            },
+            "CreationUs": {
+              "Median": 13996.05,
+              "P95": 18490.2,
+              "Minimum": 13012.5,
+              "Maximum": 18728.6
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 203.10000000000002,
+              "P95": 344.1,
+              "Minimum": 152.5,
+              "Maximum": 1584
+            },
+            "DisposalUs": {
+              "Median": 1450.85,
+              "P95": 1744.3,
+              "Minimum": 1185.2,
+              "Maximum": 2148.9
+            },
+            "LifecycleUs": {
+              "Median": 15738.5,
+              "P95": 20481,
+              "Minimum": 14643.6,
+              "Maximum": 21190
+            },
+            "EncodedInitializationBytes": 681
+          }
+        },
+        {
+          "Name": "items-5",
+          "SourceBytes": 206,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.2,
+              "P95": 0.8,
+              "Minimum": 0,
+              "Maximum": 0.9
+            },
+            "IdentityEncodingUs": {
+              "Median": 0.8500000000000001,
+              "P95": 2.7,
+              "Minimum": 0.1,
+              "Maximum": 4.8
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 89.5,
+              "P95": 189.6,
+              "Minimum": 39,
+              "Maximum": 202.2
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 1.1,
+              "P95": 3.1,
+              "Minimum": 0.2,
+              "Maximum": 3.2
+            },
+            "CreationUs": {
+              "Median": 91.85,
+              "P95": 194.1,
+              "Minimum": 39.9,
+              "Maximum": 207.8
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 13.549999999999999,
+              "P95": 40.1,
+              "Minimum": 4.6,
+              "Maximum": 43.1
+            },
+            "DisposalUs": {
+              "Median": 3.2,
+              "P95": 7.7,
+              "Minimum": 1.6,
+              "Maximum": 8.8
+            },
+            "LifecycleUs": {
+              "Median": 108.94999999999999,
+              "P95": 238.5,
+              "Minimum": 46.5,
+              "Maximum": 261
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 280,
+              "P95": 280,
+              "Minimum": 280,
+              "Maximum": 280
+            },
+            "SuppliedCopyBytes": 647
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 0.9,
+              "P95": 1.8,
+              "Minimum": 0.3,
+              "Maximum": 2.2
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 1895,
+              "P95": 2281.7,
+              "Minimum": 1615.8,
+              "Maximum": 2342.2
+            },
+            "RequestWriteUs": {
+              "Median": 40.55,
+              "P95": 48.9,
+              "Minimum": 31.5,
+              "Maximum": 1188.9
+            },
+            "RequestFlushUs": {
+              "Median": 0.9,
+              "P95": 1.1,
+              "Minimum": 0.6,
+              "Maximum": 1.2
+            },
+            "ReadinessWaitUs": {
+              "Median": 12017.2,
+              "P95": 13098,
+              "Minimum": 10445.1,
+              "Maximum": 13803.4
+            },
+            "CreationUs": {
+              "Median": 13866.099999999999,
+              "P95": 15127.9,
+              "Minimum": 12918.7,
+              "Maximum": 15845.3
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 173.95,
+              "P95": 203.9,
+              "Minimum": 140.7,
+              "Maximum": 297.3
+            },
+            "DisposalUs": {
+              "Median": 1437.7,
+              "P95": 2003.6,
+              "Minimum": 1217.1,
+              "Maximum": 2090.5
+            },
+            "LifecycleUs": {
+              "Median": 15577.1,
+              "P95": 16680.6,
+              "Minimum": 14398.1,
+              "Maximum": 18269.2
+            },
+            "EncodedInitializationBytes": 664
+          }
+        },
+        {
+          "Name": "items-50",
+          "SourceBytes": 1736,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.15000000000000002,
+              "P95": 0.8,
+              "Minimum": 0,
+              "Maximum": 0.9
+            },
+            "IdentityEncodingUs": {
+              "Median": 0.6,
+              "P95": 1.5,
+              "Minimum": 0.2,
+              "Maximum": 2.9
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 158.95,
+              "P95": 333,
+              "Minimum": 93.6,
+              "Maximum": 343.3
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 0.8999999999999999,
+              "P95": 3.1,
+              "Minimum": 0.3,
+              "Maximum": 3.6
+            },
+            "CreationUs": {
+              "Median": 161,
+              "P95": 337.3,
+              "Minimum": 94.2,
+              "Maximum": 346.8
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 17.6,
+              "P95": 35.4,
+              "Minimum": 7.7,
+              "Maximum": 36.4
+            },
+            "DisposalUs": {
+              "Median": 10.2,
+              "P95": 40.5,
+              "Minimum": 6.2,
+              "Maximum": 45.9
+            },
+            "LifecycleUs": {
+              "Median": 192.7,
+              "P95": 388.5,
+              "Minimum": 108.3,
+              "Maximum": 393
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 280,
+              "P95": 280,
+              "Minimum": 280,
+              "Maximum": 280
+            },
+            "SuppliedCopyBytes": 2178
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 0.9,
+              "P95": 2,
+              "Minimum": 0.4,
+              "Maximum": 4
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 1845.7,
+              "P95": 2181,
+              "Minimum": 1570.7,
+              "Maximum": 2212.6
+            },
+            "RequestWriteUs": {
+              "Median": 39.849999999999994,
+              "P95": 46.8,
+              "Minimum": 20.2,
+              "Maximum": 52.7
+            },
+            "RequestFlushUs": {
+              "Median": 0.75,
+              "P95": 1.2,
+              "Minimum": 0.5,
+              "Maximum": 1.6
+            },
+            "ReadinessWaitUs": {
+              "Median": 11997.95,
+              "P95": 13225.3,
+              "Minimum": 11331.5,
+              "Maximum": 13485.1
+            },
+            "CreationUs": {
+              "Median": 14079.85,
+              "P95": 15132.1,
+              "Minimum": 13099.7,
+              "Maximum": 15299.7
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 179.2,
+              "P95": 229.1,
+              "Minimum": 140.6,
+              "Maximum": 367.3
+            },
+            "DisposalUs": {
+              "Median": 1474.85,
+              "P95": 1851,
+              "Minimum": 1251.5,
+              "Maximum": 1882.6
+            },
+            "LifecycleUs": {
+              "Median": 15800.3,
+              "P95": 16951.2,
+              "Minimum": 14662.4,
+              "Maximum": 17368.4
+            },
+            "EncodedInitializationBytes": 2195
+          }
+        },
+        {
+          "Name": "items-500",
+          "SourceBytes": 17036,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.1,
+              "P95": 0.5,
+              "Minimum": 0,
+              "Maximum": 0.8
+            },
+            "IdentityEncodingUs": {
+              "Median": 0.6499999999999999,
+              "P95": 1.4,
+              "Minimum": 0.2,
+              "Maximum": 1.9
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 1051.25,
+              "P95": 1301.8,
+              "Minimum": 701.5,
+              "Maximum": 1544.9
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 1.2,
+              "P95": 2.1,
+              "Minimum": 0.5,
+              "Maximum": 3.3
+            },
+            "CreationUs": {
+              "Median": 1053.6,
+              "P95": 1304.6,
+              "Minimum": 703.1,
+              "Maximum": 1547.8
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 54.05,
+              "P95": 84.5,
+              "Minimum": 37.5,
+              "Maximum": 88.1
+            },
+            "DisposalUs": {
+              "Median": 117.5,
+              "P95": 156.6,
+              "Minimum": 49.1,
+              "Maximum": 183.6
+            },
+            "LifecycleUs": {
+              "Median": 1213.25,
+              "P95": 1513.9,
+              "Minimum": 823.3,
+              "Maximum": 1743.5
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 280,
+              "P95": 280,
+              "Minimum": 280,
+              "Maximum": 280
+            },
+            "SuppliedCopyBytes": 17479
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 0.7,
+              "P95": 1.2,
+              "Minimum": 0.4,
+              "Maximum": 1.4
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 1841.15,
+              "P95": 2235.9,
+              "Minimum": 1628.2,
+              "Maximum": 2390.4
+            },
+            "RequestWriteUs": {
+              "Median": 11644.2,
+              "P95": 12926.7,
+              "Minimum": 10553.1,
+              "Maximum": 13097.5
+            },
+            "RequestFlushUs": {
+              "Median": 0.6,
+              "P95": 1,
+              "Minimum": 0.3,
+              "Maximum": 1
+            },
+            "ReadinessWaitUs": {
+              "Median": 1631.9,
+              "P95": 1943.5,
+              "Minimum": 1352,
+              "Maximum": 1995.7
+            },
+            "CreationUs": {
+              "Median": 15129.25,
+              "P95": 16578.6,
+              "Minimum": 14055.6,
+              "Maximum": 16630.9
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 215.9,
+              "P95": 297.8,
+              "Minimum": 172.9,
+              "Maximum": 368.6
+            },
+            "DisposalUs": {
+              "Median": 1596.9499999999998,
+              "P95": 2027.2,
+              "Minimum": 1339.6,
+              "Maximum": 2368.8
+            },
+            "LifecycleUs": {
+              "Median": 16999.8,
+              "P95": 18914.8,
+              "Minimum": 15726.3,
+              "Maximum": 19105.7
+            },
+            "EncodedInitializationBytes": 17496
+          }
+        }
+      ]
+    },
+    {
+      "Runtime": "10.0.12",
+      "Order": 1,
+      "Samples": 32,
+      "Warmups": 8,
+      "Scope": "fresh-engine compile+prepare; one transform+validation; disposal; supplied bytes",
+      "PublicationEligible": false,
+      "NativeRegistryReturnedToBaseline": true,
+      "PositiveParityCreations": 16,
+      "FailureParityCreations": 8,
+      "TimedExactTransforms": 256,
+      "Measurements": [
+        {
+          "Name": "items-5",
+          "SourceBytes": 206,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.35,
+              "P95": 1.1,
+              "Minimum": 0,
+              "Maximum": 1.7
+            },
+            "IdentityEncodingUs": {
+              "Median": 1.7,
+              "P95": 3.8,
+              "Minimum": 0.2,
+              "Maximum": 4.5
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 140.64999999999998,
+              "P95": 286.2,
+              "Minimum": 42.9,
+              "Maximum": 326.4
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 1.5,
+              "P95": 3.2,
+              "Minimum": 0.2,
+              "Maximum": 12.1
+            },
+            "CreationUs": {
+              "Median": 143.5,
+              "P95": 304.7,
+              "Minimum": 43.5,
+              "Maximum": 333
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 23.1,
+              "P95": 59.7,
+              "Minimum": 4.5,
+              "Maximum": 62.3
+            },
+            "DisposalUs": {
+              "Median": 5.45,
+              "P95": 11.1,
+              "Minimum": 1.7,
+              "Maximum": 12.1
+            },
+            "LifecycleUs": {
+              "Median": 171.8,
+              "P95": 378.1,
+              "Minimum": 50.5,
+              "Maximum": 379.5
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 280,
+              "P95": 280,
+              "Minimum": 280,
+              "Maximum": 280
+            },
+            "SuppliedCopyBytes": 647
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 1.15,
+              "P95": 3.8,
+              "Minimum": 0.3,
+              "Maximum": 5.1
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 2062.9,
+              "P95": 2811.2,
+              "Minimum": 1809.8,
+              "Maximum": 2898.8
+            },
+            "RequestWriteUs": {
+              "Median": 48.05,
+              "P95": 70.3,
+              "Minimum": 33,
+              "Maximum": 71.5
+            },
+            "RequestFlushUs": {
+              "Median": 1,
+              "P95": 1.9,
+              "Minimum": 0.7,
+              "Maximum": 4.4
+            },
+            "ReadinessWaitUs": {
+              "Median": 13063.25,
+              "P95": 14328.1,
+              "Minimum": 11828.1,
+              "Maximum": 17742.7
+            },
+            "CreationUs": {
+              "Median": 15207.35,
+              "P95": 16315.2,
+              "Minimum": 13859.2,
+              "Maximum": 19781.2
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 214,
+              "P95": 505.5,
+              "Minimum": 161,
+              "Maximum": 1463
+            },
+            "DisposalUs": {
+              "Median": 1578.15,
+              "P95": 2049.6,
+              "Minimum": 1302.3,
+              "Maximum": 2155.4
+            },
+            "LifecycleUs": {
+              "Median": 17133.9,
+              "P95": 18650.3,
+              "Minimum": 15472.6,
+              "Maximum": 21551.4
+            },
+            "EncodedInitializationBytes": 664
+          }
+        },
+        {
+          "Name": "items-50",
+          "SourceBytes": 1736,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.1,
+              "P95": 0.6,
+              "Minimum": 0,
+              "Maximum": 0.7
+            },
+            "IdentityEncodingUs": {
+              "Median": 0.9,
+              "P95": 3.1,
+              "Minimum": 0.2,
+              "Maximum": 3.9
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 192.4,
+              "P95": 344.3,
+              "Minimum": 98.2,
+              "Maximum": 356.5
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 1,
+              "P95": 2.8,
+              "Minimum": 0.2,
+              "Maximum": 5
+            },
+            "CreationUs": {
+              "Median": 195.25,
+              "P95": 349.8,
+              "Minimum": 98.7,
+              "Maximum": 363.8
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 20.049999999999997,
+              "P95": 38.7,
+              "Minimum": 8.5,
+              "Maximum": 40.3
+            },
+            "DisposalUs": {
+              "Median": 9.85,
+              "P95": 13,
+              "Minimum": 6.1,
+              "Maximum": 13.6
+            },
+            "LifecycleUs": {
+              "Median": 227.2,
+              "P95": 389.1,
+              "Minimum": 115.2,
+              "Maximum": 419.4
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 280,
+              "P95": 280,
+              "Minimum": 280,
+              "Maximum": 280
+            },
+            "SuppliedCopyBytes": 2178
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 0.9500000000000001,
+              "P95": 2.3,
+              "Minimum": 0.2,
+              "Maximum": 3.2
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 2036.6999999999998,
+              "P95": 2495.9,
+              "Minimum": 1691.2,
+              "Maximum": 2942.5
+            },
+            "RequestWriteUs": {
+              "Median": 48.2,
+              "P95": 84.9,
+              "Minimum": 31,
+              "Maximum": 120.6
+            },
+            "RequestFlushUs": {
+              "Median": 0.9,
+              "P95": 1.1,
+              "Minimum": 0.7,
+              "Maximum": 1.3
+            },
+            "ReadinessWaitUs": {
+              "Median": 12814.3,
+              "P95": 14379.7,
+              "Minimum": 11769.7,
+              "Maximum": 17303.4
+            },
+            "CreationUs": {
+              "Median": 14917.900000000001,
+              "P95": 16620,
+              "Minimum": 13642.6,
+              "Maximum": 19172.2
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 190.95,
+              "P95": 264,
+              "Minimum": 158.9,
+              "Maximum": 313.6
+            },
+            "DisposalUs": {
+              "Median": 1533.15,
+              "P95": 1923.8,
+              "Minimum": 1287.9,
+              "Maximum": 1965.6
+            },
+            "LifecycleUs": {
+              "Median": 16696.15,
+              "P95": 18849.7,
+              "Minimum": 15329.8,
+              "Maximum": 20963.5
+            },
+            "EncodedInitializationBytes": 2195
+          }
+        },
+        {
+          "Name": "items-500",
+          "SourceBytes": 17036,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.25,
+              "P95": 0.9,
+              "Minimum": 0.1,
+              "Maximum": 1
+            },
+            "IdentityEncodingUs": {
+              "Median": 1.25,
+              "P95": 2.7,
+              "Minimum": 0.4,
+              "Maximum": 3.6
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 1162.15,
+              "P95": 1478,
+              "Minimum": 851.4,
+              "Maximum": 1759.7
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 1.55,
+              "P95": 2.7,
+              "Minimum": 0.5,
+              "Maximum": 2.7
+            },
+            "CreationUs": {
+              "Median": 1166.5,
+              "P95": 1480.4,
+              "Minimum": 852.8,
+              "Maximum": 1764.1
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 65.2,
+              "P95": 90.1,
+              "Minimum": 37.5,
+              "Maximum": 122.4
+            },
+            "DisposalUs": {
+              "Median": 130.39999999999998,
+              "P95": 229.2,
+              "Minimum": 103.9,
+              "Maximum": 236.5
+            },
+            "LifecycleUs": {
+              "Median": 1360.1,
+              "P95": 1807.6,
+              "Minimum": 999.7,
+              "Maximum": 1998.6
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 280,
+              "P95": 280,
+              "Minimum": 280,
+              "Maximum": 280
+            },
+            "SuppliedCopyBytes": 17479
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 1.25,
+              "P95": 2.2,
+              "Minimum": 0.5,
+              "Maximum": 3.7
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 1958.35,
+              "P95": 2433,
+              "Minimum": 1754.1,
+              "Maximum": 2457.1
+            },
+            "RequestWriteUs": {
+              "Median": 12505.5,
+              "P95": 14215.2,
+              "Minimum": 11991.5,
+              "Maximum": 14333.4
+            },
+            "RequestFlushUs": {
+              "Median": 1.15,
+              "P95": 2.4,
+              "Minimum": 0.6,
+              "Maximum": 3.3
+            },
+            "ReadinessWaitUs": {
+              "Median": 1796.8000000000002,
+              "P95": 2352.5,
+              "Minimum": 1357.3,
+              "Maximum": 2477.8
+            },
+            "CreationUs": {
+              "Median": 16268.1,
+              "P95": 18395,
+              "Minimum": 15427.6,
+              "Maximum": 18614.8
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 242.3,
+              "P95": 337.1,
+              "Minimum": 211.9,
+              "Maximum": 365.8
+            },
+            "DisposalUs": {
+              "Median": 1711.25,
+              "P95": 2196.1,
+              "Minimum": 1435.7,
+              "Maximum": 2225.5
+            },
+            "LifecycleUs": {
+              "Median": 18361.300000000003,
+              "P95": 20566.8,
+              "Minimum": 17305.1,
+              "Maximum": 20672.4
+            },
+            "EncodedInitializationBytes": 17496
+          }
+        },
+        {
+          "Name": "pinned-for-004",
+          "SourceBytes": 216,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.3,
+              "P95": 0.6,
+              "Minimum": 0,
+              "Maximum": 0.7
+            },
+            "IdentityEncodingUs": {
+              "Median": 0.8,
+              "P95": 2.7,
+              "Minimum": 0.2,
+              "Maximum": 3.2
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 135.60000000000002,
+              "P95": 416.6,
+              "Minimum": 41.8,
+              "Maximum": 536.2
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 1.25,
+              "P95": 2.9,
+              "Minimum": 0.2,
+              "Maximum": 3.7
+            },
+            "CreationUs": {
+              "Median": 137.9,
+              "P95": 420.6,
+              "Minimum": 42.4,
+              "Maximum": 542.3
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 19.6,
+              "P95": 54.6,
+              "Minimum": 4.4,
+              "Maximum": 77.3
+            },
+            "DisposalUs": {
+              "Median": 4.65,
+              "P95": 12.2,
+              "Minimum": 1.8,
+              "Maximum": 16
+            },
+            "LifecycleUs": {
+              "Median": 162.05,
+              "P95": 485.4,
+              "Minimum": 48.9,
+              "Maximum": 604.5
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 288,
+              "P95": 288,
+              "Minimum": 288,
+              "Maximum": 288
+            },
+            "SuppliedCopyBytes": 664
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 0.9,
+              "P95": 1.9,
+              "Minimum": 0.3,
+              "Maximum": 1.9
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 2151.25,
+              "P95": 2623,
+              "Minimum": 1802.1,
+              "Maximum": 2954.3
+            },
+            "RequestWriteUs": {
+              "Median": 38.4,
+              "P95": 53.2,
+              "Minimum": 19,
+              "Maximum": 61.7
+            },
+            "RequestFlushUs": {
+              "Median": 0.5,
+              "P95": 0.9,
+              "Minimum": 0.2,
+              "Maximum": 0.9
+            },
+            "ReadinessWaitUs": {
+              "Median": 13534,
+              "P95": 15247.6,
+              "Minimum": 12515.4,
+              "Maximum": 15395.9
+            },
+            "CreationUs": {
+              "Median": 15645.05,
+              "P95": 17619.2,
+              "Minimum": 14391.8,
+              "Maximum": 17889.1
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 192.89999999999998,
+              "P95": 337.2,
+              "Minimum": 160.3,
+              "Maximum": 353
+            },
+            "DisposalUs": {
+              "Median": 1723.1,
+              "P95": 2040.7,
+              "Minimum": 1242.6,
+              "Maximum": 2129.7
+            },
+            "LifecycleUs": {
+              "Median": 17603.75,
+              "P95": 19443,
+              "Minimum": 16273.5,
+              "Maximum": 20130.7
+            },
+            "EncodedInitializationBytes": 681
+          }
+        }
+      ]
+    },
+    {
+      "Runtime": "10.0.12",
+      "Order": 2,
+      "Samples": 32,
+      "Warmups": 8,
+      "Scope": "fresh-engine compile+prepare; one transform+validation; disposal; supplied bytes",
+      "PublicationEligible": false,
+      "NativeRegistryReturnedToBaseline": true,
+      "PositiveParityCreations": 16,
+      "FailureParityCreations": 8,
+      "TimedExactTransforms": 256,
+      "Measurements": [
+        {
+          "Name": "items-50",
+          "SourceBytes": 1736,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.1,
+              "P95": 0.4,
+              "Minimum": 0,
+              "Maximum": 0.5
+            },
+            "IdentityEncodingUs": {
+              "Median": 1.1,
+              "P95": 2.3,
+              "Minimum": 0.1,
+              "Maximum": 5.2
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 192.25,
+              "P95": 287.8,
+              "Minimum": 99.2,
+              "Maximum": 327.1
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 1.2000000000000002,
+              "P95": 2.4,
+              "Minimum": 0.3,
+              "Maximum": 4.9
+            },
+            "CreationUs": {
+              "Median": 196.85000000000002,
+              "P95": 294.5,
+              "Minimum": 100.8,
+              "Maximum": 331.7
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 20.25,
+              "P95": 46.7,
+              "Minimum": 8,
+              "Maximum": 83.5
+            },
+            "DisposalUs": {
+              "Median": 11,
+              "P95": 18.5,
+              "Minimum": 6.6,
+              "Maximum": 28.6
+            },
+            "LifecycleUs": {
+              "Median": 233.4,
+              "P95": 363.5,
+              "Minimum": 116.8,
+              "Maximum": 392.1
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 280,
+              "P95": 280,
+              "Minimum": 280,
+              "Maximum": 280
+            },
+            "SuppliedCopyBytes": 2178
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 1.1,
+              "P95": 1.9,
+              "Minimum": 0.3,
+              "Maximum": 2.9
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 1877.85,
+              "P95": 2360.7,
+              "Minimum": 1647,
+              "Maximum": 3304.5
+            },
+            "RequestWriteUs": {
+              "Median": 45.8,
+              "P95": 70.8,
+              "Minimum": 33.1,
+              "Maximum": 70.9
+            },
+            "RequestFlushUs": {
+              "Median": 0.8500000000000001,
+              "P95": 2.3,
+              "Minimum": 0.7,
+              "Maximum": 5.4
+            },
+            "ReadinessWaitUs": {
+              "Median": 12127.45,
+              "P95": 13444.1,
+              "Minimum": 9604.2,
+              "Maximum": 13457.4
+            },
+            "CreationUs": {
+              "Median": 14022,
+              "P95": 15411.9,
+              "Minimum": 12978.8,
+              "Maximum": 15542.6
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 194.89999999999998,
+              "P95": 237.2,
+              "Minimum": 157.3,
+              "Maximum": 253.7
+            },
+            "DisposalUs": {
+              "Median": 1450,
+              "P95": 1729.7,
+              "Minimum": 1250.5,
+              "Maximum": 1851.2
+            },
+            "LifecycleUs": {
+              "Median": 15740.4,
+              "P95": 17267.5,
+              "Minimum": 14541.9,
+              "Maximum": 17356.8
+            },
+            "EncodedInitializationBytes": 2195
+          }
+        },
+        {
+          "Name": "items-500",
+          "SourceBytes": 17036,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.2,
+              "P95": 0.7,
+              "Minimum": 0,
+              "Maximum": 0.8
+            },
+            "IdentityEncodingUs": {
+              "Median": 1,
+              "P95": 1.8,
+              "Minimum": 0.3,
+              "Maximum": 2.6
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 1080.35,
+              "P95": 1865.4,
+              "Minimum": 841.7,
+              "Maximum": 2032.8
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 1.25,
+              "P95": 2.8,
+              "Minimum": 0.6,
+              "Maximum": 3.2
+            },
+            "CreationUs": {
+              "Median": 1082.35,
+              "P95": 1870.6,
+              "Minimum": 843.2,
+              "Maximum": 2037.3
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 56.85,
+              "P95": 81.9,
+              "Minimum": 39.1,
+              "Maximum": 102.7
+            },
+            "DisposalUs": {
+              "Median": 129.7,
+              "P95": 197.3,
+              "Minimum": 48.6,
+              "Maximum": 247.9
+            },
+            "LifecycleUs": {
+              "Median": 1241.15,
+              "P95": 2085,
+              "Minimum": 983.1,
+              "Maximum": 2263.2
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 280,
+              "P95": 280,
+              "Minimum": 280,
+              "Maximum": 280
+            },
+            "SuppliedCopyBytes": 17479
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 1.1,
+              "P95": 2.3,
+              "Minimum": 0.7,
+              "Maximum": 3.1
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 1904.75,
+              "P95": 2253.2,
+              "Minimum": 1610.4,
+              "Maximum": 2535.6
+            },
+            "RequestWriteUs": {
+              "Median": 11846.7,
+              "P95": 13277.5,
+              "Minimum": 10848.5,
+              "Maximum": 13755.2
+            },
+            "RequestFlushUs": {
+              "Median": 1,
+              "P95": 2.5,
+              "Minimum": 0.8,
+              "Maximum": 2.7
+            },
+            "ReadinessWaitUs": {
+              "Median": 1584.65,
+              "P95": 1821.3,
+              "Minimum": 1348.8,
+              "Maximum": 1869.3
+            },
+            "CreationUs": {
+              "Median": 15363.849999999999,
+              "P95": 16835.1,
+              "Minimum": 14276.8,
+              "Maximum": 17556.1
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 234.5,
+              "P95": 307.5,
+              "Minimum": 172.1,
+              "Maximum": 310.9
+            },
+            "DisposalUs": {
+              "Median": 1640.6999999999998,
+              "P95": 2051.7,
+              "Minimum": 1420.4,
+              "Maximum": 2388.6
+            },
+            "LifecycleUs": {
+              "Median": 17265.1,
+              "P95": 18651.3,
+              "Minimum": 16121,
+              "Maximum": 19611.9
+            },
+            "EncodedInitializationBytes": 17496
+          }
+        },
+        {
+          "Name": "pinned-for-004",
+          "SourceBytes": 216,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.1,
+              "P95": 0.7,
+              "Minimum": 0,
+              "Maximum": 0.9
+            },
+            "IdentityEncodingUs": {
+              "Median": 0.7,
+              "P95": 2,
+              "Minimum": 0.2,
+              "Maximum": 3.9
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 98.95,
+              "P95": 201.7,
+              "Minimum": 42.4,
+              "Maximum": 202.1
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 1.25,
+              "P95": 2.5,
+              "Minimum": 0.2,
+              "Maximum": 3.4
+            },
+            "CreationUs": {
+              "Median": 100.85,
+              "P95": 205.3,
+              "Minimum": 43,
+              "Maximum": 206.5
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 14.75,
+              "P95": 37.6,
+              "Minimum": 4.8,
+              "Maximum": 46.9
+            },
+            "DisposalUs": {
+              "Median": 4.45,
+              "P95": 9.1,
+              "Minimum": 1.8,
+              "Maximum": 9.5
+            },
+            "LifecycleUs": {
+              "Median": 121.2,
+              "P95": 253.3,
+              "Minimum": 49.8,
+              "Maximum": 262
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 288,
+              "P95": 288,
+              "Minimum": 288,
+              "Maximum": 288
+            },
+            "SuppliedCopyBytes": 664
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 0.8,
+              "P95": 2.2,
+              "Minimum": 0.4,
+              "Maximum": 3
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 1908.75,
+              "P95": 2349.2,
+              "Minimum": 1564.5,
+              "Maximum": 3315.9
+            },
+            "RequestWriteUs": {
+              "Median": 36.2,
+              "P95": 55.3,
+              "Minimum": 22.2,
+              "Maximum": 58.2
+            },
+            "RequestFlushUs": {
+              "Median": 0.6,
+              "P95": 1.7,
+              "Minimum": 0.4,
+              "Maximum": 3.6
+            },
+            "ReadinessWaitUs": {
+              "Median": 12227.45,
+              "P95": 13867.3,
+              "Minimum": 10918.2,
+              "Maximum": 14177.5
+            },
+            "CreationUs": {
+              "Median": 14132,
+              "P95": 16159.5,
+              "Minimum": 12768.8,
+              "Maximum": 16953
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 177.75,
+              "P95": 390.6,
+              "Minimum": 130.9,
+              "Maximum": 398.6
+            },
+            "DisposalUs": {
+              "Median": 1519,
+              "P95": 1852.4,
+              "Minimum": 1201.8,
+              "Maximum": 2172.5
+            },
+            "LifecycleUs": {
+              "Median": 15866,
+              "P95": 18593.6,
+              "Minimum": 14571.1,
+              "Maximum": 18605
+            },
+            "EncodedInitializationBytes": 681
+          }
+        },
+        {
+          "Name": "items-5",
+          "SourceBytes": 206,
+          "StylesheetBytes": 377,
+          "Native": {
+            "AbiCheckUs": {
+              "Median": 0.1,
+              "P95": 0.8,
+              "Minimum": 0,
+              "Maximum": 0.8
+            },
+            "IdentityEncodingUs": {
+              "Median": 0.4,
+              "P95": 0.8,
+              "Minimum": 0.1,
+              "Maximum": 1.8
+            },
+            "CombinedNativeCreateUs": {
+              "Median": 93.45,
+              "P95": 214.4,
+              "Minimum": 39,
+              "Maximum": 314.8
+            },
+            "OutcomeOwnershipUs": {
+              "Median": 0.6000000000000001,
+              "P95": 2,
+              "Minimum": 0.1,
+              "Maximum": 4
+            },
+            "CreationUs": {
+              "Median": 94.75,
+              "P95": 217.5,
+              "Minimum": 39.4,
+              "Maximum": 317.6
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 12.200000000000001,
+              "P95": 28.7,
+              "Minimum": 4.1,
+              "Maximum": 35.5
+            },
+            "DisposalUs": {
+              "Median": 4.1,
+              "P95": 6.9,
+              "Minimum": 1.6,
+              "Maximum": 9.1
+            },
+            "LifecycleUs": {
+              "Median": 111.4,
+              "P95": 251.1,
+              "Minimum": 45.3,
+              "Maximum": 349.6
+            },
+            "ManagedCreationAllocatedBytes": {
+              "Median": 280,
+              "P95": 280,
+              "Minimum": 280,
+              "Maximum": 280
+            },
+            "SuppliedCopyBytes": 647
+          },
+          "Isolated": {
+            "IdentityEncodingUs": {
+              "Median": 0.5,
+              "P95": 0.7,
+              "Minimum": 0.2,
+              "Maximum": 0.8
+            },
+            "ProcessLaunchReturnUs": {
+              "Median": 1845.5,
+              "P95": 2239.4,
+              "Minimum": 1503.7,
+              "Maximum": 2366.7
+            },
+            "RequestWriteUs": {
+              "Median": 28.15,
+              "P95": 47.3,
+              "Minimum": 15.3,
+              "Maximum": 88.7
+            },
+            "RequestFlushUs": {
+              "Median": 0.3,
+              "P95": 0.5,
+              "Minimum": 0.2,
+              "Maximum": 0.5
+            },
+            "ReadinessWaitUs": {
+              "Median": 11975.4,
+              "P95": 12740.5,
+              "Minimum": 11200.2,
+              "Maximum": 12747.5
+            },
+            "CreationUs": {
+              "Median": 13886.85,
+              "P95": 14664.6,
+              "Minimum": 12864.2,
+              "Maximum": 14890.3
+            },
+            "FirstTransformAndValidationUs": {
+              "Median": 158.75,
+              "P95": 199,
+              "Minimum": 111.5,
+              "Maximum": 203.4
+            },
+            "DisposalUs": {
+              "Median": 1465.7,
+              "P95": 1609.4,
+              "Minimum": 1193.2,
+              "Maximum": 1766.5
+            },
+            "LifecycleUs": {
+              "Median": 15545.2,
+              "P95": 16377,
+              "Minimum": 14269.1,
+              "Maximum": 16729
+            },
+            "EncodedInitializationBytes": 664
+          }
+        }
+      ]
+    }
+  ],
+  "rust": [
+    {
+      "order": 0,
+      "output": "\nrunning 1 test\ntest runtime::prepared_input_experiment::direct_lifecycle_tests::direct_creation_tests::measure_matched_full_creation ... ar0027-creation order=0 fixture=pinned-for-004 source_bytes=216 phase=creation samples=32 median_ns=33650 p95_ns=47500 min_ns=26500 max_ns=67700\nar0027-creation order=0 fixture=pinned-for-004 source_bytes=216 phase=first-transform-validation samples=32 median_ns=3000 p95_ns=4100 min_ns=2600 max_ns=8100\nar0027-creation order=0 fixture=pinned-for-004 source_bytes=216 phase=disposal samples=32 median_ns=1950 p95_ns=5400 min_ns=1500 max_ns=5600\nar0027-creation order=0 fixture=pinned-for-004 source_bytes=216 phase=lifecycle samples=32 median_ns=39950 p95_ns=57000 min_ns=30900 max_ns=78900\nar0027-creation order=0 fixture=items-5 source_bytes=206 phase=creation samples=32 median_ns=30000 p95_ns=45800 min_ns=25500 max_ns=49600\nar0027-creation order=0 fixture=items-5 source_bytes=206 phase=first-transform-validation samples=32 median_ns=3200 p95_ns=4300 min_ns=2800 max_ns=5100\nar0027-creation order=0 fixture=items-5 source_bytes=206 phase=disposal samples=32 median_ns=1550 p95_ns=5400 min_ns=1200 max_ns=7100\nar0027-creation order=0 fixture=items-5 source_bytes=206 phase=lifecycle samples=32 median_ns=36000 p95_ns=51700 min_ns=29700 max_ns=56600\nar0027-creation order=0 fixture=items-50 source_bytes=1736 phase=creation samples=32 median_ns=132850 p95_ns=162500 min_ns=122000 max_ns=167400\nar0027-creation order=0 fixture=items-50 source_bytes=1736 phase=first-transform-validation samples=32 median_ns=6700 p95_ns=8500 min_ns=6300 max_ns=8900\nar0027-creation order=0 fixture=items-50 source_bytes=1736 phase=disposal samples=32 median_ns=15150 p95_ns=17900 min_ns=9800 max_ns=19800\nar0027-creation order=0 fixture=items-50 source_bytes=1736 phase=lifecycle samples=32 median_ns=153200 p95_ns=185200 min_ns=144500 max_ns=186300\nar0027-creation order=0 fixture=items-500 source_bytes=17036 phase=creation samples=32 median_ns=990100 p95_ns=1197100 min_ns=942400 max_ns=1248000\nar0027-creation order=0 fixture=items-500 source_bytes=17036 phase=first-transform-validation samples=32 median_ns=45350 p95_ns=55400 min_ns=39200 max_ns=76900\nar0027-creation order=0 fixture=items-500 source_bytes=17036 phase=disposal samples=32 median_ns=93600 p95_ns=119700 min_ns=72100 max_ns=120100\nar0027-creation order=0 fixture=items-500 source_bytes=17036 phase=lifecycle samples=32 median_ns=1136100 p95_ns=1326500 min_ns=1063500 max_ns=1396200\nok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1587 filtered out; finished in 0.06s\n\n"
+    },
+    {
+      "order": 1,
+      "output": "\nrunning 1 test\ntest runtime::prepared_input_experiment::direct_lifecycle_tests::direct_creation_tests::measure_matched_full_creation ... ar0027-creation order=1 fixture=items-5 source_bytes=206 phase=creation samples=32 median_ns=37000 p95_ns=46700 min_ns=33500 max_ns=49500\nar0027-creation order=1 fixture=items-5 source_bytes=206 phase=first-transform-validation samples=32 median_ns=3450 p95_ns=4600 min_ns=3100 max_ns=5200\nar0027-creation order=1 fixture=items-5 source_bytes=206 phase=disposal samples=32 median_ns=4450 p95_ns=5500 min_ns=3300 max_ns=5900\nar0027-creation order=1 fixture=items-5 source_bytes=206 phase=lifecycle samples=32 median_ns=45050 p95_ns=57400 min_ns=41100 max_ns=60200\nar0027-creation order=1 fixture=items-50 source_bytes=1736 phase=creation samples=32 median_ns=155050 p95_ns=200900 min_ns=124300 max_ns=242300\nar0027-creation order=1 fixture=items-50 source_bytes=1736 phase=first-transform-validation samples=32 median_ns=7300 p95_ns=16400 min_ns=6700 max_ns=17200\nar0027-creation order=1 fixture=items-50 source_bytes=1736 phase=disposal samples=32 median_ns=15700 p95_ns=25700 min_ns=9500 max_ns=26000\nar0027-creation order=1 fixture=items-50 source_bytes=1736 phase=lifecycle samples=32 median_ns=181150 p95_ns=226500 min_ns=147900 max_ns=284900\nar0027-creation order=1 fixture=items-500 source_bytes=17036 phase=creation samples=32 median_ns=1043200 p95_ns=1208900 min_ns=948000 max_ns=1463000\nar0027-creation order=1 fixture=items-500 source_bytes=17036 phase=first-transform-validation samples=32 median_ns=45450 p95_ns=79900 min_ns=38100 max_ns=81800\nar0027-creation order=1 fixture=items-500 source_bytes=17036 phase=disposal samples=32 median_ns=100350 p95_ns=180300 min_ns=76300 max_ns=217800\nar0027-creation order=1 fixture=items-500 source_bytes=17036 phase=lifecycle samples=32 median_ns=1199050 p95_ns=1362600 min_ns=1117800 max_ns=1758300\nar0027-creation order=1 fixture=pinned-for-004 source_bytes=216 phase=creation samples=32 median_ns=26950 p95_ns=44900 min_ns=25800 max_ns=55200\nar0027-creation order=1 fixture=pinned-for-004 source_bytes=216 phase=first-transform-validation samples=32 median_ns=2300 p95_ns=5900 min_ns=2200 max_ns=5900\nar0027-creation order=1 fixture=pinned-for-004 source_bytes=216 phase=disposal samples=32 median_ns=1500 p95_ns=3200 min_ns=1400 max_ns=3300\nar0027-creation order=1 fixture=pinned-for-004 source_bytes=216 phase=lifecycle samples=32 median_ns=30900 p95_ns=51600 min_ns=29600 max_ns=62400\nok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1587 filtered out; finished in 0.06s\n\n"
+    },
+    {
+      "order": 2,
+      "output": "\nrunning 1 test\ntest runtime::prepared_input_experiment::direct_lifecycle_tests::direct_creation_tests::measure_matched_full_creation ... ar0027-creation order=2 fixture=items-50 source_bytes=1736 phase=creation samples=32 median_ns=132050 p95_ns=185400 min_ns=115500 max_ns=193500\nar0027-creation order=2 fixture=items-50 source_bytes=1736 phase=first-transform-validation samples=32 median_ns=7100 p95_ns=9100 min_ns=6400 max_ns=12000\nar0027-creation order=2 fixture=items-50 source_bytes=1736 phase=disposal samples=32 median_ns=14200 p95_ns=19300 min_ns=12500 max_ns=20200\nar0027-creation order=2 fixture=items-50 source_bytes=1736 phase=lifecycle samples=32 median_ns=154150 p95_ns=205900 min_ns=140600 max_ns=222600\nar0027-creation order=2 fixture=items-500 source_bytes=17036 phase=creation samples=32 median_ns=1043450 p95_ns=1323600 min_ns=935700 max_ns=1448700\nar0027-creation order=2 fixture=items-500 source_bytes=17036 phase=first-transform-validation samples=32 median_ns=43650 p95_ns=57600 min_ns=38900 max_ns=62100\nar0027-creation order=2 fixture=items-500 source_bytes=17036 phase=disposal samples=32 median_ns=98600 p95_ns=118800 min_ns=78700 max_ns=122400\nar0027-creation order=2 fixture=items-500 source_bytes=17036 phase=lifecycle samples=32 median_ns=1200500 p95_ns=1475800 min_ns=1069100 max_ns=1586800\nar0027-creation order=2 fixture=pinned-for-004 source_bytes=216 phase=creation samples=32 median_ns=26200 p95_ns=26900 min_ns=25800 max_ns=30200\nar0027-creation order=2 fixture=pinned-for-004 source_bytes=216 phase=first-transform-validation samples=32 median_ns=2300 p95_ns=2500 min_ns=2200 max_ns=2600\nar0027-creation order=2 fixture=pinned-for-004 source_bytes=216 phase=disposal samples=32 median_ns=1400 p95_ns=1500 min_ns=1300 max_ns=1500\nar0027-creation order=2 fixture=pinned-for-004 source_bytes=216 phase=lifecycle samples=32 median_ns=30100 p95_ns=31000 min_ns=29700 max_ns=34300\nar0027-creation order=2 fixture=items-5 source_bytes=206 phase=creation samples=32 median_ns=25200 p95_ns=26100 min_ns=24900 max_ns=26700\nar0027-creation order=2 fixture=items-5 source_bytes=206 phase=first-transform-validation samples=32 median_ns=2600 p95_ns=2700 min_ns=2500 max_ns=2800\nar0027-creation order=2 fixture=items-5 source_bytes=206 phase=disposal samples=32 median_ns=1200 p95_ns=1400 min_ns=1200 max_ns=1500\nar0027-creation order=2 fixture=items-5 source_bytes=206 phase=lifecycle samples=32 median_ns=29200 p95_ns=30000 min_ns=28800 max_ns=30800\nok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1587 filtered out; finished in 0.06s\n\n"
+    }
+  ]
+}

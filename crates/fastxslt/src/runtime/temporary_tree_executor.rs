@@ -188,38 +188,7 @@ pub(super) fn apply_temporary_path(
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let (first, remaining) = steps
-        .split_first()
-        .expect("compiled temporary paths contain at least one step");
-    let mut selected = Vec::new();
-    for root in &tree.roots {
-        control
-            .charge(WorkDomain::XPathNodeVisit, 1)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        if matches!(
-            &tree.nodes[*root].kind,
-            TemporaryNodeKind::Element { name, .. } if name == first
-        ) {
-            selected.push(*root);
-        }
-    }
-    for step in remaining {
-        let mut next = Vec::new();
-        for parent in selected {
-            for child in &tree.nodes[parent].children {
-                control
-                    .charge(WorkDomain::XPathNodeVisit, 1)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                if matches!(
-                    &tree.nodes[*child].kind,
-                    TemporaryNodeKind::Element { name, .. } if name == step
-                ) {
-                    next.push(*child);
-                }
-            }
-        }
-        selected = next;
-    }
+    let selected = select_temporary_path(tree, steps, inputs.request_id, control)?;
     let mut result = Vec::new();
     let focus_size = selected.len();
     for (offset, node) in selected.into_iter().enumerate() {
@@ -237,6 +206,47 @@ pub(super) fn apply_temporary_path(
         )?);
     }
     Ok(result)
+}
+
+pub(super) fn select_temporary_path(
+    tree: &TemporaryTree,
+    steps: &[ExpandedName],
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<usize>, ExecutionFailure> {
+    let (first, remaining) = steps
+        .split_first()
+        .expect("compiled temporary paths contain at least one step");
+    let mut selected = Vec::new();
+    for root in &tree.roots {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(
+            &tree.nodes[*root].kind,
+            TemporaryNodeKind::Element { name, .. } if name == first
+        ) {
+            selected.push(*root);
+        }
+    }
+    for step in remaining {
+        let mut next = Vec::new();
+        for parent in selected {
+            for child in &tree.nodes[parent].children {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                if matches!(
+                    &tree.nodes[*child].kind,
+                    TemporaryNodeKind::Element { name, .. } if name == step
+                ) {
+                    next.push(*child);
+                }
+            }
+        }
+        selected = next;
+    }
+    Ok(selected)
 }
 
 pub(super) fn apply_temporary_next(

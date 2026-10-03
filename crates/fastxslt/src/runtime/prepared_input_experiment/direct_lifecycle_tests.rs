@@ -15,6 +15,10 @@ const SOURCE: &[u8] = include_bytes!("../../../../../vendor/xslt30-test/tests/ex
 const STYLE: &[u8] = include_bytes!("../../../../../vendor/xslt30-test/tests/expr/for/for-004.xsl");
 const EXPECTED: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>36.02</out>";
 
+#[cfg(feature = "workbench")]
+#[path = "host_placement/direct_creation_tests.rs"]
+mod direct_creation_tests;
+
 #[derive(Debug, Default)]
 struct Phases {
     admission: u128,

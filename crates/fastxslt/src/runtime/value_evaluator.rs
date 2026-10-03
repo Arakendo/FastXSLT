@@ -69,6 +69,9 @@ use crate::xslt::golden_semantics_experiment::{
 #[path = "value_evaluator/xslt10_compatibility.rs"]
 mod xslt10_compatibility;
 
+#[path = "value_evaluator/temporary_attribute_path.rs"]
+mod temporary_attribute_path;
+
 use super::{
     ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceContext,
     SequenceFocus, SequenceInputs, append_text, control_failure, failure, failure_at,
@@ -362,6 +365,20 @@ pub(super) fn execute_value_of(
     match select {
         ValueExpression::LiteralString(value) => {
             append_text(result, value, inputs.request_id, control)?;
+        }
+        ValueExpression::LocationPath(path)
+        | ValueExpression::Xslt10FirstNodeLocationPath(path)
+            if execution.temporary_focus.is_some() =>
+        {
+            temporary_attribute_path::append(
+                inputs,
+                path,
+                separator,
+                matches!(select, ValueExpression::Xslt10FirstNodeLocationPath(_)),
+                execution.temporary_focus.expect("guarded temporary focus"),
+                result,
+                control,
+            )?;
         }
         ValueExpression::NamespacePathScalar { .. } => {
             super::namespace_focus::execute_scalar(

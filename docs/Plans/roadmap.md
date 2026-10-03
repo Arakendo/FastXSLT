@@ -8101,8 +8101,28 @@ construction scopes release their observed allocations. The
 now exposes the shared span scan before the first XDM check, reservation before
 the next node check, and shrinking after the final semantic check. On 96,002
 nodes, span-scan process medians range from 581.3 to 968.7 us; observed timings
-are not hard limits. Checkpoint/commit-rule design, full transform peak and
-representative adapter costs remain open. The
+are not hard limits. The [full-transform allocation probe](../Evidence/ar-0027-full-transform-allocation-peaks-2026-10-03.md)
+now measures six count and six copy shapes through preparation, result retention,
+serialization and release. The [stack-safe serializer repair and replay](../Evidence/ar-0027-stack-safe-serialization-and-allocation-replay-2026-10-03.md)
+resolve the 256-deep default-debug overflow without changing the harness stack.
+Safe ancestor cursors preserve exact output, charges, cancellation and namespace
+unwind against the shallow recursive oracle. Three release processes reproduce
+144 allocation records identically; all 36 full-release scopes return to zero.
+Pre-sized deep-copy peak falls 20.4%, while other copy reductions remain
+workload-dependent at 1.9%–47.7%. Cursor scratch adds a small measured temporary
+allocation cost; no host-throughput or capacity-adoption claim follows.
+The [seven-point reuse sweep](../Evidence/ar-0027-capacity-reuse-sweep-and-ingestion-attribution-2026-10-03.md)
+now covers 1/2/4/8/16/32/64 uses across six shapes. Wide single-use totals improve
+7.6–11.1%, shrinking to 0.6–3.1% at 64 uses; 18 of 42 groups reverse across
+processes. No universal break-even is selected. Existing adapter creation includes
+compilation as well as preparation; isolated creation also includes process
+startup. The [matched creation controls](../Evidence/ar-0027-matched-engine-creation-2026-10-03.md)
+now record three direct Rust/native/isolated repetitions and 1,152 timed exact
+results. Fresh isolated startup dominates and migrates between pipe-write and
+readiness clocks; native creation remains a combined compile/prepare export,
+not a pure preparation clock. No staging cost is selected for relocation.
+Reusable/distinct-source host ingestion, deeper phase attribution, result-heavy
+reuse and checkpoint/commit-rule review remain open. The
 [bounded checkpoint candidate](../Evidence/ar-0027-bounded-capacity-checkpoints-2026-10-02.md)
 now polls every 256 scan events and before/after capacity changes, without
 consuming units or shifting charge-indexed faults. Ten scan controls, 24 resize
@@ -8114,11 +8134,15 @@ remain open. Production construction is unchanged.
 The [sealed-subset and temporary-path follow-up](../Evidence/ar-0027-sealed-subset-parity-and-temporary-path-blocker-2026-10-03.md)
 checks two admitted external-DTD fixtures through five constructors and twenty
 exact transforms, conserving metadata, whitespace, path deduplication and work
-charges. A separate `$t/box/item` for-each probe panics in the ordinary growth
-reference: temporary selection falls through to source-only dispatch. Its
-explicitly ignored regression remains open and uncredited. Repair or deliberately
-reject that compiled combination as a separate correctness slice before
-resuming temporary-tree parity; do not enable the capacity candidate to bypass it.
+charges. The separate [temporary-path dispatch repair](../Evidence/ar-0027-temporary-for-each-dispatch-repair-2026-10-03.md)
+removes the source-only dispatch panic and proves nested temporary focus through
+the shared body evaluator. The [attribute-value follow-up](../Evidence/ar-0027-temporary-attribute-value-parity-2026-10-03.md)
+closes the remaining `@key` blocker and re-enables the unchanged regression.
+Growth, pre-sized and frozen inputs produce identical nested focus, exact output
+and all-domain execution/serialization charges, including source retirement.
+Plain relative attribute values have source/temporary differential controls;
+general temporary paths, predicates and sorted paths remain unsupported.
+Broader parity and adapter measurements remain prerequisites to capacity adoption.
 
 AR-0013 preserves a future investigation into whether FastXSLT can prepare XDM,
 compiled plans, indexes, values, sequences, and scratch state more effectively
