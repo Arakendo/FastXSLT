@@ -16,6 +16,9 @@ const XSLT10_OUTER_ATTRIBUTE_MARKER: char = '\0';
 mod path_boolean_predicate;
 use path_boolean_predicate::{EvaluationFocus, PathBooleanPredicate};
 
+#[path = "path_experiment/qualified_nodes.rs"]
+pub(crate) mod qualified_nodes;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct LocationPath {
     pub(crate) steps: Vec<PathStep>,
@@ -32,6 +35,26 @@ pub(crate) struct LocationPath {
 }
 
 impl LocationPath {
+    pub(crate) fn is_bare_context_item(&self) -> bool {
+        self.origin == PathOrigin::ContextItem && self.steps.is_empty() && self.has_no_predicates()
+    }
+
+    pub(crate) fn is_bare_parent(&self) -> bool {
+        self.origin == PathOrigin::Relative
+            && matches!(self.steps.as_slice(), [PathStep::ParentAnyNode])
+            && self.has_no_predicates()
+    }
+
+    fn has_no_predicates(&self) -> bool {
+        self.final_predicate.is_none()
+            && self.final_boolean_predicate.is_none()
+            && self.final_context_predicate.is_none()
+            && self.sequence_position_predicate.is_none()
+            && self.step_axis_predicates.iter().all(Option::is_none)
+            && self.step_boolean_predicates.iter().all(Option::is_none)
+            && self.step_position_predicates.iter().all(Vec::is_empty)
+    }
+
     fn promote_xslt10_outer_attribute_markers(&mut self) {
         if let Some(predicate) = self.final_boolean_predicate.as_deref_mut() {
             path_boolean_predicate::promote_outer_attribute_marker(

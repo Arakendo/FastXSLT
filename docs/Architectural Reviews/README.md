@@ -143,3 +143,11 @@ and add the record to this index. Never reuse a retired number.
   -- Incubating; the post-74% OASIS frontier justifies a safe bounded
   internal-subset experiment, while DTD denial remains the default and external
   identifiers grant no acquisition authority.
+- [AR-0026: Namespace Node Identity and Navigation](AR-0026-namespace-node-identity-and-navigation.md)
+  -- Incubating implementation follow-up; ADR-0021 accepts derived qualified
+  occurrences, while executable mixed-node navigation, focus, frames, and copy
+  admission remain gated by parity, accounting, and corpus evidence.
+- [AR-0027: Execution Oriented Prepared Document Layout](AR-0027-execution-oriented-prepared-document-layout.md)
+  -- Incubating; compare private compact document layouts against the owned-tree
+  reference without introducing a public mutable DOM or weakening identity,
+  provenance, effective views, and preparation accounting.

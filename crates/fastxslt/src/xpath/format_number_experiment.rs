@@ -1481,6 +1481,21 @@ mod tests {
     }
 
     #[test]
+    fn preserves_empty_subpicture_validation_pending_legacy_profile_review() {
+        for picture in [";", ";0", "#0;", "0;;", "0;0;0"] {
+            let source = format!("format-number(1, '{picture}')");
+            for legacy in [false, true] {
+                let expression = parse_with_path_operands(&source, &location(), legacy)
+                    .expect("expression shape");
+                assert_eq!(
+                    evaluate(&expression, &BTreeMap::new()),
+                    Err(FormatNumberEvaluationFailure::InvalidPicture)
+                );
+            }
+        }
+    }
+
+    #[test]
     fn nan_ignores_picture_affixes_in_compatibility_and_modern_profiles() {
         for expression in [
             parse_with_path_operands("format-number('bad', '#%')", &location(), true)

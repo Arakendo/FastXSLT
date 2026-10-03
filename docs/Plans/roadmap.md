@@ -6,8 +6,25 @@ standards scope are decided.
 
 ## Current critical path
 
-The XSLT 1.0 compatibility track has reached 2,471 / 3,173 exact OASIS
-comparisons (77.88%). The provisional 75% checkpoint was crossed by replaying
+The latest namespace slice carries actual qualified focus through the shared
+boolean evaluator, admitting bounded `contains(., literal)` and focus-number
+conditions in `if`/`choose` with short-circuit composition. Unchanged
+`position111` now compares exactly. Mixed sorting, namespace variables, broader
+conditionals and temporary namespace focus remain unsupported. Resume ordinary
+corpus breadth from the ranked remaining frontier; the immediate 80% target
+still requires 54 more exact comparisons.
+
+Namespace-count template arguments reuse the existing qualified selector.
+XSLT 1.0 composed `contains()` conditions now reuse typed concatenation and
+variable string conversion through the same evaluator as scalar output, with
+short-circuit composition preserved. `idkey31` advances to `generate-id(/)`
+inside concatenation, but does not yet compare exactly. Namespace-valued
+variables and broader generated-ID strings remain unsupported. Full replay
+remains unchanged; the four comparator gaps involving legacy reference bytes
+or nonparseable XML remain uncredited.
+
+The XSLT 1.0 compatibility track has reached 2,485 / 3,173 exact OASIS
+comparisons (78.32%). The provisional 75% checkpoint was crossed by replaying
 one already-proven sealed external-subset mechanism across the reviewed case-
 local `plants.dtd` family, not by weakening XML semantics or authority. Two
 post-checkpoint safe slices—declared ISO-2022-JP input and dynamic
@@ -179,10 +196,202 @@ failures. Namespace aliases and different-namespace bindings are focused-tested.
 Wildcard subtraction now distinguishes `@*-5` from multiplication, while
 preserving ordinary negative operands and hyphenated names. The unchanged
 `Lotus/select_select26#1` becomes exact through the shared numeric plan.
-Current totals are 2,471 / 3,173 exact comparisons (77.88%), 2,668 initialized,
-2,621 successfully executed, 502 initialization failures, and 47 execution
-failures. The focused transform passes under both XSLT 1.0 and 3.0.
+That checkpoint had 2,471 / 3,173 exact comparisons (77.88%). The next bounded
+namespace-focus, scalar-filter, integer-position, construction, sorting, ordinary-attribute, identity-comparison, and grouped path-union slices raise current totals to 2,483 exact
+(78.25%), 2,682 initialized, 2,635 successfully executed, 488 initialization failures, and 47
+execution failures. The focused wildcard transform passes under both 1.0 and 3.0.
 [Wildcard-subtraction evidence](../Evidence/oasis-xslt10-wildcard-subtraction-2026-10-01.md)
+
+### Next OASIS target: 80%
+
+The immediate target is at least **2,539 / 3,173 exact matches**;
+the current 2,485 leaves **54 additional matches** to earn. The previously
+discussed 82% checkpoint (2,602 matches) is a later ambition. This is a campaign
+target, not authorization to alter fixtures, comparisons, expected-error credit,
+or the selected security/compatibility profile.
+
+The 2026-10-02 full replay exposes 101 standard-operation initialization
+failures, nine standard-operation execution failures, fourteen XML mismatches,
+and four comparator gaps. These are first observable dispositions, not 128
+promised future passes. Ranked frontier output now also prints its complete
+total, so the top-30 presentation cap cannot hide the tail when planning work.
+
+Prioritize bounded shared semantics where the existing owners suffice. The
+next substantial named cluster is namespace-node selection: the initial fifteen
+standard cases first failed on namespace-axis expressions or namespace-node
+identity. Thirteen now compare exactly and two mismatch. Review the XDM
+identity, parentage, document order, focus, copy, and
+provenance contract before implementation; in-scope bindings or attributes are
+not substitute namespace nodes. Cross-document selections/unions and globals
+also require preserving document-qualified identity rather than reusing raw
+node IDs across owners. These clusters require architectural review before
+representation or ownership changes become contracts.
+
+[AR-0026](../Architectural%20Reviews/AR-0026-namespace-node-identity-and-navigation.md)
+now owns the namespace-node question. Its test-only reference passes twelve
+ownership, binding, provenance, capacity, work-budget, cancellation, and concurrent
+reuse controls without wiring namespace selection into XPath. Prepared-origin
+identity now survives both shared whitespace views and complete derivation.
+Bounded mixed-node normalization preserves owner/namespace/attribute/content
+order and rejects cross-document or mixed-effective-view sequences. Runtime
+layout remains private; the next tranche must prove source/temporary
+navigation, focus, and copying parity and compare retained capacity before
+crediting further unchanged corpus cases. This initial reference checkpoint
+left the exact numerator unchanged.
+Four further temporary-owner controls now compare real result-to-temporary
+materialization with source binding navigation and distinguish invocation-local
+tree identities from deep-clone storage addresses. Executable focus/predicate
+parity, temporary declaration provenance, and namespace-only result attachment
+remain explicit integration work, not corpus credit.
+The runtime consumer inventory now identifies concrete ID-only path/frame and
+focus boundaries: namespace focus must carry the occurrence, not masquerade as
+its parent element. A generated 513-element / 17-binding capacity probe retained
+1,062,936 bytes of eager borrowed-occurrence vectors versus 2,048 bytes for one
+derived selection; transient maps and prepared storage are excluded, and no
+throughput claim follows. Continue with a reviewed qualified-occurrence seam
+before executable focus/copy admission; no second evaluator or eager arena-node
+expansion is selected.
+The review now records a concrete candidate integration sequence and fresh
+first-failure traces for all fifteen unchanged cases: each still reports
+initialization/unsupported `FXXP1001`. Review qualified identity/lifetimes and
+mixed ordering first, then integrate axis/current-item focus through the shared
+engine before predicates, unions, frames, identity, and copy attachment. Two
+archival expected outputs assume `xml` is the first namespace node; do not turn
+that implementation-dependent expectation into an architectural requirement.
+[ADR-0021](../ADR/ADR-0021-derived-qualified-namespace-node-occurrences.md) is now
+accepted for that integration direction: bounded derived namespace occurrences,
+qualified shared semantic-node values, and stable case-sensitive `str::cmp`
+prefix order (empty/default first, implicit `xml` unprivileged). Feature admission
+still requires executable parity, accounting, pinned cases, and regression
+measurements. Initial runtime integration routes the already-supported namespace-
+count AVT through the source selector; general axes/focus and temporary values
+remain unsupported or unchanged until their consumers are migrated.
+The count AVT now compiles a qualified XPath plan: existing tree navigation
+selects owners, then a bounded terminal namespace step derives real occurrences.
+The internal plan supports named/wildcard/`node()` selection with separate
+binding/output limits and view/complete-reference parity. Other stylesheet
+selectors generally still reject namespace syntax. A bounded `xsl:for-each`
+now carries actual namespace focus through the shared sequence executor for
+text and scalar name/local-name/namespace-URI, current string value, position,
+and size. Four compiled controls cover both 1.0/3.0 profiles, named/empty axes,
+view/complete-reference parity, unsupported body consumers, exhaustion,
+mid-value cancellation, cleanup, and concurrent reuse. Continue consumer
+migration before admitting constructors/AVTs, sorting, predicates, variables,
+unions, copy attachment, or temporary namespace execution. No new corpus credit
+is inferred from these hand-authored controls. Full replay separately earns
+`Lotus/namespace_namespace33#1`, bringing the strict lower bound to 2,472 /
+3,173 (77.91%) with twelve mismatches and 423 / 431 expected-error credits
+unchanged. All workspace and official WASM gates pass; namespace-heavy and
+ordinary-path host performance measurements remain pending.
+The next scalar-filter tranche earns `Lotus/namespace_namespace142#1` through
+one charged literal predicate and typed count/name/local-name/namespace-URI
+selection. Modern zero-or-one cardinality and legacy first-node conversion
+remain distinct. `namespace32` and `namespace34` now execute but mismatch:
+their stylesheet templates use `http://test`, while source elements use `test`.
+Keep both archival mismatches visible without fixture changes or exclusions.
+The current lower bound is 2,485 / 3,173 (78.32%) with fourteen mismatches;
+the original namespace frontier retains thirteen exact and two mismatch
+dispositions. Broader navigation, attribute AVTs, variables,
+broader copying, and temporary namespace support remain the next migrations.
+Bounded ordinary attributes with static/current-item names and scalar values
+now use the shared QName resolver and result builder, earning unchanged
+`Lotus/node_node17#1`. Two controls preserve result ownership, both profiles,
+effective-view/reference parity, cancellation, byte/node budgets, invalid names,
+and late-attachment diagnostics. Namespace copy attachment is still unsupported;
+ordinary attribute construction does not represent a copied namespace node.
+The next bounded slice admits literal attributes with static values and
+current-item name/local-name, string-value, position, or size AVTs through the
+same builder. Two controls cover both profiles/views, default and shadowed
+bindings, result ownership after owner release, budgets, cancellation, and
+recovery. The complete replay remains 2,481 / 3,173 (78.19%): this consumer
+migration earns no additional corpus credit. Broader path/variable AVTs remain
+unsupported rather than borrowing the namespace node's parent focus.
+Inline `generate-id(path)` equality/inequality now uses the shared qualified
+selector and origin/owner/prefix identity, earning unchanged Microsoft
+`XSLTFunctions_GenereateIdAppliedToNamespaceNodesOnDifferentElements#1`.
+Two controls preserve empty selections, equal-URI distinct nodes, both profiles/
+views, cardinality diagnostics, budgets, cancellation, and recovery. Standalone
+namespace generated-ID strings and namespace-focus identity bodies remain
+unsupported; `copy51` and `position111` are the original frontier's remaining
+unsupported cases.
+Outside that namespace frontier, bounded legacy grouped owner unions with a
+common ordinary suffix now lower to existing controlled path alternatives.
+Whole-union `last()` selects only after normalization; suffix predicates retain
+their per-step focus. Unchanged `Lotus/axes_axes122#1` becomes exact, reaching
+2,483 / 3,173 (78.25%). Empty branches are rejected before suffix composition;
+template match-pattern grouping is not admitted by this expression slice.
+The next compiled namespace slice admits empty `xsl:copy` in source namespace
+focus. Distinct result-owned attachment items enter the existing element-content
+loop, not the attribute path. Duplicate bindings collapse; conflicts, late or
+top-level attachment, and default namespaces on unnamespaced elements fail
+explicitly with copy-site provenance. Copied payload and immutable-slice rebuild
+work are charged before allocation; implicit `xml` stays implicit. Five new
+controls cover both profiles, view/reference parity, owner disposal, output-method
+independence, exact charges, cancellation/exhaustion and reuse. Unchanged
+`Lotus/copy_copy51#1` becomes exact, reaching 2,484 / 3,173 (78.29%). The next
+bounded mixed-union/conditional slice earns unchanged `position111`, reaching
+2,485 / 3,173 (78.32%). Qualified focus survives `and`/`or`/`not`, and namespace
+conditions consume URI values rather than owning-element text. Three new
+controls preserve both profiles/views, Unicode/empty-needle behavior,
+short-circuit charging, exact/one-less budgets, cancellation and reuse.
+Namespace variables and temporary-namespace focus remain unsupported.
+The passing path-union checkpoint now includes a behavior-preserving extraction
+of nine runtime regressions into the private `golden_runtime_tests/path_unions.rs`
+invariant family. Production semantics and every assertion are unchanged; this
+earns no additional corpus credit. The general test owner remains decomposition
+debt at 17,208 lines. The remaining `mdocs14` execution gap involves applying a
+sealed document variable while retaining principal-document node variables;
+support must preserve document qualification rather than bypass the existing
+multi-document guard. Broader namespace copying and mixed-node unions remain the
+AR-0026 integration seams, not fixture or comparator corrections.
+Bare parent scalar queries now use the charged qualified owning-element handoff
+and existing name/string consumers without changing the enclosing namespace
+focus. Three new controls cover owner identity/provenance, both stylesheet
+profiles, effective whitespace-view/reference parity, and cancellation/budget
+failure cleanup. Full verification and WASM checks pass; the complete OASIS
+replay at that checkpoint remained at 2,473 exact matches (77.94%).
+One integer namespace predicate now filters separately per owner after the
+name test. Three controls cover complete-selection parity, named-axis positions,
+both profiles/views, bounded partial selection, and control failure cleanup.
+Unchanged `namespace28` and `position76` become exact; their sources expose only
+implicit `xml`, so the lexical order convention is unchanged. General position
+expressions and repeated predicates remain unsupported.
+Bounded literal/current-name result elements and scalar sorting now earn five
+more unchanged cases: `axes59`, `axes62`, `axes68`, `axes120`, and Microsoft's
+`Namespace_CheckXmlnsResetOnResultTree`. Shared sort policies/comparison and QName
+resolution remain the owners; three controls cover sorted focus, stable ties,
+numeric values, result-owner disposal, construction diagnostics, cancellation,
+and exhaustion/recovery. Workspace and WASM gates pass. Next namespace pressure
+is copying, computed ordinary attributes, mixed union focus, and generated
+identity. General AVTs and variable bodies remain explicitly unsupported.
+Two further test-only controls compose existing charged XPath owner selection
+with namespace selection and explicit parent handoff back to tree navigation.
+View/complete-reference parity preserves identity and hides stripped text;
+cancellation carries through the same invocation control. This does not execute
+a namespace current item or admit compiled namespace-axis syntax.
+The source and temporary references now use one bounded XDM binding resolver
+and typed source/temporary owner qualification. Selected namespace sequence
+positions/sizes also pass the existing charged runtime focus-comparison
+evaluator, including missing-focus and cooperative cancellation diagnostics.
+This is scalar evaluator reuse, not executable namespace-axis/current-item
+support: name/value/identity, variables, parent navigation, and namespace-only
+copy attachment still require a reviewed runtime representation.
+Seven further controls now prove a bounded modern namespace-copy attachment
+subset: dynamically owned result bindings outlive source/temporary owners,
+duplicate and conflict handling is explicit, capacity/byte/cancellation failures
+return no partial result, and both existing serializers agree, including
+descendant namespace fixup. Production result variants and compiler/runtime
+namespace-axis support remain unchanged. XSLT 1.0 recovery, construction-site
+provenance, full attachment/fixup conflicts, and mixed runtime values are still
+open; these hand-authored controls do not increase the OASIS numerator.
+
+Do not reopen AR-0025's deferred external/general/parameter entity expansion
+solely to reach 80%. Historical invalid-input recovery, unavailable resources,
+and reference-encoding/comparator gaps stay separately visible. An empty
+negative `format-number()` subpicture trial earned no exact matches and changed
+two expected errors into unexpected successes; it was removed. Later Java
+behavior does not silently settle the archival XSLT 1.0 profile. The restored
+replay retains 2,471 exact matches and 423 / 431 expected-error credits.
 
 The first P1 experiment from the 2026-09-04 performance review is complete and
 was deliberately not retained. A compile-selected monotonic child scan removed
@@ -2329,7 +2538,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are conserved. The current strict lower bound is 2,471 exact matches (77.88%); 2,668 cases initialize and 2,621 execute successfully. Every non-pass has a named policy, infrastructure, invalid/unsupported, mismatch, comparator, or unusable-reference disposition; twelve visible mismatches and four comparator gaps remain. Expected-error credit is independently conserved at 423 / 431 (98.14%). The archive remains non-redistributed, and AR-0019/AR-0024/AR-0025 plus their linked evidence own the detailed semantic, authority, encoding, DTD/entity, and historical-reference boundaries. This is compatibility evidence, not a conformance claim. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are conserved. The current strict lower bound is 2,483 exact matches (78.25%); 2,682 cases initialize and 2,635 execute successfully. Every non-pass has a named policy, infrastructure, invalid/unsupported, mismatch, comparator, or unusable-reference disposition; fourteen visible mismatches and four comparator gaps remain. Expected-error credit is independently conserved at 423 / 431 (98.14%). The archive remains non-redistributed, and AR-0019/AR-0024/AR-0025/AR-0026 plus their linked evidence own the detailed semantic, authority, encoding, DTD/entity, namespace, and historical-reference boundaries. This is compatibility evidence, not a conformance claim. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -2377,9 +2586,9 @@ rather than Unicode whitespace makes three further cases exact. The lower
 bound reaches 2,261 / 3,173 (71.26%). A subsequent normative HTML
 serialization correction deliberately withdraws one former exact pass whose
 archival expectation minimized non-Boolean element/attribute pairs. The
-current lower bound is 2,471 / 3,173 (77.88%). Current totals are 2,668
-initialized, 2,621 successfully executed, 502 initialization failures,
-47 execution failures, 4 comparator gaps, and 12 visible mismatches.
+current lower bound is 2,483 / 3,173 (78.25%). Current totals are 2,682
+initialized, 2,635 successfully executed, 488 initialization failures,
+47 execution failures, 4 comparator gaps, and 14 visible mismatches.
 Host-parser-policy exclusions are 24, XSLT 1.0 discretionary-policy exclusions
 are five, host-collation-policy exclusions are five,
 serialization-layout-policy exclusions are 18, and unusable archival reference
@@ -7817,6 +8026,90 @@ packaging questions.
   resolver profile, or target-specific interruption guarantee.
 
 ### Prepared representation and data-layout audit
+
+The requested side investigation is recorded in
+[AR-0027](../Architectural%20Reviews/AR-0027-execution-oriented-prepared-document-layout.md).
+Source/lifecycle inspection, shape anatomy and private node-capacity comparisons
+are done; approximately 83% of the initial repetitive fixture's accounted
+prepared capacity is node-record storage, but text-heavy shapes differ.
+Broader semantic parity and host lifecycle measurements are next. A public mutable
+DOM, mandatory indexes and a representation rewrite are not selected. This
+investigation changes no corpus numerator or standards roadmap commitment.
+The added placement track measures .NET staging/encoding and boundary copies
+separately from Rust admission, parsing and XDM construction, which are already
+Rust-owned. Compare only identified managed work against a Rust-owned candidate,
+independently of layout changes, including one-shot and reusable sources and a
+5,000-job native/isolated workload. Count copied bytes, allocations, tails and
+peak co-resident buffers. Host acquisition authority and the rejected AR-0020
+staging topology remain unchanged; comparative measurements are still pending.
+Rust applications are first-class consumers of the same host-neutral lifecycle,
+not just a timing control. Include complete direct Rust admission, preparation,
+execution and result handling without .NET or worker-protocol dependencies.
+The core owns shared lifecycle semantics even when migration yields no speedup;
+adapters own binding/transport details, hosts retain acquisition and policy, and
+public Rust types remain subject to AR-0012.
+
+The first executable [direct Rust baseline](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md)
+now verifies unchanged `for-004` output and cancelled-preparation cleanup/retry.
+Three fresh release processes record 28.4-32.5 us complete one-shot medians and
+2.0-2.1 us compiled/prepared invocation medians. These short instrumented windows
+are attribution evidence, not deployment capacity or a representation win.
+The compile-once fresh-document control now executes a synthetic 5,000-job queue
+with distinct source/request identities, one worker and at most one prepared
+document at a time. Three short release windows observe 10.6-16.8 us per-job
+medians and 64.0-93.5 ms queue completion, with every outcome exact; variation
+precludes a deployment-capacity claim. Equal-byte origins and independent owner
+retirement are tested. [Shared preparation phase attribution](../Evidence/ar-0027-shared-preparation-phase-attribution-2026-10-02.md)
+now separates controlled XML parsing from XDM construction using the same owner;
+paired observed/ordinary calls conserve tree/provenance, work limits and failure
+diagnostics. On synthetic 500-item sources, XML takes 483.1-497.3 us versus
+126.7-147.2 us XDM construction. No layout or parser choice follows. Next split
+existing adapter creation phases. [Six-shape document anatomy](../Evidence/ar-0027-document-shape-capacity-anatomy-2026-10-02.md)
+now separates live records, vector slack and relationship capacity, with complete
+XML/XDM allocation scopes. Unused node slots account for 9.4-44.4% of accounted
+retention; text-heavy payload is a counterexample to universal record dominance.
+Nominate capacity tightening as the first private comparison, not a new DOM or
+accepted optimization. Adapter copy/allocation attribution, candidate parity,
+single-use/peak cost and the representative 5,000-document native/isolated workload
+remain open.
+The [test-only node-vector freeze comparison](../Evidence/ar-0027-node-vector-freeze-comparison-2026-10-02.md)
+now demonstrates 9.4-44.4% accounted retention reduction with unchanged measured
+peak in six shapes, at the cost of one extra resize request and higher total
+requested bytes. Three paired timing runs are variable, not a general speedup.
+Node/provenance/control and unchanged `for-004` checks pass; production remains
+on reference growth. The [independent pre-sizing comparison](../Evidence/ar-0027-node-vector-presizing-comparison-2026-10-02.md)
+now matches frozen retention while reducing original-six allocation peaks by
+15.8-48.4%; wide preparation medians improve 12.8-14.3% in three paired runs.
+Near-full occupancy exposes a 15.0% freeze peak increase for only 0.63% retention
+savings. Text coalescing, node charges, exact/one-less failure and cancellation
+checks pass. The bounded semantic follow-up now conserves typed IDs/defaults,
+complete whitespace-view behavior, qualified namespace identity, exact transform
+charges/failures and copied results after source/compiler retirement. Four
+threads share pre-sized input across stripping/preserving programs while old
+leases drain independently of replacement owners. Broader path/temporary-tree/
+external-DTD parity, copy/cancellation gaps, complete host single-use/peak
+measurements remain open before adoption. Relationship capacities
+remain unchanged and are a separate comparison; no production policy is selected.
+The [direct Rust complete-source lifecycle comparison](../Evidence/ar-0027-capacity-single-use-lifecycle-2026-10-02.md)
+now includes admission/copying, preparation, one/eight independent invocations,
+serialization, exact validation and release on all six shapes. Three rotated
+release runs validate 97,686 timed outputs. Wide single-use medians improve
+2.2-11.6% with pre-sizing, but other cells reverse or remain nearly flat: no
+general speedup or break-even is selected. All 36 successful/one-less-failed
+construction scopes release their observed allocations. The
+[capacity cancellation-gap probe](../Evidence/ar-0027-capacity-cancellation-gaps-2026-10-02.md)
+now exposes the shared span scan before the first XDM check, reservation before
+the next node check, and shrinking after the final semantic check. On 96,002
+nodes, span-scan process medians range from 581.3 to 968.7 us; observed timings
+are not hard limits. Checkpoint/commit-rule design, full transform peak and
+representative adapter costs remain open. The
+[bounded checkpoint candidate](../Evidence/ar-0027-bounded-capacity-checkpoints-2026-10-02.md)
+now polls every 256 scan events and before/after capacity changes, without
+consuming units or shifting charge-indexed faults. Ten scan controls, 24 resize
+controls and 216 differential pairs pass. Three rotated timing windows remain
+too variable for a precise overhead claim. Its post-shrink publication fence
+is private and needs review; complete adapter retention and broader parity
+remain open. Production construction is unchanged.
 
 AR-0013 preserves a future investigation into whether FastXSLT can prepare XDM,
 compiled plans, indexes, values, sequences, and scratch state more effectively

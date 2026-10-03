@@ -376,6 +376,12 @@ profiles or consumer workloads provide another concrete hypothesis to test.
 
 ## Review history
 
+- 2026-10-02 -- Opened focused [AR-0027](AR-0027-execution-oriented-prepared-document-layout.md)
+  for execution-oriented owned-document layout. Current release anatomy still
+  attributes about 83% of the repetitive fixture's accounted capacity to node
+  records. No compact layout or public DOM is selected; the follow-up separates
+  record footprint from capacity slack before testing private safe candidates.
+
 - 2026-08-27 -- Opened as Incubating to preserve a future evidence-driven audit
   of prepared representations and data layout without selecting an optimization.
 - 2026-08-27 -- Peer review made cross-generation sharing explicitly unadmitted

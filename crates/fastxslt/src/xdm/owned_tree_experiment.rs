@@ -15,6 +15,18 @@ mod whitespace_view;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct NodeId(usize);
 
+#[cfg(test)]
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum CapacityCheckpoint {
+    BeforeSpanScan { events: usize },
+    AfterSpanScan { events: usize },
+    SpanScanProgress { visited: usize },
+    BeforeReserve { slots: usize },
+    AfterReserve { slots: usize },
+    BeforeFreeze { slots: usize },
+    AfterFreeze { slots: usize },
+}
+
 impl NodeId {
     pub(crate) const fn index(self) -> usize {
         self.0
@@ -53,6 +65,8 @@ struct Node {
 
 #[derive(Debug)]
 pub(crate) struct Document {
+    // Logical prepared origin survives views and the complete derivation oracle.
+    origin: Arc<()>,
     nodes: Arc<Vec<Node>>,
     root: NodeId,
     child_overrides: Option<HashMap<NodeId, Box<[NodeId]>>>,
@@ -64,13 +78,22 @@ pub(crate) struct Document {
 pub(crate) struct DocumentCapacityAnatomy {
     pub(crate) document_header: usize,
     pub(crate) node_records: usize,
+    // Detail within node_records; not additional terms in total_capacity_bytes.
+    pub(crate) node_count: usize,
+    pub(crate) node_capacity: usize,
+    pub(crate) node_record_size: usize,
+    pub(crate) live_node_records: usize,
+    pub(crate) unused_node_records: usize,
     pub(crate) child_ids: usize,
+    pub(crate) live_child_ids: usize,
     pub(crate) attribute_ids: usize,
+    pub(crate) live_attribute_ids: usize,
     pub(crate) expanded_name_locals: usize,
     pub(crate) expanded_name_namespaces: usize,
     pub(crate) prefixes: usize,
     pub(crate) values: usize,
     pub(crate) namespace_records: usize,
+    pub(crate) live_namespace_records: usize,
     pub(crate) namespace_prefixes: usize,
     pub(crate) namespace_uris: usize,
     pub(crate) location_resources: usize,
@@ -120,6 +143,10 @@ pub(crate) enum StringValueVisitFailure<SinkFailure> {
 }
 
 impl Document {
+    pub(crate) fn same_origin(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.origin, &other.origin)
+    }
+
     #[allow(
         clippy::too_many_lines,
         reason = "keeping the private event-to-tree state machine together makes ownership auditable"
@@ -137,17 +164,131 @@ impl Document {
         parsed: ParsedDocument,
         control: &mut InvocationControl,
     ) -> Result<Self, BuildFailure> {
+        Self::construct_controlled(
+            parsed,
+            control,
+            #[cfg(test)]
+            false,
+            #[cfg(test)]
+            None,
+            #[cfg(test)]
+            false,
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_parsed_with_presized_node_capacity(
+        parsed: ParsedDocument,
+        control: &mut InvocationControl,
+    ) -> Result<Self, BuildFailure> {
+        Self::construct_controlled(parsed, control, true, None, false)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_parsed_with_capacity_observer(
+        parsed: ParsedDocument,
+        control: &mut InvocationControl,
+        presize: bool,
+        observer: &mut dyn FnMut(CapacityCheckpoint),
+    ) -> Result<Self, BuildFailure> {
+        Self::construct_controlled(parsed, control, presize, Some(observer), false)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_parsed_with_capacity_polls(
+        parsed: ParsedDocument,
+        control: &mut InvocationControl,
+        presize: bool,
+        freeze: bool,
+        observer: Option<&mut dyn FnMut(CapacityCheckpoint)>,
+    ) -> Result<Self, BuildFailure> {
+        if freeze {
+            Self::freeze_with_observer(parsed, control, observer, true)
+        } else {
+            Self::construct_controlled(parsed, control, presize, observer, true)
+        }
+    }
+
+    #[allow(
+        clippy::too_many_lines,
+        reason = "keeping the private event-to-tree state machine together makes ownership auditable"
+    )]
+    fn construct_controlled(
+        parsed: ParsedDocument,
+        control: &mut InvocationControl,
+        #[cfg(test)] presize: bool,
+        #[cfg(test)] mut observer: Option<&mut dyn FnMut(CapacityCheckpoint)>,
+        #[cfg(test)] bounded_polls: bool,
+    ) -> Result<Self, BuildFailure> {
+        #[cfg(test)]
+        if let Some(observer) = observer.as_mut() {
+            observer(CapacityCheckpoint::BeforeSpanScan {
+                events: parsed.events.len(),
+            });
+        }
+        #[cfg(test)]
+        let mut planned_nodes = Some(1_usize);
+        #[cfg(test)]
+        let mut previous_text = false;
+        #[cfg(not(test))]
         let document_end = parsed
             .events
             .iter()
-            .map(event_span)
-            .map(|span| span.end)
+            .map(|event| event_span(event).end)
             .max()
             .unwrap_or(0);
+        #[cfg(test)]
+        let document_end = {
+            let mut document_end = 0;
+            for (event_index, event) in parsed.events.iter().enumerate() {
+                #[cfg(test)]
+                if bounded_polls && event_index.is_multiple_of(256) {
+                    control
+                        .poll_capacity_cancellation()
+                        .map_err(BuildFailure::Control)?;
+                }
+                #[cfg(test)]
+                if presize {
+                    let additional = match event {
+                        OwnedXmlEvent::Start { attributes, .. } => attributes.len().checked_add(1),
+                        OwnedXmlEvent::End { .. } => Some(0),
+                        OwnedXmlEvent::Text { .. } if previous_text => Some(0),
+                        _ => Some(1),
+                    };
+                    planned_nodes = planned_nodes.and_then(|count| {
+                        additional.and_then(|additional| count.checked_add(additional))
+                    });
+                    previous_text = matches!(event, OwnedXmlEvent::Text { .. });
+                }
+                document_end = document_end.max(event_span(event).end);
+                #[cfg(test)]
+                {
+                    if bounded_polls && let Some(observer) = observer.as_mut() {
+                        observer(CapacityCheckpoint::SpanScanProgress {
+                            visited: event_index + 1,
+                        });
+                    }
+                }
+            }
+            document_end
+        };
+        #[cfg(test)]
+        if let Some(observer) = observer.as_mut() {
+            observer(CapacityCheckpoint::AfterSpanScan {
+                events: parsed.events.len(),
+            });
+        }
+        #[cfg(test)]
+        if bounded_polls {
+            control
+                .poll_capacity_cancellation()
+                .map_err(BuildFailure::Control)?;
+        }
         control
             .charge(WorkDomain::XdmNode, 1)
             .map_err(BuildFailure::Control)?;
         let mut result = Self {
+            origin: Arc::new(()),
             nodes: Arc::new(vec![Node {
                 kind: NodeKind::Document,
                 parent: None,
@@ -168,6 +309,36 @@ impl Document {
             id_index: HashMap::new(),
         };
         let mut ancestors = vec![result.root];
+
+        #[cfg(test)]
+        if presize
+            && let Some(planned_nodes) = planned_nodes
+            && control.permits_xdm_capacity_reservation(planned_nodes - 1)
+        {
+            if let Some(observer) = observer.as_mut() {
+                observer(CapacityCheckpoint::BeforeReserve {
+                    slots: planned_nodes,
+                });
+            }
+            // Reserve uninitialized slots within the existing node ceiling, not
+            // admitted nodes. Materialization still charges each node first.
+            if bounded_polls {
+                control
+                    .poll_capacity_cancellation()
+                    .map_err(BuildFailure::Control)?;
+            }
+            result.nodes_mut().reserve_exact(planned_nodes - 1);
+            if let Some(observer) = observer.as_mut() {
+                observer(CapacityCheckpoint::AfterReserve {
+                    slots: result.nodes.capacity(),
+                });
+            }
+            if bounded_polls {
+                control
+                    .poll_capacity_cancellation()
+                    .map_err(BuildFailure::Control)?;
+            }
+        }
 
         for event in parsed.events {
             match event {
@@ -323,6 +494,57 @@ impl Document {
         id
     }
 
+    #[cfg(test)]
+    pub(crate) fn from_parsed_with_frozen_node_capacity(
+        parsed: ParsedDocument,
+        control: &mut InvocationControl,
+    ) -> Result<Self, BuildFailure> {
+        Self::freeze_with_observer(parsed, control, None, false)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_parsed_with_frozen_capacity_observer(
+        parsed: ParsedDocument,
+        control: &mut InvocationControl,
+        observer: &mut dyn FnMut(CapacityCheckpoint),
+    ) -> Result<Self, BuildFailure> {
+        Self::freeze_with_observer(parsed, control, Some(observer), false)
+    }
+
+    #[cfg(test)]
+    fn freeze_with_observer(
+        parsed: ParsedDocument,
+        control: &mut InvocationControl,
+        mut observer: Option<&mut dyn FnMut(CapacityCheckpoint)>,
+        bounded_polls: bool,
+    ) -> Result<Self, BuildFailure> {
+        let mut document = Self::construct_controlled(parsed, control, false, None, bounded_polls)?;
+        if let Some(observer) = observer.as_mut() {
+            observer(CapacityCheckpoint::BeforeFreeze {
+                slots: document.node_count(),
+            });
+        }
+        // Construction has succeeded, and nodes_mut requires exclusive storage.
+        // No published document, relationship vector or semantic field changes.
+        if bounded_polls {
+            control
+                .poll_capacity_cancellation()
+                .map_err(BuildFailure::Control)?;
+        }
+        document.nodes_mut().shrink_to_fit();
+        if let Some(observer) = observer.as_mut() {
+            observer(CapacityCheckpoint::AfterFreeze {
+                slots: document.nodes.capacity(),
+            });
+        }
+        if bounded_polls {
+            control
+                .poll_capacity_cancellation()
+                .map_err(BuildFailure::Control)?;
+        }
+        Ok(document)
+    }
+
     fn push_node(&mut self, node: Node) -> NodeId {
         let id = NodeId(self.nodes.len());
         self.nodes_mut().push(node);
@@ -421,6 +643,7 @@ impl Document {
             nodes.push(node.clone());
         }
         let mut derived = Self {
+            origin: self.origin.clone(),
             nodes: Arc::new(nodes),
             root: self.root,
             child_overrides: None,
@@ -506,13 +729,22 @@ impl Document {
         let mut anatomy = DocumentCapacityAnatomy {
             document_header: std::mem::size_of::<Self>(),
             node_records: self.nodes.capacity() * std::mem::size_of::<Node>(),
+            node_count: self.nodes.len(),
+            node_capacity: self.nodes.capacity(),
+            node_record_size: std::mem::size_of::<Node>(),
+            live_node_records: self.nodes.len() * std::mem::size_of::<Node>(),
+            unused_node_records: (self.nodes.capacity() - self.nodes.len())
+                * std::mem::size_of::<Node>(),
             child_ids: 0,
+            live_child_ids: 0,
             attribute_ids: 0,
+            live_attribute_ids: 0,
             expanded_name_locals: 0,
             expanded_name_namespaces: 0,
             prefixes: 0,
             values: 0,
             namespace_records: 0,
+            live_namespace_records: 0,
             namespace_prefixes: 0,
             namespace_uris: 0,
             location_resources: 0,
@@ -533,7 +765,9 @@ impl Document {
         let mut resources = HashSet::new();
         for node in self.nodes.iter() {
             anatomy.child_ids += node.children.capacity() * std::mem::size_of::<NodeId>();
+            anatomy.live_child_ids += node.children.len() * std::mem::size_of::<NodeId>();
             anatomy.attribute_ids += node.attributes.capacity() * std::mem::size_of::<NodeId>();
+            anatomy.live_attribute_ids += node.attributes.len() * std::mem::size_of::<NodeId>();
             if let Some(name) = &node.name {
                 anatomy.expanded_name_locals += name.local.capacity();
                 anatomy.local_name_occurrences += 1;
@@ -552,6 +786,8 @@ impl Document {
             }
             anatomy.namespace_records +=
                 node.namespaces.capacity() * std::mem::size_of::<NamespaceBinding>();
+            anatomy.live_namespace_records +=
+                node.namespaces.len() * std::mem::size_of::<NamespaceBinding>();
             for binding in &node.namespaces {
                 anatomy.namespace_prefixes += binding.prefix.as_ref().map_or(0, String::capacity);
                 anatomy.namespace_uris += binding.namespace.capacity();

@@ -1923,6 +1923,9 @@ fn bounded_detail(detail: &str) -> String {
 }
 
 fn print_ranked(label: &str, values: &BTreeMap<String, usize>) {
+    // The ranked examples are capped for readability, not the denominator.
+    // Keep the complete total visible when planning a coverage campaign.
+    println!("{label}-total\t{}", values.values().sum::<usize>());
     let mut values = values.iter().collect::<Vec<_>>();
     values.sort_by(|left, right| right.1.cmp(left.1).then_with(|| left.0.cmp(right.0)));
     for (key, value) in values.into_iter().take(30) {

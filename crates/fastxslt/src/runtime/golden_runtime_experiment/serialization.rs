@@ -261,7 +261,8 @@ fn is_significant_result_node(node: &ResultNode) -> bool {
             !value.chars().all(char::is_whitespace)
         }
         ResultNode::Element { .. } => true,
-        ResultNode::PendingAttribute(_)
+        ResultNode::PendingNamespace { .. }
+        | ResultNode::PendingAttribute(_)
         | ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::ProcessingInstruction { .. }
         | ResultNode::Comment(_) => false,
@@ -892,7 +893,9 @@ fn is_bounded_html5_document(nodes: &[ResultNode]) -> bool {
             value.chars().all(char::is_whitespace)
         }
         ResultNode::Comment(_) | ResultNode::ProcessingInstruction { .. } => true,
-        ResultNode::PendingAttribute(_) | ResultNode::Xslt10RecoverableAttribute(_) => false,
+        ResultNode::PendingNamespace { .. }
+        | ResultNode::PendingAttribute(_)
+        | ResultNode::Xslt10RecoverableAttribute(_) => false,
         ResultNode::Element { .. } => std::ptr::eq(node, *root),
     }) && is_bounded_html5_node(root, true)
 }
@@ -902,7 +905,8 @@ fn is_bounded_html5_node(node: &ResultNode, root: bool) -> bool {
         ResultNode::Text(_)
         | ResultNode::Xslt10DisableOutputEscapingText(_)
         | ResultNode::Comment(_) => true,
-        ResultNode::PendingAttribute(_)
+        ResultNode::PendingNamespace { .. }
+        | ResultNode::PendingAttribute(_)
         | ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::ProcessingInstruction { .. } => false,
         ResultNode::Element {
@@ -988,7 +992,8 @@ fn validate_html_processing_instructions(
         match node {
             ResultNode::ProcessingInstruction { value, .. } => value.contains('>'),
             ResultNode::Element { children, .. } => children.iter().any(contains_forbidden_data),
-            ResultNode::PendingAttribute(_)
+            ResultNode::PendingNamespace { .. }
+            | ResultNode::PendingAttribute(_)
             | ResultNode::Xslt10RecoverableAttribute(_)
             | ResultNode::Text(_)
             | ResultNode::Xslt10DisableOutputEscapingText(_)
@@ -1010,7 +1015,8 @@ fn validate_html_processing_instructions(
 fn is_bounded_html_node(node: &ResultNode, root: bool) -> bool {
     match node {
         ResultNode::Text(_) | ResultNode::Xslt10DisableOutputEscapingText(_) => true,
-        ResultNode::PendingAttribute(_)
+        ResultNode::PendingNamespace { .. }
+        | ResultNode::PendingAttribute(_)
         | ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::ProcessingInstruction { .. }
         | ResultNode::Comment(_) => false,
@@ -1419,13 +1425,8 @@ fn validate_serialization_preconditions(
     settings: &OutputSettings,
     request_id: &str,
 ) -> Result<(), ExecutionFailure> {
-    if contains_pending_attribute(&result.children) {
-        return Err(failure(
-            "XTDE0410",
-            FailureCategory::Invalid,
-            Some(request_id),
-            "a result attribute escaped its containing element construction",
-        ));
+    if let Some(error) = pending_attachment_failure(&result.children, request_id) {
+        return Err(error);
     }
     if settings.method.as_deref() == Some("xml")
         && settings.undeclare_prefixes == Some(true)
@@ -1476,15 +1477,23 @@ fn validate_serialization_preconditions(
     Ok(())
 }
 
-fn contains_pending_attribute(nodes: &[ResultNode]) -> bool {
-    nodes.iter().any(|node| match node {
-        ResultNode::PendingAttribute(_) => true,
-        ResultNode::Element { children, .. } => contains_pending_attribute(children),
-        ResultNode::Xslt10RecoverableAttribute(_)
-        | ResultNode::Text(_)
-        | ResultNode::Xslt10DisableOutputEscapingText(_)
-        | ResultNode::ProcessingInstruction { .. }
-        | ResultNode::Comment(_) => false,
+fn pending_attachment_failure(nodes: &[ResultNode], request_id: &str) -> Option<ExecutionFailure> {
+    nodes.iter().find_map(|node| match node {
+        ResultNode::PendingNamespace { location, .. } => Some(super::failure_at(
+            "XTDE0420",
+            FailureCategory::Invalid,
+            Some(request_id),
+            location.clone(),
+            "a result namespace escaped its containing element construction",
+        )),
+        ResultNode::PendingAttribute(_) => Some(failure(
+            "XTDE0410",
+            FailureCategory::Invalid,
+            Some(request_id),
+            "a result attribute escaped its containing element construction",
+        )),
+        ResultNode::Element { children, .. } => pending_attachment_failure(children, request_id),
+        _ => None,
     })
 }
 
@@ -1498,7 +1507,8 @@ fn serialize_text_node(
         ResultNode::Text(value) | ResultNode::Xslt10DisableOutputEscapingText(value) => {
             write_character_mapped(value, character_map, normalization_form, output)
         }
-        ResultNode::PendingAttribute(_)
+        ResultNode::PendingNamespace { .. }
+        | ResultNode::PendingAttribute(_)
         | ResultNode::Xslt10RecoverableAttribute(_)
         | ResultNode::ProcessingInstruction { .. }
         | ResultNode::Comment(_) => Ok(()),
@@ -1575,6 +1585,14 @@ fn serialize_node<'a>(
         }
         ResultNode::Element { .. } => {
             serialize_element(node, namespace_scope, options, depth, output)?;
+        }
+        ResultNode::PendingNamespace { .. } => {
+            return Err(failure(
+                "XTDE0420",
+                FailureCategory::Invalid,
+                None,
+                "a result namespace escaped its containing element construction",
+            ));
         }
         ResultNode::PendingAttribute(_) => {
             return Err(failure(

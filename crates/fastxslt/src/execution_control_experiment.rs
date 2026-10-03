@@ -288,6 +288,11 @@ impl InvocationControl {
             .saturating_sub(self.remaining.limit(domain))
     }
 
+    #[cfg(test)]
+    pub(crate) fn permits_xdm_capacity_reservation(&self, additional_nodes: usize) -> bool {
+        additional_nodes <= self.remaining.xdm_nodes
+    }
+
     /// Records selection fanout without selecting a budget unit or adding a
     /// cancellation check to the measured path.
     pub(crate) fn observe_template_candidate(&mut self) {
@@ -546,6 +551,19 @@ impl InvocationControl {
             self.observations.key_index_cache_hits,
             self.observations.key_index_cache_bytes,
         )
+    }
+
+    // AR-0027 candidate: observe cancellation without consuming a charge or
+    // advancing charge-indexed test faults. Not a production control surface.
+    #[cfg(test)]
+    pub(crate) fn poll_capacity_cancellation(&self) -> Result<(), ControlFailure> {
+        if self.cancellation.is_cancelled() {
+            Err(ControlFailure::Cancelled {
+                domain: WorkDomain::XdmNode,
+            })
+        } else {
+            Ok(())
+        }
     }
 
     pub(crate) fn charge(

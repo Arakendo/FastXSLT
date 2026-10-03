@@ -96,7 +96,7 @@ fn path_name_value(
         .unwrap_or_default())
 }
 
-fn resolve_lexical_element_name(
+pub(super) fn resolve_lexical_element_name(
     lexical: &str,
     namespace_override: Option<&str>,
     static_namespaces: &[NamespaceBinding],

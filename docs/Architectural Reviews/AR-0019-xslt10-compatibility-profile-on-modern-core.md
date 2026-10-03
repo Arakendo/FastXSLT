@@ -549,6 +549,138 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-10-02: Ordinary-source XSLT 1.0 `contains()` conditions now accept
+  literal/variable operands and existing typed concatenations, sharing value
+  conversion and containment with scalar output. Three focused tests cover
+  Unicode, quoted commas, empty needles, first-node path conversion,
+  conditional composition, short-circuit suppression of missing variables,
+  explicit modern-profile rejection, exact/one-less operation budgets,
+  cancellation and compiled-state reuse. Compiled retention accounts for both
+  operand plans. The unchanged full replay remains 2,485 / 3,173 (78.32%),
+  with 2,684 initialized, 2,637 executed, 486 initialization failures,
+  47 execution failures, fourteen mismatches, four comparator gaps and
+  423 expected-error credits. `idkey31` now stops at `generate-id(/)` inside
+  concatenation (`FXXP1001`), not the enclosing conditional (`FXXP1002`). No
+  fixture/comparator changes or new exact credit. Reproduce with
+  `cargo test -p fastxslt --all-features composed_contains` and
+  `scripts/measure-oasis-xslt10.ps1 -TraceCase idkey31`.
+  All workspace gates pass with 1,505 core tests (35 manual probes ignored),
+  and the official WASM build check passes. Boolean compilation and retention
+  dispatch remain below their function-size gates by delegating typed string
+  compilation/accounting to private helpers, without suppressing lint checks.
+
+
+- 2026-10-02: Namespace-path counts can now cross the named-template argument
+  boundary as atomic integers through the shared charged qualified selector.
+  Both profiles, effective views, scalar parity, absent bindings, cancellation,
+  exact/one-less budgets and reuse have focused controls. `idkey31` gets past
+  argument compilation but remains unsupported at composed generated-ID/string
+  conditions. The unchanged full replay stays at 2,485 / 3,173 (78.32%);
+  no handcrafted controls or comparator gaps receive pass credit.
+
+- 2026-10-02: Shared conditional evaluation now carries qualified namespace
+  focus through recursive short-circuit composition. Bounded codepoint
+  `contains(., literal)` and focus-number conditions execute in admitted
+  namespace `if`/`choose` bodies without substituting owner text. Three focused
+  controls preserve both profiles/views, tree parity, Unicode/empty literals,
+  short-circuit charging, cancellation, exact/one-less budgets and reuse.
+  Unchanged `Lotus/position_position111#1` becomes exact, reaching 2,485 / 3,173
+  (78.32%), 2,684 initialized, 2,637 executed, 486 initialization failures,
+  47 execution failures, fourteen mismatches, four comparator gaps and unchanged
+  423 / 431 expected-error credits. The original namespace frontier is thirteen
+  exact and two archival mismatches. The 80% target requires 54 additional exact
+  cases. Mixed sorting, namespace variables, temporary namespace focus and
+  unproved conditional consumers remain explicit boundaries.
+
+- 2026-10-01: The user clarified 80% as the immediate goal: 2,539 unchanged
+  exact comparisons. Empty source-namespace `xsl:copy` now uses the ADR-0021
+  result-owned attachment contract and existing element-content loop. It does
+  not represent namespaces as attributes or mutate prepared XDM. Five new
+  controls cover both profiles, view/reference parity, lifetime, conflicts,
+  copy-site diagnostics, output-method independence, exact attachment charges,
+  cancellation/exhaustion and fresh reuse. Broader legacy recovery, mixed unions,
+  namespace variables, temporary focus and nonempty copy bodies stay outside
+  the slice. The private attachment owner and compiled-copy test child follow
+  ADR-0004; no new public or unsafe surface is introduced.
+
+  Unchanged `Lotus/copy_copy51#1` becomes exact, reaching 2,484 / 3,173 (78.29%).
+  Full replay records 2,683 initialized, 2,636 executed, 487 initialization
+  failures, 47 execution failures, fourteen mismatches, four comparator gaps,
+  and unchanged 423 / 431 expected-error credits. There are 55 additional exact
+  matches to earn for 80%; the namespace frontier is twelve exact, two mismatch,
+  one unsupported. Workspace gates pass with 1,491 core tests (35 manual probes
+  ignored) and the existing adapter, diagnostic, authority and inventory gates.
+  The official WASM target check passes.
+  Reproduce with `scripts/measure-oasis-xslt10.ps1 -TraceCase copy51`.
+
+- 2026-10-01: The requested next checkpoint is 82%: at least 2,602 / 3,173
+  unchanged exact XML comparisons. Legacy grouped owner-union value expressions
+  with a common ordinary suffix now use existing typed location paths and the
+  controlled union evaluator. Whole-union `last()` runs after normalization;
+  suffix predicates keep per-step focus. Empty branches fail with `XPST0003`
+  before composition. Modern grouping, namespace unions, general post-union
+  filters, and grouped match patterns are not admitted by this slice.
+
+  Unchanged `Lotus/axes_axes122#1` now compares exactly. Full replay reaches
+  2,483 / 3,173 (78.25%), with 2,682 initialized, 2,635 executed, 488
+  initialization failures, 47 execution failures, 14 mismatches, four comparator
+  gaps, and 423 / 431 expected-error credits. There are 119 matches left to the
+  82% target; the original namespace frontier remains eleven exact, two
+  mismatch, two unsupported. No fixture or comparison policy changed.
+
+  Two focused tests preserve suffix versus global focus, reverse branch order,
+  overlapping paths, empty-branch diagnostics/provenance, budget/cancellation
+  failure, and fresh execution against the same compiled/snapshot state.
+  Grouped expression recognition lives in a private static compiler child;
+  execution and retention reuse existing semantic owners rather than adding an
+  evaluator or node representation. The named path-union decomposition
+  checkpoint is now complete: nine unchanged regressions moved from the general
+  runtime test owner into the private 286-line
+  `runtime/golden_runtime_tests/path_unions.rs`. It owns identity/order, scalar
+  conversion, suffix/global focus, sorting/dispatch/copy composition, and control
+  cleanup through the existing compiled/snapshot boundary. Explicit imports
+  depend only on the parent test setup and runtime entry points; it owns no
+  production evaluation, resource policy, alternate backend, or public API.
+  The general test owner is now 17,208 lines and remains decomposition debt;
+  further extraction must follow named invariant families rather than line
+  buckets. This test-only move has no production memory or hot-path effect and
+  makes no build-speed claim.
+  All workspace gates pass, including 1,486 core tests (35 manual probes
+  ignored), adapter tests, strict Clippy, formatting, documentation, links,
+  unsafe-surface and inventory checks. The official WASM target check passes.
+  Reproduce with `scripts/verify.ps1` and
+  `scripts/measure-oasis-xslt10.ps1 -TraceCase axes122`.
+
+- 2026-10-01: Qualified namespace generated-ID equality/inequality comparisons
+  earn unchanged Microsoft
+  `XSLTFunctions_GenereateIdAppliedToNamespaceNodesOnDifferentElements#1` under
+  ADR-0021/AR-0026. Exact XML coverage reaches 2,482 / 3,173 (78.22%), leaving
+  57 matches to the 80% checkpoint. Expected-error credit remains 423 / 431;
+  broader generated-ID consumers, namespace copying, and mixed unions remain
+  unsupported.
+
+- 2026-10-01: AR-0026's bounded ordinary-attribute namespace-focus slice earns
+  unchanged `Lotus/node_node17#1` through the shared result builder. Full OASIS
+  replay reaches 2,481 / 3,173 exact XML comparisons (78.19%); 58 more are needed
+  for the 80% checkpoint. Expected-error credit remains 423 / 431. Broader AVTs,
+  namespace copying, mixed-node unions, and identity comparisons remain separate
+  unsupported integration work; no fixture or comparison policy changed.
+
+- 2026-10-01 -- Namespace-focus result construction and shared scalar sorting
+  earn five unchanged OASIS cases under ADR-0021/AR-0026. Exact coverage reaches
+  2,480 / 3,173 (78.16%), with 2,679 initialized and 2,632 executed. Existing
+  mismatches, comparator gaps, and expected-error credit are unchanged. This
+  leaves 59 exact matches to the requested 80% checkpoint; construction and
+  sorting do not imply namespace copying, variables, unions, or identity support.
+
+- 2026-10-01 -- AR-0026's bounded integer namespace predicates admit unchanged
+  `Lotus/namespace_namespace28#1` and `Lotus/position_position76#1` through
+  the shared qualified path and scalar consumers. Full replay reaches 2,475 /
+  3,173 exact (78.00%), with 2,674 initialized and 2,627 executed. Fourteen
+  mismatches, four comparator gaps, and 423 / 431 expected-error credits stay
+  unchanged. Positions are evaluated per owner after the name test; no fixture,
+  lexical namespace-order convention, or production DTD policy changed.
+
 - 2026-09-28 -- The five residual successfully executed XML mismatches now
   have individual, uncredited dispositions. `Number__84692` has an explicitly
   incomplete archival result; the two minimum-value references demand
@@ -4294,3 +4426,28 @@ maintained redistributable legacy suite becomes available.
   compiled matrix passes under both XSLT 1.0 and 3.0. The sweep reaches 2,471 /
   3,173 (77.88%), 2,668 initialized, and 2,621 successful executions.
   [Evidence](../Evidence/oasis-xslt10-wildcard-subtraction-2026-10-01.md)
+- 2026-10-01: the requested 80% target requires 2,539 exact matches, 68 beyond
+  the current 2,471. The complete replay retains 117 standard-operation
+  initialization failures and nine standard-operation execution failures;
+  twelve mismatches and four comparator gaps remain uncredited. Ranked reports
+  now expose the complete frontier total independently of their top-30 display
+  limit. Fifteen standard cases first fail on namespace-node selection or
+  identity; genuine XDM namespace-node ownership is a review seam, not permission
+  to disguise bindings as attributes. Cross-document identity and the concluded
+  AR-0025 entity expansion remain separate boundaries. A temporary experiment
+  accepting an empty negative formatting subpicture earned no exact passes and
+  caused two catalog expected errors to succeed; the semantic change was
+  removed, not reclassified into a gain. Later
+  [Java DecimalFormat behavior](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/text/DecimalFormat.html)
+  and its implementation are not evidence that
+  [XSLT 1.0's historical formatting contract](https://www.w3.org/TR/1999/REC-xslt-19991116#format-number)
+  should silently change. A regression preserves the current picture rejection
+  pending an explicit legacy-profile review. Final accounting remains 2,471 /
+  3,173 (77.88%) and 423 / 431 expected-error credits. No engine semantic,
+  authority, public API, fixture, or comparator change is retained.
+  Cohesion review retains the approximately 1,566-line formatting owner (one
+  formatting responsibility) and approximately 3,220-line local corpus harness
+  (existing runner/classification/comparison responsibility): this checkpoint
+  adds only a focused validation regression and report totals. The dense XPath
+  and runtime directories remain at 49 and 54 direct files respectively; no
+  new file or responsibility warrants an incidental directory rearrangement.

@@ -73,6 +73,8 @@ use crate::xslt::golden_semantics_experiment::{
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
 mod computed_attribute_compiler;
+#[path = "instruction_compiler/namespace_focus_compiler.rs"]
+mod namespace_focus_compiler;
 use computed_attribute_compiler::{
     compile_computed_attribute, compile_computed_attributes, parse_xslt10_name_avt_parts,
 };
@@ -1808,6 +1810,9 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
         "xsl:for-each",
     )?;
     let location = document.location(element).clone();
+    if crate::xpath::path_experiment::qualified_nodes::recognizes_namespace_axis(select) {
+        return namespace_focus_compiler::compile(document, element, select, sorts, &sort_nodes);
+    }
     Ok(Instruction::ForEachNodes {
         select: template_invocation_compiler::parse_apply_selection(
             document,

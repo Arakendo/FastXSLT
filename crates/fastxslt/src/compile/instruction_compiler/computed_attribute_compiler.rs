@@ -194,6 +194,13 @@ fn compile_computed_attribute_name(
             None,
         ));
     }
+    if lexical
+        .strip_prefix('{')
+        .and_then(|value| value.strip_suffix('}'))
+        .is_some_and(|value| matches!(value.trim(), "name()" | "name(.)"))
+    {
+        return Ok(context_name_attribute(document, element, namespace));
+    }
     if !uses_xslt10_compatibility(document, element) {
         return Err(unsupported(
             "FXST1062",
@@ -222,12 +229,7 @@ fn compile_computed_attribute_name(
                     document.location(element),
                 )
             })?;
-        if matches!(expression, "name()" | "name(.)") {
-            DynamicAttributeName::ContextName {
-                namespace_override,
-                static_namespaces: static_namespaces(),
-            }
-        } else if let Some(value) = xpath_string_literal(expression) {
+        if let Some(value) = xpath_string_literal(expression) {
             DynamicAttributeName::Literal {
                 value: value.to_owned(),
                 namespace_override,
@@ -269,6 +271,23 @@ fn compile_computed_attribute_name(
         },
         Some(dynamic_name),
     ))
+}
+
+fn context_name_attribute(
+    document: &Document,
+    element: NodeId,
+    namespace_override: Option<DynamicNamespaceValue>,
+) -> (ExpandedName, Option<DynamicAttributeName>) {
+    (
+        ExpandedName {
+            namespace: None,
+            local: String::new(),
+        },
+        Some(DynamicAttributeName::ContextName {
+            namespace_override,
+            static_namespaces: document.in_scope_namespaces(element).into(),
+        }),
+    )
 }
 
 fn compile_dynamic_attribute_namespace(

@@ -235,6 +235,22 @@ pub(super) fn xslt10_concat_value(
     xslt10_compatibility::concat_value(inputs, context, expression, variables, control)
 }
 
+pub(super) fn xslt10_concat_contains(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    haystack: &Xslt10ConcatExpression,
+    needle: &Xslt10ConcatExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let haystack = xslt10_concat_value(inputs, context, haystack, variables, control)?;
+    let needle = xslt10_concat_value(inputs, context, needle, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(haystack.contains(&needle))
+}
+
 pub(super) fn evaluate_as_temporary_text(
     inputs: &SequenceInputs<'_>,
     expression: &ValueExpression,
@@ -347,6 +363,61 @@ pub(super) fn execute_value_of(
         ValueExpression::LiteralString(value) => {
             append_text(result, value, inputs.request_id, control)?;
         }
+        ValueExpression::NamespacePathScalar { .. } => {
+            super::namespace_focus::execute_scalar(
+                inputs, select, execution, variables, result, control,
+            )?;
+        }
+        ValueExpression::QualifiedGeneratedIdentityComparison {
+            left,
+            right,
+            equal,
+            first_node,
+        } => {
+            let identity_equal = super::namespace_focus::generated_identity_equal(
+                inputs,
+                left,
+                right,
+                *first_node,
+                execution,
+                control,
+            )?;
+            append_boolean(inputs, identity_equal == *equal, result, control)?;
+        }
+        ValueExpression::LocationPath(path)
+        | ValueExpression::Xslt10FirstNodeLocationPath(path)
+        | ValueExpression::StringPath(path)
+        | ValueExpression::Xslt10FirstNodeStringPath(path)
+            if execution.namespace_focus.is_some() && path.is_bare_parent() =>
+        {
+            let parent = super::namespace_focus::parent_context(inputs, path, execution, control)?;
+            append_source_string_value(
+                inputs,
+                parent.node.expect("qualified parent is a tree node"),
+                result,
+                control,
+            )?;
+        }
+        ValueExpression::NodeNamePath(path) | ValueExpression::Xslt10FirstNodeNamePath(path)
+            if execution.namespace_focus.is_some() && path.is_bare_parent() =>
+        {
+            let parent = super::namespace_focus::parent_context(inputs, path, execution, control)?;
+            append_context_node_name(inputs, parent, result, control)?;
+        }
+        ValueExpression::NodeLocalNamePath(path)
+        | ValueExpression::Xslt10FirstNodeLocalNamePath(path)
+            if execution.namespace_focus.is_some() && path.is_bare_parent() =>
+        {
+            let parent = super::namespace_focus::parent_context(inputs, path, execution, control)?;
+            append_context_node_local_name(inputs, parent, result, control)?;
+        }
+        ValueExpression::NodeNamespaceUriPath(path)
+        | ValueExpression::Xslt10FirstNodeNamespaceUriPath(path)
+            if execution.namespace_focus.is_some() && path.is_bare_parent() =>
+        {
+            let parent = super::namespace_focus::parent_context(inputs, path, execution, control)?;
+            append_context_node_namespace_uri(inputs, parent, result, control)?;
+        }
         ValueExpression::Xslt10IdLookup(lookup) => {
             let (source, context) = required_source_context(inputs, context)?;
             let variable_value = xslt10_id_variable_value(inputs, lookup, variables, control)?;
@@ -385,6 +456,25 @@ pub(super) fn execute_value_of(
                 super::key_lookup::select(inputs, lookup, context, variables, control)?.len();
             append_text(result, &count.to_string(), inputs.request_id, control)?;
         }
+        ValueExpression::LocationPath(path)
+        | ValueExpression::Xslt10FirstNodeLocationPath(path)
+        | ValueExpression::StringPath(path)
+        | ValueExpression::Xslt10FirstNodeStringPath(path)
+            if execution.namespace_focus.is_some() && path.is_bare_context_item() =>
+        {
+            control
+                .charge(WorkDomain::XdmStringValueNode, 1)
+                .map_err(|error| control_failure(error, inputs.request_id))?;
+            append_text(
+                result,
+                execution
+                    .namespace_focus
+                    .expect("guarded namespace focus")
+                    .string_value(),
+                inputs.request_id,
+                control,
+            )?;
+        }
         ValueExpression::LocationPath(path) => {
             append_location_path_string(inputs, path, separator, context, result, control)?;
         }
@@ -396,6 +486,17 @@ pub(super) fn execute_value_of(
                 inputs,
                 alternatives,
                 context,
+                false,
+                result,
+                control,
+            )?;
+        }
+        ValueExpression::Xslt10LastNodePathUnion(alternatives) => {
+            append_xslt10_first_node_path_union_string(
+                inputs,
+                alternatives,
+                context,
+                true,
                 result,
                 control,
             )?;
@@ -506,7 +607,7 @@ pub(super) fn execute_value_of(
             append_boolean(inputs, equal, result, control)?;
         }
         ValueExpression::ContextNodeName => {
-            append_context_node_name(inputs, context, result, control)?;
+            append_context_node_name(inputs, execution, result, control)?;
         }
         ValueExpression::NodeNamePath(path) => {
             append_node_name_path(inputs, context, path, true, result, control)?;
@@ -524,7 +625,7 @@ pub(super) fn execute_value_of(
             )?;
         }
         ValueExpression::ContextNodeLocalName => {
-            append_context_node_local_name(inputs, context, result, control)?;
+            append_context_node_local_name(inputs, execution, result, control)?;
         }
         ValueExpression::NodeLocalNamePath(path) => {
             append_node_expanded_name_component(
@@ -537,7 +638,7 @@ pub(super) fn execute_value_of(
             )?;
         }
         ValueExpression::ContextNodeNamespaceUri => {
-            append_context_node_namespace_uri(inputs, context, result, control)?;
+            append_context_node_namespace_uri(inputs, execution, result, control)?;
         }
         ValueExpression::NodeNamespaceUriPath(path) => {
             append_node_expanded_name_component(
@@ -915,12 +1016,9 @@ pub(super) fn execute_value_of(
             append_boolean(inputs, haystack.contains(&needle), result, control)?;
         }
         ValueExpression::Xslt10ConcatContains { haystack, needle } => {
-            let haystack = xslt10_concat_value(inputs, context, haystack, variables, control)?;
-            let needle = xslt10_concat_value(inputs, context, needle, variables, control)?;
-            control
-                .charge(WorkDomain::XPathOperation, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            append_boolean(inputs, haystack.contains(&needle), result, control)?;
+            let matches =
+                xslt10_concat_contains(inputs, context, haystack, needle, variables, control)?;
+            append_boolean(inputs, matches, result, control)?;
         }
         ValueExpression::Xslt10SourcePathStringComparison { left, right, equal } => {
             let matches = runtime_context::evaluate_source_path_string_comparison(
@@ -1868,6 +1966,7 @@ fn append_xslt10_first_node_path_union_string(
     inputs: &SequenceInputs<'_>,
     alternatives: &[crate::xpath::path_experiment::LocationPath],
     context: Option<NodeId>,
+    take_last: bool,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
@@ -1879,7 +1978,11 @@ fn append_xslt10_first_node_path_union_string(
         control,
     )
     .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    if let Some(node) = selected.first() {
+    if let Some(node) = if take_last {
+        selected.last()
+    } else {
+        selected.first()
+    } {
         append_source_string_value(inputs, *node, result, control)?;
     }
     Ok(())
@@ -2092,11 +2195,17 @@ fn append_upper_case_context_string(
 
 fn append_context_node_name(
     inputs: &SequenceInputs<'_>,
-    context: Option<NodeId>,
+    execution: SequenceContext<'_>,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let (source, context) = required_source_context(inputs, context)?;
+    if let Some(namespace) = execution.namespace_focus {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|error| control_failure(error, inputs.request_id))?;
+        return append_text(result, namespace.prefix(), inputs.request_id, control);
+    }
+    let (source, context) = required_source_context(inputs, execution.node)?;
     control
         .charge(WorkDomain::XPathNodeVisit, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -2214,11 +2323,14 @@ fn append_source_lexical_name(
 
 fn append_context_node_local_name(
     inputs: &SequenceInputs<'_>,
-    context: Option<NodeId>,
+    execution: SequenceContext<'_>,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let (source, context) = required_source_context(inputs, context)?;
+    if execution.namespace_focus.is_some() {
+        return append_context_node_name(inputs, execution, result, control);
+    }
+    let (source, context) = required_source_context(inputs, execution.node)?;
     control
         .charge(WorkDomain::XPathNodeVisit, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -2230,11 +2342,17 @@ fn append_context_node_local_name(
 
 fn append_context_node_namespace_uri(
     inputs: &SequenceInputs<'_>,
-    context: Option<NodeId>,
+    execution: SequenceContext<'_>,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let (source, context) = required_source_context(inputs, context)?;
+    if execution.namespace_focus.is_some() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|error| control_failure(error, inputs.request_id))?;
+        return Ok(());
+    }
+    let (source, context) = required_source_context(inputs, execution.node)?;
     control
         .charge(WorkDomain::XPathNodeVisit, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;

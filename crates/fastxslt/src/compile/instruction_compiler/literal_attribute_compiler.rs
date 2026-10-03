@@ -61,7 +61,10 @@ pub(super) fn parse_literal_attribute_value_with_context(
         && static_context
             .is_some_and(|(document, element)| uses_xslt10_compatibility(document, element))
     {
-        return Ok(LiteralAttributeValue::Xslt10ContextNamespaceCount);
+        return Ok(LiteralAttributeValue::Xslt10ContextNamespaceCount(
+            crate::xpath::path_experiment::qualified_nodes::parse("namespace::*", location.clone())
+                .map_err(super::map_path_failure)?,
+        ));
     }
     if lexical == "{.}" {
         return Ok(LiteralAttributeValue::ContextStringValue);

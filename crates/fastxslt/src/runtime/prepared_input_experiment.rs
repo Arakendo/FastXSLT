@@ -122,6 +122,8 @@ impl PreparedInputBuilder {
             control,
             self.internal_subset_limits,
             self.external_subset.as_ref(),
+            #[cfg(test)]
+            None,
         )?;
         self.documents.insert(identity.to_owned(), document);
         self.parsed_phase_capacity_bytes
@@ -152,7 +154,42 @@ pub(super) fn prepare_document(
     identity: &str,
     control: &mut InvocationControl,
 ) -> Result<(Arc<Document>, usize), PreparationFailure> {
-    prepare_document_with_policy(snapshot, parse_limits, identity, control, None, None)
+    prepare_document_with_policy(
+        snapshot,
+        parse_limits,
+        identity,
+        control,
+        None,
+        None,
+        #[cfg(test)]
+        None,
+    )
+}
+
+#[cfg(test)]
+#[derive(Debug, Default)]
+struct PreparationPhaseObservation {
+    xml_parse: std::time::Duration,
+    xdm_build: std::time::Duration,
+}
+
+#[cfg(test)]
+fn prepare_document_observed(
+    snapshot: &ResourceSnapshot,
+    parse_limits: ParseLimits,
+    identity: &str,
+    control: &mut InvocationControl,
+    observation: &mut PreparationPhaseObservation,
+) -> Result<(Arc<Document>, usize), PreparationFailure> {
+    prepare_document_with_policy(
+        snapshot,
+        parse_limits,
+        identity,
+        control,
+        None,
+        None,
+        Some(observation),
+    )
 }
 
 fn prepare_document_with_policy(
@@ -162,12 +199,15 @@ fn prepare_document_with_policy(
     control: &mut InvocationControl,
     internal_subset_limits: Option<InternalSubsetLimits>,
     external_subset: Option<&ExternalSubsetPolicy>,
+    #[cfg(test)] mut observation: Option<&mut PreparationPhaseObservation>,
 ) -> Result<(Arc<Document>, usize), PreparationFailure> {
     let bytes = snapshot
         .get(identity)
         .ok_or_else(|| PreparationFailure::MissingResource {
             identity: identity.to_owned(),
         })?;
+    #[cfg(test)]
+    let parse_start = observation.as_ref().map(|_| std::time::Instant::now());
     let parsed = match (internal_subset_limits, external_subset) {
         (Some(dtd_limits), Some(external_policy)) => {
             let mut resolver =
@@ -215,7 +255,13 @@ fn prepare_document_with_policy(
             detail: format!("{failure:?}"),
         },
     })?;
+    #[cfg(test)]
+    if let (Some(observation), Some(start)) = (observation.as_mut(), parse_start) {
+        observation.xml_parse = start.elapsed();
+    }
     let parsed_phase_capacity_bytes = parsed.owned_capacity_bytes();
+    #[cfg(test)]
+    let build_start = observation.as_ref().map(|_| std::time::Instant::now());
     let document =
         Document::from_parsed_controlled(parsed, control).map_err(|failure| match failure {
             BuildFailure::Control(failure) => PreparationFailure::Control(failure),
@@ -224,7 +270,12 @@ fn prepare_document_with_policy(
                 detail: format!("{failure:?}"),
             },
         })?;
-    Ok((Arc::new(document), parsed_phase_capacity_bytes))
+    let document = Arc::new(document);
+    #[cfg(test)]
+    if let (Some(observation), Some(start)) = (observation.as_mut(), build_start) {
+        observation.xdm_build = start.elapsed();
+    }
+    Ok((document, parsed_phase_capacity_bytes))
 }
 
 #[derive(Clone, Debug)]
@@ -323,6 +374,22 @@ impl PreparedInputSet {
 #[cfg(test)]
 #[path = "prepared_input_representative_lifecycle_tests.rs"]
 mod representative_lifecycle_tests;
+
+#[cfg(test)]
+#[path = "prepared_input_experiment/direct_lifecycle_tests.rs"]
+mod direct_lifecycle_tests;
+
+#[cfg(test)]
+#[path = "prepared_input_experiment/preparation_phase_tests.rs"]
+mod preparation_phase_tests;
+
+#[cfg(test)]
+#[path = "prepared_input_experiment/document_anatomy_tests.rs"]
+mod document_anatomy_tests;
+
+#[cfg(test)]
+#[path = "prepared_input_experiment/capacity_semantic_parity_tests.rs"]
+mod capacity_semantic_parity_tests;
 
 #[cfg(test)]
 mod tests {

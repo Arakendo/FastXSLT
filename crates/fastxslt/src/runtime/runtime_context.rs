@@ -1,5 +1,9 @@
 //! Invocation-local globals, variable frames, and temporary-tree preparation.
 
+#[cfg(test)]
+#[path = "golden_runtime_experiment/namespace_nodes_reference_tests.rs"]
+mod namespace_nodes_reference_tests;
+
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashSet},
@@ -182,7 +186,9 @@ fn evaluate_template_argument(
         TemplateArgumentValue::ContextPosition
         | TemplateArgumentValue::ContextSize
         | TemplateArgumentValue::ContextNodeName
-        | TemplateArgumentValue::ContextNodeStringLength(_) => unreachable!(),
+        | TemplateArgumentValue::ContextNodeStringLength(_)
+        | TemplateArgumentValue::NamespaceCount(_)
+        | TemplateArgumentValue::Xslt10CountPathUnion(_) => unreachable!(),
         TemplateArgumentValue::CurrentSourceNode => {
             let (_, context) = required_source_context(inputs, context)?;
             InvocationParameterValue::SourceNodes(vec![context])
@@ -208,13 +214,6 @@ fn evaluate_template_argument(
         }
         TemplateArgumentValue::SourcePath(path) => {
             evaluate_source_path_argument(inputs, context, path, control)?
-        }
-        TemplateArgumentValue::Xslt10CountPathUnion(alternatives) => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let nodes =
-                evaluate_location_path_union_controlled(source, context, alternatives, control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            integer_parameter(nodes.len())
         }
         TemplateArgumentValue::Xslt10SumPath(path) => {
             let value = evaluate_xslt10_sum_path(inputs, context, path, control)?;
@@ -266,6 +265,16 @@ fn evaluate_context_argument(
     control: &mut InvocationControl,
 ) -> Result<Option<InvocationParameterValue>, ExecutionFailure> {
     let value = match &argument.value {
+        TemplateArgumentValue::Xslt10CountPathUnion(alternatives) => {
+            let (source, context) = required_source_context(inputs, execution.node)?;
+            let nodes =
+                evaluate_location_path_union_controlled(source, context, alternatives, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            integer_parameter(nodes.len())
+        }
+        TemplateArgumentValue::NamespaceCount(path) => integer_parameter(
+            super::namespace_focus::count(inputs, path, execution, control)?,
+        ),
         TemplateArgumentValue::ContextPosition => integer_parameter(execution.focus_position),
         TemplateArgumentValue::ContextSize => integer_parameter(execution.focus_size),
         TemplateArgumentValue::ContextNodeName => {
@@ -1833,6 +1842,15 @@ fn materialize_result_node(
                 target: target.clone(),
                 value: value.clone(),
             }
+        }
+        ResultNode::PendingNamespace { location, .. } => {
+            return Err(super::failure_at(
+                "XTDE0420",
+                FailureCategory::Invalid,
+                Some(request_id),
+                location.clone(),
+                "a namespace cannot be a top-level temporary-tree node",
+            ));
         }
         ResultNode::PendingAttribute(_) => {
             return Err(failure(

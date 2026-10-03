@@ -279,6 +279,20 @@ fn compile_selected_argument_value(
     if let Some(value) = compile_immediate_argument_value(document, element, select) {
         return Ok(value);
     }
+    if select.trim().starts_with("count(")
+        && crate::xpath::path_experiment::qualified_nodes::recognizes_namespace_axis(select)
+        && let super::ValueExpression::NamespacePathScalar {
+            path,
+            kind: crate::xslt::golden_semantics_experiment::NamespaceScalarKind::Count,
+            ..
+        } = super::namespace_focus_compiler::compile_scalar(
+            select,
+            document.location(element),
+            uses_xslt10_compatibility(document, element),
+        )?
+    {
+        return Ok(TemplateArgumentValue::NamespaceCount(path));
+    }
     if let Some(value) = compile_xslt10_argument_path_union_count(document, element, select)? {
         return Ok(value);
     }

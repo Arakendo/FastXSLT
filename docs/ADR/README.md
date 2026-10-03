@@ -92,3 +92,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; continuously build the shared safe engine for the presealed
   `wasm32-unknown-unknown` target while keeping the feasibility binding,
   packaging, and target-specific operational guarantees private and unstable.
+- [ADR-0021: Derived Qualified Namespace Node Occurrences](ADR-0021-derived-qualified-namespace-node-occurrences.md)
+  -- Accepted; derive bounded owner-qualified namespace values through shared
+  semantic consumers without eager prepared-arena expansion or implying
+  completed executable namespace support.

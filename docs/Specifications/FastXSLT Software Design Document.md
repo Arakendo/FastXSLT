@@ -227,7 +227,137 @@ result namespace fixup or serialization must preserve a selected qualified
 name; two prefixes bound to one namespace therefore compare as one expanded
 name without becoming indistinguishable serialization choices.
 
-The physical representation is not yet decided. In particular:
+ADR-0021 selects bounded derived, element-relative namespace occurrences carried
+by private qualified semantic-node values rather than eagerly materialized
+prepared arena nodes. Source identity retains prepared origin across whitespace
+views; temporary identity must remain invocation/tree/element/prefix qualified.
+Existing tree IDs remain local, and feature admission still requires executable
+parity, accounting, and corpus evidence. This is not a public node API or general
+namespace-axis support claim. The first runtime integration uses derived source
+occurrences through a compiled qualified XPath plan for the already-admitted
+namespace-count AVT. The private plan delegates owner selection to the existing
+tree evaluator and returns bounded terminal namespace occurrences. A bounded
+`xsl:for-each` now carries actual source namespace focus through the existing
+sequence executor for text and scalar `name()`, `local-name()`,
+`namespace-uri()`, bare current-item/string value, `position()`, and `last()`.
+The namespace node's prefix supplies its name, its binding URI supplies string
+value, and its node-name namespace URI is empty. Variable bodies, nested
+iteration, broader navigation, temporary namespace focus, frames,
+and broader copying remain explicitly unsupported in this slice; the qualified carrier
+does not imply those consumers have migrated.
+
+The admitted body may nest literal result elements and
+computed elements whose name is the namespace current-item name, with an absent
+or static namespace override. These use the existing QName resolver and result
+builder, retain namespace focus in their bodies, and produce result-owned names
+and text. Empty prefix names fail with the existing construction diagnostic;
+they do not become fabricated element names. Bounded ordinary computed attributes
+admit static or current-item names (`{name()}` / `{name(.)}`), absent or static
+namespace overrides, and text, name/local-name, string-value, position/size, or scalar text/value
+constructor bodies. The shared QName resolver and attribute builder preserve
+ordinary attribute semantics: an unprefixed name does not acquire the namespace
+node's binding URI. Copied prefixes and URI values are byte-charged before
+allocation; late attachment and invalid names retain shared diagnostics.
+Literal result attributes admit static values and the narrow current-item
+name/local-name, string-value, position, and size AVTs through that same builder.
+Default namespace occurrences yield empty name values, not owning-element names;
+shadowed bindings supply the effective occurrence's URI. Returned attributes
+remain result-owned after source and compiled owners are released.
+Attribute sets, broader attribute AVTs, dynamic namespace overrides, and other
+constructors remain unsupported in namespace focus.
+
+An empty `xsl:copy` in source namespace focus produces a distinct private
+result-owned namespace attachment item, not an attribute or child node.
+The existing element-content loop attaches it before nonempty child content,
+collapses identical prefix/URI bindings, and rejects conflicts (`XTDE0430`),
+late attachment (`XTDE0410`), a default binding on an unnamespaced element
+(`XTDE0440`), or an unattached top-level item (`XTDE0420`). Failures retain the
+copy construction site. This bounded slice reports those errors under both
+profiles; it does not select broader legacy recovery. Mandatory `xml` stays
+implicit. Copying charges one result item and prefix/URI bytes before ownership;
+attachment charges timing/conflict scans and any existing binding payload copied
+when rebuilding the immutable namespace slice. Ordinary content uses the same
+loop without an extra scan, and serializers do not silently discard escaped
+attachments even for text output. Temporary namespace focus, `xsl:copy-of`,
+namespace variables, nonempty copy bodies, and general
+namespace constructors remain outside this slice.
+
+Source `xsl:for-each` may select a bounded union of existing tree paths and
+terminal namespace paths from one effective document. Qualified identity removes
+duplicates before assigning focus position/size. Private same-origin order is
+element, its namespaces in lexical-prefix order (empty prefix first), its
+attributes in existing order, then descendants. Cross-document ranking is not
+selected. Selection capacity includes duplicate intermediate products; each
+retained product, normalization work, and deduplication scan is charged. Both
+whitespace representations preserve qualified identity. Mixed sorting remains
+explicitly unsupported; this carrier does not imply universal node support.
+
+Conditional `if`/`choose` bodies admit codepoint `contains(., literal)`, existing
+focus-number comparisons, constants, and short-circuit `and`/`or`/`not` when
+their bodies are also admitted. The shared boolean evaluator carries actual
+namespace focus recursively; it never substitutes owning-element text. Namespace
+values are borrowed, while ordinary tree values use the existing controlled
+string-value construction. Contains charges one XPath operation, namespace
+string-value access where applicable, and abstract scan work equal to the UTF-8
+lengths of the value and literal before searching. Unicode and empty literals
+retain codepoint behavior. Other namespace boolean consumers and temporary or
+atomic `contains(.)` focus remain explicitly unsupported.
+
+Template arguments may pass `count(terminal-namespace-path)` from an ordinary
+source focus as an atomic integer under both profiles. Argument evaluation and
+scalar output reuse the same qualified selector and count charge points. Only
+the integer enters the callee frame; borrowed namespace occurrences do not.
+Named-template invocation from namespace focus and namespace-valued arguments
+remain unsupported. Compiled retention accounts for the owned selection plan.
+
+From ordinary source focus, XSLT 1.0 conditional `contains()` may combine
+literal strings, unqualified variables, and the existing typed `concat()`
+operands. Conditional evaluation reuses the scalar concatenation/conversion
+and containment helper; it does not serialize a boolean result and parse it
+back. Existing operation charges and short-circuit behavior are preserved,
+and compiled retention includes both operand plans. This compatibility slice
+does not admit modern general string conversion, nested concatenations,
+generated-ID concatenation parts, or new namespace-focus consumers.
+
+Inline `generate-id(path)` equality
+or inequality involving terminal namespace paths uses qualified node identity
+directly, not generated strings or fabricated arena IDs. Source origin, owning
+element, and prefix determine equality; equal binding URIs do not. Empty
+selections compare as empty generated-ID strings. Legacy mode uses the first
+selected node; modern mode requires zero or one. Each operand and comparison
+is charged, and broader generated-ID consumers remain unsupported.
+
+Namespace selections also admit scalar sort keys for name/local-name, string
+value, original position/size, and literals. Existing sort controls, numeric
+conversion, multi-key comparison, and stable ordering apply; body focus is
+renumbered after sorting. Controls and key collections are charged before
+retention, each key has a charged scalar visit, and comparison uses the existing
+conservative work charge. Arbitrary paths and variable sort keys remain closed.
+
+Scalar bodies also admit the bare parent step `..` or `parent::node()`, including
+`string`, `name`, `local-name`, and `namespace-uri` queries. The charged qualified
+handoff returns the actual owning element in the same effective source view;
+existing element scalar consumers evaluate its names and string value without
+changing the enclosing namespace focus or its position/size. Longer paths,
+parent predicates, nested execution, and temporary namespace navigation remain
+unsupported.
+
+The terminal namespace plan also admits one scalar-to-literal `=` or `!=`
+predicate using name/local-name, string value, or node-name namespace URI.
+Predicate evaluation is charged and propagates cancellation/exhaustion rather
+than treating control failure as a false match. Selected namespace paths may
+feed `count()`, `name()`, `local-name()`, and `namespace-uri()` value-of queries;
+XSLT 1.0 uses the first selected node, while modern node-name functions require
+zero or one. One nonnegative integer predicate is also admitted: its one-based
+position is counted after the namespace name test, separately for each owner.
+Zero and positions beyond the selected bindings produce no match. Evaluation
+charges one XPath operation per tested candidate; retained selection still uses
+the existing bounded, charged path. General position expressions, repeated,
+compound, and variable predicates remain unsupported. This does not admit
+namespace values into variable frames or
+extend temporary focus, broader navigation, or copying.
+
+Other physical representation choices remain private and undecided. In particular:
 
 ```text
 node identity  != Rust object identity
@@ -631,6 +761,13 @@ order, and applies first-node string conversion only after normalization.
 Qualified alternatives use the instruction's static namespace context. This
 does not admit function or variable union alternatives, namespace nodes,
 general sequence expressions, or a public node-set representation.
+The legacy value-of slice also admits a parenthesized owner union with an
+ordinary `/` suffix. Compilation distributes the suffix into typed path
+alternatives. A final whole-union `[last()]` selects after shared identity/order
+normalization, unlike a suffix-axis `[last()]`, which keeps its per-step focus.
+Empty union alternatives are invalid before suffix composition. Namespace
+unions, descendant grouping boundaries, arbitrary post-union filters, and
+grouped template match patterns are outside this slice.
 An XSLT 1.0 apply selection may also compose a parenthesized union of at most
 eight admitted location paths with one common ordinary `/` suffix. Compilation
 distributes the suffix into typed alternatives; execution uses the controlled

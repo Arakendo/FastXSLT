@@ -571,6 +571,7 @@ pub(crate) enum ApplySelection {
         end: i64,
     },
     LocationPath(LocationPath),
+    QualifiedPath(crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath),
     LiteralDocumentRoot(DocumentRootReference),
     LiteralDocumentChildren {
         reference: DocumentRootReference,
@@ -1330,8 +1331,27 @@ pub(crate) enum FocusComparison {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum NamespaceScalarKind {
+    Name,
+    LocalName,
+    NamespaceUri,
+    Count,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
     LiteralString(String),
+    NamespacePathScalar {
+        path: crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath,
+        kind: NamespaceScalarKind,
+        first_node: bool,
+    },
+    QualifiedGeneratedIdentityComparison {
+        left: crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath,
+        right: crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath,
+        equal: bool,
+        first_node: bool,
+    },
     Xslt10IdLookup(Box<Xslt10IdLookup>),
     Xslt10CountIdLookup(Box<Xslt10IdLookup>),
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
@@ -1339,6 +1359,7 @@ pub(crate) enum ValueExpression {
     LocationPath(LocationPath),
     Xslt10FirstNodeLocationPath(LocationPath),
     Xslt10FirstNodePathUnion(Vec<LocationPath>),
+    Xslt10LastNodePathUnion(Vec<LocationPath>),
     Xslt10CurrentPredicatePath(LocationPath),
     Xslt10FirstDescendantSameNameAttribute {
         attribute: String,
@@ -1867,6 +1888,14 @@ pub(crate) enum BooleanExpression {
         comparison: StringComparison,
     },
     ContextStringEquals(String),
+    ContextStringContains {
+        value: String,
+        location: SourceLocation,
+    },
+    Xslt10ConcatContains {
+        haystack: Box<Xslt10ConcatExpression>,
+        needle: Box<Xslt10ConcatExpression>,
+    },
     Xslt10ContextNumberIsNaN,
     ContextStringLengthEquals(usize),
     ContextPositionNotEqualSize(SourceLocation),
@@ -1990,6 +2019,7 @@ pub(crate) enum TemplateArgumentValue {
     },
     BinaryNumeric(Box<BinaryNumericExpression>),
     SourcePath(LocationPath),
+    NamespaceCount(crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath),
     Xslt10CountPathUnion(Vec<LocationPath>),
     Xslt10SumPath(LocationPath),
     Xslt10Content(Box<Xslt10ContentArgument>),
@@ -2129,7 +2159,9 @@ pub(crate) enum LiteralAttributeValue {
     ContextSize,
     ContextLocalName,
     ContextLexicalName,
-    Xslt10ContextNamespaceCount,
+    Xslt10ContextNamespaceCount(
+        crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath,
+    ),
     ContextStringValue,
     ContextIntegerIncrement(i64),
 }

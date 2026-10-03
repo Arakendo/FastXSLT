@@ -2,6 +2,9 @@
 
 use std::sync::Arc;
 
+#[path = "grouped_path_union_compiler.rs"]
+mod grouped_path_union_compiler;
+
 use super::super::normalize_variable_qname;
 use super::{
     BooleanParseFailure, CaseConversionParseFailure, CompileCategory, CompileFailure,
@@ -110,6 +113,13 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     }
     if let Some(literal) = xpath_string_literal(expression.trim()) {
         return Ok(ValueExpression::LiteralString(literal.to_owned()));
+    }
+    if crate::xpath::path_experiment::qualified_nodes::recognizes_namespace_axis(expression) {
+        return super::namespace_focus_compiler::compile_scalar(
+            expression,
+            location,
+            static_context.compatibility == ValueCompatibilityMode::Xslt10,
+        );
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(value) =
@@ -512,6 +522,12 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             ValueCompatibilityMode::Modern => ValueExpression::StringPath(path),
             ValueCompatibilityMode::Xslt10 => ValueExpression::Xslt10FirstNodeStringPath(path),
         });
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(value) =
+            grouped_path_union_compiler::compile(document, element, expression, location)?
+    {
+        return Ok(value);
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(alternatives) =

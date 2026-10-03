@@ -89,6 +89,7 @@ impl Document {
         }
 
         Ok(Self {
+            origin: self.origin.clone(),
             nodes: self.nodes.clone(),
             root: self.root,
             child_overrides: (!child_overrides.is_empty()).then_some(child_overrides),

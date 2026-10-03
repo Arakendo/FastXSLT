@@ -34,6 +34,8 @@ mod atomic_template_executor;
 mod byte_encoding;
 #[cfg(test)]
 pub(super) use byte_encoding::decode_iso_8859_2_byte;
+#[path = "golden_runtime_experiment/boolean_focus.rs"]
+mod boolean_focus;
 #[path = "dynamic_attribute_name.rs"]
 mod dynamic_attribute_name;
 #[path = "dynamic_document.rs"]
@@ -48,6 +50,9 @@ mod key_lookup;
 mod match_boolean_predicate;
 #[path = "match_sequence_predicate.rs"]
 mod match_sequence_predicate;
+#[path = "golden_runtime_experiment/namespace_focus.rs"]
+mod namespace_focus;
+use boolean_focus::BooleanNodeFocus;
 #[path = "number_executor.rs"]
 mod number_executor;
 #[cfg(test)]
@@ -699,6 +704,7 @@ fn execute_initial_template_with_optional_source(
 #[derive(Clone, Copy)]
 struct SequenceContext<'a> {
     node: Option<NodeId>,
+    namespace_focus: Option<crate::xdm::qualified_nodes::NamespaceOccurrence<'a>>,
     temporary_focus: Option<TemporaryFocus<'a>>,
     atomic_focus: Option<i64>,
     current_mode: Option<&'a str>,
@@ -712,6 +718,7 @@ impl<'a> SequenceContext<'a> {
     fn new(node: Option<NodeId>, current_mode: Option<&'a str>) -> Self {
         Self {
             node,
+            namespace_focus: None,
             temporary_focus: None,
             atomic_focus: None,
             current_mode,
@@ -774,11 +781,14 @@ impl<'a> SequenceContext<'a> {
     }
 
     fn sequence_focus(self) -> Option<SequenceFocus> {
-        (self.node.is_some() || self.temporary_focus.is_some() || self.atomic_focus.is_some())
-            .then_some(SequenceFocus {
-                position: self.focus_position,
-                size: self.focus_size,
-            })
+        (self.node.is_some()
+            || self.namespace_focus.is_some()
+            || self.temporary_focus.is_some()
+            || self.atomic_focus.is_some())
+        .then_some(SequenceFocus {
+            position: self.focus_position,
+            size: self.focus_size,
+        })
     }
 }
 
@@ -1072,7 +1082,8 @@ fn message_string_value(nodes: &[ResultNode]) -> String {
             ResultNode::Text(text) | ResultNode::Xslt10DisableOutputEscapingText(text) => {
                 value.push_str(text);
             }
-            ResultNode::PendingAttribute(_)
+            ResultNode::PendingNamespace { .. }
+            | ResultNode::PendingAttribute(_)
             | ResultNode::Xslt10RecoverableAttribute(_)
             | ResultNode::ProcessingInstruction { .. }
             | ResultNode::Comment(_) => {}
@@ -1828,6 +1839,7 @@ fn execute_for_each_variable<'a>(
             SequenceContext {
                 node: None,
                 temporary_focus: Some(TemporaryFocus::Document(tree)),
+                namespace_focus: None,
                 ..execution
             },
             variables,
@@ -1845,6 +1857,7 @@ fn execute_for_each_variable<'a>(
                 SequenceContext {
                     node: Some(node),
                     temporary_focus: None,
+                    namespace_focus: None,
                     atomic_focus: None,
                     focus_position: index + 1,
                     focus_size,
@@ -1931,6 +1944,7 @@ fn execute_for_each_static_integer_range<'a>(
             SequenceContext {
                 node: None,
                 temporary_focus: None,
+                namespace_focus: None,
                 atomic_focus: None,
                 focus_position: index + 1,
                 focus_size,
@@ -1952,6 +1966,9 @@ fn execute_for_each_nodes<'a>(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let ApplySelection::QualifiedPath(path) = select {
+        return namespace_focus::execute(inputs, path, sorts, body, execution, variables, control);
+    }
     if let Some(target) = literal_document_target(Some(select)) {
         return execute_for_each_literal_document_root(
             inputs, target, sorts, body, execution, variables, control,
@@ -1976,6 +1993,7 @@ fn execute_for_each_nodes<'a>(
             SequenceContext {
                 node: Some(node),
                 temporary_focus: None,
+                namespace_focus: None,
                 atomic_focus: None,
                 focus_position: index + 1,
                 focus_size,
@@ -2059,6 +2077,7 @@ fn execute_for_each_literal_document_root<'a>(
             SequenceContext {
                 node: Some(node),
                 temporary_focus: None,
+                namespace_focus: None,
                 atomic_focus: None,
                 focus_position: index + 1,
                 focus_size,
@@ -3318,6 +3337,25 @@ fn execute_copy(
     else {
         unreachable!("execute_copy_instruction receives xsl:copy")
     };
+    if let Some(namespace) = execution.namespace_focus {
+        control
+            .charge(WorkDomain::ResultNode, 1)
+            .and_then(|()| control.charge(WorkDomain::ResultTextByte, namespace.prefix().len()))
+            .and_then(|()| {
+                control.charge(WorkDomain::ResultTextByte, namespace.string_value().len())
+            })
+            .map_err(|error| control_failure(error, inputs.request_id))?;
+        return Ok(vec![ResultNode::PendingNamespace {
+            binding: crate::xml::quick_xml_experiment::NamespaceBinding {
+                prefix: (!namespace.prefix().is_empty()).then(|| namespace.prefix().to_owned()),
+                namespace: namespace.string_value().to_owned(),
+            },
+            location: match instruction {
+                Instruction::Copy { location, .. } => location.clone(),
+                _ => unreachable!(),
+            },
+        }]);
+    }
     if execution.temporary_focus.is_some() {
         return temporary_tree_executor::execute_temporary_copy(
             inputs,
@@ -3468,12 +3506,17 @@ fn execute_source_element_copy_element(
         result_attributes.push(attribute);
     }
     let body = execute_sequence(inputs, body, execution, variables, control)?;
-    let children =
-        result_tree::assemble_element_content(&mut result_attributes, body, inputs.request_id)?;
-    let namespaces = result_tree::retain_dynamic_attribute_namespace_bindings(
-        source.in_scope_namespaces(node).into(),
-        &result_attributes,
-    );
+    let mut namespaces: std::sync::Arc<[_]> = source.in_scope_namespaces(node).into();
+    let children = result_tree::assemble_element_content(
+        source.name(node).expect("element has a name"),
+        &mut namespaces,
+        &mut result_attributes,
+        body,
+        inputs.request_id,
+        control,
+    )?;
+    let namespaces =
+        result_tree::retain_dynamic_attribute_namespace_bindings(namespaces, &result_attributes);
     Ok(vec![ResultNode::Element {
         name: source
             .name(node)
@@ -3547,7 +3590,15 @@ fn execute_literal_element(
         attributes.push(attribute);
     }
     let body = execute_sequence(inputs, body, execution, variables, control)?;
-    let children = result_tree::assemble_element_content(&mut attributes, body, inputs.request_id)?;
+    let mut namespaces = namespaces;
+    let children = result_tree::assemble_element_content(
+        &name,
+        &mut namespaces,
+        &mut attributes,
+        body,
+        inputs.request_id,
+        control,
+    )?;
     let result_namespaces =
         result_tree::retain_dynamic_attribute_namespace_bindings(namespaces, &attributes);
     #[cfg(test)]
@@ -3674,6 +3725,15 @@ fn resolve_context_element_name(
     control
         .charge(WorkDomain::XPathNodeVisit, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if let Some(namespace) = execution.namespace_focus {
+        return dynamic_element_name::resolve_lexical_element_name(
+            namespace.prefix(),
+            namespace_override,
+            static_namespaces,
+            location,
+            inputs.request_id,
+        );
+    }
     let context_name = execution_context_name(inputs, execution).ok_or_else(|| {
         failure_at(
             "XTDE0820",
@@ -3835,6 +3895,15 @@ fn execution_context_string_value(
     execution: SequenceContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<Option<String>, ExecutionFailure> {
+    if let Some(namespace) = execution.namespace_focus {
+        control
+            .charge(WorkDomain::XdmStringValueNode, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        control
+            .charge(WorkDomain::ResultTextByte, namespace.string_value().len())
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        return Ok(Some(namespace.string_value().to_owned()));
+    }
     if let Some(focus) = execution.temporary_focus {
         return match focus {
             TemporaryFocus::Document(tree) => {
@@ -4854,7 +4923,7 @@ fn execute_if(
     if evaluate_boolean(
         inputs,
         test,
-        execution.node,
+        execution.into(),
         execution.sequence_focus(),
         variables,
         control,
@@ -4877,7 +4946,7 @@ fn execute_choose(
         if evaluate_boolean(
             inputs,
             &branch.test,
-            execution.node,
+            execution.into(),
             execution.sequence_focus(),
             variables,
             control,
@@ -4897,7 +4966,14 @@ fn evaluate_xslt10_template_parameter_text_choice(
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
     for branch in branches {
-        if evaluate_boolean(inputs, &branch.test, context, None, variables, control)? {
+        if evaluate_boolean(
+            inputs,
+            &branch.test,
+            context.into(),
+            None,
+            variables,
+            control,
+        )? {
             return Ok(branch.value.clone());
         }
     }
@@ -4907,11 +4983,20 @@ fn evaluate_xslt10_template_parameter_text_choice(
 fn evaluate_boolean(
     inputs: &SequenceInputs<'_>,
     expression: &BooleanExpression,
-    context: Option<NodeId>,
+    node_focus: BooleanNodeFocus<'_>,
     focus: Option<SequenceFocus>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    let context = node_focus.node;
+    if let BooleanExpression::ContextStringContains { value, location } = expression {
+        return boolean_focus::contains(inputs, node_focus, value, location, control);
+    }
+    if let BooleanExpression::Xslt10ConcatContains { haystack, needle } = expression {
+        return value_evaluator::xslt10_concat_contains(
+            inputs, context, haystack, needle, variables, control,
+        );
+    }
     if let Some(identity) =
         evaluate_identity_boolean(inputs, expression, context, variables, control)?
     {
@@ -4992,7 +5077,7 @@ fn evaluate_boolean(
     if let BooleanExpression::Xslt10ContextNumberIsNaN = expression {
         return evaluate_xslt10_context_number_is_nan(inputs, context, control);
     }
-    evaluate_ordinary_boolean(inputs, expression, context, focus, variables, control)
+    evaluate_ordinary_boolean(inputs, expression, node_focus, focus, variables, control)
 }
 
 fn evaluate_xslt10_current_name_boolean(
@@ -5151,11 +5236,12 @@ fn evaluate_xslt10_variable_less_than_node_count(
 fn evaluate_ordinary_boolean(
     inputs: &SequenceInputs<'_>,
     expression: &BooleanExpression,
-    context: Option<NodeId>,
+    node_focus: BooleanNodeFocus<'_>,
     focus: Option<SequenceFocus>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    let context = node_focus.node;
     match expression {
         BooleanExpression::Constant(value) => Ok(*value),
         BooleanExpression::NodeExists(path) => node_exists(inputs, path, context, control),
@@ -5163,13 +5249,8 @@ fn evaluate_ordinary_boolean(
             evaluate_node_string_equals(inputs, path, value, context, control)
         }
         BooleanExpression::NodeNumericLessThan { path, value_bits } => {
-            evaluate_node_numeric_less_than(
-                inputs,
-                path,
-                f64::from_bits(*value_bits),
-                context,
-                control,
-            )
+            let value = f64::from_bits(*value_bits);
+            evaluate_node_numeric_less_than(inputs, path, value, context, control)
         }
         BooleanExpression::CountPathEquals { path, expected } => {
             count_path_eq(inputs, path, *expected, context, control)
@@ -5207,10 +5288,10 @@ fn evaluate_ordinary_boolean(
             evaluate_context_language_matches(inputs, context, language, control)
         }
         composition @ (BooleanExpression::Or { .. } | BooleanExpression::And { .. }) => {
-            evaluate_boolean_composition(inputs, composition, context, focus, variables, control)
+            evaluate_boolean_composition(inputs, composition, node_focus, focus, variables, control)
         }
         BooleanExpression::Not(expression) => {
-            evaluate_boolean(inputs, expression, context, focus, variables, control)
+            evaluate_boolean(inputs, expression, node_focus, focus, variables, control)
                 .map(|value| !value)
         }
         BooleanExpression::NodeIdentityEqual { .. }
@@ -5234,6 +5315,8 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::Xslt10PriorDescendantSameNameAsVariable { .. }
         | BooleanExpression::Xslt10PriorChildOfVariableNamedElementsSameNameAsCurrent { .. }
         | BooleanExpression::ContextStringEquals(_)
+        | BooleanExpression::ContextStringContains { .. }
+        | BooleanExpression::Xslt10ConcatContains { .. }
         | BooleanExpression::Xslt10ContextNumberIsNaN => {
             unreachable!("specialized expressions return before ordinary boolean dispatch")
         }
@@ -5632,7 +5715,7 @@ fn evaluate_identity_boolean(
 fn evaluate_boolean_composition(
     inputs: &SequenceInputs<'_>,
     expression: &BooleanExpression,
-    context: Option<NodeId>,
+    context: BooleanNodeFocus<'_>,
     focus: Option<SequenceFocus>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
@@ -6422,6 +6505,12 @@ fn select_apply_nodes(
             evaluate_location_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
+        ApplySelection::QualifiedPath(_) => Err(failure(
+            "FXRT0007",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "qualified namespace selection requires qualified focus execution",
+        )),
         ApplySelection::LiteralDocumentRoot(_)
         | ApplySelection::LiteralDocumentChildren { .. }
         | ApplySelection::LiteralDocumentDescendants { .. }

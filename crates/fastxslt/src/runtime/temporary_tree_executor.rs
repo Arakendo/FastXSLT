@@ -732,15 +732,17 @@ pub(super) fn execute_temporary_copy(
                 result_attributes.push(attribute);
             }
             let body = execute_sequence(inputs, body, execution, variables, control)?;
+            let mut result_namespaces = namespaces.clone().into();
             let children = super::result_tree::assemble_element_content(
+                name,
+                &mut result_namespaces,
                 &mut result_attributes,
                 body,
                 inputs.request_id,
+                control,
             )?;
-            let namespaces = retain_dynamic_attribute_namespace_bindings(
-                namespaces.clone().into(),
-                &result_attributes,
-            );
+            let namespaces =
+                retain_dynamic_attribute_namespace_bindings(result_namespaces, &result_attributes);
             Ok(vec![ResultNode::Element {
                 name: name.clone(),
                 namespaces,

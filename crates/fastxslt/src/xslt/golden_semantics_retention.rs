@@ -13,9 +13,9 @@ use super::{
     NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression, SortKey, SortSelect,
     SourceLocation, SourceWhitespacePolicy, StylesheetProgram, Template, TemplateArgument,
     TemplateArgumentValue, TemplateParameter, TemplateParameterDefault, ValueExpression,
-    VariableFilteredElementPath, Xslt10ApplyUnionPart, Xslt10AvtPart, Xslt10ConcatPart,
-    Xslt10IdArgument, Xslt10IdLookup, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyValue,
-    Xslt10MuenchianSelection, Xslt10TemporaryTextPart,
+    VariableFilteredElementPath, Xslt10ApplyUnionPart, Xslt10AvtPart, Xslt10ConcatExpression,
+    Xslt10ConcatPart, Xslt10IdArgument, Xslt10IdLookup, Xslt10KeyLookup, Xslt10KeyName,
+    Xslt10KeyValue, Xslt10MuenchianSelection, Xslt10TemporaryTextPart,
 };
 
 impl StylesheetProgram {
@@ -493,6 +493,7 @@ fn literal_document_variable_filter_owned(
 fn apply_selection_owned(value: &ApplySelection) -> usize {
     match value {
         ApplySelection::LocationPath(path) => path.known_owned_capacity_bytes(),
+        ApplySelection::QualifiedPath(path) => path.known_owned_capacity_bytes(),
         ApplySelection::LiteralDocumentRoot(reference) => document_root_reference_owned(reference),
         ApplySelection::LiteralDocumentChildren { reference, name } => {
             document_root_reference_owned(reference) + name.as_ref().map_or(0, name_owned)
@@ -1476,6 +1477,10 @@ fn arc_slice_owned<T>(values: &Arc<[T]>, nested: impl Fn(&T) -> usize) -> usize 
 fn value_expression_owned(value: &ValueExpression) -> usize {
     match value {
         ValueExpression::LiteralString(value) => value.capacity(),
+        ValueExpression::NamespacePathScalar { path, .. } => path.known_owned_capacity_bytes(),
+        ValueExpression::QualifiedGeneratedIdentityComparison { left, right, .. } => {
+            left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
+        }
         ValueExpression::Xslt10KeyLookup(lookup)
         | ValueExpression::Xslt10CountKeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
         ValueExpression::LocationPath(path)
@@ -1501,6 +1506,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::Xslt10SumPath(path)
         | ValueExpression::IntegralFunctionPath { path, .. } => path.known_owned_capacity_bytes(),
         ValueExpression::Xslt10FirstNodePathUnion(alternatives)
+        | ValueExpression::Xslt10LastNodePathUnion(alternatives)
         | ValueExpression::Xslt10NodeNamePathUnionLast(alternatives)
         | ValueExpression::Xslt10CountPathUnion(alternatives) => {
             vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
@@ -1596,10 +1602,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
             haystack.capacity() + needle.capacity()
         }
         ValueExpression::Xslt10ConcatContains { haystack, needle } => {
-            size_of_val(haystack.as_ref())
-                + xslt10_concat_owned(haystack)
-                + size_of_val(needle.as_ref())
-                + xslt10_concat_owned(needle)
+            concat_pair_owned(haystack, needle)
         }
         ValueExpression::Xslt10SourcePathStringComparison { left, right, .. } => {
             path_pair_owned(left, right) + size_of_val(right.as_ref())
@@ -1792,9 +1795,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         | BooleanExpression::ChildAttributeVariableStringEquals { .. }) => {
             child_attribute_variable_owned(child_attribute)
         }
-        BooleanExpression::Xslt10ContextNodeSetEqualsVariable { variable, location } => {
-            variable.capacity() + location_owned(location)
-        }
+        string @ (BooleanExpression::Xslt10ContextNodeSetEqualsVariable { .. }
+        | BooleanExpression::ContextStringContains { .. }
+        | BooleanExpression::Xslt10ConcatContains { .. }) => boolean_string_owned(string),
         BooleanExpression::Xslt10AncestorFilter(filter) => {
             size_of_val(filter.as_ref())
                 + filter.attribute.capacity()
@@ -1845,6 +1848,27 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         | BooleanExpression::Xslt10ContextNumberIsNaN
         | BooleanExpression::ContextStringLengthEquals(_)
         | BooleanExpression::Constant(_) => 0,
+    }
+}
+
+fn concat_pair_owned(haystack: &Xslt10ConcatExpression, needle: &Xslt10ConcatExpression) -> usize {
+    size_of_val(haystack)
+        + xslt10_concat_owned(haystack)
+        + size_of_val(needle)
+        + xslt10_concat_owned(needle)
+}
+
+fn boolean_string_owned(value: &BooleanExpression) -> usize {
+    match value {
+        BooleanExpression::Xslt10ContextNodeSetEqualsVariable { variable, location }
+        | BooleanExpression::ContextStringContains {
+            value: variable,
+            location,
+        } => variable.capacity() + location_owned(location),
+        BooleanExpression::Xslt10ConcatContains { haystack, needle } => {
+            concat_pair_owned(haystack, needle)
+        }
+        _ => unreachable!("boolean string accounting receives only its typed string variants"),
     }
 }
 
@@ -1992,6 +2016,7 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
                 alternatives,
                 crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
             ),
+            TemplateArgumentValue::NamespaceCount(path) => path.known_owned_capacity_bytes(),
             TemplateArgumentValue::Xslt10Content(content) => {
                 size_of_val(content.as_ref())
                     + vec_owned(&content.bindings, |binding| {
@@ -2189,10 +2214,12 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         | LiteralAttributeValue::ContextSize
         | LiteralAttributeValue::ContextLocalName
         | LiteralAttributeValue::ContextLexicalName
-        | LiteralAttributeValue::Xslt10ContextNamespaceCount
         | LiteralAttributeValue::ContextStringValue
         | LiteralAttributeValue::ContextNormalizedStringLength
         | LiteralAttributeValue::ContextIntegerIncrement(_) => 0,
+        LiteralAttributeValue::Xslt10ContextNamespaceCount(path) => {
+            path.known_owned_capacity_bytes()
+        }
     }
 }
 

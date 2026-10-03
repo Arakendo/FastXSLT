@@ -3,8 +3,12 @@
 use std::sync::Arc;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
-use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
+use crate::xdm::owned_tree_experiment::{Document, NodeId};
+use crate::xdm::qualified_nodes::{NamespaceFailure, NamespaceOccurrence};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
+use crate::xpath::path_experiment::qualified_nodes::{
+    self, QualifiedLocationPath, QualifiedPathFailure,
+};
 use crate::xpath::path_experiment::{
     LocationPath, evaluate_location_path_controlled, evaluate_location_path_union_controlled,
 };
@@ -22,6 +26,10 @@ use super::{
     ExecutionFailure, FailureCategory, SequenceContext, control_failure, failure, failure_at,
 };
 
+#[path = "result_tree/namespace_attachment.rs"]
+mod namespace_attachment;
+pub(super) use namespace_attachment::attach_namespaces;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ResultNode {
     Element {
@@ -31,6 +39,10 @@ pub(super) enum ResultNode {
         children: Vec<ResultNode>,
     },
     PendingAttribute(ResultAttribute),
+    PendingNamespace {
+        binding: NamespaceBinding,
+        location: crate::xdm::owned_tree_experiment::SourceLocation,
+    },
     Xslt10RecoverableAttribute(ResultAttribute),
     Text(String),
     Xslt10DisableOutputEscapingText(String),
@@ -56,13 +68,32 @@ pub(super) fn pending_attribute(attribute: ResultAttribute, xslt10_recovery: boo
 }
 
 pub(super) fn assemble_element_content(
+    name: &ExpandedName,
+    namespaces: &mut Arc<[NamespaceBinding]>,
     attributes: &mut Vec<ResultAttribute>,
     items: Vec<ResultNode>,
     request_id: &str,
+    control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let mut children = Vec::new();
     for item in items {
         match item {
+            ResultNode::PendingNamespace { binding, location } => {
+                let mut has_child = false;
+                for child in &children {
+                    control
+                        .charge(WorkDomain::ResultNode, 1)
+                        .map_err(|error| control_failure(error, request_id))?;
+                    if !matches!(child, ResultNode::Text(value) | ResultNode::Xslt10DisableOutputEscapingText(value) if value.is_empty())
+                    {
+                        has_child = true;
+                        break;
+                    }
+                }
+                attach_namespaces(
+                    name, namespaces, binding, &location, has_child, request_id, control,
+                )?;
+            }
             ResultNode::PendingAttribute(attribute) if children.is_empty() => {
                 if attributes
                     .iter()
@@ -156,6 +187,7 @@ pub(super) fn computed_attributes_require_context_string(attributes: &[ComputedA
 }
 
 struct AttributeContext<'a> {
+    namespace_focus: Option<NamespaceOccurrence<'a>>,
     inputs: &'a SequenceInputs<'a>,
     variables: &'a RuntimeVariables,
     focus_position: usize,
@@ -185,6 +217,7 @@ pub(super) fn materialize_literal_attributes(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
     let context = AttributeContext {
+        namespace_focus: execution.namespace_focus,
         inputs,
         variables,
         focus_position: focus.position,
@@ -228,6 +261,7 @@ pub(super) fn materialize_computed_attributes(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
     let context = AttributeContext {
+        namespace_focus: execution.namespace_focus,
         inputs,
         variables,
         focus_position: focus.position,
@@ -244,8 +278,11 @@ pub(super) fn materialize_computed_attributes(
         if let Some(name) = &attribute.dynamic_name {
             result.name = super::dynamic_attribute_name::resolve(
                 inputs,
-                focus.source.map(|(_, node)| node),
-                focus.position,
+                SequenceContext {
+                    node: focus.source.map(|(_, node)| node),
+                    focus_position: focus.position,
+                    ..execution
+                },
                 name,
                 variables,
                 &attribute.location,
@@ -563,6 +600,7 @@ pub(super) fn materialize_literal_attribute_value(
         value,
         location,
         &AttributeContext {
+            namespace_focus: None,
             inputs,
             variables,
             focus_position: focus.position,
@@ -632,10 +670,10 @@ fn materialize_attribute_value(
         }
         LiteralAttributeValue::ContextPosition => context.focus_position.to_string(),
         LiteralAttributeValue::ContextSize => context.focus_size.to_string(),
-        LiteralAttributeValue::ContextLocalName => context_local_name(context),
+        LiteralAttributeValue::ContextLocalName => context_local_name(context, control)?,
         LiteralAttributeValue::ContextLexicalName => context_lexical_name(context, control)?,
-        LiteralAttributeValue::Xslt10ContextNamespaceCount => {
-            xslt10_context_namespace_count(context, control)?.to_string()
+        LiteralAttributeValue::Xslt10ContextNamespaceCount(path) => {
+            xslt10_context_namespace_count(context, path, control)?.to_string()
         }
         LiteralAttributeValue::ContextStringValue => context_string_attribute(location, context)?,
         LiteralAttributeValue::ContextIntegerIncrement(increment) => {
@@ -646,6 +684,7 @@ fn materialize_attribute_value(
 
 fn xslt10_context_namespace_count(
     context: &AttributeContext<'_>,
+    path: &QualifiedLocationPath,
     control: &mut InvocationControl,
 ) -> Result<usize, ExecutionFailure> {
     control
@@ -659,21 +698,21 @@ fn xslt10_context_namespace_count(
             "namespace-axis count requires a source-node focus",
         ));
     };
-    if source.kind(node) != NodeKind::Element {
-        return Ok(0);
-    }
-    let namespaces = source.in_scope_namespaces(node);
-    let mut count = namespaces
-        .iter()
-        .filter(|binding| !binding.namespace.is_empty())
-        .count();
-    if !namespaces
-        .iter()
-        .any(|binding| binding.prefix.as_deref() == Some("xml"))
-    {
-        count += 1;
-    }
-    Ok(count)
+    qualified_nodes::evaluate(source, node, path, usize::MAX, usize::MAX, control)
+        .map(|nodes| nodes.len())
+        .map_err(|error| match error {
+            QualifiedPathFailure::Control(error)
+            | QualifiedPathFailure::Namespace(NamespaceFailure::Control(error)) => {
+                control_failure(error, context.request_id)
+            }
+            QualifiedPathFailure::Namespace(NamespaceFailure::BindingCapacity)
+            | QualifiedPathFailure::SequenceCapacity => failure(
+                "FXCT0002",
+                FailureCategory::Limit,
+                Some(context.request_id),
+                "namespace binding capacity exhausted",
+            ),
+        })
 }
 
 fn materialize_text_avt(
@@ -959,10 +998,16 @@ fn materialize_source_path_union_avt(
         .map_or_else(String::new, |selected| source.string_value(*selected)))
 }
 
-fn context_local_name(context: &AttributeContext<'_>) -> String {
-    context
+fn context_local_name(
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    if context.namespace_focus.is_some() {
+        return context_lexical_name(context, control);
+    }
+    Ok(context
         .context_name
-        .map_or_else(String::new, |name| name.local.clone())
+        .map_or_else(String::new, |name| name.local.clone()))
 }
 
 fn context_lexical_name(
@@ -972,6 +1017,12 @@ fn context_lexical_name(
     control
         .charge(WorkDomain::XPathNodeVisit, 1)
         .map_err(|failure| control_failure(failure, context.request_id))?;
+    if let Some(namespace) = context.namespace_focus {
+        control
+            .charge(WorkDomain::ResultTextByte, namespace.prefix().len())
+            .map_err(|failure| control_failure(failure, context.request_id))?;
+        return Ok(namespace.prefix().to_owned());
+    }
     let Some((source, node)) = context.source_focus else {
         return Ok(context
             .context_name

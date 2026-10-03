@@ -59,6 +59,16 @@ pub(super) fn compile(
     if let Some(identity) = compile_identity_test(parsed, location)? {
         return Ok(identity);
     }
+    if let Some(contains) = compile_string_contains(
+        document,
+        element,
+        parsed,
+        location,
+        comparison,
+        xslt10_compatibility,
+    )? {
+        return Ok(contains);
+    }
     if is_context_position_not_equal_size(parsed) {
         return Ok(BooleanExpression::ContextPositionNotEqualSize(
             location.clone(),
@@ -106,6 +116,61 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+fn compile_string_contains(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+    comparison: StringComparison,
+    xslt10_compatibility: bool,
+) -> Result<Option<BooleanExpression>, CompileFailure> {
+    use crate::xslt::golden_semantics_experiment::{Xslt10ConcatExpression, Xslt10ConcatPart};
+
+    let Some(arguments) = expression
+        .strip_prefix("contains(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(|value| crate::xpath::static_string_experiment::split_arguments(value, 2))
+        .filter(|arguments| arguments.len() == 2)
+    else {
+        return Ok(None);
+    };
+    if comparison != StringComparison::Codepoint {
+        return Ok(None);
+    }
+    if arguments[0] == "."
+        && let Some(value) = xpath_string_literal(arguments[1])
+    {
+        return Ok(Some(BooleanExpression::ContextStringContains {
+            value: value.to_owned(),
+            location: location.clone(),
+        }));
+    }
+    if !xslt10_compatibility {
+        return Ok(None);
+    }
+    let operand = |value: &str| -> Result<Option<Xslt10ConcatExpression>, CompileFailure> {
+        let part = if let Some(literal) = xpath_string_literal(value) {
+            Some(Xslt10ConcatPart::Literal(literal.to_owned()))
+        } else {
+            value
+                .strip_prefix('$')
+                .filter(|name| is_ascii_ncname(name))
+                .map(|name| Xslt10ConcatPart::Variable(name.to_owned()))
+        };
+        if let Some(part) = part {
+            return Ok(Some(Xslt10ConcatExpression { parts: vec![part] }));
+        }
+        super::value_expression_compiler::compile_xslt10_concat(document, element, value, location)
+    };
+    let (Some(haystack), Some(needle)) = (operand(arguments[0])?, operand(arguments[1])?) else {
+        return Ok(None);
+    };
+    Ok(Some(BooleanExpression::Xslt10ConcatContains {
+        haystack: Box::new(haystack),
+        needle: Box::new(needle),
+    }))
 }
 
 fn compile_composition(

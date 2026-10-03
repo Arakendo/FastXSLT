@@ -10,18 +10,20 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs};
 use super::{
-    ExecutionFailure, FailureCategory, control_failure, failure_at, required_source_context,
+    ExecutionFailure, FailureCategory, SequenceContext, WorkDomain, control_failure, failure_at,
+    required_source_context,
 };
 
 pub(super) fn resolve(
     inputs: &SequenceInputs<'_>,
-    context: Option<crate::xdm::owned_tree_experiment::NodeId>,
-    focus_position: usize,
+    execution: SequenceContext<'_>,
     name: &DynamicAttributeName,
     variables: &RuntimeVariables,
     location: &SourceLocation,
     control: &mut InvocationControl,
 ) -> Result<ExpandedName, ExecutionFailure> {
+    let context = execution.node;
+    let focus_position = execution.focus_position;
     let (lexical, namespace_override, static_namespaces) = match name {
         DynamicAttributeName::Path {
             path,
@@ -46,7 +48,17 @@ pub(super) fn resolve(
             namespace_override,
             static_namespaces,
         } => (
-            context_lexical_name(inputs, context, control)?,
+            if let Some(namespace) = execution.namespace_focus {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                control
+                    .charge(WorkDomain::ResultTextByte, namespace.prefix().len())
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                namespace.prefix().to_owned()
+            } else {
+                context_lexical_name(inputs, context, control)?
+            },
             namespace_override,
             static_namespaces,
         ),

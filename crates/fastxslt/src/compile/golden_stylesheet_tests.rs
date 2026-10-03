@@ -2469,10 +2469,10 @@ fn compiles_namespace_aware_descendant_path_with_positioned_middle_step() {
 
     let namespace_axis = parse_stylesheet(
         "memory:namespace-axis-selection.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="namespace::*"/></xsl:template></xsl:stylesheet>"#,
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="namespace::*[position()=1]"/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure =
-        compile_stylesheet(&namespace_axis).expect_err("namespace axis remains unsupported");
+    let failure = compile_stylesheet(&namespace_axis)
+        .expect_err("broader namespace predicates remain unsupported");
     assert_eq!(failure.code, "FXXP1001");
     assert_eq!(failure.category, CompileCategory::Unsupported);
 }
@@ -3780,6 +3780,19 @@ fn top_level_union_splitter_ignores_nested_and_quoted_separators() {
         split_top_level_union("(a|b)/c | d[e='x|y']"),
         Some(vec!["(a|b)/c ", " d[e='x|y']"])
     );
+}
+
+#[test]
+fn grouped_path_union_rejects_empty_branches_before_suffix_composition() {
+    for selection in ["(a|)/@n", "(|a)/@n", "(a|)[last()]"] {
+        let xml = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="{selection}"/></xsl:template></xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet("urn:grouped-union:invalid", xml.as_bytes());
+        let error = compile_stylesheet(&document).unwrap_err();
+        assert_eq!(error.code, "XPST0003", "{selection}");
+        assert_eq!(error.location.resource, "urn:grouped-union:invalid");
+    }
 }
 
 #[test]
