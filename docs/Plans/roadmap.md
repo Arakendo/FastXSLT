@@ -8111,6 +8111,15 @@ too variable for a precise overhead claim. Its post-shrink publication fence
 is private and needs review; complete adapter retention and broader parity
 remain open. Production construction is unchanged.
 
+The [sealed-subset and temporary-path follow-up](../Evidence/ar-0027-sealed-subset-parity-and-temporary-path-blocker-2026-10-03.md)
+checks two admitted external-DTD fixtures through five constructors and twenty
+exact transforms, conserving metadata, whitespace, path deduplication and work
+charges. A separate `$t/box/item` for-each probe panics in the ordinary growth
+reference: temporary selection falls through to source-only dispatch. Its
+explicitly ignored regression remains open and uncredited. Repair or deliberately
+reject that compiled combination as a separate correctness slice before
+resuming temporary-tree parity; do not enable the capacity candidate to bypass it.
+
 AR-0013 preserves a future investigation into whether FastXSLT can prepare XDM,
 compiled plans, indexes, values, sequences, and scratch state more effectively
 than straightforward reference structures. It deliberately selects no novel

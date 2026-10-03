@@ -15,6 +15,9 @@ use crate::xml::quick_xml_experiment::{
 };
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
+#[path = "capacity_execution_parity_tests.rs"]
+mod capacity_execution_parity_tests;
+
 const SOURCE_ID: &str = "urn:ar0027:capacity-parity-source";
 const SOURCE: &[u8] = br#"<!DOCTYPE r [<!ATTLIST item key ID #IMPLIED note CDATA "default">]><r xmlns:p="urn:outer"> <item key="alpha"> <![CDATA[value]]><!--c--><?pi test?><p:leaf xmlns:p="urn:inner"/> </item> <item key="beta" xml:space="preserve"> <a xmlns="urn:default"><b xmlns=""/></a> </item> </r>"#;
 const DOMAINS: [WorkDomain; 10] = [

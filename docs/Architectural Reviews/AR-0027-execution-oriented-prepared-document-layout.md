@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Incubating |
 | Opened | 2026-10-02 |
-| Last reviewed | 2026-10-02 |
+| Last reviewed | 2026-10-03 |
 | Scope | Private owned XDM storage, preparation placement, managed/native staging, navigation, and provenance |
 | Trigger | Explore whether FastXSLT can reorganize ingested XML for cheaper execution rather than expose or inherit a general editable document model |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0004, ADR-0007, ADR-0012, ADR-0020, ADR-0021 |
@@ -291,6 +291,13 @@ its broader profiling program or AR-0009's retention policy review.
     transform output, charges, controlled failures and result-owner retirement.
   - [ ] Extend differential controls to wider path/temporary-tree operations
     and sealed external-DTD input families before admission.
+    - [x] Compare two sealed external-subset fixtures through five constructors,
+      preserving typed IDs/default precedence, effective whitespace, parent-path
+      deduplication, provenance and exact execution charges.
+    - [ ] Resolve the ordinary-reference temporary-path `xsl:for-each` panic,
+      re-enable its explicitly ignored regression, then complete candidate
+      focus/path/result-retirement comparison. No temporary-tree parity pass
+      follows from the successful sealed-subset control.
 - [ ] Exercise cancellation, exact/one-less budgets, construction failure,
   concurrent reuse, and independent overlapping generation retirement.
   - [x] Exercise candidate construction/view controls and four-thread shared
@@ -328,6 +335,15 @@ bottleneck, a safe candidate earns repeatable end-to-end benefit, or an access
 change would alter identity, public lifecycle, generation ownership or authority.
 
 ## Review history
+
+- 2026-10-03 -- Committed prior work at `74daf64b`, then extended sealed-subset
+  parity across five constructors and twenty exact transforms. A broader
+  temporary-tree probe exposes an ordinary-reference dispatch panic before
+  candidate comparison. Preserve its explicitly ignored, still-failing
+  reproducer as an open correctness blocker rather than crediting parity.
+  Full gates pass with 1,526 core tests and 48 ignored probes; WASM builds.
+  Production remains unchanged.
+  [Evidence](../Evidence/ar-0027-sealed-subset-parity-and-temporary-path-blocker-2026-10-03.md)
 
 - 2026-10-02 -- Added private uncharged cancellation checkpoints: at most 256
   scan visits between polls, and checks before/after capacity changes. Ten scan
