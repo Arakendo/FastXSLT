@@ -55,7 +55,12 @@ internal static class PersistentIngestionProbe
                 try { using var unexpected = NativeFastXsltClient.Create("urn:ar0027:invalid", bytes, StyleId, style);
                     throw new InvalidDataException("Invalid source was accepted."); }
                 catch (NativeFastXsltException failure) { nativeFailure = failure; }
-                if (family == "copy-shapes" && invalid == rejectedSources[^1]) depthFailure = nativeFailure;
+                if (family == "copy-shapes" && invalid == rejectedSources[^1])
+                {
+                    depthFailure = nativeFailure;
+                    if (nativeFailure.Code != "FXRS0006" || nativeFailure.Category != "limit")
+                        throw new InvalidDataException("Depth ceiling must report a resource-limit outcome.");
+                }
                 try { await isolated.ReinitializeMeasuredAsync("urn:ar0027:invalid", bytes, StyleId, style);
                     throw new InvalidDataException("Invalid source was accepted."); }
                 catch (FastXsltWorkerException failure)

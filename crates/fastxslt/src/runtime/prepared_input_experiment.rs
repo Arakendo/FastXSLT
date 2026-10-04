@@ -7,7 +7,7 @@ use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, Sn
 use crate::xdm::owned_tree_experiment::{BuildFailure, Document, SourceLocation};
 use crate::xml::internal_subset::InternalSubsetLimits;
 use crate::xml::quick_xml_experiment::{
-    AdmittedExternalSubset, ParseLimits, parse_document_controlled,
+    AdmittedExternalSubset, LocatedFailure, ParseLimits, parse_document_controlled,
     parse_document_controlled_with_internal_subset,
     parse_document_controlled_with_single_external_subset,
 };
@@ -27,6 +27,11 @@ pub(super) enum PreparationFailure {
         identity: String,
     },
     InvalidXml {
+        identity: String,
+        location: SourceLocation,
+        detail: String,
+    },
+    XmlLimit {
         identity: String,
         location: SourceLocation,
         detail: String,
@@ -225,6 +230,30 @@ fn prepare_document_observed(
     )
 }
 
+fn project_xml_preparation_failure(identity: &str, failure: &LocatedFailure) -> PreparationFailure {
+    if let Some(failure) = failure.control_failure() {
+        return PreparationFailure::Control(*failure);
+    }
+    let location = SourceLocation {
+        resource: identity.to_owned(),
+        span: failure
+            .source_span()
+            .expect("non-control XML failures must own a source span"),
+    };
+    match failure.structural_limit_detail() {
+        Some(detail) => PreparationFailure::XmlLimit {
+            identity: identity.to_owned(),
+            location,
+            detail,
+        },
+        None => PreparationFailure::InvalidXml {
+            identity: identity.to_owned(),
+            location,
+            detail: format!("{failure:?}"),
+        },
+    }
+}
+
 fn prepare_document_with_policy(
     snapshot: &ResourceSnapshot,
     parse_limits: ParseLimits,
@@ -278,19 +307,7 @@ fn prepare_document_with_policy(
         ),
         (None, _) => parse_document_controlled(identity, bytes, parse_limits, control),
     }
-    .map_err(|failure| match failure.control_failure() {
-        Some(failure) => PreparationFailure::Control(*failure),
-        None => PreparationFailure::InvalidXml {
-            identity: identity.to_owned(),
-            location: SourceLocation {
-                resource: identity.to_owned(),
-                span: failure
-                    .source_span()
-                    .expect("non-control XML failures must own a source span"),
-            },
-            detail: format!("{failure:?}"),
-        },
-    })?;
+    .map_err(|failure| project_xml_preparation_failure(identity, &failure))?;
     #[cfg(test)]
     if let (Some(observation), Some(start)) = (experiment.observation.as_mut(), parse_start) {
         observation.xml_parse = start.elapsed();

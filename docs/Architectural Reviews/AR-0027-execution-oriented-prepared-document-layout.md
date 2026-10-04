@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Incubating |
+| Status | Deferred |
 | Opened | 2026-10-02 |
 | Last reviewed | 2026-10-03 |
 | Scope | Private owned XDM storage, preparation placement, managed/native staging, navigation, and provenance |
@@ -232,20 +232,35 @@ document. Single-use ingestion must remain visible alongside warm reuse.
 
 ## Disposition
 
-**Incubating.** Initial source/lifecycle inspection and the current baseline
-reproduction are complete. A direct Rust cold/reused lifecycle harness now
-passes unchanged `for-004` output and cancellation/retry controls. Compile-once
-fresh sources and shared-seam XML/XDM observations extend that baseline, with
-preliminary timings rather than an adapter comparison or representation
-decision. Private freeze/pre-sizing comparisons now measure capacity savings;
-pre-sizing also lowers peak in the tested shapes. Typed-ID/view/namespace and
-concurrent-owner controls pass, but broader parity and full host measurements
-are still prerequisites to adoption. Relationship storage remains a separate
-candidate. Select no representation or public API. This is
-a focused prepared-document experiment under AR-0013, not a replacement for
-its broader profiling program or AR-0009's retention policy review.
+**Deferred after successful bounded capacity feasibility.** The current campaign
+is concluded. Retain production growth and the private safe freeze/pre-sizing
+candidates, differential controls and measurements. Capacity tightening can
+reduce known retained and peak requested allocation without changing node records,
+identity or the semantic engine. At 500 items, complete two-engine pre-sizing
+saves 9.85% retained requested bytes and 14.13% construction-prefix peak; delayed
+results narrow the peak advantage to 6.35%. These are measured workload results,
+not universal memory ratios or RSS guarantees.
+
+No general lifecycle speedup or reuse break-even is established. Native/isolated
+host comparisons remain production-growth baselines; official WASM builds and
+runtime controls likewise do not execute the capacity candidates. Candidate host
+admission, target-width allocation behavior and an accepted cancellation/completion
+policy remain unproven. Those gaps justify deferred adoption, not additional
+public knobs, protocol fields or an indefinitely expanding measurement campaign.
+
+The incidental structural-XML-limit diagnostic defect is repaired through the
+shared preparation owner and verified across current host boundaries. This does
+not select a capacity policy. Relationship compaction, field changes, interning,
+hot/cold layouts, staging relocation and other new hypotheses are separate future
+work under AR-0013, not requirements to close this campaign. A named consumer's
+prepared-memory pressure may justify reopening the bounded candidate decision.
+No representation, public DOM, facade, ABI or production checkpoint rule is accepted.
 
 ## Required follow-up
+
+This checklist retains the experiment's evidence and unresolved adoption
+prerequisites. Unchecked items are deferred, not an active work queue. Reopening
+must name a consumer pressure and select only the proof needed for that decision.
 
 - [x] Inspect current storage/access/lifecycle owners and reproduce the existing
   release anatomy baseline without changing engine code.
@@ -276,7 +291,7 @@ its broader profiling program or AR-0009's retention policy review.
       synthetic copy shapes and three fresh 5,000-job repetitions. Balance
       first-lane order per shape; disclose the depth-64 adapter ceiling and
       structural-depth misclassification. This is not candidate measurement.
-    - [ ] Correct structural XML limit projection so well-formed input denied
+    - [x] Correct structural XML limit projection so well-formed input denied
       by depth/event ceilings is not reported as malformed/invalid XML. Keep
       parser provenance, adapter parity and prior-generation recovery.
     - [x] Extend the direct compile-once control to distinct payloads and mixed
@@ -382,17 +397,32 @@ its broader profiling program or AR-0009's retention policy review.
     and separate isolated process startup from preparation.
 - [ ] Validate the official WASM target, distinguishing host-width layout and
   memory limits; retain ordinary-path controls and unchanged corpus cases.
-- [ ] Record a retained candidate or negative result. Require an ADR before
+- [x] Record a retained candidate or negative result. Require an ADR before
   changing an established ownership/representation contract; do not promote
   microbenchmark gains into general performance or conformance claims.
+  - [x] Conclude the present campaign: capacity savings demonstrated, general
+    speedup unproven, candidates retained privately and production adoption
+    deferred. No new layout/staging exploration is required for this closeout.
 
 ## Reopening triggers
 
-Reassess when a named consumer exposes a prepared-memory or navigation
-bottleneck, a safe candidate earns repeatable end-to-end benefit, or an access
-change would alter identity, public lifecycle, generation ownership or authority.
+Reassess when a named consumer exposes material prepared-memory pressure and
+supplies workload/reuse/concurrency/headroom evidence, or when a safe candidate
+earns repeatable end-to-end benefit through the relevant host boundary. Reopening
+must address candidate admission, target-width behavior and completion semantics
+before adoption. A new access/layout change affecting identity, public lifecycle,
+generation ownership or authority requires its own deliberate review, not silent
+extension of this concluded campaign.
 
 ## Review history
+
+- 2026-10-03 -- Concluded the capacity feasibility campaign at the owner's
+  direction; defer production adoption and keep new layout/staging hypotheses
+  outside its closeout. Repair structural XML depth/event limit classification
+  through shared preparation, preserving source spans and cancellation precedence.
+  Direct candidate controls, native/isolated recovery and executable official
+  WASM controls pass. No host candidate selector or completion contract is added.
+  [Closeout evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#bounded-capacity-campaign-closeout-on-2026-10-03)
 
 - 2026-10-03 -- Broadened the production-growth host baseline to six synthetic
   copy shapes: three fresh 5,000-job queues per lane validate 30,000 timed exact

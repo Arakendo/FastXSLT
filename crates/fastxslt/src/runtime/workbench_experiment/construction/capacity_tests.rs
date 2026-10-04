@@ -19,6 +19,66 @@ mod allocation_tests;
 
 mod timing_tests;
 
+#[test]
+fn source_depth_limit_projection_preserves_location_and_old_generation() {
+    let bytes = b"<root><a><b><c><d/></c></b></a></root>";
+    for capacity in CAPACITIES {
+        let old = engine(1, 8, capacity);
+        let failure = create(
+            1,
+            9,
+            capacity,
+            WorkbenchLimits {
+                max_xml_depth: 4,
+                ..WorkbenchLimits::default()
+            },
+            bytes.to_vec(),
+            STYLE.to_vec(),
+        )
+        .err()
+        .expect("depth limit must reject creation");
+        assert_eq!(failure.code, "FXRS0006");
+        assert_eq!(failure.category, "limit");
+        assert_eq!(failure.request_id, None);
+        let location = failure.location.unwrap();
+        assert_eq!(location.resource, "urn:ar0027:engine:1:9");
+        assert_eq!((location.start, location.end), (15, 19));
+        assert!(failure.detail.contains("XML depth limit is 4"));
+        assert_eq!(
+            old.transform_bytes("after-failed-replacement").unwrap(),
+            source(1, 8).as_bytes()
+        );
+        let exact = create(
+            1,
+            9,
+            capacity,
+            WorkbenchLimits {
+                max_xml_depth: 5,
+                ..WorkbenchLimits::default()
+            },
+            bytes.to_vec(),
+            STYLE.to_vec(),
+        )
+        .unwrap();
+        assert_eq!(
+            exact.transform_bytes("exact-depth").unwrap(),
+            b"<root><a><b><c><d></d></c></b></a></root>"
+        );
+        let malformed = create(
+            1,
+            9,
+            capacity,
+            WorkbenchLimits::default(),
+            b"<root><a></root>".to_vec(),
+            STYLE.to_vec(),
+        )
+        .err()
+        .expect("malformed XML must reject creation");
+        assert_eq!(malformed.code, "FXXM0002");
+        assert_eq!(malformed.category, "invalid");
+    }
+}
+
 fn source(items: usize, job: usize) -> String {
     let mut source = format!("<root job=\"{job}\">");
     for index in 0..items {

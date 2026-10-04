@@ -1897,6 +1897,15 @@ budget exhaustion, host cancellation, and internal invariant failure remain
 distinguishable boundary failures. Presentation adapters must not recover this
 meaning by parsing display strings.
 
+Shared source preparation preserves XML structural-limit failures separately
+from malformed XML, including their logical resource identity and original-byte
+span. The private workbench projects recognized depth/event/DTD structural limits
+as `FXRS0006 / limit`, consistent with stylesheet structural-limit projection;
+malformed-source XML remains `FXXM0002 / invalid`. Cooperative cancellation and
+charged budget exhaustion retain precedence and their existing `FXCT0001` and
+`FXCT0002` identities. This classification does not enable DTDs, select a prepared
+capacity policy or stabilize the workbench's binding/wire representation.
+
 ### Observability
 
 Observability means that a host can understand engine work without parsing

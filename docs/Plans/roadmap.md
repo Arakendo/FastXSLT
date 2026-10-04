@@ -8032,7 +8032,13 @@ The requested side investigation is recorded in
 Source/lifecycle inspection, shape anatomy and private node-capacity comparisons
 are done; approximately 83% of the initial repetitive fixture's accounted
 prepared capacity is node-record storage, but text-heavy shapes differ.
-Broader semantic parity and host lifecycle measurements are next. A public mutable
+The current AR-0027 campaign is concluded with production adoption deferred:
+retained/peak allocation savings are established, but no general lifecycle
+speedup or reuse break-even is proven. Production growth remains selected.
+Candidate-specific host/WASM admission and completion semantics are reopening
+prerequisites, not ongoing work toward a new public tuning surface. New relationship,
+interning, field-layout and staging experiments are separate future questions.
+A public mutable
 DOM, mandatory indexes and a representation rewrite are not selected. This
 investigation changes no corpus numerator or standards roadmap commitment.
 The added placement track measures .NET staging/encoding and boundary copies
@@ -8041,7 +8047,8 @@ Rust-owned. Compare only identified managed work against a Rust-owned candidate,
 independently of layout changes, including one-shot and reusable sources and a
 5,000-job native/isolated workload. Count copied bytes, allocations, tails and
 peak co-resident buffers. Host acquisition authority and the rejected AR-0020
-staging topology remain unchanged; comparative measurements are still pending.
+staging topology remain unchanged. Production-growth comparative baselines exist;
+candidate placement changes remain unmeasured and deferred.
 Rust applications are first-class consumers of the same host-neutral lifecycle,
 not just a timing control. Include complete direct Rust admission, preparation,
 execution and result handling without .NET or worker-protocol dependencies.
@@ -8213,7 +8220,10 @@ validates 30,000 timed exact copied results through unchanged native/persistent
 isolated preparation, with per-shape first-lane balance and full registry release.
 This is production growth, not candidate host measurement. The depth control
 exposes structural-limit failures being reported as `FXXM0002 / invalid`;
-correct that projection with provenance and recovery tests before capacity adoption.
+the [closeout repair](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#bounded-capacity-campaign-closeout-on-2026-10-03)
+now preserves structural depth/event ceilings as `FXRS0006 / limit`, with source
+provenance and recovery tests across direct Rust, native/isolated .NET and WASM.
+This closes the diagnostic defect, not the unmeasured capacity-adoption gaps.
 
 The [sealed-subset and temporary-path follow-up](../Evidence/ar-0027-sealed-subset-parity-and-temporary-path-blocker-2026-10-03.md)
 checks two admitted external-DTD fixtures through five constructors and twenty

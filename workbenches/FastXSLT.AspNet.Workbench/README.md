@@ -55,9 +55,9 @@ dotnet workbenches/FastXSLT.AspNet.Workbench/bin/Release/net10.0/FastXSLT.AspNet
 Repeat orders 1 and 2 in fresh processes. Wide, depth-64, attribute-heavy,
 text-heavy, namespace-heavy and low-repetition synthetic payloads use unchanged
 production growth preparation. First-lane counts are balanced within each shape,
-and preceding-shape retirement is disclosed. A depth-256 rejection currently
-exposes structural-limit misclassification as invalid XML; the report records
-that open defect rather than treating cross-adapter agreement as correctness.
+and preceding-shape retirement is disclosed. A depth-256 rejection now requires
+`FXRS0006 / limit` with native/isolated diagnostic parity and prior-generation
+recovery; historical reports preserve the pre-repair invalid-XML classification.
 This is not a capacity-candidate or published performance comparison.
 
 The private retention/admission control requires another fresh process:

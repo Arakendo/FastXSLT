@@ -1066,16 +1066,16 @@ managed-allocation, allocator-peak or RSS observations in this probe.
 
 ### Depth classification finding and conservation
 
-Both adapters currently enforce depth 64; the timed deep source therefore differs
+The baseline adapters enforce depth 64; the timed deep source therefore differs
 from the earlier direct-Rust 256-deep anatomy fixture. A separate well-formed
 256-deep rejection conserves exact native/isolated code, category, request,
 location and detail, and leaves the old engine usable. It exposes a classification
-gap: `FXXM0002 / invalid`, at source span 192..195, wraps `DepthLimit` instead of
-reporting a resource-limit outcome. Shared preparation currently projects all
-non-control XML parser failures into `PreparationFailure::InvalidXml`.
-Adapter agreement is not evidence that this classification is correct. Repair
-structural-limit projection separately and retain malformed-XML distinction
-before capacity adoption; no engine diagnostic change is hidden in this probe.
+gap: `FXXM0002 / invalid`, at source span 192..195, wrapped `DepthLimit` instead of
+reporting a resource-limit outcome. Before the repair below, shared preparation
+projected all non-control XML parser failures into `PreparationFailure::InvalidXml`.
+Adapter agreement was not evidence that this classification was correct. The
+closeout repair below retains malformed-XML distinction without changing capacity
+selection; no engine diagnostic change was hidden in the original timing probe.
 
 Each fresh process also verifies malformed-source and default-DTD-denial parity,
 seven same-generation recovery outputs, field-limit rejection before framing,
@@ -1097,4 +1097,54 @@ and `CreationMeasurement` has seven direct files. This is no new semantic owner
 or public source representation. .NET Release build and Rust conservation gates
 pass; production preparation and corpus credit remain unchanged. Candidate host
 selection/admission still requires a deliberate private measurement seam, and
-structural-limit diagnostic repair is the immediate follow-up.
+structural-limit diagnostic repair was the immediate follow-up at that checkpoint.
+
+## Bounded capacity campaign closeout on 2026 10 03
+
+At the owner's direction, conclude the current AR-0027 study with production
+adoption deferred. Node-vector capacity tightening has reproducible memory benefit
+and substantial differential/lifecycle evidence, but no general speedup or reuse
+break-even. Host measurements and executed WASM use production growth; they do
+not establish candidate host admission or target-width capacity behavior. Retain
+the safe private candidates and growth oracle. Do not add selectors, protocol
+fields, staging layers, interning or new layout experiments merely to extend the
+study. Reopen only for named consumer pressure and the proof needed to decide it.
+
+The structural-limit diagnostic defect is repaired independently. Shared
+preparation now distinguishes recognized parser depth/event/DTD limits from
+invalid XML, after preserving cooperative-control precedence. It retains the
+original logical source identity/span and projects `FXRS0006 / limit`, matching
+the existing stylesheet structural-limit convention. Malformed source XML
+remains `FXXM0002 / invalid`; no display-string matching determines category.
+No work charge, parser ceiling, DTD authority or capacity default changes.
+
+One prepared-set regression covers growth/freezing/pre-sizing at six one-less
+depth/event boundaries, six pre-cancelled controls, six same-builder recoveries
+without partial map entries and three exact-boundary successes. Complete-engine
+controls additionally check each candidate's depth-five success/depth-four
+rejection, exact original span, malformed-source distinction and continued use
+of the old generation. The WASM adapter has an ordinary depth-limit regression.
+
+The final native/isolated 128-job host smoke validates 256 timed exact results,
+seven same-generation recoveries and explicit fresh-worker recovery. Both lanes
+agree on the repaired depth diagnostic and retain span 192..195. The main worker
+PID stays fixed and native registry ownership returns to baseline. The executable
+official WASM probe checks that same span/category in Node v22.23.2, reuses the
+existing sealed-include engine after failed creation and preserves instruction-
+budget and malformed-source controls. Unchanged `for-004` warm checks pass across
+5/50/500 items. [Raw closeout reports](ar-0027-capacity-closeout-controls-2026-10-03.json)
+are conservation evidence, not timing or memory-policy claims.
+
+No atomic cancellation/publication rule is accepted. Earlier tests establish
+observed versus unobserved cancellation, cleanup and post-return immutable ownership;
+a final token read does not atomically combine cancellation with caller publication.
+That completion-contract question, candidate-specific host/WASM admission and wider
+parity remain explicit prerequisites to reopening production adoption. Relationship
+capacity, record layout and managed staging relocation are separate future questions.
+Unchecked AR items remain visible rather than being called completed.
+
+Full Rust verification, .NET Release build and the official executable WASM
+release build pass. The preparation owner retains one private XML-failure
+projection helper; no new semantic layer, dependency, ABI or unsafe operation
+is introduced. The current campaign is deferred after successful feasibility,
+not an accepted production representation. Corpus credit is unchanged.

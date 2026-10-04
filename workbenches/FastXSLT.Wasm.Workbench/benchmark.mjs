@@ -157,6 +157,24 @@ function runSmokeAndControlParity() {
     throw new Error(`unexpected malformed XML outcome: ${malformed.code}/${malformed.category}`);
   }
 
+  const depthIdentity = "https://example.invalid/wasm/depth.xml";
+  const depth = wasm.WasmEngine.create(
+    depthIdentity,
+    encoder.encode("<n>".repeat(256) + "leaf" + "</n>".repeat(256)),
+    "https://example.invalid/wasm/depth-main.xsl",
+    included,
+  );
+  if (depth.succeeded || depth.code !== "FXRS0006" || depth.category !== "limit" ||
+      depth.resourceIdentity !== depthIdentity || depth.locationStart !== 192 || depth.locationEnd !== 195) {
+    throw new Error(`unexpected depth-limit outcome: ${depth.code}/${depth.category}`);
+  }
+  const depthDiagnostic = {
+    code: depth.code, category: depth.category, resource: depth.resourceIdentity,
+    span: [depth.locationStart, depth.locationEnd],
+  };
+  depth.free();
+  assertOutcome(engine.transformBytes("after-failed-depth-creation"), "<out>sealed</out>");
+
   return {
     first_engine_include_compile_prepare_ms: round(firstEngineMs),
     sealed_include_exact: true,
@@ -167,6 +185,8 @@ function runSmokeAndControlParity() {
     malformed_xml_category: malformed.category,
     malformed_xml_resource: malformed.resourceIdentity,
     malformed_xml_span: [malformed.locationStart, malformed.locationEnd],
+    depth_limit: depthDiagnostic,
+    retained_engine_reused_after_failed_depth_creation: true,
   };
 }
 

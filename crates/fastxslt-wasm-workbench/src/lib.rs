@@ -400,4 +400,21 @@ mod tests {
         assert_eq!(creation.code(), "FXXD0002");
         assert_eq!(creation.category(), "invalid");
     }
+
+    #[test]
+    fn source_depth_ceiling_preserves_limit_classification_and_provenance() {
+        let source = format!("{}leaf{}", "<n>".repeat(256), "</n>".repeat(256));
+        let creation = WasmEngine::create(
+            "urn:test:depth".into(),
+            source.as_bytes(),
+            "urn:test:stylesheet".into(),
+            IDENTITY_STYLESHEET,
+        );
+        assert!(!creation.succeeded());
+        assert_eq!(creation.code(), "FXRS0006");
+        assert_eq!(creation.category(), "limit");
+        assert_eq!(creation.resource_identity(), "urn:test:depth");
+        assert_eq!(creation.location_start(), 192);
+        assert_eq!(creation.location_end(), 195);
+    }
 }

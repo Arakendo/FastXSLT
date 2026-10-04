@@ -148,6 +148,7 @@ and add the record to this index. Never reuse a retired number.
   occurrences, while executable mixed-node navigation, focus, frames, and copy
   admission remain gated by parity, accounting, and corpus evidence.
 - [AR-0027: Execution Oriented Prepared Document Layout](AR-0027-execution-oriented-prepared-document-layout.md)
-  -- Incubating; compare private compact document layouts against the owned-tree
-  reference without introducing a public mutable DOM or weakening identity,
-  provenance, effective views, and preparation accounting.
+  -- Deferred after successful bounded capacity feasibility; memory savings are
+  demonstrated, general speedup is unproven and production growth is retained.
+  Candidate host/WASM admission and completion semantics are reopening prerequisites,
+  not an open-ended layout/staging campaign or public mutable DOM commitment.

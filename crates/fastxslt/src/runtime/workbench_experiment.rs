@@ -460,6 +460,7 @@ fn project_preparation(failure: &PreparationFailure) -> WorkbenchFailure {
         PreparationFailure::MissingResource { .. } => ("FXWB0005", "missing-resource"),
         PreparationFailure::DuplicateResource { .. } => ("FXWB0006", "invalid"),
         PreparationFailure::InvalidXml { .. } => ("FXXM0002", "invalid"),
+        PreparationFailure::XmlLimit { .. } => ("FXRS0006", "limit"),
         PreparationFailure::InvalidXdm { .. } => ("FXXD0002", "invalid"),
         PreparationFailure::ExternalSubsetResolution { failure, .. } => match failure {
             ResolutionFailure::Missing { .. } => ("FXRS0002", "missing-resource"),
@@ -475,7 +476,9 @@ fn project_preparation(failure: &PreparationFailure) -> WorkbenchFailure {
         }
     };
     let mut projected = workbench_failure(code, category, format!("{failure:?}"));
-    if let PreparationFailure::InvalidXml { location, .. } = failure {
+    if let PreparationFailure::InvalidXml { location, .. }
+    | PreparationFailure::XmlLimit { location, .. } = failure
+    {
         projected.location = Some(Box::new(WorkbenchLocation {
             resource: location.resource.clone(),
             start: location.span.start,
