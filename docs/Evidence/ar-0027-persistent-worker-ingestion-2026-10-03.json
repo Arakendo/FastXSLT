@@ -1,0 +1,611 @@
+[
+  {
+    "JobsPerLane": 5000,
+    "Order": 0,
+    "WarmupsPerLane": 32,
+    "Runtime": "10.0.12",
+    "TimedExactResults": 10000,
+    "RecoveryExactResults": 5,
+    "LostWorkerRetiredWithoutRetry": true,
+    "WorkerProcessUnchanged": true,
+    "NativeRegistryReturnedToBaseline": true,
+    "PublicationEligible": false,
+    "Scope": "sequential distinct-origin queue; full recompile+prepare; prior generation retained until successful replacement",
+    "Measurements": [
+      {
+        "Name": "pinned",
+        "SourceBytes": 216,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 46.3,
+          "P95": 65.2,
+          "Minimum": 35.5,
+          "Maximum": 173.2
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 52.3,
+          "P95": 113.6,
+          "Minimum": 44.3,
+          "Maximum": 212.7
+        },
+        "NativeThroughResultUs": {
+          "Median": 105.75,
+          "P95": 176.5,
+          "Minimum": 86.4,
+          "Maximum": 286.5
+        },
+        "IsolatedInitializationUs": {
+          "Median": 208.55,
+          "P95": 292.2,
+          "Minimum": 155.8,
+          "Maximum": 2665.1
+        },
+        "IsolatedWriteUs": {
+          "Median": 41.75,
+          "P95": 64.7,
+          "Minimum": 17.2,
+          "Maximum": 737.1
+        },
+        "IsolatedReadyUs": {
+          "Median": 164.14999999999998,
+          "P95": 236.6,
+          "Minimum": 12.1,
+          "Maximum": 2625.5
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 283.8,
+          "P95": 398.5,
+          "Minimum": 212.2,
+          "Maximum": 2771.5
+        }
+      },
+      {
+        "Name": "items-5",
+        "SourceBytes": 206,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 58.849999999999994,
+          "P95": 78.1,
+          "Minimum": 45.1,
+          "Maximum": 222.8
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 3.7,
+          "P95": 5.5,
+          "Minimum": 2.4,
+          "Maximum": 103.4
+        },
+        "NativeThroughResultUs": {
+          "Median": 71.5,
+          "P95": 96.3,
+          "Minimum": 54.3,
+          "Maximum": 236.3
+        },
+        "IsolatedInitializationUs": {
+          "Median": 116.6,
+          "P95": 159.1,
+          "Minimum": 79.4,
+          "Maximum": 743
+        },
+        "IsolatedWriteUs": {
+          "Median": 26.7,
+          "P95": 44.6,
+          "Minimum": 13.1,
+          "Maximum": 657.6
+        },
+        "IsolatedReadyUs": {
+          "Median": 90.1,
+          "P95": 118.7,
+          "Minimum": 54.5,
+          "Maximum": 311.5
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 179.05,
+          "P95": 256.6,
+          "Minimum": 119.6,
+          "Maximum": 1204.8
+        }
+      },
+      {
+        "Name": "items-50",
+        "SourceBytes": 1736,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 99.55,
+          "P95": 177.1,
+          "Minimum": 79.3,
+          "Maximum": 387.2
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 1.9,
+          "P95": 3.2,
+          "Minimum": 1.3,
+          "Maximum": 86.6
+        },
+        "NativeThroughResultUs": {
+          "Median": 110,
+          "P95": 190.9,
+          "Minimum": 87.3,
+          "Maximum": 413.7
+        },
+        "IsolatedInitializationUs": {
+          "Median": 206.45,
+          "P95": 315.7,
+          "Minimum": 139.2,
+          "Maximum": 1209.5
+        },
+        "IsolatedWriteUs": {
+          "Median": 36.5,
+          "P95": 60.7,
+          "Minimum": 17.1,
+          "Maximum": 762
+        },
+        "IsolatedReadyUs": {
+          "Median": 168.1,
+          "P95": 267.6,
+          "Minimum": 114.5,
+          "Maximum": 446.6
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 282.65,
+          "P95": 418.3,
+          "Minimum": 183.4,
+          "Maximum": 1361.8
+        }
+      },
+      {
+        "Name": "items-500",
+        "SourceBytes": 17036,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 639.35,
+          "P95": 999.1,
+          "Minimum": 571.8,
+          "Maximum": 1464.5
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 8.1,
+          "P95": 11.3,
+          "Minimum": 6.7,
+          "Maximum": 32.8
+        },
+        "NativeThroughResultUs": {
+          "Median": 692.15,
+          "P95": 1062.5,
+          "Minimum": 616.9,
+          "Maximum": 1571.7
+        },
+        "IsolatedInitializationUs": {
+          "Median": 896.9,
+          "P95": 1310.5,
+          "Minimum": 670.9,
+          "Maximum": 1876.1
+        },
+        "IsolatedWriteUs": {
+          "Median": 42.8,
+          "P95": 79.3,
+          "Minimum": 25.1,
+          "Maximum": 251.9
+        },
+        "IsolatedReadyUs": {
+          "Median": 851.9,
+          "P95": 1247.6,
+          "Minimum": 638.2,
+          "Maximum": 1800.2
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 1023.75,
+          "P95": 1464.8,
+          "Minimum": 763.8,
+          "Maximum": 2491.6
+        }
+      }
+    ]
+  },
+  {
+    "JobsPerLane": 5000,
+    "Order": 1,
+    "WarmupsPerLane": 32,
+    "Runtime": "10.0.12",
+    "TimedExactResults": 10000,
+    "RecoveryExactResults": 5,
+    "LostWorkerRetiredWithoutRetry": true,
+    "WorkerProcessUnchanged": true,
+    "NativeRegistryReturnedToBaseline": true,
+    "PublicationEligible": false,
+    "Scope": "sequential distinct-origin queue; full recompile+prepare; prior generation retained until successful replacement",
+    "Measurements": [
+      {
+        "Name": "pinned",
+        "SourceBytes": 216,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 45.55,
+          "P95": 65.1,
+          "Minimum": 35.5,
+          "Maximum": 154
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 52.3,
+          "P95": 110.7,
+          "Minimum": 44.8,
+          "Maximum": 174.7
+        },
+        "NativeThroughResultUs": {
+          "Median": 105.25,
+          "P95": 174.7,
+          "Minimum": 86.8,
+          "Maximum": 289.1
+        },
+        "IsolatedInitializationUs": {
+          "Median": 204.7,
+          "P95": 299.9,
+          "Minimum": 147.8,
+          "Maximum": 609.8
+        },
+        "IsolatedWriteUs": {
+          "Median": 40.3,
+          "P95": 64.1,
+          "Minimum": 17.1,
+          "Maximum": 410.9
+        },
+        "IsolatedReadyUs": {
+          "Median": 162.4,
+          "P95": 242.4,
+          "Minimum": 114.2,
+          "Maximum": 407.7
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 280.6,
+          "P95": 397.9,
+          "Minimum": 207.8,
+          "Maximum": 713.9
+        }
+      },
+      {
+        "Name": "items-5",
+        "SourceBytes": 206,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 58.3,
+          "P95": 76.8,
+          "Minimum": 44.7,
+          "Maximum": 206.3
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 3.7,
+          "P95": 6.6,
+          "Minimum": 2.2,
+          "Maximum": 67.6
+        },
+        "NativeThroughResultUs": {
+          "Median": 71,
+          "P95": 94.8,
+          "Minimum": 53.2,
+          "Maximum": 769.6
+        },
+        "IsolatedInitializationUs": {
+          "Median": 114.8,
+          "P95": 164.3,
+          "Minimum": 75.7,
+          "Maximum": 791.9
+        },
+        "IsolatedWriteUs": {
+          "Median": 26.45,
+          "P95": 45.4,
+          "Minimum": 10,
+          "Maximum": 629.6
+        },
+        "IsolatedReadyUs": {
+          "Median": 88.4,
+          "P95": 125.4,
+          "Minimum": 53.2,
+          "Maximum": 429
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 176.64999999999998,
+          "P95": 261.7,
+          "Minimum": 120.1,
+          "Maximum": 924.9
+        }
+      },
+      {
+        "Name": "items-50",
+        "SourceBytes": 1736,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 100.45,
+          "P95": 175.9,
+          "Minimum": 78.7,
+          "Maximum": 312.1
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 1.9,
+          "P95": 3.1,
+          "Minimum": 1.3,
+          "Maximum": 5.4
+        },
+        "NativeThroughResultUs": {
+          "Median": 110.85,
+          "P95": 188.3,
+          "Minimum": 86.8,
+          "Maximum": 327.3
+        },
+        "IsolatedInitializationUs": {
+          "Median": 197.45,
+          "P95": 293.6,
+          "Minimum": 138.9,
+          "Maximum": 452.4
+        },
+        "IsolatedWriteUs": {
+          "Median": 35,
+          "P95": 58.8,
+          "Minimum": 16.9,
+          "Maximum": 147
+        },
+        "IsolatedReadyUs": {
+          "Median": 159.5,
+          "P95": 245.6,
+          "Minimum": 108.4,
+          "Maximum": 404.2
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 270.15,
+          "P95": 396.7,
+          "Minimum": 184.7,
+          "Maximum": 1058.5
+        }
+      },
+      {
+        "Name": "items-500",
+        "SourceBytes": 17036,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 654.75,
+          "P95": 964.4,
+          "Minimum": 571.9,
+          "Maximum": 1505.8
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 7.7,
+          "P95": 10.4,
+          "Minimum": 6.4,
+          "Maximum": 34.5
+        },
+        "NativeThroughResultUs": {
+          "Median": 706.5,
+          "P95": 1021.9,
+          "Minimum": 618.3,
+          "Maximum": 1599.1
+        },
+        "IsolatedInitializationUs": {
+          "Median": 850.1,
+          "P95": 1247.3,
+          "Minimum": 627.2,
+          "Maximum": 2370.6
+        },
+        "IsolatedWriteUs": {
+          "Median": 43.150000000000006,
+          "P95": 76.8,
+          "Minimum": 23.7,
+          "Maximum": 1247.5
+        },
+        "IsolatedReadyUs": {
+          "Median": 802.7,
+          "P95": 1189.1,
+          "Minimum": 595.3,
+          "Maximum": 1819.4
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 976.55,
+          "P95": 1396.6,
+          "Minimum": 713.3,
+          "Maximum": 2574.8
+        }
+      }
+    ]
+  },
+  {
+    "JobsPerLane": 5000,
+    "Order": 2,
+    "WarmupsPerLane": 32,
+    "Runtime": "10.0.12",
+    "TimedExactResults": 10000,
+    "RecoveryExactResults": 5,
+    "LostWorkerRetiredWithoutRetry": true,
+    "WorkerProcessUnchanged": true,
+    "NativeRegistryReturnedToBaseline": true,
+    "PublicationEligible": false,
+    "Scope": "sequential distinct-origin queue; full recompile+prepare; prior generation retained until successful replacement",
+    "Measurements": [
+      {
+        "Name": "pinned",
+        "SourceBytes": 216,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 46.5,
+          "P95": 63.7,
+          "Minimum": 35.9,
+          "Maximum": 105.9
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 53.5,
+          "P95": 115.8,
+          "Minimum": 45.7,
+          "Maximum": 214.5
+        },
+        "NativeThroughResultUs": {
+          "Median": 107,
+          "P95": 179.9,
+          "Minimum": 87.2,
+          "Maximum": 305.4
+        },
+        "IsolatedInitializationUs": {
+          "Median": 202.75,
+          "P95": 278.1,
+          "Minimum": 153.1,
+          "Maximum": 937.8
+        },
+        "IsolatedWriteUs": {
+          "Median": 42.2,
+          "P95": 64.4,
+          "Minimum": 17.8,
+          "Maximum": 732.8
+        },
+        "IsolatedReadyUs": {
+          "Median": 159.4,
+          "P95": 226.1,
+          "Minimum": 72.5,
+          "Maximum": 424.2
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 277.4,
+          "P95": 374.3,
+          "Minimum": 209.6,
+          "Maximum": 1149.4
+        }
+      },
+      {
+        "Name": "items-5",
+        "SourceBytes": 206,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 58.8,
+          "P95": 76.7,
+          "Minimum": 45.9,
+          "Maximum": 131.1
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 3.8,
+          "P95": 6.7,
+          "Minimum": 2.2,
+          "Maximum": 99
+        },
+        "NativeThroughResultUs": {
+          "Median": 71.9,
+          "P95": 94.1,
+          "Minimum": 55,
+          "Maximum": 901.1
+        },
+        "IsolatedInitializationUs": {
+          "Median": 115.8,
+          "P95": 155.4,
+          "Minimum": 71.9,
+          "Maximum": 370.1
+        },
+        "IsolatedWriteUs": {
+          "Median": 26.3,
+          "P95": 44.3,
+          "Minimum": 10.7,
+          "Maximum": 127.3
+        },
+        "IsolatedReadyUs": {
+          "Median": 89.1,
+          "P95": 117.7,
+          "Minimum": 57.1,
+          "Maximum": 343.6
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 176.55,
+          "P95": 249.2,
+          "Minimum": 108.5,
+          "Maximum": 672.5
+        }
+      },
+      {
+        "Name": "items-50",
+        "SourceBytes": 1736,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 104.1,
+          "P95": 193.4,
+          "Minimum": 79.4,
+          "Maximum": 315.1
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 1.9,
+          "P95": 2.9,
+          "Minimum": 1.3,
+          "Maximum": 5.6
+        },
+        "NativeThroughResultUs": {
+          "Median": 114.9,
+          "P95": 206.7,
+          "Minimum": 87.5,
+          "Maximum": 338.8
+        },
+        "IsolatedInitializationUs": {
+          "Median": 195.64999999999998,
+          "P95": 318.5,
+          "Minimum": 130.4,
+          "Maximum": 1012.6
+        },
+        "IsolatedWriteUs": {
+          "Median": 36.7,
+          "P95": 57.9,
+          "Minimum": 17.7,
+          "Maximum": 881.5
+        },
+        "IsolatedReadyUs": {
+          "Median": 158.1,
+          "P95": 269.5,
+          "Minimum": 106.7,
+          "Maximum": 403.8
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 268.35,
+          "P95": 414.9,
+          "Minimum": 185.6,
+          "Maximum": 1299.9
+        }
+      },
+      {
+        "Name": "items-500",
+        "SourceBytes": 17036,
+        "Samples": 1250,
+        "NativeCreationUs": {
+          "Median": 688.95,
+          "P95": 1021.5,
+          "Minimum": 571.4,
+          "Maximum": 1341.4
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 8.1,
+          "P95": 10.5,
+          "Minimum": 6.7,
+          "Maximum": 23
+        },
+        "NativeThroughResultUs": {
+          "Median": 740.25,
+          "P95": 1077.4,
+          "Minimum": 618.4,
+          "Maximum": 1418.8
+        },
+        "IsolatedInitializationUs": {
+          "Median": 816.1500000000001,
+          "P95": 1198.6,
+          "Minimum": 632.2,
+          "Maximum": 1709.9
+        },
+        "IsolatedWriteUs": {
+          "Median": 42.3,
+          "P95": 73.8,
+          "Minimum": 22.6,
+          "Maximum": 214.6
+        },
+        "IsolatedReadyUs": {
+          "Median": 770.85,
+          "P95": 1135.5,
+          "Minimum": 590.5,
+          "Maximum": 1658.2
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 943.2,
+          "P95": 1354.1,
+          "Minimum": 709.4,
+          "Maximum": 1813.3
+        }
+      }
+    ]
+  }
+]

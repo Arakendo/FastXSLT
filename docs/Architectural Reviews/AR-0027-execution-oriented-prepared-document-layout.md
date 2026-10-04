@@ -162,7 +162,8 @@ data and select policy; Rust consumes explicitly admitted memory. No hidden
 file reopening, retained foreign pointers, zero-copy lifetime promise, new
 unsafe export, or general staging scheduler is admitted. AR-0020's rejected
 preparation-pool topology is not reopened merely by measuring placement. These
-new comparative measurements have not yet been implemented or run.
+comparative baselines now include matched fresh creation and persistent-worker
+ingestion; no staging-placement change has been nominated or measured.
 
 ## Ownership and constraints
 
@@ -267,6 +268,21 @@ its broader profiling program or AR-0009's retention policy review.
       native .NET and isolated workers, including compilation, exact first
       results, disposal and ordinary/measured diagnostic parity. Three process
       repetitions recorded; reusable and distinct-source host lanes remain open.
+    - [x] Remove process startup from a sequential 5,000-job mixed ingestion
+      control, retaining full compile+prepare semantics and proving failed
+      replacement recovery, field-limit rejection and worker-loss retirement.
+      Compile-once ingestion and representative distinct payloads remain open.
+    - [x] Extend unchanged native/persistent-isolated ingestion across six
+      synthetic copy shapes and three fresh 5,000-job repetitions. Balance
+      first-lane order per shape; disclose the depth-64 adapter ceiling and
+      structural-depth misclassification. This is not candidate measurement.
+    - [ ] Correct structural XML limit projection so well-formed input denied
+      by depth/event ceilings is not reported as malformed/invalid XML. Keep
+      parser provenance, adapter parity and prior-generation recovery.
+    - [x] Extend the direct compile-once control to distinct payloads and mixed
+      5/50/500-item jobs: 15,000 timed exact outputs, fresh-compile differential
+      checks and independent origin/provenance/retirement controls. Controls
+      remain unbounded; limits-matched compile-once adapters remain open.
 - [ ] Measure that boundary phase by phase, nominate one real managed staging
   cost, then compare its current and Rust-owned implementations independently
   of any tree-layout change.
@@ -315,8 +331,28 @@ its broader profiling program or AR-0009's retention policy review.
   - [x] Prototype uncharged chunk/allocation checkpoints, preserving ordinary
     node charges and charge-indexed failure controls; measure rotated overhead
     and retain timing reversals rather than claiming the polls are free.
-  - [ ] Review the candidate publication fence and competing asynchronous
-    failures; measure complete adapter lifecycle retention before adoption.
+  - [x] Review the candidate's final cancellation observation versus return and
+    caller publication. Prove failed replacement preserves old leases and
+    post-return cancellation does not revoke immutable source storage; do not
+    claim an atomic publication fence from a final token read.
+  - [x] Establish current native/isolated retention and admission controls with
+    delayed results, overlapping generations, failed replacement, quota denial
+    and release/readmission; distinguish exact payload ownership from managed
+    copies and unmeasured engine/transient memory.
+  - [x] Prove current private native known-capacity and aggregate-byte admission
+    at exact/one-less limits across result-heavy overlapping generations, retained
+    outcomes and concurrent last-capacity insertion; do not add a metrics export.
+  - [x] Verify result-heavy concurrent old/new candidate leases with independent
+    cancellation and exact/one-less invocation budgets, complete growth-oracle
+    diagnostics/charges, same-source recovery and serialized result retirement.
+  - [x] Exercise candidates at the real shared prepared-set seam using test-only
+    selection; preserve snapshot/map/lease ownership, exact/one-less preparation
+    failure projection and recovery without partial publication.
+  - [x] Integrate candidate selection into complete shared Rust engine creation
+    in tests only; conserve retention components, exact reuse/lease retirement,
+    creation failures and per-invocation diagnostic/recovery behavior.
+  - [ ] Select any supported completion rule deliberately and measure complete
+    adapter lifecycle retention/admission before candidate adoption.
   - [x] Prove measured source/snapshot/XML/XDM allocations release on successful
     construction and exact one-less node-budget failure across six shapes and
     all three constructors; do not equate that with process reclamation.
@@ -328,6 +364,12 @@ its broader profiling program or AR-0009's retention policy review.
     exact output; retain timing reversals and decline a general speedup claim.
   - [x] Measure full-transform requested-allocation peaks on six count and six
     copy shapes, with prepared/result/serialized retention and scope release.
+  - [x] Measure complete-engine old/new coexistence and delayed outputs across
+    three fresh allocation repetitions; reconcile known charges separately and
+    prove complete release, failed replacement and cancellation cleanup.
+  - [x] Measure complete Rust engine creation/transform/release at one/eight uses
+    and with an existing generation retained, without allocator hooks. Rotate
+    fresh-process order, preserve exact output and record timing reversals.
   - [x] Resolve the default-debug-stack failure on the 256-deep copy reference
     through safe ancestor-cursor serialization. Retain the shallow recursive
     oracle, promote the deep reference to an ordinary regression and replay
@@ -351,6 +393,155 @@ bottleneck, a safe candidate earns repeatable end-to-end benefit, or an access
 change would alter identity, public lifecycle, generation ownership or authority.
 
 ## Review history
+
+- 2026-10-03 -- Broadened the production-growth host baseline to six synthetic
+  copy shapes: three fresh 5,000-job queues per lane validate 30,000 timed exact
+  results, balanced first-lane order and zero residual native registry ownership.
+  Depth 256 is rejected consistently but misclassified as FXXM0002/invalid;
+  diagnostic repair remains open. .NET Release and conservation gates pass.
+  No candidate selector, staging change, production policy or adoption follows.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#host-shape-ingestion-baseline-on-2026-10-03)
+
+- 2026-10-03 -- Added complete Rust engine lifecycle timing without allocation
+  hooks. Three fresh rotated processes record 432 phase medians/p95 values and
+  validate 15,552 timed outputs. Candidate reversals and large reference drift
+  prevent a general speedup, precise overhead or reuse break-even claim; memory
+  savings remain separately reproducible. Full gates and the official WASM
+  build check pass. Host candidate timing/admission and adoption remain open.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-engine-capacity-timing-on-2026-10-03)
+
+- 2026-10-03 -- Measured seven complete-engine ownership prefixes across three
+  fresh release processes: all 189 records agree, and 81 released/failure scopes
+  return requested ownership to zero. At 500 items, pre-sizing saves 9.85% of
+  two-engine retention and 14.13% of construction-prefix peak; delayed outcomes
+  reduce the peak advantage to 6.35%, equal to freezing. Known charges remain
+  separate from allocator observations. Full gates pass with 1,556 core tests
+  and official WASM build check; host candidate timing/admission and adoption
+  remain open.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-engine-overlap-allocation-on-2026-10-03)
+
+- 2026-10-03 -- Extracted shared engine construction privately after the
+  2,119-line facade review; the parent is now 1,869 lines. The mechanical
+  checkpoint reproduces 37 existing engine tests. Test-only capacity selection
+  then passes nine engine generation pairs/144 exact byte results, 27 creation
+  failure comparisons and 18 invocation controls with recovery. Full gates and
+  official WASM target check pass. Complete-engine allocator peaks and host
+  candidate measurements remain open; no production selection changes.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-rust-engine-capacity-controls-on-2026-10-03)
+
+- 2026-10-03 -- Added test-only capacity selection at shared prepared-set
+  construction, preserving production growth and existing phase observation.
+  Nine old/new set pairs retain eighteen exact outputs after map retirement;
+  twenty-seven preparation controls preserve failure equality and node/event
+  charges, with eighteen same-builder recoveries and no partial publication.
+  Full gates pass with 1,552 core tests and official WASM build check. Complete
+  engine/adapter candidate measurements and adoption remain open.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#shared-prepared-set-capacity-seam-on-2026-10-03)
+
+- 2026-10-03 -- Added result-heavy concurrent candidate lease controls across
+  18 generation pairs and four independent worker controls. All 144 controlled
+  outcomes conserve complete growth-reference failures and ten-domain charges;
+  144 fresh-control recovery outputs remain exact after both document owners
+  expire. This proves direct-Rust isolation and retirement, not occupancy or
+  throughput. Workspace tests pass with 1,550 core tests; candidate adapter
+  integration, transient peaks and a supported completion decision remain open.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#concurrent-result-heavy-generation-leases-on-2026-10-03)
+
+- 2026-10-03 -- Added four private native registry controls: eighteen exact/
+  one-less result-heavy scenarios and six concurrent last-capacity scenarios.
+  Known engine capacity and total accounted bytes reject atomically, preserve
+  valid generations and restore charges after release. No observation export,
+  production constructor or quota policy changed. Full workspace tests pass
+  with 1,549 core and 22 native tests; official WASM build check passes.
+  Candidate adapter integration, transient peak and active concurrent leases
+  remain open.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#private-native-byte-admission-controls-on-2026-10-03)
+
+- 2026-10-03 -- Added real native/isolated retention/admission baseline through
+  existing exports/framing and production growth construction. Three fresh
+  .NET 10 processes reproduce ten native ownership checkpoints and 39 exact
+  outputs. Two-generation engine denial consumes no outcome slot or evicts valid
+  state; release restores admission and delayed outcomes outlive engine disposal.
+  Isolated initialization failure preserves its worker and transferred strings
+  outlive disposal. Managed/native Release builds pass. Engine charges/peak,
+  candidate adapter integration and active concurrent leases remain open.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#adapter-retention-and-admission-baseline-on-2026-10-03)
+
+- 2026-10-03 -- Reviewed candidate publication boundaries and corrected the
+  earlier fence wording: final cancellation observation is not atomic with
+  return or caller publication. Twelve failed replacement/lease controls and
+  eighteen post-return cancellation controls pass with 84 exact outputs.
+  Returned immutable sources remain usable with fresh invocation controls;
+  cancelled controls still fail normally. Distinct old/new origins and final
+  weak-owner expiry pass. No supported completion rule, capacity adoption or
+  adapter publication change follows. Complete adapter retention remains open.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#candidate-publication-boundary-review-on-2026-10-03)
+
+- 2026-10-03 -- Closed the measured result-heavy construction-failure allocation
+  gap. Each run checks 216 XML/XDM construction scopes and 12 resize cancellations;
+  three fresh release processes reproduce records, with all 630 failed and 54
+  successful scopes ending at zero tracked ownership. Maxima include parsing
+  and are not RSS or isolated XDM peaks. Ordinary regression enforces cleanup;
+  production remains unchanged. Host retention, broader XML failure profiles and
+  checkpoint publication/adoption remain open. Full gates pass with 1,547 core
+  tests and official WASM compilation.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#construction-failure-allocation-cleanup-on-2026-10-03)
+
+- 2026-10-03 -- Extended result-heavy control parity: 108 construction pairs,
+  12 before/after resize cancellation controls and 162 invocation cases across
+  result-node/text-byte/serialized-byte limits and cancellation. Structured
+  failures and targeted charges equal the growth reference; every invocation
+  allocation scope releases to zero and all 162 same-source recovery outputs
+  match. Production is unchanged. Construction-failure allocation attribution,
+  host retention and checkpoint adoption remain open. Full gates pass with
+  1,546 core tests and official WASM compilation.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-capacity-control-parity-on-2026-10-03)
+
+- 2026-10-03 -- Compared growth/freeze/pre-sizing on result-heavy copied output.
+  All 7,776 timed outputs match; all ten work counters and source retirement
+  preserve parity. Three processes reproduce allocation records and zero released
+  ownership. At 500 items both candidates save 135,160 retained requested bytes
+  (5.74% of the complete source/result/output scope); pre-sizing lowers cumulative
+  requests while freeze raises them. Timing reversals prevent a speedup or
+  adoption claim. Direct Document scopes omit PreparedInputSet wrappers and
+  capacity checkpoint polls. Full gates pass with 1,543 core tests and WASM.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-capacity-comparison-on-2026-10-03)
+
+- 2026-10-03 -- Added result-heavy requested-allocation scopes. Three fresh
+  processes reproduce all 18 records identically; successful release, partial
+  copy cancellation and one-less output limits leave zero tracked ownership.
+  Exact cancellation/limit diagnostics retain request correlation. At 500 items,
+  prepared/result/output retained bytes reach 2,356,567 with a 2,504,862 prefix
+  peak. These are allocator requests, not RSS or host accounting. Full gates
+  pass with 1,542 core tests and WASM. Capacity-candidate comparisons, broader
+  failure parity and adapter transfer remain open; no layout selected.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-allocation-and-failure-controls-on-2026-10-03)
+
+- 2026-10-03 -- Added result-heavy direct Rust one/eight-use controls with
+  2,592 timed exact outputs and copied-result survival after source retirement.
+  At roughly 271 KB output, one-shot preparation remains largest; eight-use
+  serialization/validation becomes the largest aggregate phase. Explicit
+  test-only parser ceilings avoid weakening production defaults. Full gates
+  pass with 1,541 core tests and WASM. Capacity-candidate result-heavy parity,
+  retention and host transfer remain open.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-prepared-reuse-follow-up-on-2026-10-03)
+
+- 2026-10-03 -- Extended direct compile-once ingestion to distinct payloads.
+  Three 5,000-job runs compare every timed result exactly; full-job medians are
+  14.6–15.0 us at 5 items, 76.3–76.7 us at 50, and 708.3–728.9 us at 500.
+  Preparation dominates the largest tier. Fresh-compilation parity, distinct
+  provenance and surviving-owner retirement pass. Full gates pass with 1,540
+  core tests and WASM; no adapter speedup or representation choice follows.
+  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#distinct-payload-compile-once-follow-up-on-2026-10-03)
+
+- 2026-10-03 -- Added persistent-worker initialization over the existing private
+  protocol. Three 5,000-job queues per lane validate 30,000 timed exact outputs;
+  failed replacement preserves old state, lost-worker retirement never retries,
+  and native registry ownership returns to baseline. Isolated 500-item setup
+  medians are 0.82–0.90 ms without startup. Retirement costs depend on the prior
+  source; repeated initialization still recompiles. No staging relocation or
+  production representation selected.
+  [Evidence](../Evidence/ar-0027-persistent-worker-ingestion-2026-10-03.md)
 
 - 2026-10-03 -- Added matched full-engine creation measurements through existing
   adapters and direct Rust. Three repetitions conserve 1,152 timed exact results,

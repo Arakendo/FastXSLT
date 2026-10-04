@@ -1152,6 +1152,8 @@ mod boundary_performance_tests;
 
 #[cfg(test)]
 mod tests {
+    mod retention_admission_tests;
+
     use std::{
         process::Command,
         sync::{Arc, Barrier},

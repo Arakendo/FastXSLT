@@ -33,6 +33,47 @@ neither is a standalone engine preparation measurement. These short exploratory
 runs always report `PublicationEligible=false`. The instrumentation is private,
 uses existing exports/framing, and does not change ordinary creation methods.
 
+The persistent-worker ingestion control removes process startup from per-job
+timing while still compiling and preparing every replacement document:
+
+```powershell
+dotnet workbenches/FastXSLT.AspNet.Workbench/bin/Release/net10.0/FastXSLT.AspNet.Workbench.dll --persistent-ingestion-probe --ingestion-jobs=5000 --creation-order=0
+```
+
+Use 128 jobs for a smoke, then repeat 5,000 jobs in fresh processes with orders
+1 and 2. The private probe alternates native/isolated lanes, preserves old
+engines on semantic initialization failure, rejects oversized fields before
+framing and retires lost workers without retry. It is not a public replacement
+API, compile-once ingestion lane or production pool-capacity benchmark.
+
+The private copied-result shape baseline uses the same ingestion lifecycle:
+
+```powershell
+dotnet workbenches/FastXSLT.AspNet.Workbench/bin/Release/net10.0/FastXSLT.AspNet.Workbench.dll --shape-ingestion-probe --ingestion-jobs=5000 --creation-order=0
+```
+
+Repeat orders 1 and 2 in fresh processes. Wide, depth-64, attribute-heavy,
+text-heavy, namespace-heavy and low-repetition synthetic payloads use unchanged
+production growth preparation. First-lane counts are balanced within each shape,
+and preceding-shape retirement is disclosed. A depth-256 rejection currently
+exposes structural-limit misclassification as invalid XML; the report records
+that open defect rather than treating cross-adapter agreement as correctness.
+This is not a capacity-candidate or published performance comparison.
+
+The private retention/admission control requires another fresh process:
+
+```powershell
+dotnet workbenches/FastXSLT.AspNet.Workbench/bin/Release/net10.0/FastXSLT.AspNet.Workbench.dll --retention-admission-probe
+```
+
+It configures an explicit two-engine/three-outcome test quota, checks delayed
+result ownership across native generation disposal, verifies denied creation and
+release/readmission, and checks isolated initialization failure/disposal. Native
+observations are quiescent counts and exact payload bytes; isolated results are
+already transferred managed copies. Known-engine-capacity and total-accounted-byte
+limits opt out explicitly. This uses production growth preparation, not capacity
+candidates, and supplies no defaults, timing, process-memory or peak guarantee.
+
 The workbench currently loads the pinned XSLT30 `for-004` source and stylesheet
 once, retains one compiled stylesheet and prepared input in the worker, and
 offers:

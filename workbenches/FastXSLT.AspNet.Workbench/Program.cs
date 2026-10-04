@@ -1,5 +1,36 @@
 using System.Diagnostics;
 
+if (args.Contains("--retention-admission-probe", StringComparer.Ordinal))
+{
+    var root = FindRepositoryRoot(Directory.GetCurrentDirectory());
+    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(await RetentionAdmissionProbe.RunAsync(root)));
+    return;
+}
+
+if (args.Contains("--persistent-ingestion-probe", StringComparer.Ordinal) ||
+    args.Contains("--shape-ingestion-probe", StringComparer.Ordinal))
+{
+    var root = FindRepositoryRoot(Directory.GetCurrentDirectory());
+    var jobsOption = args.SingleOrDefault(value => value.StartsWith("--ingestion-jobs=", StringComparison.Ordinal));
+    var orderOption = args.SingleOrDefault(value => value.StartsWith("--creation-order=", StringComparison.Ordinal));
+    var jobs = jobsOption is null ? 128 : int.Parse(jobsOption.Split('=')[1], System.Globalization.CultureInfo.InvariantCulture);
+    var order = orderOption is null ? 0 : int.Parse(orderOption.Split('=')[1], System.Globalization.CultureInfo.InvariantCulture);
+    try
+    {
+        var report = args.Contains("--shape-ingestion-probe", StringComparer.Ordinal)
+            ? await PersistentIngestionProbe.RunShapesAsync(root, jobs, order)
+            : await PersistentIngestionProbe.RunAsync(root, jobs, order);
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(report));
+    }
+    catch (Exception failure)
+    {
+        // Report a failed experiment without the Windows unhandled-exception dialog.
+        Console.Error.WriteLine(failure);
+        Environment.ExitCode = 1;
+    }
+    return;
+}
+
 if (args.Contains("--creation-placement-probe", StringComparer.Ordinal))
 {
     var root = FindRepositoryRoot(Directory.GetCurrentDirectory());

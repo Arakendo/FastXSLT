@@ -19,6 +19,12 @@ const EXPECTED: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>36.02</ou
 #[path = "host_placement/direct_creation_tests.rs"]
 mod direct_creation_tests;
 
+#[path = "host_placement/distinct_ingestion_tests.rs"]
+mod distinct_ingestion_tests;
+
+#[path = "host_placement/result_heavy_ingestion_tests.rs"]
+mod result_heavy_ingestion_tests;
+
 #[derive(Debug, Default)]
 struct Phases {
     admission: u128,

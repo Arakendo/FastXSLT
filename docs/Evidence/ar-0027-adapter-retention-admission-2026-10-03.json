@@ -1,0 +1,362 @@
+{
+  "scope": "Current production-growth native/isolated ownership baseline; experimental native quotas in fresh processes; no candidate construction, engine-byte export, timing or RSS",
+  "runs": [
+    {
+      "run": 0,
+      "exit_code": 0,
+      "report": {
+        "Runtime": "10.0.12",
+        "Native": {
+          "ExactResults": 6,
+          "EngineLimit": 2,
+          "OutcomeLimit": 3,
+          "OutcomeByteLimit": 1048576,
+          "KnownEngineCapacityLimitOptedOut": true,
+          "AccountedTotalLimitOptedOut": true,
+          "Checkpoints": [
+            {
+              "Stage": "old-and-result",
+              "Observation": {
+                "EngineHandles": 1,
+                "ControlHandles": 0,
+                "OutcomeHandles": 1,
+                "OutcomePayloadBytes": 2759
+              }
+            },
+            {
+              "Stage": "overlapping-generations-and-results",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "denied-third-engine-no-extra-outcome",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "failed-initialization-drained",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "cancelled-invocation-drained",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "old-engine-released-result-survives",
+              "Observation": {
+                "EngineHandles": 1,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "released-slot-readmitted",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "all-engines-released-results-survive",
+              "Observation": {
+                "EngineHandles": 0,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "old-result-released",
+              "Observation": {
+                "EngineHandles": 0,
+                "ControlHandles": 0,
+                "OutcomeHandles": 1,
+                "OutcomePayloadBytes": 270949
+              }
+            },
+            {
+              "Stage": "fully-drained",
+              "Observation": {
+                "EngineHandles": 0,
+                "ControlHandles": 0,
+                "OutcomeHandles": 0,
+                "OutcomePayloadBytes": 0
+              }
+            }
+          ]
+        },
+        "Isolated": {
+          "ExactResults": 7,
+          "IndependentWorkerGenerations": 2,
+          "FailedInitializationPreservesGeneration": true,
+          "NoImplicitReplacementOrRetry": true,
+          "ResultCopiesSurviveDisposal": true,
+          "ResultOwnership": "managed strings already transferred; not worker-retained outcomes"
+        },
+        "ProductionGrowthOnly": true,
+        "CandidateAdopted": false,
+        "PublicationEligible": false,
+        "Scope": "quiescent exact native counts/payload; isolated host-copy ownership; no engine-byte/RSS/peak measurement"
+      }
+    },
+    {
+      "run": 1,
+      "exit_code": 0,
+      "report": {
+        "Runtime": "10.0.12",
+        "Native": {
+          "ExactResults": 6,
+          "EngineLimit": 2,
+          "OutcomeLimit": 3,
+          "OutcomeByteLimit": 1048576,
+          "KnownEngineCapacityLimitOptedOut": true,
+          "AccountedTotalLimitOptedOut": true,
+          "Checkpoints": [
+            {
+              "Stage": "old-and-result",
+              "Observation": {
+                "EngineHandles": 1,
+                "ControlHandles": 0,
+                "OutcomeHandles": 1,
+                "OutcomePayloadBytes": 2759
+              }
+            },
+            {
+              "Stage": "overlapping-generations-and-results",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "denied-third-engine-no-extra-outcome",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "failed-initialization-drained",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "cancelled-invocation-drained",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "old-engine-released-result-survives",
+              "Observation": {
+                "EngineHandles": 1,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "released-slot-readmitted",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "all-engines-released-results-survive",
+              "Observation": {
+                "EngineHandles": 0,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "old-result-released",
+              "Observation": {
+                "EngineHandles": 0,
+                "ControlHandles": 0,
+                "OutcomeHandles": 1,
+                "OutcomePayloadBytes": 270949
+              }
+            },
+            {
+              "Stage": "fully-drained",
+              "Observation": {
+                "EngineHandles": 0,
+                "ControlHandles": 0,
+                "OutcomeHandles": 0,
+                "OutcomePayloadBytes": 0
+              }
+            }
+          ]
+        },
+        "Isolated": {
+          "ExactResults": 7,
+          "IndependentWorkerGenerations": 2,
+          "FailedInitializationPreservesGeneration": true,
+          "NoImplicitReplacementOrRetry": true,
+          "ResultCopiesSurviveDisposal": true,
+          "ResultOwnership": "managed strings already transferred; not worker-retained outcomes"
+        },
+        "ProductionGrowthOnly": true,
+        "CandidateAdopted": false,
+        "PublicationEligible": false,
+        "Scope": "quiescent exact native counts/payload; isolated host-copy ownership; no engine-byte/RSS/peak measurement"
+      }
+    },
+    {
+      "run": 2,
+      "exit_code": 0,
+      "report": {
+        "Runtime": "10.0.12",
+        "Native": {
+          "ExactResults": 6,
+          "EngineLimit": 2,
+          "OutcomeLimit": 3,
+          "OutcomeByteLimit": 1048576,
+          "KnownEngineCapacityLimitOptedOut": true,
+          "AccountedTotalLimitOptedOut": true,
+          "Checkpoints": [
+            {
+              "Stage": "old-and-result",
+              "Observation": {
+                "EngineHandles": 1,
+                "ControlHandles": 0,
+                "OutcomeHandles": 1,
+                "OutcomePayloadBytes": 2759
+              }
+            },
+            {
+              "Stage": "overlapping-generations-and-results",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "denied-third-engine-no-extra-outcome",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "failed-initialization-drained",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "cancelled-invocation-drained",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "old-engine-released-result-survives",
+              "Observation": {
+                "EngineHandles": 1,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "released-slot-readmitted",
+              "Observation": {
+                "EngineHandles": 2,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "all-engines-released-results-survive",
+              "Observation": {
+                "EngineHandles": 0,
+                "ControlHandles": 0,
+                "OutcomeHandles": 2,
+                "OutcomePayloadBytes": 273708
+              }
+            },
+            {
+              "Stage": "old-result-released",
+              "Observation": {
+                "EngineHandles": 0,
+                "ControlHandles": 0,
+                "OutcomeHandles": 1,
+                "OutcomePayloadBytes": 270949
+              }
+            },
+            {
+              "Stage": "fully-drained",
+              "Observation": {
+                "EngineHandles": 0,
+                "ControlHandles": 0,
+                "OutcomeHandles": 0,
+                "OutcomePayloadBytes": 0
+              }
+            }
+          ]
+        },
+        "Isolated": {
+          "ExactResults": 7,
+          "IndependentWorkerGenerations": 2,
+          "FailedInitializationPreservesGeneration": true,
+          "NoImplicitReplacementOrRetry": true,
+          "ResultCopiesSurviveDisposal": true,
+          "ResultOwnership": "managed strings already transferred; not worker-retained outcomes"
+        },
+        "ProductionGrowthOnly": true,
+        "CandidateAdopted": false,
+        "PublicationEligible": false,
+        "Scope": "quiescent exact native counts/payload; isolated host-copy ownership; no engine-byte/RSS/peak measurement"
+      }
+    }
+  ]
+}

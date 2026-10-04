@@ -29,13 +29,21 @@ supported numerical promise. A visit bound is not a wall-clock bound: thread
 scheduling, cleanup and allocator calls can delay return. Polling around an
 allocator call does not interrupt that call.
 
-The freeze candidate deliberately treats the constructor return as its
-publication fence: a token observed after shrinking rejects the document even
-though semantic construction has completed. The unpolled freeze reference
-instead returns success at that boundary. This difference is explicit, not
-claimed as universal cancellation parity. A supported completion rule requires
-review before adoption; no ABI, host cancellation contract or production
+The freeze candidate performs a final cancellation poll after shrinking:
+a token observed there rejects the document even though semantic construction
+has completed. The unpolled freeze reference instead returns success when the
+same observer signals at that boundary. This difference is explicit, not claimed
+as universal cancellation parity. The final poll is not atomic with constructor
+return or caller publication; an unobserved later signal cannot retroactively
+revoke a returned immutable document. Calling this a publication fence would
+overstate the implementation. A supported completion rule still requires a
+decision before adoption; no ABI, host cancellation contract or production
 behavior is changed here.
+
+The [2026-10-03 handoff controls](ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#candidate-publication-boundary-review-on-2026-10-03)
+exercise failed replacement, old/new owner overlap, and cancellation after return.
+They review the private candidate's behavior without selecting atomic publication
+or a production completion rule.
 
 ## Differential and boundary evidence
 

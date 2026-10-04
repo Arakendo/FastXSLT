@@ -8121,15 +8121,99 @@ now record three direct Rust/native/isolated repetitions and 1,152 timed exact
 results. Fresh isolated startup dominates and migrates between pipe-write and
 readiness clocks; native creation remains a combined compile/prepare export,
 not a pure preparation clock. No staging cost is selected for relocation.
-Reusable/distinct-source host ingestion, deeper phase attribution, result-heavy
-reuse and checkpoint/commit-rule review remain open. The
+The [persistent-worker ingestion control](../Evidence/ar-0027-persistent-worker-ingestion-2026-10-03.md)
+adds three sequential 5,000-job mixed queues per lane and 30,000 exact outputs.
+Process startup is outside job timing; repeated initialization still compiles
+and prepares, with old-generation retirement visible. Failure recovery and
+worker-loss retirement pass without implicit retry. No staging change selected.
+Compile-once/distinct-payload host ingestion, deeper phase attribution, result-heavy
+reuse and checkpoint/commit-rule review remain open. The direct Rust
+[distinct-payload control](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#distinct-payload-compile-once-follow-up-on-2026-10-03)
+now supplies 15,000 exact timed outputs with compilation outside job timing;
+500-item complete-job medians are 708.3–728.9 us. Unbounded controls and test
+instrumentation prevent an exact adapter-overhead subtraction. No staging or
+layout policy selected. The
+[result-heavy one/eight-use control](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-prepared-reuse-follow-up-on-2026-10-03)
+adds 2,592 exact timed copied results, including source-owner retirement checks.
+Preparation dominates one-shot large copies, but aggregate serialization is
+largest across eight reuses. The
+[allocation and failure follow-up](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-allocation-and-failure-controls-on-2026-10-03)
+adds 54 identical fresh-process allocation observations: all 27 release/failure
+scopes return tracked ownership to zero, with exact cancellation/output-limit
+diagnostics. At 500 items, prepared/result/output retention reaches 2.36 MB
+and complete-prefix peak reaches 2.50 MB; neither figure is RSS. Result-heavy
+capacity comparison now has a
+[direct candidate matrix](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-capacity-comparison-on-2026-10-03):
+7,776 exact timed outputs, conserved work counters and repeatable 135 KB retained
+savings at 500 items. Complete-scope savings are 5.74%; timing reversals still
+prevent a speedup/adoption claim. The
+[result-heavy control matrix](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-capacity-control-parity-on-2026-10-03)
+adds 108 construction pairs, 12 resize-cancellation checks and 162 invocation
+cases with exact failures, zero retained invocation allocations and same-source
+recovery. The
+[construction-failure allocation follow-up](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#construction-failure-allocation-cleanup-on-2026-10-03)
+closes that measured gap: three fresh runs reproduce 228 scopes each, with
+all 630 failures and 54 successes releasing tracked ownership completely.
+Broader XML failure profiles, host transfer and checkpoint adoption remain open. The
 [bounded checkpoint candidate](../Evidence/ar-0027-bounded-capacity-checkpoints-2026-10-02.md)
 now polls every 256 scan events and before/after capacity changes, without
 consuming units or shifting charge-indexed faults. Ten scan controls, 24 resize
 controls and 216 differential pairs pass. Three rotated timing windows remain
 too variable for a precise overhead claim. Its post-shrink publication fence
-is private and needs review; complete adapter retention and broader parity
-remain open. Production construction is unchanged.
+wording has now been corrected by the
+[publication boundary review](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#candidate-publication-boundary-review-on-2026-10-03):
+final cancellation observation is not atomic with return or caller publication.
+Thirty handoff/lease controls produce 84 exact outputs, preserve old generations
+on failed replacement and keep returned storage usable after later cancellation.
+The [current adapter retention/admission baseline](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#adapter-retention-and-admission-baseline-on-2026-10-03)
+now verifies ten native count/payload checkpoints and 39 exact outputs across
+three fresh .NET processes. Quota denial preserves two live engines, release
+restores admission and retained outcomes outlive engine disposal. Isolated
+failure/disposal preserves generation and transferred-result ownership. Complete
+candidate adapter retention, transient peak and a deliberately
+selected supported completion rule remain open. Production construction is unchanged.
+Private [native byte-admission controls](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#private-native-byte-admission-controls-on-2026-10-03)
+now cover eighteen exact/one-less scenarios and six concurrent last-capacity
+scenarios for known engine capacity and aggregate accounted bytes. Rejection
+publishes no partial generation, release restores charges and retained results
+outlive engines. This closes current registry accounting controls, not candidate
+adapter adoption or a process-memory guarantee.
+The [concurrent result-heavy lease control](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#concurrent-result-heavy-generation-leases-on-2026-10-03)
+compares 144 controlled invocations across 18 old/new generation pairs against
+growth semantics and all ten work charges. Fresh-control recovery produces 144
+exact outputs that outlive both document owners. This is direct-Rust ownership
+and isolation evidence, not measured occupancy, speedup or adapter adoption.
+The [shared prepared-set capacity seam](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#shared-prepared-set-capacity-seam-on-2026-10-03)
+now permits test-only candidate selection through actual snapshot parsing,
+prepared-map publication and sealing. Nine generation pairs produce eighteen
+exact outputs after map retirement; twenty-seven preparation controls conserve
+growth failures/charges and recover without partial entries. Production remains
+growth. Full-engine and host adapter candidate measurements remain open.
+The [complete Rust engine controls](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-rust-engine-capacity-controls-on-2026-10-03)
+now exercise test-only candidate selection through admission, compilation and
+prepared sealing. Nine overlapping engine pairs preserve 144 exact results after
+owner retirement; 27 creation and 18 invocation failure controls preserve growth
+diagnostics and recovery. Private construction extraction reduces the facade
+from 2,119 to 1,869 lines. Full-engine allocator peaks and native/isolated candidate
+measurements remain open; production selection and host surfaces are unchanged.
+The [complete-engine allocation follow-up](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-engine-overlap-allocation-on-2026-10-03)
+reproduces 189 prefix records across three fresh release processes, with 81
+zero-retention release/failure scopes. At 500 items, pre-sizing reduces two-engine
+retention 9.85% and construction-prefix peak 14.13%; with delayed outputs, both
+candidates reduce peak 6.35%. This is requested-allocation evidence, not RSS or
+speedup. Complete host candidate timing/admission and production adoption remain open.
+The [complete Rust engine timing follow-up](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-engine-capacity-timing-on-2026-10-03)
+records 432 phase medians/p95 values across three fresh rotated release processes,
+without allocation hooks, and validates 15,552 timed outputs. One/eight-use and
+old-generation-overlap cells repeatedly reverse candidate direction. Reproducible
+memory savings therefore do not establish a lifecycle speedup or reuse break-even.
+Host candidate creation/admission, other shapes and production adoption remain open.
+The [six-shape host ingestion baseline](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#host-shape-ingestion-baseline-on-2026-10-03)
+validates 30,000 timed exact copied results through unchanged native/persistent
+isolated preparation, with per-shape first-lane balance and full registry release.
+This is production growth, not candidate host measurement. The depth control
+exposes structural-limit failures being reported as `FXXM0002 / invalid`;
+correct that projection with provenance and recovery tests before capacity adoption.
 
 The [sealed-subset and temporary-path follow-up](../Evidence/ar-0027-sealed-subset-parity-and-temporary-path-blocker-2026-10-03.md)
 checks two admitted external-DTD fixtures through five constructors and twenty

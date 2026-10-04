@@ -1,0 +1,1237 @@
+{
+  "date": "2026-10-03",
+  "purpose": "Private production-growth native and persistent isolated ingestion baseline across six synthetic copy shapes; not a capacity-candidate comparison.",
+  "command": "dotnet workbenches/FastXSLT.AspNet.Workbench/bin/Release/net10.0/FastXSLT.AspNet.Workbench.dll --shape-ingestion-probe --ingestion-jobs=5000 --creation-order=N",
+  "exclusions": "Initial failed serialization assumptions, pre-balance runs and 128-job smokes excluded from the timing record.",
+  "depth_control": "Both current adapters reject a well-formed depth-256 source as FXXM0002/invalid; classification gap remains open. Timed deep shape is depth 64, not the earlier Rust depth-256 anatomy fixture.",
+  "runs": [
+    {
+      "order": 0,
+      "exit_code": 0,
+      "report": {
+        "JobsPerLane": 5000,
+        "Order": 0,
+        "WarmupsPerLane": 32,
+        "Runtime": "10.0.12",
+        "Family": "copy-shapes",
+        "PreparationCapacity": "production-growth",
+        "RejectedDepthControl": 256,
+        "DepthDiagnostic": {
+          "Code": "FXXM0002",
+          "Category": "invalid",
+          "Location": {
+            "Resource": "urn:ar0027:invalid",
+            "Start": 192,
+            "End": 195
+          }
+        },
+        "StructuralLimitMisclassifiedAsInvalid": true,
+        "TimedExactResults": 10000,
+        "RecoveryExactResults": 7,
+        "LostWorkerRetiredWithoutRetry": true,
+        "WorkerProcessUnchanged": true,
+        "NativeRegistryReturnedToBaseline": true,
+        "PublicationEligible": false,
+        "Scope": "sequential distinct-origin queue; full recompile+prepare; prior generation retained until successful replacement",
+        "Measurements": [
+          {
+            "Name": "wide",
+            "SourceBytes": 36007,
+            "ExpectedResultUtf8Bytes": 36007,
+            "Samples": 833,
+            "PreviousShape": "low-repetition",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 416,
+            "NativeCreationUs": {
+              "Median": 1432,
+              "P95": 2084.9,
+              "Minimum": 1030.8,
+              "Maximum": 3438.2
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 53.3,
+              "P95": 100.8,
+              "Minimum": 47,
+              "Maximum": 268.6
+            },
+            "NativeThroughResultUs": {
+              "Median": 2311.9,
+              "P95": 3225.1,
+              "Minimum": 1691.8,
+              "Maximum": 5418.6
+            },
+            "IsolatedInitializationUs": {
+              "Median": 1643.9,
+              "P95": 2399.4,
+              "Minimum": 1144,
+              "Maximum": 3625.1
+            },
+            "IsolatedWriteUs": {
+              "Median": 77.5,
+              "P95": 114.4,
+              "Minimum": 45.7,
+              "Maximum": 223.5
+            },
+            "IsolatedReadyUs": {
+              "Median": 1564,
+              "P95": 2283.1,
+              "Minimum": 1083.9,
+              "Maximum": 3405.7
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 2590.9,
+              "P95": 3686.9,
+              "Minimum": 1846.7,
+              "Maximum": 5385.1
+            }
+          },
+          {
+            "Name": "deep-64",
+            "SourceBytes": 452,
+            "ExpectedResultUtf8Bytes": 452,
+            "Samples": 833,
+            "PreviousShape": "wide",
+            "NativeFirstSamples": 416,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 74.7,
+              "P95": 149.8,
+              "Minimum": 45.8,
+              "Maximum": 594.2
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 126.4,
+              "P95": 506.1,
+              "Minimum": 89.5,
+              "Maximum": 786.7
+            },
+            "NativeThroughResultUs": {
+              "Median": 262.9,
+              "P95": 673.2,
+              "Minimum": 174.2,
+              "Maximum": 962.7
+            },
+            "IsolatedInitializationUs": {
+              "Median": 273.1,
+              "P95": 480.3,
+              "Minimum": 188.4,
+              "Maximum": 1058.6
+            },
+            "IsolatedWriteUs": {
+              "Median": 38.4,
+              "P95": 64,
+              "Minimum": 16.2,
+              "Maximum": 577.1
+            },
+            "IsolatedReadyUs": {
+              "Median": 230,
+              "P95": 431.7,
+              "Minimum": 159.6,
+              "Maximum": 891.8
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 403.9,
+              "P95": 656.8,
+              "Minimum": 268.3,
+              "Maximum": 1210.6
+            }
+          },
+          {
+            "Name": "attribute-heavy",
+            "SourceBytes": 11079,
+            "ExpectedResultUtf8Bytes": 11463,
+            "Samples": 834,
+            "PreviousShape": "deep-64",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 678.8499999999999,
+              "P95": 997.5,
+              "Minimum": 492.3,
+              "Maximum": 1419.3
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 4.7,
+              "P95": 7.5,
+              "Minimum": 3,
+              "Maximum": 19.1
+            },
+            "NativeThroughResultUs": {
+              "Median": 945.6,
+              "P95": 1354.7,
+              "Minimum": 702.4,
+              "Maximum": 1917.5
+            },
+            "IsolatedInitializationUs": {
+              "Median": 776.75,
+              "P95": 1122.6,
+              "Minimum": 565.6,
+              "Maximum": 1935.5
+            },
+            "IsolatedWriteUs": {
+              "Median": 63.3,
+              "P95": 98.2,
+              "Minimum": 30.3,
+              "Maximum": 504.1
+            },
+            "IsolatedReadyUs": {
+              "Median": 710.75,
+              "P95": 1045.8,
+              "Minimum": 525.2,
+              "Maximum": 1818.8
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1129.45,
+              "P95": 1592.8,
+              "Minimum": 837.5,
+              "Maximum": 2536.5
+            }
+          },
+          {
+            "Name": "text-heavy",
+            "SourceBytes": 262983,
+            "ExpectedResultUtf8Bytes": 262983,
+            "Samples": 834,
+            "PreviousShape": "attribute-heavy",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 275.45000000000005,
+              "P95": 444.4,
+              "Minimum": 187.1,
+              "Maximum": 762.9
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 39.7,
+              "P95": 69,
+              "Minimum": 31.1,
+              "Maximum": 321.7
+            },
+            "NativeThroughResultUs": {
+              "Median": 1033.4,
+              "P95": 1551.2,
+              "Minimum": 685.4,
+              "Maximum": 3405.6
+            },
+            "IsolatedInitializationUs": {
+              "Median": 479.65,
+              "P95": 705.4,
+              "Minimum": 333.5,
+              "Maximum": 6359.6
+            },
+            "IsolatedWriteUs": {
+              "Median": 146.3,
+              "P95": 255.4,
+              "Minimum": 77.8,
+              "Maximum": 5977.3
+            },
+            "IsolatedReadyUs": {
+              "Median": 328.35,
+              "P95": 491.5,
+              "Minimum": 238.1,
+              "Maximum": 752.4
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1383.85,
+              "P95": 1966.6,
+              "Minimum": 955.3,
+              "Maximum": 7510.3
+            }
+          },
+          {
+            "Name": "namespace-heavy",
+            "SourceBytes": 21767,
+            "ExpectedResultUtf8Bytes": 22919,
+            "Samples": 833,
+            "PreviousShape": "text-heavy",
+            "NativeFirstSamples": 416,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 528.8,
+              "P95": 786.3,
+              "Minimum": 396.6,
+              "Maximum": 1226
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 8.2,
+              "P95": 14.9,
+              "Minimum": 5,
+              "Maximum": 542.3
+            },
+            "NativeThroughResultUs": {
+              "Median": 839.7,
+              "P95": 1220.3,
+              "Minimum": 631.4,
+              "Maximum": 1849.1
+            },
+            "IsolatedInitializationUs": {
+              "Median": 661.4,
+              "P95": 965.2,
+              "Minimum": 498,
+              "Maximum": 1224.9
+            },
+            "IsolatedWriteUs": {
+              "Median": 74.3,
+              "P95": 124.6,
+              "Minimum": 41,
+              "Maximum": 313.4
+            },
+            "IsolatedReadyUs": {
+              "Median": 579.2,
+              "P95": 859,
+              "Minimum": 437.6,
+              "Maximum": 1134.6
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1068.9,
+              "P95": 1490.1,
+              "Minimum": 804.7,
+              "Maximum": 2083.6
+            }
+          },
+          {
+            "Name": "low-repetition",
+            "SourceBytes": 20157,
+            "ExpectedResultUtf8Bytes": 20157,
+            "Samples": 833,
+            "PreviousShape": "namespace-heavy",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 416,
+            "NativeCreationUs": {
+              "Median": 731.1,
+              "P95": 1100.4,
+              "Minimum": 518.3,
+              "Maximum": 1690.2
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 28.8,
+              "P95": 48.7,
+              "Minimum": 24.9,
+              "Maximum": 117.5
+            },
+            "NativeThroughResultUs": {
+              "Median": 1173.3,
+              "P95": 1690.3,
+              "Minimum": 853.3,
+              "Maximum": 2351.5
+            },
+            "IsolatedInitializationUs": {
+              "Median": 885.4,
+              "P95": 1512,
+              "Minimum": 622.7,
+              "Maximum": 3660.8
+            },
+            "IsolatedWriteUs": {
+              "Median": 69.5,
+              "P95": 104.3,
+              "Minimum": 36.8,
+              "Maximum": 2138.1
+            },
+            "IsolatedReadyUs": {
+              "Median": 811.8,
+              "P95": 1442.8,
+              "Minimum": 583.5,
+              "Maximum": 2199.6
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1419.5,
+              "P95": 2172.1,
+              "Minimum": 1001.3,
+              "Maximum": 4370.9
+            }
+          }
+        ]
+      }
+    },
+    {
+      "order": 1,
+      "exit_code": 0,
+      "report": {
+        "JobsPerLane": 5000,
+        "Order": 1,
+        "WarmupsPerLane": 32,
+        "Runtime": "10.0.12",
+        "Family": "copy-shapes",
+        "PreparationCapacity": "production-growth",
+        "RejectedDepthControl": 256,
+        "DepthDiagnostic": {
+          "Code": "FXXM0002",
+          "Category": "invalid",
+          "Location": {
+            "Resource": "urn:ar0027:invalid",
+            "Start": 192,
+            "End": 195
+          }
+        },
+        "StructuralLimitMisclassifiedAsInvalid": true,
+        "TimedExactResults": 10000,
+        "RecoveryExactResults": 7,
+        "LostWorkerRetiredWithoutRetry": true,
+        "WorkerProcessUnchanged": true,
+        "NativeRegistryReturnedToBaseline": true,
+        "PublicationEligible": false,
+        "Scope": "sequential distinct-origin queue; full recompile+prepare; prior generation retained until successful replacement",
+        "Measurements": [
+          {
+            "Name": "wide",
+            "SourceBytes": 36007,
+            "ExpectedResultUtf8Bytes": 36007,
+            "Samples": 833,
+            "PreviousShape": "low-repetition",
+            "NativeFirstSamples": 416,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 1435.8,
+              "P95": 2202.5,
+              "Minimum": 1022.1,
+              "Maximum": 3069.9
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 56.1,
+              "P95": 112.9,
+              "Minimum": 46.8,
+              "Maximum": 391.7
+            },
+            "NativeThroughResultUs": {
+              "Median": 2297.3,
+              "P95": 3416.9,
+              "Minimum": 1701.8,
+              "Maximum": 4589.7
+            },
+            "IsolatedInitializationUs": {
+              "Median": 1619.5,
+              "P95": 2438.6,
+              "Minimum": 1117.3,
+              "Maximum": 3762.5
+            },
+            "IsolatedWriteUs": {
+              "Median": 73.3,
+              "P95": 120.9,
+              "Minimum": 37.1,
+              "Maximum": 325.2
+            },
+            "IsolatedReadyUs": {
+              "Median": 1542.7,
+              "P95": 2335.6,
+              "Minimum": 1057.8,
+              "Maximum": 3656.8
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 2572.3,
+              "P95": 3765.1,
+              "Minimum": 1803.9,
+              "Maximum": 7031.8
+            }
+          },
+          {
+            "Name": "deep-64",
+            "SourceBytes": 452,
+            "ExpectedResultUtf8Bytes": 452,
+            "Samples": 833,
+            "PreviousShape": "wide",
+            "NativeFirstSamples": 416,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 79.9,
+              "P95": 148,
+              "Minimum": 55.2,
+              "Maximum": 348.6
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 126.4,
+              "P95": 424.6,
+              "Minimum": 93.1,
+              "Maximum": 983.1
+            },
+            "NativeThroughResultUs": {
+              "Median": 266.9,
+              "P95": 594.4,
+              "Minimum": 189.2,
+              "Maximum": 1256.3
+            },
+            "IsolatedInitializationUs": {
+              "Median": 286,
+              "P95": 531.9,
+              "Minimum": 197.6,
+              "Maximum": 933.1
+            },
+            "IsolatedWriteUs": {
+              "Median": 41.4,
+              "P95": 64.3,
+              "Minimum": 18.8,
+              "Maximum": 169.1
+            },
+            "IsolatedReadyUs": {
+              "Median": 240.4,
+              "P95": 487.6,
+              "Minimum": 164.5,
+              "Maximum": 880.1
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 420.2,
+              "P95": 704.8,
+              "Minimum": 298.3,
+              "Maximum": 1166.2
+            }
+          },
+          {
+            "Name": "attribute-heavy",
+            "SourceBytes": 11079,
+            "ExpectedResultUtf8Bytes": 11463,
+            "Samples": 833,
+            "PreviousShape": "deep-64",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 416,
+            "NativeCreationUs": {
+              "Median": 658.7,
+              "P95": 976.7,
+              "Minimum": 489.6,
+              "Maximum": 3014.6
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 5,
+              "P95": 8.1,
+              "Minimum": 3,
+              "Maximum": 30.2
+            },
+            "NativeThroughResultUs": {
+              "Median": 919.2,
+              "P95": 1307.8,
+              "Minimum": 698.1,
+              "Maximum": 3440.9
+            },
+            "IsolatedInitializationUs": {
+              "Median": 791.4,
+              "P95": 1196.8,
+              "Minimum": 559.6,
+              "Maximum": 1974.4
+            },
+            "IsolatedWriteUs": {
+              "Median": 63.5,
+              "P95": 101.4,
+              "Minimum": 27.2,
+              "Maximum": 176.4
+            },
+            "IsolatedReadyUs": {
+              "Median": 720.5,
+              "P95": 1129.4,
+              "Minimum": 513.1,
+              "Maximum": 1881.3
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1159.3,
+              "P95": 1655,
+              "Minimum": 831.1,
+              "Maximum": 2429.4
+            }
+          },
+          {
+            "Name": "text-heavy",
+            "SourceBytes": 262983,
+            "ExpectedResultUtf8Bytes": 262983,
+            "Samples": 834,
+            "PreviousShape": "attribute-heavy",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 280.05,
+              "P95": 454.2,
+              "Minimum": 187.7,
+              "Maximum": 935.4
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 40.95,
+              "P95": 70.6,
+              "Minimum": 31.4,
+              "Maximum": 363.7
+            },
+            "NativeThroughResultUs": {
+              "Median": 1060.8,
+              "P95": 1591.5,
+              "Minimum": 708.7,
+              "Maximum": 4294.5
+            },
+            "IsolatedInitializationUs": {
+              "Median": 486.1,
+              "P95": 746.3,
+              "Minimum": 342.4,
+              "Maximum": 1448.6
+            },
+            "IsolatedWriteUs": {
+              "Median": 143.1,
+              "P95": 242.7,
+              "Minimum": 85.1,
+              "Maximum": 1133.1
+            },
+            "IsolatedReadyUs": {
+              "Median": 338.15,
+              "P95": 529.7,
+              "Minimum": 246.8,
+              "Maximum": 969.9
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1401,
+              "P95": 1984.1,
+              "Minimum": 942.1,
+              "Maximum": 2857.6
+            }
+          },
+          {
+            "Name": "namespace-heavy",
+            "SourceBytes": 21767,
+            "ExpectedResultUtf8Bytes": 22919,
+            "Samples": 834,
+            "PreviousShape": "text-heavy",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 512.1500000000001,
+              "P95": 797.4,
+              "Minimum": 394.4,
+              "Maximum": 959.1
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 8.5,
+              "P95": 37.1,
+              "Minimum": 5,
+              "Maximum": 409
+            },
+            "NativeThroughResultUs": {
+              "Median": 814.05,
+              "P95": 1250.9,
+              "Minimum": 627.4,
+              "Maximum": 1698.2
+            },
+            "IsolatedInitializationUs": {
+              "Median": 670.1,
+              "P95": 998.1,
+              "Minimum": 488.6,
+              "Maximum": 1291.6
+            },
+            "IsolatedWriteUs": {
+              "Median": 75.15,
+              "P95": 122.4,
+              "Minimum": 39.6,
+              "Maximum": 280.8
+            },
+            "IsolatedReadyUs": {
+              "Median": 586.95,
+              "P95": 900.1,
+              "Minimum": 435.5,
+              "Maximum": 1214.6
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1101.15,
+              "P95": 1528.6,
+              "Minimum": 796.3,
+              "Maximum": 2532.5
+            }
+          },
+          {
+            "Name": "low-repetition",
+            "SourceBytes": 20157,
+            "ExpectedResultUtf8Bytes": 20157,
+            "Samples": 833,
+            "PreviousShape": "namespace-heavy",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 416,
+            "NativeCreationUs": {
+              "Median": 704.2,
+              "P95": 1184.9,
+              "Minimum": 515.2,
+              "Maximum": 2128
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 29.6,
+              "P95": 47.6,
+              "Minimum": 24.5,
+              "Maximum": 121.5
+            },
+            "NativeThroughResultUs": {
+              "Median": 1152.7,
+              "P95": 1778.6,
+              "Minimum": 846.6,
+              "Maximum": 2993.9
+            },
+            "IsolatedInitializationUs": {
+              "Median": 900.8,
+              "P95": 1401.9,
+              "Minimum": 619.8,
+              "Maximum": 3705.1
+            },
+            "IsolatedWriteUs": {
+              "Median": 67.9,
+              "P95": 110.1,
+              "Minimum": 35.2,
+              "Maximum": 691.5
+            },
+            "IsolatedReadyUs": {
+              "Median": 825.1,
+              "P95": 1314.8,
+              "Minimum": 570.7,
+              "Maximum": 2224.7
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1463.3,
+              "P95": 2127.4,
+              "Minimum": 1011.1,
+              "Maximum": 4326.2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "order": 2,
+      "exit_code": 0,
+      "report": {
+        "JobsPerLane": 5000,
+        "Order": 2,
+        "WarmupsPerLane": 32,
+        "Runtime": "10.0.12",
+        "Family": "copy-shapes",
+        "PreparationCapacity": "production-growth",
+        "RejectedDepthControl": 256,
+        "DepthDiagnostic": {
+          "Code": "FXXM0002",
+          "Category": "invalid",
+          "Location": {
+            "Resource": "urn:ar0027:invalid",
+            "Start": 192,
+            "End": 195
+          }
+        },
+        "StructuralLimitMisclassifiedAsInvalid": true,
+        "TimedExactResults": 10000,
+        "RecoveryExactResults": 7,
+        "LostWorkerRetiredWithoutRetry": true,
+        "WorkerProcessUnchanged": true,
+        "NativeRegistryReturnedToBaseline": true,
+        "PublicationEligible": false,
+        "Scope": "sequential distinct-origin queue; full recompile+prepare; prior generation retained until successful replacement",
+        "Measurements": [
+          {
+            "Name": "wide",
+            "SourceBytes": 36007,
+            "ExpectedResultUtf8Bytes": 36007,
+            "Samples": 833,
+            "PreviousShape": "low-repetition",
+            "NativeFirstSamples": 416,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 1413,
+              "P95": 2097.5,
+              "Minimum": 991.6,
+              "Maximum": 2862.4
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 57.1,
+              "P95": 105,
+              "Minimum": 46.4,
+              "Maximum": 292.7
+            },
+            "NativeThroughResultUs": {
+              "Median": 2260,
+              "P95": 3300.8,
+              "Minimum": 1642.4,
+              "Maximum": 5296.4
+            },
+            "IsolatedInitializationUs": {
+              "Median": 1583.5,
+              "P95": 2316.8,
+              "Minimum": 1062.7,
+              "Maximum": 3482.9
+            },
+            "IsolatedWriteUs": {
+              "Median": 72.5,
+              "P95": 114.2,
+              "Minimum": 35.7,
+              "Maximum": 481
+            },
+            "IsolatedReadyUs": {
+              "Median": 1506.5,
+              "P95": 2216.9,
+              "Minimum": 1022.2,
+              "Maximum": 3376.8
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 2520.1,
+              "P95": 3599.5,
+              "Minimum": 1801.4,
+              "Maximum": 4878.5
+            }
+          },
+          {
+            "Name": "deep-64",
+            "SourceBytes": 452,
+            "ExpectedResultUtf8Bytes": 452,
+            "Samples": 833,
+            "PreviousShape": "wide",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 416,
+            "NativeCreationUs": {
+              "Median": 74.8,
+              "P95": 115.7,
+              "Minimum": 45.8,
+              "Maximum": 366.9
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 124.7,
+              "P95": 390.6,
+              "Minimum": 88.5,
+              "Maximum": 677.4
+            },
+            "NativeThroughResultUs": {
+              "Median": 262.8,
+              "P95": 586.8,
+              "Minimum": 175.5,
+              "Maximum": 909.1
+            },
+            "IsolatedInitializationUs": {
+              "Median": 276.9,
+              "P95": 509.4,
+              "Minimum": 186,
+              "Maximum": 822.6
+            },
+            "IsolatedWriteUs": {
+              "Median": 39.7,
+              "P95": 63.4,
+              "Minimum": 15.7,
+              "Maximum": 239.8
+            },
+            "IsolatedReadyUs": {
+              "Median": 232.3,
+              "P95": 448.1,
+              "Minimum": 159.1,
+              "Maximum": 778.2
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 404.1,
+              "P95": 661.9,
+              "Minimum": 282.5,
+              "Maximum": 1000.6
+            }
+          },
+          {
+            "Name": "attribute-heavy",
+            "SourceBytes": 11079,
+            "ExpectedResultUtf8Bytes": 11463,
+            "Samples": 833,
+            "PreviousShape": "deep-64",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 416,
+            "NativeCreationUs": {
+              "Median": 674,
+              "P95": 1007.3,
+              "Minimum": 503.1,
+              "Maximum": 1389
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 5.1,
+              "P95": 7.7,
+              "Minimum": 3.7,
+              "Maximum": 28.2
+            },
+            "NativeThroughResultUs": {
+              "Median": 936,
+              "P95": 1348.9,
+              "Minimum": 708.1,
+              "Maximum": 6648.3
+            },
+            "IsolatedInitializationUs": {
+              "Median": 781.9,
+              "P95": 1156.6,
+              "Minimum": 576.5,
+              "Maximum": 1670.4
+            },
+            "IsolatedWriteUs": {
+              "Median": 68.5,
+              "P95": 100.8,
+              "Minimum": 35.2,
+              "Maximum": 213.3
+            },
+            "IsolatedReadyUs": {
+              "Median": 708.9,
+              "P95": 1077.3,
+              "Minimum": 528.4,
+              "Maximum": 1571.5
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1150.5,
+              "P95": 1614.9,
+              "Minimum": 858.2,
+              "Maximum": 2107
+            }
+          },
+          {
+            "Name": "text-heavy",
+            "SourceBytes": 262983,
+            "ExpectedResultUtf8Bytes": 262983,
+            "Samples": 833,
+            "PreviousShape": "attribute-heavy",
+            "NativeFirstSamples": 416,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 281.9,
+              "P95": 440.2,
+              "Minimum": 190.2,
+              "Maximum": 669
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 41.8,
+              "P95": 71.4,
+              "Minimum": 31.5,
+              "Maximum": 460.5
+            },
+            "NativeThroughResultUs": {
+              "Median": 1039.3,
+              "P95": 1576.3,
+              "Minimum": 708.3,
+              "Maximum": 2463.2
+            },
+            "IsolatedInitializationUs": {
+              "Median": 487.4,
+              "P95": 704.1,
+              "Minimum": 328,
+              "Maximum": 1759.9
+            },
+            "IsolatedWriteUs": {
+              "Median": 142.2,
+              "P95": 255.7,
+              "Minimum": 77.1,
+              "Maximum": 1424.8
+            },
+            "IsolatedReadyUs": {
+              "Median": 332.1,
+              "P95": 506.4,
+              "Minimum": 240.2,
+              "Maximum": 1026.7
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1385.5,
+              "P95": 1916.2,
+              "Minimum": 969.8,
+              "Maximum": 3274.9
+            }
+          },
+          {
+            "Name": "namespace-heavy",
+            "SourceBytes": 21767,
+            "ExpectedResultUtf8Bytes": 22919,
+            "Samples": 834,
+            "PreviousShape": "text-heavy",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 512.95,
+              "P95": 789,
+              "Minimum": 394.5,
+              "Maximum": 1194.2
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 8.1,
+              "P95": 20.8,
+              "Minimum": 4.9,
+              "Maximum": 377.8
+            },
+            "NativeThroughResultUs": {
+              "Median": 811.4,
+              "P95": 1198.5,
+              "Minimum": 626.7,
+              "Maximum": 1623.1
+            },
+            "IsolatedInitializationUs": {
+              "Median": 667,
+              "P95": 973.7,
+              "Minimum": 494.1,
+              "Maximum": 1398.4
+            },
+            "IsolatedWriteUs": {
+              "Median": 74.5,
+              "P95": 116.6,
+              "Minimum": 34.1,
+              "Maximum": 375.7
+            },
+            "IsolatedReadyUs": {
+              "Median": 585.0999999999999,
+              "P95": 862.6,
+              "Minimum": 435.8,
+              "Maximum": 1208.6
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1091.15,
+              "P95": 1496.9,
+              "Minimum": 813.6,
+              "Maximum": 2300.5
+            }
+          },
+          {
+            "Name": "low-repetition",
+            "SourceBytes": 20157,
+            "ExpectedResultUtf8Bytes": 20157,
+            "Samples": 834,
+            "PreviousShape": "namespace-heavy",
+            "NativeFirstSamples": 417,
+            "IsolatedFirstSamples": 417,
+            "NativeCreationUs": {
+              "Median": 714.8,
+              "P95": 1133.7,
+              "Minimum": 521.1,
+              "Maximum": 1745
+            },
+            "NativeOldEngineRetirementUs": {
+              "Median": 28.9,
+              "P95": 47.5,
+              "Minimum": 24.1,
+              "Maximum": 84.6
+            },
+            "NativeThroughResultUs": {
+              "Median": 1167.75,
+              "P95": 1734.2,
+              "Minimum": 852.1,
+              "Maximum": 2446.2
+            },
+            "IsolatedInitializationUs": {
+              "Median": 877.5999999999999,
+              "P95": 1506.8,
+              "Minimum": 628.8,
+              "Maximum": 2290.9
+            },
+            "IsolatedWriteUs": {
+              "Median": 71.3,
+              "P95": 105.1,
+              "Minimum": 32.1,
+              "Maximum": 395.9
+            },
+            "IsolatedReadyUs": {
+              "Median": 799.25,
+              "P95": 1402.5,
+              "Minimum": 568.1,
+              "Maximum": 2218.6
+            },
+            "IsolatedThroughResultUs": {
+              "Median": 1439.35,
+              "P95": 2209.7,
+              "Minimum": 1018.4,
+              "Maximum": 3877
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "prior_decimal_smoke": {
+    "JobsPerLane": 128,
+    "Order": 0,
+    "WarmupsPerLane": 32,
+    "Runtime": "10.0.12",
+    "Family": "decimal-items",
+    "PreparationCapacity": "production-growth",
+    "RejectedDepthControl": null,
+    "TimedExactResults": 256,
+    "RecoveryExactResults": 5,
+    "LostWorkerRetiredWithoutRetry": true,
+    "WorkerProcessUnchanged": true,
+    "NativeRegistryReturnedToBaseline": true,
+    "PublicationEligible": false,
+    "Scope": "sequential distinct-origin queue; full recompile+prepare; prior generation retained until successful replacement",
+    "Measurements": [
+      {
+        "Name": "pinned",
+        "SourceBytes": 216,
+        "ExpectedResultUtf8Bytes": 54,
+        "Samples": 32,
+        "PreviousShape": "items-500",
+        "NativeCreationUs": {
+          "Median": 52.150000000000006,
+          "P95": 71.1,
+          "Minimum": 41.4,
+          "Maximum": 75.4
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 104.55,
+          "P95": 137.1,
+          "Minimum": 44.7,
+          "Maximum": 150.9
+        },
+        "NativeThroughResultUs": {
+          "Median": 163.95,
+          "P95": 200.5,
+          "Minimum": 102.7,
+          "Maximum": 227.7
+        },
+        "IsolatedInitializationUs": {
+          "Median": 263.5,
+          "P95": 319.2,
+          "Minimum": 201.3,
+          "Maximum": 483.5
+        },
+        "IsolatedWriteUs": {
+          "Median": 56.35,
+          "P95": 77.7,
+          "Minimum": 37.5,
+          "Maximum": 82.8
+        },
+        "IsolatedReadyUs": {
+          "Median": 207.7,
+          "P95": 256.4,
+          "Minimum": 149.7,
+          "Maximum": 433.1
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 353.3,
+          "P95": 485.6,
+          "Minimum": 287.4,
+          "Maximum": 605.1
+        }
+      },
+      {
+        "Name": "items-5",
+        "SourceBytes": 206,
+        "ExpectedResultUtf8Bytes": 53,
+        "Samples": 32,
+        "PreviousShape": "pinned",
+        "NativeCreationUs": {
+          "Median": 61,
+          "P95": 76.6,
+          "Minimum": 52.5,
+          "Maximum": 348.4
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 6.35,
+          "P95": 9.1,
+          "Minimum": 3.3,
+          "Maximum": 10
+        },
+        "NativeThroughResultUs": {
+          "Median": 75.65,
+          "P95": 94,
+          "Minimum": 63.3,
+          "Maximum": 367.1
+        },
+        "IsolatedInitializationUs": {
+          "Median": 134.5,
+          "P95": 222.3,
+          "Minimum": 101.9,
+          "Maximum": 245
+        },
+        "IsolatedWriteUs": {
+          "Median": 34.95,
+          "P95": 52.8,
+          "Minimum": 21.5,
+          "Maximum": 61.7
+        },
+        "IsolatedReadyUs": {
+          "Median": 104,
+          "P95": 181.4,
+          "Minimum": 73.3,
+          "Maximum": 184.4
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 211.39999999999998,
+          "P95": 316.7,
+          "Minimum": 156.7,
+          "Maximum": 392.5
+        }
+      },
+      {
+        "Name": "items-50",
+        "SourceBytes": 1736,
+        "ExpectedResultUtf8Bytes": 54,
+        "Samples": 32,
+        "PreviousShape": "items-5",
+        "NativeCreationUs": {
+          "Median": 117.05,
+          "P95": 152.1,
+          "Minimum": 92,
+          "Maximum": 172.9
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 2.25,
+          "P95": 2.7,
+          "Minimum": 2,
+          "Maximum": 3
+        },
+        "NativeThroughResultUs": {
+          "Median": 127.5,
+          "P95": 162.4,
+          "Minimum": 101.9,
+          "Maximum": 185.8
+        },
+        "IsolatedInitializationUs": {
+          "Median": 286.45,
+          "P95": 340.3,
+          "Minimum": 201.1,
+          "Maximum": 435.4
+        },
+        "IsolatedWriteUs": {
+          "Median": 49.900000000000006,
+          "P95": 92.8,
+          "Minimum": 31.2,
+          "Maximum": 117.7
+        },
+        "IsolatedReadyUs": {
+          "Median": 226.85000000000002,
+          "P95": 284.1,
+          "Minimum": 165.7,
+          "Maximum": 403.7
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 382.25,
+          "P95": 474.3,
+          "Minimum": 261.6,
+          "Maximum": 562.2
+        }
+      },
+      {
+        "Name": "items-500",
+        "SourceBytes": 17036,
+        "ExpectedResultUtf8Bytes": 55,
+        "Samples": 32,
+        "PreviousShape": "items-50",
+        "NativeCreationUs": {
+          "Median": 912.05,
+          "P95": 1181.6,
+          "Minimum": 730.6,
+          "Maximum": 1195.3
+        },
+        "NativeOldEngineRetirementUs": {
+          "Median": 9.1,
+          "P95": 10.1,
+          "Minimum": 7.4,
+          "Maximum": 10.9
+        },
+        "NativeThroughResultUs": {
+          "Median": 966.65,
+          "P95": 1245.5,
+          "Minimum": 789.7,
+          "Maximum": 1256.9
+        },
+        "IsolatedInitializationUs": {
+          "Median": 1149.7,
+          "P95": 1448,
+          "Minimum": 934.5,
+          "Maximum": 1773.6
+        },
+        "IsolatedWriteUs": {
+          "Median": 54.75,
+          "P95": 96.7,
+          "Minimum": 40.1,
+          "Maximum": 123.5
+        },
+        "IsolatedReadyUs": {
+          "Median": 1096.25,
+          "P95": 1324.1,
+          "Minimum": 875.4,
+          "Maximum": 1716.9
+        },
+        "IsolatedThroughResultUs": {
+          "Median": 1303.65,
+          "P95": 1617.5,
+          "Minimum": 1119.7,
+          "Maximum": 1933.5
+        }
+      }
+    ]
+  }
+}

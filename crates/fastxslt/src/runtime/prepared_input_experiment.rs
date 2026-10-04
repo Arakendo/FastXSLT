@@ -57,6 +57,24 @@ pub(super) struct PreparedInputBuilder {
     parsed_phase_capacity_bytes: BTreeMap<String, usize>,
     internal_subset_limits: Option<InternalSubsetLimits>,
     external_subset: Option<ExternalSubsetPolicy>,
+    #[cfg(test)]
+    capacity: PreparationCapacity,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) enum PreparationCapacity {
+    #[default]
+    Growth,
+    Frozen,
+    Presized,
+}
+
+#[cfg(test)]
+#[derive(Default)]
+struct PreparationExperiment<'a> {
+    observation: Option<&'a mut PreparationPhaseObservation>,
+    capacity: PreparationCapacity,
 }
 
 impl PreparedInputBuilder {
@@ -69,6 +87,7 @@ impl PreparedInputBuilder {
             parsed_phase_capacity_bytes: BTreeMap::new(),
             internal_subset_limits: None,
             external_subset: None,
+            capacity: PreparationCapacity::Growth,
         }
     }
 
@@ -80,7 +99,15 @@ impl PreparedInputBuilder {
             parsed_phase_capacity_bytes: BTreeMap::new(),
             internal_subset_limits: None,
             external_subset: None,
+            #[cfg(test)]
+            capacity: PreparationCapacity::Growth,
         }
+    }
+
+    #[cfg(test)]
+    pub(super) const fn with_capacity(mut self, capacity: PreparationCapacity) -> Self {
+        self.capacity = capacity;
+        self
     }
 
     #[cfg(test)]
@@ -123,7 +150,10 @@ impl PreparedInputBuilder {
             self.internal_subset_limits,
             self.external_subset.as_ref(),
             #[cfg(test)]
-            None,
+            PreparationExperiment {
+                observation: None,
+                capacity: self.capacity,
+            },
         )?;
         self.documents.insert(identity.to_owned(), document);
         self.parsed_phase_capacity_bytes
@@ -162,7 +192,7 @@ pub(super) fn prepare_document(
         None,
         None,
         #[cfg(test)]
-        None,
+        PreparationExperiment::default(),
     )
 }
 
@@ -188,7 +218,10 @@ fn prepare_document_observed(
         control,
         None,
         None,
-        Some(observation),
+        PreparationExperiment {
+            observation: Some(observation),
+            capacity: PreparationCapacity::Growth,
+        },
     )
 }
 
@@ -199,7 +232,7 @@ fn prepare_document_with_policy(
     control: &mut InvocationControl,
     internal_subset_limits: Option<InternalSubsetLimits>,
     external_subset: Option<&ExternalSubsetPolicy>,
-    #[cfg(test)] mut observation: Option<&mut PreparationPhaseObservation>,
+    #[cfg(test)] mut experiment: PreparationExperiment<'_>,
 ) -> Result<(Arc<Document>, usize), PreparationFailure> {
     let bytes = snapshot
         .get(identity)
@@ -207,7 +240,10 @@ fn prepare_document_with_policy(
             identity: identity.to_owned(),
         })?;
     #[cfg(test)]
-    let parse_start = observation.as_ref().map(|_| std::time::Instant::now());
+    let parse_start = experiment
+        .observation
+        .as_ref()
+        .map(|_| std::time::Instant::now());
     let parsed = match (internal_subset_limits, external_subset) {
         (Some(dtd_limits), Some(external_policy)) => {
             let mut resolver =
@@ -256,23 +292,37 @@ fn prepare_document_with_policy(
         },
     })?;
     #[cfg(test)]
-    if let (Some(observation), Some(start)) = (observation.as_mut(), parse_start) {
+    if let (Some(observation), Some(start)) = (experiment.observation.as_mut(), parse_start) {
         observation.xml_parse = start.elapsed();
     }
     let parsed_phase_capacity_bytes = parsed.owned_capacity_bytes();
     #[cfg(test)]
-    let build_start = observation.as_ref().map(|_| std::time::Instant::now());
-    let document =
-        Document::from_parsed_controlled(parsed, control).map_err(|failure| match failure {
-            BuildFailure::Control(failure) => PreparationFailure::Control(failure),
-            _ => PreparationFailure::InvalidXdm {
-                identity: identity.to_owned(),
-                detail: format!("{failure:?}"),
-            },
-        })?;
+    let build_start = experiment
+        .observation
+        .as_ref()
+        .map(|_| std::time::Instant::now());
+    #[cfg(test)]
+    let built = match experiment.capacity {
+        PreparationCapacity::Growth => Document::from_parsed_controlled(parsed, control),
+        PreparationCapacity::Frozen => {
+            Document::from_parsed_with_frozen_node_capacity(parsed, control)
+        }
+        PreparationCapacity::Presized => {
+            Document::from_parsed_with_presized_node_capacity(parsed, control)
+        }
+    };
+    #[cfg(not(test))]
+    let built = Document::from_parsed_controlled(parsed, control);
+    let document = built.map_err(|failure| match failure {
+        BuildFailure::Control(failure) => PreparationFailure::Control(failure),
+        _ => PreparationFailure::InvalidXdm {
+            identity: identity.to_owned(),
+            detail: format!("{failure:?}"),
+        },
+    })?;
     let document = Arc::new(document);
     #[cfg(test)]
-    if let (Some(observation), Some(start)) = (observation.as_mut(), build_start) {
+    if let (Some(observation), Some(start)) = (experiment.observation.as_mut(), build_start) {
         observation.xdm_build = start.elapsed();
     }
     Ok((document, parsed_phase_capacity_bytes))
