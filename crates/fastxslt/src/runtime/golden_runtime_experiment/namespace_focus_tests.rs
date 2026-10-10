@@ -12,6 +12,9 @@ mod namespace_conditional;
 #[path = "namespace_count_argument_tests.rs"]
 mod namespace_count_arguments;
 
+#[path = "namespace_identity_string_tests.rs"]
+mod namespace_identity_strings;
+
 use super::super::{
     BTreeMap, Document, ExecutionFailure, InvocationControl, MultipleMatchPolicy, ParseLimits,
     StylesheetProgram, WhitespaceRepresentation, WorkDomain, execute_program_with_parameters_using,

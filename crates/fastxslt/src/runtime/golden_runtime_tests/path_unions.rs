@@ -7,6 +7,29 @@ use super::{
 };
 
 #[test]
+fn xslt10_path_union_keeps_quoted_current_text_distinct_from_outer_focus() {
+    const SOURCE: &str = "urn:fastxslt:quoted-current:source";
+    const STYLESHEET: &str = "urn:fastxslt:quoted-current:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><out><xsl:for-each select="part[@id='current()/@refid'] | part[@id='current()'] | part[@id=current()/@refid]"><xsl:sort select="@rank" data-type="number"/><xsl:value-of select="@id"/><xsl:text>|</xsl:text></xsl:for-each></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources.admit(SOURCE, br#"<doc refid="b"><part id="current()/@refid" rank="3"/><part id="current()" rank="2"/><part id="b" rank="1"/><part id="unselected" rank="0"/></doc>"#.to_vec()).unwrap();
+    resources.admit(STYLESHEET, stylesheet.to_vec()).unwrap();
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).unwrap();
+    let mut builder = TransformSetBuilder::new(snapshot, program, 2, policy(8_192));
+    for name in ["quoted-current-a", "quoted-current-b"] {
+        builder.add(request(name, name, SOURCE)).unwrap();
+    }
+    let results = execute_transform_set(builder.seal()).unwrap();
+    for name in ["quoted-current-a", "quoted-current-b"] {
+        assert_eq!(
+            results.by_request[name].serialized,
+            "<out>b|current()|current()/@refid|</out>"
+        );
+    }
+}
+
+#[test]
 fn xslt10_path_unions_support_count_and_last_position() {
     const SOURCE: &str = "urn:fastxslt:path-union-position:source";
     const STYLESHEET: &str = "urn:fastxslt:path-union-position:stylesheet";

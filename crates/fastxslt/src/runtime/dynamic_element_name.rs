@@ -16,6 +16,7 @@ use super::{
 
 #[derive(Clone, Copy)]
 pub(super) struct DynamicElementNameRequest<'a> {
+    pub(super) xslt10_compatibility: bool,
     pub(super) name: &'a DynamicElementName,
     pub(super) variables: &'a RuntimeVariables,
     pub(super) namespace_override: Option<&'a DynamicNamespaceValue>,
@@ -62,6 +63,7 @@ pub(super) fn resolve_dynamic_element_name(
         &lexical,
         namespace_override.as_deref(),
         request.static_namespaces,
+        request.xslt10_compatibility,
         request.location,
         inputs.request_id,
     )
@@ -100,6 +102,7 @@ pub(super) fn resolve_lexical_element_name(
     lexical: &str,
     namespace_override: Option<&str>,
     static_namespaces: &[NamespaceBinding],
+    xslt10_compatibility: bool,
     location: &SourceLocation,
     request_id: &str,
 ) -> Result<(ExpandedName, Arc<[NamespaceBinding]>), ExecutionFailure> {
@@ -128,6 +131,29 @@ pub(super) fn resolve_lexical_element_name(
             ));
         }
     };
+    if xslt10_compatibility && let Some(namespace) = namespace_override {
+        const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+        let prefix = if namespace == XML_NAMESPACE {
+            Some("xml")
+        } else {
+            prefix.filter(|prefix| !matches!(*prefix, "xml" | "xmlns"))
+        };
+        let namespaces: Arc<[NamespaceBinding]> = if namespace.is_empty() {
+            Arc::from([])
+        } else {
+            Arc::from([NamespaceBinding {
+                prefix: prefix.map(str::to_owned),
+                namespace: namespace.to_owned(),
+            }])
+        };
+        return Ok((
+            ExpandedName {
+                namespace: (!namespace.is_empty()).then(|| namespace.to_owned()),
+                local: local.to_owned(),
+            },
+            namespaces,
+        ));
+    }
     let namespace = match namespace_override {
         Some("") if prefix.is_some() => {
             return Err(dynamic_name_failure(

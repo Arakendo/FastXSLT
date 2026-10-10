@@ -42,6 +42,15 @@ pub(super) fn numeric_literal_argument_type_error(expression: &str) -> Option<&s
     argument.trim().parse::<f64>().ok().map(|_| function)
 }
 
+pub(super) fn system_property_arity_error(expression: &str) -> bool {
+    parse_call(expression.trim()).is_some_and(|(function, argument)| {
+        function == "system-property"
+            && (argument.trim().is_empty()
+                || crate::xpath::static_string_experiment::split_arguments(argument, 64)
+                    .is_some_and(|arguments| arguments.len() != 1))
+    })
+}
+
 pub(super) fn fold_effective_boolean(
     document: &Document,
     element: NodeId,
@@ -239,6 +248,51 @@ mod tests {
     use crate::compile::golden_stylesheet_experiment::document_element;
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+
+    #[test]
+    fn system_property_wrong_arity_is_invalid_and_deferred_in_legacy_future_context() {
+        use crate::compile::golden_stylesheet_experiment::{CompileCategory, compile_stylesheet};
+        use crate::xslt::golden_semantics_experiment::Instruction;
+        for expression in [
+            "system-property()",
+            "system-property('xsl:version', 'foo:bar')",
+        ] {
+            for version in ["1.0", "1.5", "3.0"] {
+                let xml = format!(
+                    r#"<xsl:stylesheet version="{version}" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="never"><xsl:value-of select="{expression}"/></xsl:template><xsl:template match="/"/></xsl:stylesheet>"#
+                );
+                let document = Document::from_parsed(
+                    parse_document(
+                        "urn:introspection:arity",
+                        xml.as_bytes(),
+                        ParseLimits {
+                            max_events: 64,
+                            max_depth: 8,
+                        },
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+                let result = compile_stylesheet(&document);
+                if version == "1.5" {
+                    assert!(result.unwrap().matched_templates.iter().any(|template| matches!(template.template.body.as_slice(), [Instruction::Xslt10DeferredFailure { code, .. }] if *code == "XPST0017")));
+                } else {
+                    let failure = result.unwrap_err();
+                    assert_eq!(failure.category, CompileCategory::Invalid);
+                    assert_eq!(failure.code, "XPST0017");
+                    assert_eq!(failure.location.resource, "urn:introspection:arity");
+                }
+            }
+        }
+        for expression in [
+            "system-property('a,b')",
+            "system-property(concat('a', 'b'))",
+            "function-available('f', 2)",
+            "system-property('a') + other('b', 'c')",
+        ] {
+            assert!(!super::system_property_arity_error(expression));
+        }
+    }
 
     #[test]
     fn folds_namespace_aware_xslt10_introspection() {

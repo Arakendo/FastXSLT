@@ -935,7 +935,7 @@ pub(crate) fn parse_xslt10_location_path(
 
 fn normalize_xslt10_outer_context_comparison(expression: &str) -> Option<String> {
     let marker = "current()";
-    let start = expression.find(marker)?;
+    let start = find_xslt10_current_call(expression, marker)?;
     let mut normalized = String::with_capacity(expression.len() - marker.len() + 3);
     normalized.push_str(&expression[..start]);
     normalized.push('\'');
@@ -951,7 +951,7 @@ fn normalize_xslt10_outer_context_comparison(expression: &str) -> Option<String>
 
 fn normalize_xslt10_outer_attribute_comparison(expression: &str) -> Option<String> {
     let marker = "current()/@";
-    let start = expression.find(marker)?;
+    let start = find_xslt10_current_call(expression, marker)?;
     let name_start = start + marker.len();
     let outer_attribute = expression[name_start..]
         .chars()
@@ -968,6 +968,29 @@ fn normalize_xslt10_outer_attribute_comparison(expression: &str) -> Option<Strin
     normalized.push('\'');
     normalized.push_str(&expression[name_start + outer_attribute.len()..]);
     Some(normalized)
+}
+
+// Only the unqualified XSLT function call is eligible for this private lowering.
+// Literal text and similarly suffixed function names must remain untouched.
+fn find_xslt10_current_call(expression: &str, marker: &str) -> Option<usize> {
+    let mut quote = None;
+    let mut previous = None;
+    for (offset, character) in expression.char_indices() {
+        match (quote, character) {
+            (Some(delimiter), character) if character == delimiter => quote = None,
+            (None, '\'' | '"') => quote = Some(character),
+            (None, 'c')
+                if expression[offset..].starts_with(marker)
+                    && !previous
+                        .is_some_and(|character| is_ncname_char(character) || character == ':') =>
+            {
+                return Some(offset);
+            }
+            _ => {}
+        }
+        previous = Some(character);
+    }
+    None
 }
 
 fn xslt10_static_comparison_predicate(expression: &str) -> Option<(&str, bool)> {
@@ -1548,13 +1571,27 @@ fn is_declaration_shaped_xpath_syntax(expression: &str) -> bool {
     matches!(tokens.next(), Some("declare" | "eclare")) && tokens.next() == Some("function")
 }
 
+/// Lexical routing fact; a colon in a string literal is not `QName` syntax.
+pub(crate) fn has_unquoted_colon(expression: &str) -> bool {
+    let mut quote = None;
+    for character in expression.chars() {
+        match (quote, character) {
+            (Some(delimiter), character) if character == delimiter => quote = None,
+            (None, '\'' | '"') => quote = Some(character),
+            (None, ':') => return true,
+            _ => {}
+        }
+    }
+    false
+}
+
 fn validate_unambiguous_step_syntax(
     steps: &[String],
     expression: &str,
     location: &SourceLocation,
 ) -> Result<(), PathFailure> {
     let has_malformed_namespace_wildcard = steps.iter().any(|step| {
-        step.contains(':')
+        has_unquoted_colon(step)
             && !step.contains("::")
             && (step.contains("(:") || step.chars().any(char::is_whitespace))
     });
@@ -1868,22 +1905,19 @@ fn split_top_level_predicate_operator<'a>(
     predicate: &'a str,
     operator: &str,
 ) -> Option<(&'a str, &'a str)> {
-    let bytes = predicate.as_bytes();
     let mut quote = None;
     let mut depth = 0usize;
-    let mut index = 0usize;
-    while index < bytes.len() {
-        match bytes[index] {
-            b'\'' | b'"' if quote == Some(bytes[index]) => quote = None,
-            b'\'' | b'"' if quote.is_none() => quote = Some(bytes[index]),
-            b'(' if quote.is_none() => depth += 1,
-            b')' if quote.is_none() => depth = depth.checked_sub(1)?,
+    for (index, character) in predicate.char_indices() {
+        match character {
+            '\'' | '"' if quote == Some(character) => quote = None,
+            '\'' | '"' if quote.is_none() => quote = Some(character),
+            '(' if quote.is_none() => depth += 1,
+            ')' if quote.is_none() => depth = depth.checked_sub(1)?,
             _ if quote.is_none() && depth == 0 && predicate[index..].starts_with(operator) => {
                 return Some((&predicate[..index], &predicate[index + operator.len()..]));
             }
             _ => {}
         }
-        index += 1;
     }
     None
 }

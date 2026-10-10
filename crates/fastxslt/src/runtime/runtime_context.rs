@@ -1,5 +1,13 @@
 //! Invocation-local globals, variable frames, and temporary-tree preparation.
 
+#[path = "runtime_context/retained_source_values.rs"]
+mod retained_source_values;
+use retained_source_values::RetainedSourceSelection;
+
+#[cfg(test)]
+#[path = "runtime_context/retained_node_frames_reference.rs"]
+mod retained_node_frames_reference;
+
 #[cfg(test)]
 #[path = "golden_runtime_experiment/namespace_nodes_reference_tests.rs"]
 mod namespace_nodes_reference_tests;
@@ -59,6 +67,10 @@ pub(super) struct GlobalDocumentContext<'a> {
 
 #[derive(Debug, Default)]
 pub(super) struct RuntimeGlobals {
+    pub(super) principal_owner: Option<Arc<Document>>,
+    #[cfg(test)]
+    retained_nodes_reference:
+        BTreeMap<String, Vec<crate::xdm::retained_nodes_reference::RetainedNode>>,
     pub(super) atomics: Arc<BTreeMap<String, AtomicValue>>,
     pub(super) empty_sequences: HashSet<String>,
     pub(super) nodes: BTreeMap<String, Vec<NodeId>>,
@@ -102,6 +114,10 @@ pub(super) enum TemporaryNodeKind {
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct RuntimeVariables {
+    retained_sources: Option<Arc<BTreeMap<String, RetainedSourceSelection>>>,
+    #[cfg(test)]
+    retained_nodes_reference:
+        Arc<BTreeMap<String, Vec<crate::xdm::retained_nodes_reference::RetainedNode>>>,
     pub(super) atomics: Arc<BTreeMap<String, AtomicValue>>,
     pub(super) atomic_sequences: Arc<BTreeMap<String, Vec<AtomicValue>>>,
     pub(super) source_nodes: Arc<BTreeMap<String, Vec<NodeId>>>,
@@ -338,7 +354,7 @@ fn evaluate_variable_template_argument(
     if let Some(values) = variables.atomic_sequences.get(name) {
         return Ok(InvocationParameterValue::AtomicSequence(values.clone()));
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         return Ok(InvocationParameterValue::SourceNodes(nodes.clone()));
     }
     if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
@@ -407,8 +423,9 @@ fn evaluate_source_variable_path_argument(
             "a variable-rooted template argument requires a principal source",
         )
     })?;
-    let nodes =
-        super::evaluate_source_variable_path(inputs, source, variable, path, variables, control)?;
+    let nodes = super::bound_variable_path::evaluate_eligible_path(
+        inputs, source, variable, path, variables, control,
+    )?;
     Ok(InvocationParameterValue::SourceNodes(nodes))
 }
 
@@ -536,6 +553,9 @@ impl RuntimeVariables {
         complete_clone: bool,
     ) -> Self {
         Self {
+            retained_sources: None,
+            #[cfg(test)]
+            retained_nodes_reference: Arc::new(BTreeMap::new()),
             atomics: if complete_clone {
                 Arc::new(atomics.as_ref().clone())
             } else {
@@ -551,6 +571,15 @@ impl RuntimeVariables {
     }
 
     fn clear_value_kinds(&mut self, name: &str) {
+        if let Some(values) = &mut self.retained_sources
+            && values.contains_key(name)
+        {
+            Arc::make_mut(values).remove(name);
+        }
+        #[cfg(test)]
+        if self.retained_nodes_reference.contains_key(name) {
+            Arc::make_mut(&mut self.retained_nodes_reference).remove(name);
+        }
         if self.atomics.contains_key(name) {
             Arc::make_mut(&mut self.atomics).remove(name);
         }
@@ -626,6 +655,19 @@ impl RuntimeVariables {
         source: &str,
         globals: &RuntimeGlobals,
     ) -> bool {
+        if let Some((owner, nodes)) = self.retained_source(globals, source) {
+            let value = RetainedSourceSelection {
+                owner: owner.clone(),
+                nodes: nodes.clone(),
+            };
+            self.bind_retained_source(name, value);
+            return true;
+        }
+        #[cfg(test)]
+        if let Some(nodes) = self.retained_nodes_reference(globals, source).cloned() {
+            self.bind_retained_nodes_reference(name, nodes);
+            return true;
+        }
         if let Some(value) = self.atomics.get(source).cloned() {
             self.bind_atomic(name, value);
             return true;
@@ -681,6 +723,13 @@ impl RuntimeVariables {
         globals: &'a RuntimeGlobals,
         name: &str,
     ) -> Option<&'a Vec<NodeId>> {
+        if let Some(value) = self
+            .retained_sources
+            .as_ref()
+            .and_then(|values| values.get(name))
+        {
+            return Some(&value.nodes);
+        }
         self.source_nodes.get(name).or_else(|| {
             (!self.local_bindings.contains(name))
                 .then(|| globals.nodes.get(name))
@@ -737,7 +786,11 @@ impl RuntimeVariables {
     pub(super) fn clone_population(&self) -> (usize, usize, usize, usize) {
         (
             self.atomic_sequences.len(),
-            self.source_nodes.len(),
+            self.source_nodes.len()
+                + self
+                    .retained_sources
+                    .as_ref()
+                    .map_or(0, |values| values.len()),
             self.temporary_trees.len(),
             self.local_bindings.len(),
         )
@@ -746,6 +799,11 @@ impl RuntimeVariables {
     #[cfg(test)]
     pub(super) fn clone_complete_for_sequence(&self) -> Self {
         Self {
+            retained_nodes_reference: Arc::new(self.retained_nodes_reference.as_ref().clone()),
+            retained_sources: self
+                .retained_sources
+                .as_ref()
+                .map(|values| Arc::new(values.as_ref().clone())),
             atomics: Arc::new(self.atomics.as_ref().clone()),
             atomic_sequences: Arc::new(self.atomic_sequences.as_ref().clone()),
             source_nodes: Arc::new(self.source_nodes.as_ref().clone()),
@@ -819,6 +877,21 @@ pub(super) fn materialize_global_defaults(
         } else {
             materialize_global_default(&mut globals, binding, source, request_id, control)?;
         }
+    }
+    if !globals.nodes.is_empty() {
+        let source = source.ok_or_else(|| {
+            failure(
+                "FXRT1004",
+                FailureCategory::Unsupported,
+                Some(request_id),
+                "source-node globals require an effective principal owner",
+            )
+        })?;
+        globals.principal_owner = Some(
+            source
+                .retain_effective_owner(control)
+                .map_err(|failure| control_failure(failure, request_id))?,
+        );
     }
     Ok(globals)
 }
@@ -1039,6 +1112,10 @@ fn materialize_global_xslt10_concat(
             }
             Xslt10ConcatPart::VariablePosition { .. }
             | Xslt10ConcatPart::Path(_)
+            | Xslt10ConcatPart::GeneratedNodeIdentity(_)
+            | Xslt10ConcatPart::QualifiedGeneratedIdentity(_)
+            | Xslt10ConcatPart::PathSubstring(_)
+            | Xslt10ConcatPart::ComposedString(_)
             | Xslt10ConcatPart::SumPath(_) => {
                 unreachable!("global concat compilation admits literal and variable parts only")
             }
@@ -1598,7 +1675,41 @@ fn materialize_source_node_identity(
 }
 
 pub(super) fn source_node_identity(node: NodeId) -> String {
-    format!("fastxslt-principal-n{}", node.index())
+    format!("fastxsltPrincipalN{}", node.index())
+}
+
+pub(super) fn ensure_principal_identity_context(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    if context.is_none() && inputs.source.is_some() {
+        return Err(failure_at(
+            "FXRT0007",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            location.clone(),
+            "qualified generated-ID strings require ordinary source focus",
+        ));
+    }
+    if let Some(source) = inputs.source {
+        for dynamic in inputs.dynamic_documents.borrow().values() {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|error| control_failure(error, inputs.request_id))?;
+            if source.same_origin(&dynamic.document) {
+                return Err(failure_at(
+                    "FXRT0007",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    location.clone(),
+                    "qualified generated-ID strings on secondary documents remain unsupported",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn source_node_identity_for_path(
@@ -2136,7 +2247,7 @@ fn bind_template_parameter_default(
                     "a variable-rooted template parameter default requires a principal source",
                 )
             })?;
-            let nodes = super::evaluate_source_variable_path(
+            let nodes = super::bound_variable_path::evaluate_eligible_path(
                 inputs, source, variable, path, frame, control,
             )?;
             frame.bind_source_nodes(parameter.name.clone(), nodes);
@@ -2203,7 +2314,13 @@ fn copy_parameter_default_variable(
         frame.bind_atomic(parameter.name.clone(), value);
     } else if let Some(values) = frame.atomic_sequences.get(variable).cloned() {
         frame.bind_atomic_sequence(parameter.name.clone(), values);
-    } else if let Some(nodes) = frame.source_nodes(inputs.globals, variable).cloned() {
+    } else if let Some((owner, nodes)) = frame.retained_source(inputs.globals, variable) {
+        let value = RetainedSourceSelection {
+            owner: owner.clone(),
+            nodes: nodes.clone(),
+        };
+        frame.bind_retained_source(parameter.name.clone(), value);
+    } else if let Some(nodes) = frame.source_nodes_in_context(inputs, variable)?.cloned() {
         frame.bind_source_nodes(parameter.name.clone(), nodes);
     } else if let Some(tree) = frame.temporary_tree(inputs.globals, variable).cloned() {
         frame.bind_temporary_tree(parameter.name.clone(), tree);

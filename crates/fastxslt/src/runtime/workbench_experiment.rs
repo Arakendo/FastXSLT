@@ -17,6 +17,13 @@ use crate::xml::internal_subset::InternalSubsetLimits;
 use crate::xml::quick_xml_experiment::ParseLimits;
 mod construction;
 
+#[cfg(test)]
+#[derive(Clone, Copy)]
+pub(crate) struct PreprocessingProbeOptions {
+    pub(crate) subsets: WorkbenchExternalSubsetLimits,
+    pub(crate) strict: bool,
+}
+
 /// Explicit bounds for the isolated ASP.NET workbench experiment.
 #[derive(Debug, Clone, Copy)]
 pub struct WorkbenchLimits {

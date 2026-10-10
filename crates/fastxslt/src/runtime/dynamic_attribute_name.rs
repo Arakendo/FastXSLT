@@ -19,6 +19,7 @@ pub(super) fn resolve(
     execution: SequenceContext<'_>,
     name: &DynamicAttributeName,
     variables: &RuntimeVariables,
+    xslt10_compatibility: bool,
     location: &SourceLocation,
     control: &mut InvocationControl,
 ) -> Result<ExpandedName, ExecutionFailure> {
@@ -83,6 +84,7 @@ pub(super) fn resolve(
         &lexical,
         namespace_override.as_deref(),
         static_namespaces,
+        xslt10_compatibility,
         location,
         inputs.request_id,
     )
@@ -106,7 +108,7 @@ pub(super) fn source_variable_path_name_value(
         )
     })?;
     let roots = variables
-        .source_nodes(inputs.globals, variable)
+        .source_nodes_in_context(inputs, variable)?
         .ok_or_else(|| {
             failure_at(
                 "XPTY0019",
@@ -237,6 +239,7 @@ fn resolve_lexical_name(
     lexical: &str,
     namespace_override: Option<&str>,
     static_namespaces: &[NamespaceBinding],
+    xslt10_compatibility: bool,
     location: &SourceLocation,
     request_id: &str,
 ) -> Result<ExpandedName, ExecutionFailure> {
@@ -258,6 +261,16 @@ fn resolve_lexical_name(
             ));
         }
     };
+    if xslt10_compatibility
+        && !(prefix.is_none() && local == "xmlns")
+        && let Some(namespace) = namespace_override
+        && namespace != XMLNS_NAMESPACE
+    {
+        return Ok(ExpandedName {
+            namespace: (!namespace.is_empty()).then(|| namespace.to_owned()),
+            local: local.to_owned(),
+        });
+    }
     if prefix == Some("xmlns") || (prefix.is_none() && local == "xmlns") {
         return Err(dynamic_name_failure(
             "XTDE0855",

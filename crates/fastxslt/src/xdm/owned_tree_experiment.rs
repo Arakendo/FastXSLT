@@ -12,6 +12,10 @@ use crate::xml::quick_xml_experiment::{
 #[path = "whitespace_view.rs"]
 mod whitespace_view;
 
+#[cfg(test)]
+#[path = "retained_owner_adaptation.rs"]
+mod retained_owner_adaptation;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct NodeId(usize);
 
@@ -69,8 +73,8 @@ pub(crate) struct Document {
     origin: Arc<()>,
     nodes: Arc<Vec<Node>>,
     root: NodeId,
-    child_overrides: Option<HashMap<NodeId, Box<[NodeId]>>>,
-    id_index: HashMap<String, Vec<NodeId>>,
+    child_overrides: Option<Arc<HashMap<NodeId, Box<[NodeId]>>>>,
+    id_index: Arc<HashMap<String, Vec<NodeId>>>,
 }
 
 #[cfg(test)]
@@ -143,6 +147,71 @@ pub(crate) enum StringValueVisitFailure<SinkFailure> {
 }
 
 impl Document {
+    /// Generic immutable relationship reference, with no stylesheet semantics.
+    /// Test-gated until its compiler consumer completes ADR-0023 integration.
+    #[cfg(test)]
+    pub(crate) fn view_filtering_children(
+        &self,
+        keep: impl Fn(NodeId, NodeId) -> bool,
+        control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
+        let mut overrides = HashMap::new();
+        for index in 0..self.nodes.len() {
+            control.charge(WorkDomain::XdmNode, 1)?;
+            let parent = NodeId(index);
+            let children = self.children(parent);
+            control.charge(WorkDomain::XdmNode, children.len())?;
+            if children.iter().any(|child| !keep(parent, *child)) {
+                // Charge the retained relationship capacity before allocation.
+                control.charge(WorkDomain::XdmNode, children.len())?;
+                let visible: Vec<_> = children
+                    .iter()
+                    .copied()
+                    .filter(|child| keep(parent, *child))
+                    .collect();
+                overrides.insert(parent, visible.into_boxed_slice());
+            } else if self
+                .child_overrides
+                .as_ref()
+                .is_some_and(|map| map.contains_key(&parent))
+            {
+                control.charge(WorkDomain::XdmNode, children.len())?;
+                overrides.insert(parent, children.to_vec().into_boxed_slice());
+            }
+        }
+        Ok(Self {
+            origin: self.origin.clone(),
+            nodes: self.nodes.clone(),
+            root: self.root,
+            child_overrides: (!overrides.is_empty()).then(|| Arc::new(overrides)),
+            id_index: self.id_index.clone(),
+        })
+    }
+
+    pub(crate) fn retain_effective_owner(
+        &self,
+        control: &mut InvocationControl,
+    ) -> Result<Arc<Self>, ControlFailure> {
+        control.charge(WorkDomain::XdmNode, 1)?;
+        Ok(Arc::new(Self {
+            origin: self.origin.clone(),
+            nodes: self.nodes.clone(),
+            root: self.root,
+            child_overrides: self.child_overrides.clone(),
+            id_index: self.id_index.clone(),
+        }))
+    }
+
+    pub(crate) fn same_effective_storage(&self, other: &Self) -> bool {
+        self.same_origin(other)
+            && Arc::ptr_eq(&self.nodes, &other.nodes)
+            && match (&self.child_overrides, &other.child_overrides) {
+                (None, None) => true,
+                (Some(left), Some(right)) => Arc::ptr_eq(left, right),
+                _ => false,
+            }
+    }
+
     pub(crate) fn same_origin(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.origin, &other.origin)
     }
@@ -306,7 +375,7 @@ impl Document {
             }]),
             root: NodeId(0),
             child_overrides: None,
-            id_index: HashMap::new(),
+            id_index: Arc::new(HashMap::new()),
         };
         let mut ancestors = vec![result.root];
 
@@ -385,7 +454,10 @@ impl Document {
                         });
                         result.nodes_mut()[element.0].attributes.push(attribute_id);
                         if let Some(id_value) = id_value {
-                            result.id_index.entry(id_value).or_default().push(element);
+                            Arc::make_mut(&mut result.id_index)
+                                .entry(id_value)
+                                .or_default()
+                                .push(element);
                         }
                     }
                     ancestors.push(element);
@@ -647,7 +719,7 @@ impl Document {
             nodes: Arc::new(nodes),
             root: self.root,
             child_overrides: None,
-            id_index: self.id_index.clone(),
+            id_index: Arc::new(self.id_index.as_ref().clone()),
         };
         let mut preserves_space = vec![false; self.nodes.len()];
         for index in 0..self.nodes.len() {
@@ -700,7 +772,7 @@ impl Document {
     #[cfg(any(test, feature = "workbench"))]
     pub(crate) fn owned_capacity_bytes(&self) -> usize {
         let mut total =
-            std::mem::size_of::<Self>() + self.nodes.capacity() * std::mem::size_of::<Node>();
+            Self::header_capacity_bytes() + self.nodes.capacity() * std::mem::size_of::<Node>();
         for node in self.nodes.iter() {
             total += node.children.capacity() * std::mem::size_of::<NodeId>();
             total += node.attributes.capacity() * std::mem::size_of::<NodeId>();
@@ -717,17 +789,26 @@ impl Document {
             }
             total += node.location.resource.capacity();
         }
-        for (value, nodes) in &self.id_index {
+        for (value, nodes) in self.id_index.iter() {
             total += value.capacity();
             total += nodes.capacity() * std::mem::size_of::<NodeId>();
         }
         total
     }
 
+    fn header_capacity_bytes() -> usize {
+        // The immutable ID map header now lives behind Arc rather than inline.
+        // Count that header and the two Arc counters in the existing known-
+        // capacity estimate; this remains neither allocator-exact nor RSS.
+        std::mem::size_of::<Self>()
+            + std::mem::size_of::<HashMap<String, Vec<NodeId>>>()
+            + 2 * std::mem::size_of::<usize>()
+    }
+
     #[cfg(test)]
     pub(crate) fn capacity_anatomy(&self) -> DocumentCapacityAnatomy {
         let mut anatomy = DocumentCapacityAnatomy {
-            document_header: std::mem::size_of::<Self>(),
+            document_header: Self::header_capacity_bytes(),
             node_records: self.nodes.capacity() * std::mem::size_of::<Node>(),
             node_count: self.nodes.len(),
             node_capacity: self.nodes.capacity(),
@@ -802,7 +883,7 @@ impl Document {
         anatomy.unique_namespaces = namespaces.len();
         anatomy.unique_values = values.len();
         anatomy.unique_resources = resources.len();
-        for (value, nodes) in &self.id_index {
+        for (value, nodes) in self.id_index.iter() {
             anatomy.id_index_keys += value.capacity();
             anatomy.id_index_nodes += nodes.capacity() * std::mem::size_of::<NodeId>();
         }

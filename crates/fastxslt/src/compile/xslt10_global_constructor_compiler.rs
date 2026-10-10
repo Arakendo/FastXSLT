@@ -13,13 +13,13 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::instruction_compiler::{
-    compile_literal_result_attributes, compile_text_value, effective_xml_space_preserved,
-    literal_result_namespaces,
+    compile_literal_result_attributes, compile_text_value, literal_result_namespaces,
 };
+use super::stylesheet_preprocessing::constructor_children;
 use super::{
     CompileFailure, XSLT_NAMESPACE, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    is_xslt_element, map_path_failure, meaningful_children, normalize_variable_qname,
-    optional_attribute, required_attribute, xpath_string_literal,
+    is_xslt_element, map_path_failure, normalize_variable_qname, optional_attribute,
+    required_attribute, xpath_string_literal,
 };
 use crate::xpath::path_experiment::parse_location_path;
 
@@ -171,30 +171,6 @@ fn compile_source_value_element(
     }))
 }
 
-fn constructor_children(
-    document: &Document,
-    parent: NodeId,
-) -> Result<Vec<NodeId>, CompileFailure> {
-    let preserve_whitespace = effective_xml_space_preserved(document, parent)?;
-    Ok(document
-        .children(parent)
-        .iter()
-        .copied()
-        .filter(|child| match document.kind(*child) {
-            NodeKind::Comment | NodeKind::ProcessingInstruction => false,
-            NodeKind::Text => {
-                preserve_whitespace
-                    || !document
-                        .value(*child)
-                        .unwrap_or_default()
-                        .chars()
-                        .all(char::is_whitespace)
-            }
-            _ => true,
-        })
-        .collect())
-}
-
 pub(super) fn compile_static_local_tree(
     document: &Document,
     binding: NodeId,
@@ -208,7 +184,7 @@ pub(super) fn compile_static_local_tree(
     {
         return Ok(None);
     }
-    let children = meaningful_children(document, binding);
+    let children = constructor_children(document, binding)?;
     if !children
         .iter()
         .any(|child| is_xslt_element(document, *child, "variable"))
@@ -333,7 +309,7 @@ fn compile_element(
         });
     }
     let mut children = Vec::new();
-    for child in meaningful_children(document, element) {
+    for child in constructor_children(document, element)? {
         let Some(child) = compile_node(document, child, locals)? else {
             return Ok(None);
         };

@@ -235,13 +235,7 @@ fn observe_instructions(
         *instruction_count = instruction_count
             .checked_add(1)
             .ok_or(InspectionFailure::CountOverflow)?;
-        if let LocalVariableBody::Leaf | LocalVariableBody::Body(_) =
-            local_variable_body(instruction)
-        {
-            increment_feature(feature_counts, SemanticFeature::LocalVariable)?;
-            if let LocalVariableBody::Body(body) = local_variable_body(instruction) {
-                observe_instructions(body, instruction_count, feature_counts)?;
-            }
+        if observe_local_variable(instruction, instruction_count, feature_counts)? {
             continue;
         }
         let (feature, body) = match instruction {
@@ -319,6 +313,7 @@ fn observe_instructions(
             | Instruction::CopyOfLocationPath { .. }
             | Instruction::CopyOfXslt10KeyLookup { .. }
             | Instruction::CopyOfPathUnion { .. }
+            | Instruction::CopyOfXslt10MixedUnion { .. }
             | Instruction::CopyOfStaticAtomicText { .. }
             | Instruction::CopyOfVariable { .. }
             | Instruction::CopyOfAtomicValue { .. } => (SemanticFeature::CopyOf, None),
@@ -331,6 +326,22 @@ fn observe_instructions(
         observe_nested_choose(instruction, instruction_count, feature_counts)?;
     }
     Ok(())
+}
+
+fn observe_local_variable(
+    instruction: &Instruction,
+    instruction_count: &mut usize,
+    feature_counts: &mut BTreeMap<SemanticFeature, usize>,
+) -> Result<bool, InspectionFailure> {
+    let body = local_variable_body(instruction);
+    if matches!(body, LocalVariableBody::NotVariable) {
+        return Ok(false);
+    }
+    increment_feature(feature_counts, SemanticFeature::LocalVariable)?;
+    if let LocalVariableBody::Body(body) = body {
+        observe_instructions(body, instruction_count, feature_counts)?;
+    }
+    Ok(true)
 }
 
 enum LocalVariableBody<'a> {
@@ -349,6 +360,7 @@ fn local_variable_body(instruction: &Instruction) -> LocalVariableBody<'_> {
         | Instruction::ContextCountPathVariable { .. }
         | Instruction::Xslt10BinaryNumericVariable { .. }
         | Instruction::Xslt10ConcatVariable { .. }
+        | Instruction::Xslt10GeneratedUnionIdentityVariable { .. }
         | Instruction::Xslt10KeyVariable { .. }
         | Instruction::Xslt10LiteralDocumentVariable { .. }
         | Instruction::SourceNodeVariable { .. }

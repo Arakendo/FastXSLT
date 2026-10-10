@@ -511,15 +511,26 @@ fn evaluate_lookup_value(
             if let Some(values) = variables.detached_source_node_strings(name) {
                 return Ok(values.clone());
             }
-            if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
-                let source = inputs.source.ok_or_else(|| {
-                    super::failure(
-                        "XPDY0002",
-                        FailureCategory::Invalid,
-                        Some(inputs.request_id),
-                        format!("key() variable ${name} requires a source document"),
-                    )
-                })?;
+            let qualified = variables.retained_source(inputs.globals, name);
+            let nodes = if let Some((_, nodes)) = qualified {
+                Some(nodes)
+            } else {
+                variables.source_nodes_in_context(inputs, name)?
+            };
+            if let Some(nodes) = nodes {
+                // Lookup values belong to their lexical owner; the index still
+                // belongs to the effective document containing the key() focus.
+                let source = qualified
+                    .map(|(owner, _)| owner.as_ref())
+                    .or(inputs.source)
+                    .ok_or_else(|| {
+                        super::failure(
+                            "XPDY0002",
+                            FailureCategory::Invalid,
+                            Some(inputs.request_id),
+                            format!("key() variable ${name} requires a source document"),
+                        )
+                    })?;
                 return nodes
                     .iter()
                     .map(|node| {
@@ -653,6 +664,10 @@ fn evaluate_key_concat(
             }
             Xslt10ConcatPart::Variable(_)
             | Xslt10ConcatPart::VariablePosition { .. }
+            | Xslt10ConcatPart::GeneratedNodeIdentity(_)
+            | Xslt10ConcatPart::QualifiedGeneratedIdentity(_)
+            | Xslt10ConcatPart::PathSubstring(_)
+            | Xslt10ConcatPart::ComposedString(_)
             | Xslt10ConcatPart::SumPath(_) => {
                 unreachable!("key concat compiler admits only literal and path parts")
             }

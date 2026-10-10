@@ -3,7 +3,6 @@ use std::{
     collections::{BTreeMap, HashSet},
     sync::Arc,
 };
-use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::resources::ResourceSnapshot;
@@ -24,7 +23,7 @@ use crate::xslt::golden_semantics_experiment::{
     FocusEqualityOperand, Instruction, LiteralAttribute, NodeTest, OnMultipleMatchPolicy,
     OnNoMatchPolicy, SequenceItemExpression, SortCaseOrder, SortDataType, SortKey, SortLanguage,
     SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison, StylesheetProgram,
-    TemplateArgument, Xslt10AncestorFilter, Xslt10ApplyUnionPart, Xslt10KeyLookup,
+    TemplateArgument, Xslt10AncestorFilter, Xslt10KeyLookup,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -36,6 +35,12 @@ mod byte_encoding;
 pub(super) use byte_encoding::decode_iso_8859_2_byte;
 #[path = "golden_runtime_experiment/boolean_focus.rs"]
 mod boolean_focus;
+#[path = "golden_runtime_experiment/source_selection/bound_variable_path.rs"]
+mod bound_variable_path;
+#[path = "golden_runtime_experiment/source_selection/copied_union.rs"]
+mod copied_source_union;
+#[path = "golden_runtime_experiment/document_variable_dispatch.rs"]
+mod document_variable_dispatch;
 #[path = "dynamic_attribute_name.rs"]
 mod dynamic_attribute_name;
 #[path = "dynamic_document.rs"]
@@ -53,6 +58,8 @@ mod match_boolean_predicate;
 mod match_sequence_predicate;
 #[path = "golden_runtime_experiment/namespace_focus.rs"]
 mod namespace_focus;
+#[path = "golden_runtime_experiment/source_selection/unions.rs"]
+mod source_unions;
 use boolean_focus::BooleanNodeFocus;
 #[path = "number_executor.rs"]
 mod number_executor;
@@ -74,6 +81,11 @@ mod runtime_context;
 #[path = "runtime_failure.rs"]
 mod runtime_failure;
 mod serialization;
+mod sort_keys;
+use sort_keys::{
+    SortFocus, evaluate_sort_control, evaluate_sort_key_value, sort_keyed_items,
+    sort_selected_nodes, typed_sort_key,
+};
 #[path = "stylesheet_dependency_loader.rs"]
 mod stylesheet_dependency_loader;
 #[path = "template_selector.rs"]
@@ -94,11 +106,11 @@ use dynamic_element_name::{
     DynamicElementNameRequest, resolve_dynamic_element_name, resolve_dynamic_element_namespace,
 };
 use number_executor::execute as execute_number_instruction;
-#[cfg(test)]
-pub(super) use resource_compiler::compile_resource;
 pub(super) use resource_compiler::{
-    StylesheetCompileLimits, compile_resource_with_denied_and_limits,
+    StylesheetCompileLimits, compile_resource_with_preprocessing_control,
 };
+#[cfg(test)]
+pub(super) use resource_compiler::{compile_resource, compile_resource_with_denied_and_limits};
 use result_tree::{
     LiteralAttributeFocus, ResultAttribute, ResultNode, literal_attributes_require_context_string,
     materialize_computed_attributes, materialize_literal_attribute_value,
@@ -905,6 +917,7 @@ fn execute_instruction(
         | Instruction::ContextCountPathVariable { .. }
         | Instruction::Xslt10BinaryNumericVariable { .. }
         | Instruction::Xslt10ConcatVariable { .. }
+        | Instruction::Xslt10GeneratedUnionIdentityVariable { .. }
         | Instruction::Xslt10KeyVariable { .. }
         | Instruction::Xslt10LiteralDocumentVariable { .. }
         | Instruction::SourceNodeVariable { .. }
@@ -945,6 +958,7 @@ fn execute_instruction(
         | Instruction::CopyOfSourceDocuments { .. }
         | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
+        | Instruction::CopyOfXslt10MixedUnion { .. }
         | Instruction::CopyOfVariable { .. }
         | Instruction::CopyOfAtomicValue { .. }
         | Instruction::Copy { .. } => result.extend(execute_result_instruction(
@@ -1317,6 +1331,7 @@ fn execute_result_instruction<'a>(
         | Instruction::CopyOfSourceDocuments { .. }
         | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
+        | Instruction::CopyOfXslt10MixedUnion { .. }
         | Instruction::CopyOfVariable { .. } => {
             execute_copy_of_instruction(inputs, instruction, execution, scope, control)
         }
@@ -1435,6 +1450,9 @@ fn execute_copy_of_instruction<'a>(
             *recover_unattached_attributes,
             control,
         ),
+        Instruction::CopyOfXslt10MixedUnion { .. } => {
+            copied_source_union::execute(inputs, instruction, execution.node, scope, control)
+        }
         Instruction::CopyOfVariable { .. } => {
             execute_copy_of_variable_instruction(inputs, instruction, scope, control)
         }
@@ -1670,7 +1688,7 @@ fn execute_copy_of_variable(
         }
         return Ok(copied);
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, variable)? {
         let source = inputs.source.ok_or_else(|| {
             failure(
                 "XPDY0002",
@@ -1824,806 +1842,6 @@ fn execute_copy_of_child_elements(
     Ok(copied)
 }
 
-#[derive(Debug)]
-enum EvaluatedSortKey {
-    Text(String),
-    Number(Option<f64>),
-}
-
-#[derive(Debug, Clone, Copy)]
-struct EvaluatedSortControl {
-    data_type: EvaluatedSortDataType,
-    order: EvaluatedSortOrder,
-    case_order: EvaluatedSortCaseOrder,
-    language: EvaluatedSortLanguage,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum EvaluatedSortDataType {
-    Text,
-    Number,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum EvaluatedSortOrder {
-    Ascending,
-    Descending,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum EvaluatedSortCaseOrder {
-    Default,
-    UpperFirst,
-    LowerFirst,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum EvaluatedSortLanguage {
-    Codepoint,
-    English,
-    Spanish,
-    French,
-    Swedish,
-    Turkish,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct SortFocus<'a> {
-    source: &'a Document,
-    node: NodeId,
-    position: usize,
-    size: usize,
-}
-
-fn sort_selected_nodes(
-    inputs: &SequenceInputs<'_>,
-    selected: Vec<NodeId>,
-    sorts: &[SortKey],
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<Vec<NodeId>, ExecutionFailure> {
-    if sorts.is_empty() {
-        return Ok(selected);
-    }
-    let sort_controls = sorts
-        .iter()
-        .map(|sort| evaluate_sort_control(inputs, sort, variables, control))
-        .collect::<Result<Vec<_>, ExecutionFailure>>()?;
-    if selected.len() < 2 {
-        return Ok(selected);
-    }
-    let source = inputs
-        .source
-        .expect("source-node sorting requires a source document");
-    let mut keyed = Vec::with_capacity(selected.len());
-    let focus_size = selected.len();
-    for (offset, node) in selected.into_iter().enumerate() {
-        let mut values = Vec::with_capacity(sorts.len());
-        for (sort, sort_control) in sorts.iter().zip(&sort_controls) {
-            let value = evaluate_sort_key_value(
-                inputs,
-                SortFocus {
-                    source,
-                    node,
-                    position: offset + 1,
-                    size: focus_size,
-                },
-                sort,
-                variables,
-                control,
-            )?;
-            values.push(typed_sort_key(
-                sort_control.data_type,
-                sort.xslt10_numeric_conversion,
-                value,
-            ));
-        }
-        keyed.push((node, values));
-    }
-    sort_keyed_items(inputs.request_id, keyed, &sort_controls, control)
-}
-
-fn sort_keyed_items<T>(
-    request_id: &str,
-    mut keyed: Vec<(T, Vec<EvaluatedSortKey>)>,
-    sort_controls: &[EvaluatedSortControl],
-    control: &mut InvocationControl,
-) -> Result<Vec<T>, ExecutionFailure> {
-    let comparison_charge = keyed
-        .len()
-        .saturating_mul(keyed.len().ilog2() as usize + 1)
-        .saturating_mul(sort_controls.len());
-    control
-        .charge(WorkDomain::XPathOperation, comparison_charge)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    keyed.sort_by(|left, right| {
-        for (index, sort_control) in sort_controls.iter().enumerate() {
-            let ordering = compare_sort_keys(
-                &left.1[index],
-                &right.1[index],
-                sort_control.case_order,
-                sort_control.language,
-            );
-            let ordering = match sort_control.order {
-                EvaluatedSortOrder::Ascending => ordering,
-                EvaluatedSortOrder::Descending => ordering.reverse(),
-            };
-            if !ordering.is_eq() {
-                return ordering;
-            }
-        }
-        std::cmp::Ordering::Equal
-    });
-    Ok(keyed.into_iter().map(|(item, _)| item).collect())
-}
-
-fn evaluate_sort_key_value(
-    inputs: &SequenceInputs<'_>,
-    focus: SortFocus<'_>,
-    sort: &SortKey,
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    let source = focus.source;
-    let node = focus.node;
-    match &sort.select {
-        SortSelect::LocationPath(path) => {
-            let nodes = evaluate_location_path_controlled(source, node, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            Ok(nodes
-                .first()
-                .map_or_else(String::new, |selected| source.string_value(*selected)))
-        }
-        SortSelect::Xslt10BinaryNumeric(expression) => {
-            evaluate_xslt10_binary_numeric_sort(inputs, focus, expression, variables, control)
-        }
-        SortSelect::Xslt10VariablePositionPath {
-            path,
-            variable,
-            explicit_position_comparison,
-        } => evaluate_xslt10_variable_position_sort(
-            inputs,
-            focus,
-            path,
-            variable,
-            *explicit_position_comparison,
-            variables,
-            control,
-        ),
-        SortSelect::Xslt10ChildNameEqualsVariable { variable } => {
-            evaluate_xslt10_child_name_variable_sort(
-                inputs, source, node, variable, variables, control,
-            )
-        }
-        SortSelect::Xslt10PathStringLiteralComparison {
-            path,
-            literal,
-            equal,
-        } => evaluate_xslt10_path_string_literal_sort(
-            inputs, source, node, path, literal, *equal, control,
-        ),
-        SortSelect::Xslt10KeyLookup(lookup) => {
-            Ok(
-                key_lookup::select(inputs, lookup, Some(node), variables, control)?
-                    .first()
-                    .map_or_else(String::new, |selected| source.string_value(*selected)),
-            )
-        }
-        SortSelect::Xslt10PathSubstring(expression) => {
-            evaluate_xslt10_substring_sort_key(inputs, source, node, expression, control)
-        }
-        SortSelect::Xslt10PathSubstringAfter { path, delimiter } => {
-            evaluate_xslt10_substring_after_sort_key(inputs, source, node, path, delimiter, control)
-        }
-        SortSelect::PathUnion(alternatives) => {
-            Ok(
-                evaluate_source_path_union(inputs, source, node, alternatives, control)?
-                    .first()
-                    .map_or_else(String::new, |selected| source.string_value(*selected)),
-            )
-        }
-        SortSelect::Literal(value) => Ok(value.clone()),
-        SortSelect::Variable(name) => sort_variable(inputs, name, variables, control),
-        SortSelect::ContextPosition => Ok(focus.position.to_string()),
-        SortSelect::ContextSize => Ok(focus.size.to_string()),
-        SortSelect::ContextNodeName => {
-            evaluate_sort_context_node_name(source, node, inputs.request_id, control)
-        }
-        SortSelect::ContextNodeLocalName => {
-            evaluate_sort_context_node_local_name(source, node, inputs.request_id, control)
-        }
-        SortSelect::ContextStringLength => Ok(evaluate_sort_context_string_length(
-            source,
-            node,
-            inputs.request_id,
-            &sort.location,
-            control,
-        )?
-        .to_string()),
-        SortSelect::CountPath(path) => {
-            let count = evaluate_location_path_controlled(source, node, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?
-                .len();
-            control
-                .charge(WorkDomain::XPathOperation, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            Ok(count.to_string())
-        }
-        SortSelect::NumberPath(path) => evaluate_sort_number_path(
-            source,
-            node,
-            path,
-            sort.xslt10_numeric_conversion,
-            inputs.request_id,
-            control,
-        ),
-    }
-}
-
-fn evaluate_xslt10_binary_numeric_sort(
-    inputs: &SequenceInputs<'_>,
-    focus: SortFocus<'_>,
-    expression: &crate::xpath::binary_numeric_experiment::BinaryNumericExpression,
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    value_evaluator::evaluate_binary_numeric_value(
-        inputs,
-        Some(focus.node),
-        Some(SequenceFocus {
-            position: focus.position,
-            size: focus.size,
-        }),
-        expression,
-        variables,
-        control,
-    )
-}
-
-fn evaluate_xslt10_variable_position_sort(
-    inputs: &SequenceInputs<'_>,
-    focus: SortFocus<'_>,
-    path: &crate::xpath::path_experiment::LocationPath,
-    variable: &str,
-    explicit_position_comparison: bool,
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    let nodes = evaluate_location_path_controlled(focus.source, focus.node, path, control)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    if !explicit_position_comparison && variables.temporary_tree(inputs.globals, variable).is_some()
-    {
-        control
-            .charge(WorkDomain::XPathOperation, 1)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        return Ok(nodes
-            .first()
-            .map_or_else(String::new, |selected| focus.source.string_value(*selected)));
-    }
-    let position = sort_variable(inputs, variable, variables, control)?;
-    control
-        .charge(WorkDomain::XPathOperation, 1)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let selected = crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
-        .filter(|position| position.is_finite() && *position >= 1.0 && position.fract() == 0.0)
-        .and_then(|position| position.to_string().parse::<usize>().ok())
-        .and_then(|position| nodes.get(position.saturating_sub(1)).copied());
-    Ok(selected.map_or_else(String::new, |selected| focus.source.string_value(selected)))
-}
-
-fn evaluate_xslt10_path_string_literal_sort(
-    inputs: &SequenceInputs<'_>,
-    source: &Document,
-    node: NodeId,
-    path: &crate::xpath::path_experiment::LocationPath,
-    literal: &str,
-    equal: bool,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    let selected = evaluate_location_path_controlled(source, node, path, control)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    for selected in selected {
-        control
-            .charge(WorkDomain::XPathOperation, 1)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        let value = source
-            .string_value_controlled(selected, control)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        if (value == literal) == equal {
-            return Ok("true".to_owned());
-        }
-    }
-    Ok("false".to_owned())
-}
-
-fn evaluate_sort_context_node_name(
-    source: &Document,
-    node: NodeId,
-    request_id: &str,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    control
-        .charge(WorkDomain::XPathNodeVisit, 1)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    Ok(source.name(node).map_or_else(String::new, |name| {
-        source.prefix(node).map_or_else(
-            || name.local.clone(),
-            |prefix| format!("{prefix}:{}", name.local),
-        )
-    }))
-}
-
-fn evaluate_sort_context_node_local_name(
-    source: &Document,
-    node: NodeId,
-    request_id: &str,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    control
-        .charge(WorkDomain::XPathNodeVisit, 1)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    Ok(source
-        .name(node)
-        .map_or_else(String::new, |name| name.local.clone()))
-}
-
-fn evaluate_xslt10_substring_sort_key(
-    inputs: &SequenceInputs<'_>,
-    source: &Document,
-    node: NodeId,
-    expression: &crate::xslt::golden_semantics_experiment::Xslt10PathSubstring,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    let nodes = evaluate_location_path_controlled(source, node, &expression.path, control)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let value = nodes
-        .first()
-        .map_or_else(String::new, |selected| source.string_value(*selected));
-    control
-        .charge(WorkDomain::XPathOperation, 1)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    Ok(crate::xpath::static_string_experiment::evaluate_substring(
-        &value,
-        f64::from_bits(expression.start_bits),
-        expression.length_bits.map(f64::from_bits),
-    ))
-}
-
-fn evaluate_xslt10_substring_after_sort_key(
-    inputs: &SequenceInputs<'_>,
-    source: &Document,
-    node: NodeId,
-    path: &LocationPath,
-    delimiter: &str,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    let nodes = evaluate_location_path_controlled(source, node, path, control)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let value = nodes
-        .first()
-        .map_or_else(String::new, |selected| source.string_value(*selected));
-    control
-        .charge(WorkDomain::XPathOperation, 1)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    Ok(value
-        .split_once(delimiter)
-        .map_or_else(String::new, |(_, suffix)| suffix.to_owned()))
-}
-
-fn evaluate_xslt10_child_name_variable_sort(
-    inputs: &SequenceInputs<'_>,
-    source: &Document,
-    node: NodeId,
-    variable: &str,
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    let expected = sort_variable(inputs, variable, variables, control)?;
-    for child in source.children(node) {
-        control
-            .charge(WorkDomain::XPathNodeVisit, 1)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        if source.kind(*child) != NodeKind::Element {
-            continue;
-        }
-        let matches = source.name(*child).is_some_and(|name| {
-            source.prefix(*child).map_or_else(
-                || name.local == expected,
-                |prefix| format!("{prefix}:{}", name.local) == expected,
-            )
-        });
-        if matches {
-            return Ok(source.string_value(*child));
-        }
-    }
-    Ok(String::new())
-}
-
-fn evaluate_sort_control(
-    inputs: &SequenceInputs<'_>,
-    sort: &SortKey,
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<EvaluatedSortControl, ExecutionFailure> {
-    let data_type = match &sort.data_type {
-        SortDataType::Text => EvaluatedSortDataType::Text,
-        SortDataType::Number => EvaluatedSortDataType::Number,
-        SortDataType::Variable(variable) => {
-            match sort_variable(inputs, variable, variables, control)?.as_str() {
-                "text" => EvaluatedSortDataType::Text,
-                "number" => EvaluatedSortDataType::Number,
-                value => {
-                    return Err(failure_at(
-                        "FXST1044",
-                        FailureCategory::Unsupported,
-                        Some(inputs.request_id),
-                        sort.location.clone(),
-                        format!("unsupported dynamic xsl:sort data-type: {value}"),
-                    ));
-                }
-            }
-        }
-    };
-    let order = match &sort.order {
-        SortOrder::Ascending => EvaluatedSortOrder::Ascending,
-        SortOrder::Descending => EvaluatedSortOrder::Descending,
-        SortOrder::Variable(variable) => {
-            match sort_variable(inputs, variable, variables, control)?.as_str() {
-                "ascending" => EvaluatedSortOrder::Ascending,
-                "descending" => EvaluatedSortOrder::Descending,
-                value => {
-                    return Err(failure_at(
-                        "XTDE0030",
-                        FailureCategory::Invalid,
-                        Some(inputs.request_id),
-                        sort.location.clone(),
-                        format!("invalid dynamic xsl:sort order: {value}"),
-                    ));
-                }
-            }
-        }
-    };
-    let case_order = match &sort.case_order {
-        SortCaseOrder::Default => EvaluatedSortCaseOrder::Default,
-        SortCaseOrder::UpperFirst => EvaluatedSortCaseOrder::UpperFirst,
-        SortCaseOrder::LowerFirst => EvaluatedSortCaseOrder::LowerFirst,
-        SortCaseOrder::Variable(variable) => {
-            match sort_variable(inputs, variable, variables, control)?.as_str() {
-                "upper-first" => EvaluatedSortCaseOrder::UpperFirst,
-                "lower-first" => EvaluatedSortCaseOrder::LowerFirst,
-                value => {
-                    return Err(failure_at(
-                        "XTDE0030",
-                        FailureCategory::Invalid,
-                        Some(inputs.request_id),
-                        sort.location.clone(),
-                        format!("invalid dynamic xsl:sort case-order: {value}"),
-                    ));
-                }
-            }
-        }
-    };
-    let language = match &sort.language {
-        SortLanguage::Codepoint => EvaluatedSortLanguage::Codepoint,
-        SortLanguage::English => EvaluatedSortLanguage::English,
-        SortLanguage::Spanish => EvaluatedSortLanguage::Spanish,
-        SortLanguage::French => EvaluatedSortLanguage::French,
-        SortLanguage::Swedish => EvaluatedSortLanguage::Swedish,
-        SortLanguage::Turkish => EvaluatedSortLanguage::Turkish,
-        SortLanguage::Xslt10Concat(expression) => {
-            let lexical = value_evaluator::evaluate_xslt10_concat(
-                inputs, None, expression, variables, control,
-            )?;
-            evaluated_sort_language(&lexical, inputs, sort)?
-        }
-    };
-    Ok(EvaluatedSortControl {
-        data_type,
-        order,
-        case_order,
-        language,
-    })
-}
-
-fn evaluated_sort_language(
-    lexical: &str,
-    inputs: &SequenceInputs<'_>,
-    sort: &SortKey,
-) -> Result<EvaluatedSortLanguage, ExecutionFailure> {
-    if !is_dynamic_sort_language_tag(lexical) {
-        return Err(failure_at(
-            "XTDE0030",
-            FailureCategory::Invalid,
-            Some(inputs.request_id),
-            sort.location.clone(),
-            format!("invalid dynamic xsl:sort language hint: {lexical}"),
-        ));
-    }
-    match lexical
-        .split('-')
-        .next()
-        .unwrap_or_default()
-        .to_ascii_lowercase()
-        .as_str()
-    {
-        "en" => Ok(EvaluatedSortLanguage::English),
-        "es" => Ok(EvaluatedSortLanguage::Spanish),
-        "fr" => Ok(EvaluatedSortLanguage::French),
-        "sv" => Ok(EvaluatedSortLanguage::Swedish),
-        "tr" => Ok(EvaluatedSortLanguage::Turkish),
-        _ => Err(failure_at(
-            "FXST1063",
-            FailureCategory::Unsupported,
-            Some(inputs.request_id),
-            sort.location.clone(),
-            format!("unsupported dynamic xsl:sort language hint: {lexical}"),
-        )),
-    }
-}
-
-fn is_dynamic_sort_language_tag(value: &str) -> bool {
-    let mut parts = value.split('-');
-    let Some(primary) = parts.next() else {
-        return false;
-    };
-    !primary.is_empty()
-        && primary.len() <= 8
-        && primary.bytes().all(|byte| byte.is_ascii_alphabetic())
-        && parts.all(|part| {
-            !part.is_empty()
-                && part.len() <= 8
-                && part.bytes().all(|byte| byte.is_ascii_alphanumeric())
-        })
-}
-
-fn typed_sort_key(
-    data_type: EvaluatedSortDataType,
-    xslt10_numeric_conversion: bool,
-    value: String,
-) -> EvaluatedSortKey {
-    match data_type {
-        EvaluatedSortDataType::Text => EvaluatedSortKey::Text(value),
-        EvaluatedSortDataType::Number => EvaluatedSortKey::Number(if xslt10_numeric_conversion {
-            crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&value)
-        } else {
-            value.trim().parse().ok()
-        }),
-    }
-}
-
-fn evaluate_sort_number_path(
-    source: &Document,
-    context: NodeId,
-    path: &crate::xpath::path_experiment::LocationPath,
-    xslt10_compatibility: bool,
-    request_id: &str,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    let selected = evaluate_location_path_controlled(source, context, path, control)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    if !xslt10_compatibility && selected.len() > 1 {
-        return Err(failure_at(
-            "XPTY0004",
-            FailureCategory::Invalid,
-            Some(request_id),
-            path.location.clone(),
-            "fn:number requires a zero-or-one item argument",
-        ));
-    }
-    let Some(node) = selected.first().copied() else {
-        return Ok("NaN".to_owned());
-    };
-    let lexical = source
-        .string_value_controlled(node, control)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    control
-        .charge(WorkDomain::XPathOperation, 1)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    crate::xpath::constant_numeric_experiment::evaluate_number_lexical(&lexical).map_err(
-        |numeric_failure| match numeric_failure {
-            crate::xpath::constant_numeric_experiment::ConstantNumericFailure::Invalid => {
-                failure_at(
-                    "FORG0001",
-                    FailureCategory::Invalid,
-                    Some(request_id),
-                    path.location.clone(),
-                    format!("value is not a valid finite numeric lexical: {lexical}"),
-                )
-            }
-            crate::xpath::constant_numeric_experiment::ConstantNumericFailure::Unsupported => {
-                failure_at(
-                    "FXXP1020",
-                    FailureCategory::Unsupported,
-                    Some(request_id),
-                    path.location.clone(),
-                    format!(
-                        "numeric lexical is outside the admitted finite-decimal slice: {lexical}"
-                    ),
-                )
-            }
-        },
-    )
-}
-
-fn evaluate_sort_context_string_length(
-    source: &Document,
-    node: NodeId,
-    request_id: &str,
-    location: &crate::xdm::owned_tree_experiment::SourceLocation,
-    control: &mut InvocationControl,
-) -> Result<usize, ExecutionFailure> {
-    let mut length = 0_usize;
-    source
-        .visit_string_value_controlled(node, control, &mut |part, control| {
-            for _ in part.chars() {
-                control
-                    .charge(WorkDomain::XPathOperation, 1)
-                    .map_err(|failure| control_failure(failure, request_id))?;
-                length = length.checked_add(1).ok_or_else(|| {
-                    failure_at(
-                        "FOAR0002",
-                        FailureCategory::Invalid,
-                        Some(request_id),
-                        location.clone(),
-                        "sort-key string length exceeds the supported integer range",
-                    )
-                })?;
-            }
-            Ok(())
-        })
-        .map_err(|failure| match failure {
-            StringValueVisitFailure::Control(failure) => control_failure(failure, request_id),
-            StringValueVisitFailure::Sink(failure) => failure,
-        })?;
-    Ok(length)
-}
-
-fn sort_variable(
-    inputs: &SequenceInputs<'_>,
-    variable: &str,
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<String, ExecutionFailure> {
-    value_evaluator::xslt10_variable_string_value(inputs, variable, variables, control)
-}
-
-fn compare_sort_keys(
-    left: &EvaluatedSortKey,
-    right: &EvaluatedSortKey,
-    case_order: EvaluatedSortCaseOrder,
-    language: EvaluatedSortLanguage,
-) -> std::cmp::Ordering {
-    match (left, right) {
-        (EvaluatedSortKey::Text(left), EvaluatedSortKey::Text(right)) => {
-            compare_text_sort_keys(left, right, case_order, language)
-        }
-        (EvaluatedSortKey::Number(left), EvaluatedSortKey::Number(right)) => match (left, right) {
-            (Some(left), Some(right)) => left
-                .partial_cmp(right)
-                .expect("evaluated numeric sort keys exclude NaN"),
-            (None, None) => std::cmp::Ordering::Equal,
-            (None, Some(_)) => std::cmp::Ordering::Less,
-            (Some(_), None) => std::cmp::Ordering::Greater,
-        },
-        _ => unreachable!("a compiled sort key has one stable data type"),
-    }
-}
-
-fn compare_text_sort_keys(
-    left: &str,
-    right: &str,
-    case_order: EvaluatedSortCaseOrder,
-    language: EvaluatedSortLanguage,
-) -> std::cmp::Ordering {
-    let primary =
-        text_collation_primary(left, language).cmp(&text_collation_primary(right, language));
-    if !primary.is_eq() {
-        return primary;
-    }
-    let secondary =
-        text_collation_secondary(left, language).cmp(&text_collation_secondary(right, language));
-    if !secondary.is_eq() || matches!(case_order, EvaluatedSortCaseOrder::Default) {
-        return secondary;
-    }
-    let left_case = text_case_signature(left, case_order);
-    let right_case = text_case_signature(right, case_order);
-    left_case.cmp(&right_case)
-}
-
-fn text_collation_primary(value: &str, language: EvaluatedSortLanguage) -> String {
-    if matches!(language, EvaluatedSortLanguage::Codepoint) {
-        return value.to_ascii_lowercase();
-    }
-    let mut primary = String::new();
-    let normalized_whitespace = normalize_internal_collation_whitespace(value);
-    for character in normalized_whitespace.chars() {
-        match (language, character) {
-            (EvaluatedSortLanguage::Swedish, 'å' | 'Å') => primary.push_str("{0"),
-            (EvaluatedSortLanguage::Swedish, 'ä' | 'Ä') => primary.push_str("{1"),
-            (EvaluatedSortLanguage::Swedish, 'ö' | 'Ö') => primary.push_str("{2"),
-            (EvaluatedSortLanguage::Swedish, 'ü' | 'Ü') => primary.push_str("yz"),
-            (EvaluatedSortLanguage::Turkish, 'ı' | 'I') | (_, 'ı') => primary.push_str("i0"),
-            (EvaluatedSortLanguage::Turkish, 'i' | 'İ') | (_, 'İ') => primary.push_str("i1"),
-            (_, 'æ' | 'Æ') => primary.push_str("ae"),
-            (_, 'œ' | 'Œ') => primary.push_str("oe"),
-            _ => {
-                for decomposed in character.to_lowercase().flat_map(char::to_lowercase).nfd() {
-                    if !is_combining_mark(decomposed) {
-                        primary.push(decomposed);
-                    }
-                }
-            }
-        }
-    }
-    if matches!(language, EvaluatedSortLanguage::Spanish) {
-        primary.replace("ch", "c{")
-    } else {
-        primary
-    }
-}
-
-fn normalize_internal_collation_whitespace(value: &str) -> String {
-    let characters = value.chars().collect::<Vec<_>>();
-    let mut normalized = String::with_capacity(value.len());
-    let mut index = 0;
-    while index < characters.len() {
-        if !characters[index].is_whitespace() {
-            normalized.push(characters[index]);
-            index += 1;
-            continue;
-        }
-        let start = index;
-        while index < characters.len() && characters[index].is_whitespace() {
-            index += 1;
-        }
-        if start > 0 && index < characters.len() {
-            normalized.push(' ');
-        } else {
-            normalized.extend(characters[start..index].iter());
-        }
-    }
-    normalized
-}
-
-fn text_collation_secondary(value: &str, language: EvaluatedSortLanguage) -> Vec<u8> {
-    if matches!(
-        language,
-        EvaluatedSortLanguage::Codepoint
-            | EvaluatedSortLanguage::Swedish
-            | EvaluatedSortLanguage::Turkish
-    ) {
-        return Vec::new();
-    }
-    let mut accents = Vec::with_capacity(value.chars().count());
-    for character in value.chars() {
-        if matches!(character, 'æ' | 'Æ' | 'œ' | 'Œ') {
-            accents.extend([0, 0]);
-        } else {
-            accents.push(u8::from(character.nfd().skip(1).any(is_combining_mark)));
-        }
-    }
-    if matches!(language, EvaluatedSortLanguage::French) {
-        accents.reverse();
-    }
-    accents
-}
-
-fn text_case_signature(value: &str, case_order: EvaluatedSortCaseOrder) -> Vec<u8> {
-    let mut signature = Vec::with_capacity(value.chars().count());
-    for character in value.chars().filter(|character| character.is_alphabetic()) {
-        let weight = match case_order {
-            EvaluatedSortCaseOrder::UpperFirst => u8::from(!character.is_uppercase()),
-            EvaluatedSortCaseOrder::LowerFirst => u8::from(character.is_uppercase()),
-            EvaluatedSortCaseOrder::Default => 0,
-        };
-        signature.push(weight);
-        if matches!(character, 'æ' | 'Æ' | 'œ' | 'Œ') {
-            signature.push(weight);
-        }
-    }
-    signature
-}
-
 fn execute_continuation_instruction(
     inputs: &SequenceInputs<'_>,
     instruction: &Instruction,
@@ -2631,15 +1849,29 @@ fn execute_continuation_instruction(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    match instruction {
-        Instruction::NextMatch { arguments, .. } => {
-            execute_next_match(inputs, arguments, execution, variables, control)
-        }
-        Instruction::ApplyImports { arguments, .. } => {
-            execute_apply_imports(inputs, arguments, execution, variables, control)
-        }
+    let (outcome, location) = match instruction {
+        Instruction::NextMatch {
+            arguments,
+            location,
+        } => (
+            execute_next_match(inputs, arguments, execution, variables, control),
+            location,
+        ),
+        Instruction::ApplyImports {
+            arguments,
+            location,
+        } => (
+            execute_apply_imports(inputs, arguments, execution, variables, control),
+            location,
+        ),
         _ => unreachable!("continuation dispatch receives only continuation instructions"),
-    }
+    };
+    outcome.map_err(|mut failure| {
+        if failure.location.is_none() {
+            failure.location = Some(location.clone());
+        }
+        failure
+    })
 }
 
 fn execute_binding(
@@ -2690,6 +1922,9 @@ fn execute_binding(
         Instruction::Xslt10BinaryNumericVariable { name, select, .. } => {
             bind_binary_numeric_variable(inputs, execution, name, select, scope, control)?;
         }
+        Instruction::Xslt10GeneratedUnionIdentityVariable { name, select, .. } => {
+            bind_union_identity(inputs, execution, name, select, scope, control)?;
+        }
         Instruction::Xslt10ConcatVariable { name, select, .. } => {
             bind_xslt10_concat_variable(inputs, execution, name, select, scope, control)?;
         }
@@ -2713,7 +1948,7 @@ fn execute_binding(
             )?;
         }
         instruction @ Instruction::SourceVariablePathVariable { .. } => {
-            bind_source_variable_path_variable(inputs, instruction, scope, control)?;
+            bound_variable_path::bind(inputs, instruction, scope, control)?;
         }
         instruction @ Instruction::SourceNodeUnionVariable { .. } => {
             bind_source_node_union(inputs, instruction, scope, control)?;
@@ -2759,6 +1994,25 @@ fn bind_literal_document_variable(
     Ok(())
 }
 
+fn bind_union_identity(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    name: &str,
+    select: &crate::xslt::golden_semantics_experiment::Xslt10GeneratedUnionPosition,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = value_evaluator::xslt10_generated_union_identity(
+        inputs,
+        execution.node,
+        select,
+        scope,
+        control,
+    )?;
+    scope.bind_atomic(name.to_owned(), AtomicValue::string(value));
+    Ok(())
+}
+
 fn bind_xslt10_concat_variable(
     inputs: &SequenceInputs<'_>,
     execution: SequenceContext<'_>,
@@ -2796,7 +2050,7 @@ fn bind_source_node_union(
     let mut nodes = Vec::new();
     for source_name in sources {
         let selected = scope
-            .source_nodes(inputs.globals, source_name)
+            .source_nodes_in_context(inputs, source_name)?
             .ok_or_else(|| {
                 failure(
                     "XPTY0004",
@@ -2855,35 +2109,6 @@ fn bind_xslt10_source_nodes_attribute_equals_current_name(
         inputs.request_id,
         control,
     )?;
-    scope.bind_source_nodes(name.to_owned(), selected);
-    Ok(())
-}
-
-fn bind_source_variable_path_variable(
-    inputs: &SequenceInputs<'_>,
-    instruction: &Instruction,
-    scope: &mut RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<(), ExecutionFailure> {
-    let Instruction::SourceVariablePathVariable {
-        name,
-        source: source_name,
-        select,
-        ..
-    } = instruction
-    else {
-        unreachable!("source-variable path binder receives one path binding")
-    };
-    let source = inputs.source.ok_or_else(|| {
-        failure(
-            "XPDY0002",
-            FailureCategory::Invalid,
-            Some(inputs.request_id),
-            "source-variable path binding requires a principal source",
-        )
-    })?;
-    let selected =
-        evaluate_source_variable_path(inputs, source, source_name, select, scope, control)?;
     scope.bind_source_nodes(name.to_owned(), selected);
     Ok(())
 }
@@ -3380,6 +2605,7 @@ fn prepare_element_execution<'a>(
             body,
         }),
         Instruction::ContextNameElement {
+            xslt10_compatibility,
             namespace_override,
             static_namespaces,
             computed_attributes,
@@ -3398,6 +2624,7 @@ fn prepare_element_execution<'a>(
                 execution,
                 namespace_override.as_deref(),
                 static_namespaces,
+                *xslt10_compatibility,
                 location,
                 control,
             )?;
@@ -3410,6 +2637,7 @@ fn prepare_element_execution<'a>(
             })
         }
         Instruction::DynamicNameElement {
+            xslt10_compatibility,
             name,
             namespace_override,
             static_namespaces,
@@ -3422,6 +2650,7 @@ fn prepare_element_execution<'a>(
                 inputs,
                 execution,
                 DynamicElementNameRequest {
+                    xslt10_compatibility: *xslt10_compatibility,
                     name,
                     variables,
                     namespace_override: namespace_override.as_ref(),
@@ -3447,6 +2676,7 @@ fn resolve_context_element_name(
     execution: SequenceContext<'_>,
     namespace_override: Option<&str>,
     static_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    xslt10_compatibility: bool,
     location: &crate::xdm::owned_tree_experiment::SourceLocation,
     control: &mut InvocationControl,
 ) -> Result<
@@ -3464,6 +2694,7 @@ fn resolve_context_element_name(
             namespace.prefix(),
             namespace_override,
             static_namespaces,
+            xslt10_compatibility,
             location,
             inputs.request_id,
         );
@@ -3478,6 +2709,20 @@ fn resolve_context_element_name(
         )
     })?;
     let prefix = execution_context_prefix(inputs, execution);
+    if xslt10_compatibility && namespace_override.is_some() {
+        let lexical = prefix.map_or_else(
+            || context_name.local.clone(),
+            |prefix| format!("{prefix}:{}", context_name.local),
+        );
+        return dynamic_element_name::resolve_lexical_element_name(
+            &lexical,
+            namespace_override,
+            static_namespaces,
+            xslt10_compatibility,
+            location,
+            inputs.request_id,
+        );
+    }
     let namespace = match namespace_override {
         Some("") => None,
         Some(namespace) => Some(namespace.to_owned()),
@@ -3677,7 +2922,7 @@ fn execute_apply_instruction(
         sorts,
         mode,
         arguments,
-        ..
+        location,
     } = instruction
     else {
         unreachable!("apply instruction dispatch receives only xsl:apply-templates")
@@ -3689,6 +2934,20 @@ fn execute_apply_instruction(
         None => None,
     };
     let parameters = evaluate_template_arguments(arguments, variables, inputs, execution, control)?;
+    if let Some(ApplySelection::VariableSequence(name)) = select
+        && variables.literal_document(inputs.globals, name).is_some()
+        && !sorts.is_empty()
+    {
+        return Err(failure_at(
+            "FXRT0007",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            location.clone(),
+            format!(
+                "secondary-document variable selection is unsupported by xsl:apply-templates: ${name}"
+            ),
+        ));
+    }
     execute_apply_templates(
         inputs,
         ApplyExecutionPlan {
@@ -3794,7 +3053,17 @@ fn apply_variable_sequence(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+    if let Some(document) = variables.literal_document(inputs.globals, name) {
+        return document_variable_dispatch::apply_document_root(
+            inputs, document, mode, parameters, control,
+        );
+    }
+    if let Some((owner, nodes)) = variables.retained_source(inputs.globals, name) {
+        return document_variable_dispatch::apply_retained_source(
+            inputs, owner, nodes, mode, parameters, control,
+        );
+    }
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         let mut result = Vec::new();
         let focus_size = nodes.len();
         for (offset, node) in nodes.iter().copied().enumerate() {
@@ -4390,7 +3659,9 @@ fn validate_literal_document_context(
     inputs: &SequenceInputs<'_>,
     has_unqualified_source_node_values: bool,
 ) -> Result<(), ExecutionFailure> {
-    if !inputs.globals.nodes.is_empty() || has_unqualified_source_node_values {
+    if (!inputs.globals.nodes.is_empty() && inputs.globals.principal_owner.is_none())
+        || has_unqualified_source_node_values
+    {
         return Err(failure(
             "FXRT1017",
             FailureCategory::Unsupported,
@@ -4409,7 +3680,11 @@ fn select_source_variable_path(
     control: &mut InvocationControl,
 ) -> Option<Result<Vec<NodeId>, ExecutionFailure>> {
     let source = inputs.source?;
-    let mut selected = variables.source_nodes(inputs.globals, variable)?.clone();
+    let mut selected = match variables.source_nodes_in_context(inputs, variable) {
+        Ok(Some(nodes)) => nodes.clone(),
+        Ok(None) => return None,
+        Err(failure) => return Some(Err(failure)),
+    };
     for step in steps {
         let mut next = Vec::new();
         for node in selected {
@@ -4947,7 +4222,7 @@ fn evaluate_xslt10_variable_less_than_node_count(
     let left =
         value_evaluator::xslt10_variable_number(inputs, numeric_variable, variables, control)?;
     let count = variables
-        .source_nodes(inputs.globals, nodes_variable)
+        .source_nodes_in_context(inputs, nodes_variable)?
         .ok_or_else(|| {
             failure(
                 "XPTY0004",
@@ -4978,6 +4253,9 @@ fn evaluate_ordinary_boolean(
     let context = node_focus.node;
     match expression {
         BooleanExpression::Constant(value) => Ok(*value),
+        BooleanExpression::Xslt10PathStringPredicate(expression) => {
+            boolean_focus::path_string_predicate(inputs, node_focus, expression, control)
+        }
         BooleanExpression::NodeExists(path) => node_exists(inputs, path, context, control),
         BooleanExpression::NodeStringEquals { path, value } => {
             evaluate_node_string_equals(inputs, path, value, context, control)
@@ -5117,7 +4395,7 @@ fn evaluate_xslt10_context_node_set_equals_variable(
 ) -> Result<bool, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
     let nodes = variables
-        .source_nodes(inputs.globals, variable)
+        .source_nodes_in_context(inputs, variable)?
         .ok_or_else(|| {
             failure_at(
                 "XPTY0004",
@@ -5835,7 +5113,7 @@ fn evaluate_variable_effective_boolean_value(
     {
         return atomic_effective_boolean_value(value, inputs.request_id);
     }
-    if let Some(nodes) = variables.source_nodes.get(variable) {
+    if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
         return Ok(!nodes.is_empty());
     }
     if let Some(values) = variables.detached_source_node_strings(variable) {
@@ -5882,6 +5160,9 @@ fn ensure_variable_is_bound(
     let is_bound = variables.atomics.contains_key(variable)
         || variables.atomic_sequences.contains_key(variable)
         || variables.source_nodes.contains_key(variable)
+        || variables
+            .retained_source(inputs.globals, variable)
+            .is_some()
         || variables.detached_source_node_strings(variable).is_some()
         || variables.temporary_trees.contains_key(variable)
         || inputs.globals.atomics.contains_key(variable)
@@ -6284,10 +5565,10 @@ fn select_apply_nodes(
             )
         }
         ApplySelection::Xslt10KeyUnion(lookups) => {
-            select_xslt10_key_union(inputs, lookups, context, variables, control)
+            source_unions::select_keys(inputs, lookups, context, variables, control)
         }
         ApplySelection::Xslt10MixedUnion(alternatives) => {
-            select_xslt10_mixed_union(inputs, alternatives, context, variables, control)
+            source_unions::select_mixed(inputs, alternatives, context, variables, control)
         }
         ApplySelection::PathUnion(alternatives) => {
             evaluate_source_path_union(inputs, source, context, alternatives, control)
@@ -6316,7 +5597,9 @@ fn select_apply_nodes(
             control,
         ),
         ApplySelection::SourceVariablePath { variable, path } => {
-            evaluate_source_variable_path(inputs, source, variable, path, variables, control)
+            bound_variable_path::evaluate_eligible_path(
+                inputs, source, variable, path, variables, control,
+            )
         }
         ApplySelection::Xslt10VariableNodeSetComparisonPath {
             selection,
@@ -6611,91 +5894,13 @@ fn select_child_elements(
     Ok(selected)
 }
 
-fn select_xslt10_key_union(
-    inputs: &SequenceInputs<'_>,
-    lookups: &[Xslt10KeyLookup],
-    context: NodeId,
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<Vec<NodeId>, ExecutionFailure> {
-    let source = inputs.source.expect("key selection requires a source");
-    let mut selected = Vec::new();
-    for lookup in lookups {
-        selected.extend(key_lookup::select(
-            inputs,
-            lookup,
-            Some(context),
-            variables,
-            control,
-        )?);
-    }
-    selected.sort_unstable_by_key(|node| source.document_order(*node));
-    selected.dedup();
-    Ok(selected)
-}
-
-fn select_xslt10_mixed_union(
-    inputs: &SequenceInputs<'_>,
-    alternatives: &[Xslt10ApplyUnionPart],
-    context: NodeId,
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<Vec<NodeId>, ExecutionFailure> {
-    let source = inputs
-        .source
-        .expect("mixed union selection requires a source");
-    let mut selected = Vec::new();
-    for alternative in alternatives {
-        match alternative {
-            Xslt10ApplyUnionPart::Path(path) => selected.extend(
-                evaluate_location_path_controlled(source, context, path, control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?,
-            ),
-            Xslt10ApplyUnionPart::Id(lookup) => {
-                let variable_value =
-                    if let crate::xslt::golden_semantics_experiment::Xslt10IdArgument::Variable(
-                        name,
-                    ) = &lookup.argument
-                    {
-                        Some(value_evaluator::xslt10_variable_string_value(
-                            inputs, name, variables, control,
-                        )?)
-                    } else {
-                        None
-                    };
-                selected.extend(id_lookup::select(
-                    source,
-                    context,
-                    lookup,
-                    variable_value.as_deref(),
-                    inputs.request_id,
-                    control,
-                )?);
-            }
-            Xslt10ApplyUnionPart::Key(lookup) => selected.extend(key_lookup::select(
-                inputs,
-                lookup,
-                Some(context),
-                variables,
-                control,
-            )?),
-            Xslt10ApplyUnionPart::Variable(name) => {
-                selected.extend(source_variable_nodes(inputs, name, variables)?);
-            }
-        }
-    }
-    selected.sort_unstable_by_key(|node| source.document_order(*node));
-    selected.dedup();
-    Ok(selected)
-}
-
 fn source_variable_nodes(
     inputs: &SequenceInputs<'_>,
     name: &str,
     variables: &RuntimeVariables,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
     variables
-        .source_nodes(inputs.globals, name)
+        .source_nodes_in_context(inputs, name)?
         .cloned()
         .ok_or_else(|| {
             failure(
@@ -6705,36 +5910,6 @@ fn source_variable_nodes(
                 format!("sorted variable selection requires source nodes: ${name}"),
             )
         })
-}
-
-fn evaluate_source_variable_path(
-    inputs: &SequenceInputs<'_>,
-    source: &Document,
-    variable: &str,
-    path: &crate::xpath::path_experiment::LocationPath,
-    variables: &RuntimeVariables,
-    control: &mut InvocationControl,
-) -> Result<Vec<NodeId>, ExecutionFailure> {
-    let roots = variables
-        .source_nodes(inputs.globals, variable)
-        .ok_or_else(|| {
-            failure(
-                "XPTY0004",
-                FailureCategory::Invalid,
-                Some(inputs.request_id),
-                format!("relative path requires a source-node sequence: ${variable}"),
-            )
-        })?;
-    let mut selected = Vec::new();
-    for root in roots {
-        selected.extend(
-            evaluate_location_path_controlled(source, *root, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?,
-        );
-    }
-    selected.sort_unstable_by_key(|node| source.document_order(*node));
-    selected.dedup();
-    Ok(selected)
 }
 
 fn select_xslt10_variable_node_set_comparison(
@@ -6752,7 +5927,7 @@ fn select_xslt10_variable_node_set_comparison(
     let candidates = evaluate_location_path_controlled(source, context, selection, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     let variable_nodes = variables
-        .source_nodes(inputs.globals, variable)
+        .source_nodes_in_context(inputs, variable)?
         .ok_or_else(|| {
             failure(
                 "XPTY0004",
@@ -6814,7 +5989,7 @@ fn evaluate_variable_path_union(
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
     let mut selected = variables
-        .source_nodes(inputs.globals, variable)
+        .source_nodes_in_context(inputs, variable)?
         .cloned()
         .ok_or_else(|| {
             failure(

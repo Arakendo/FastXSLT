@@ -152,3 +152,11 @@ and add the record to this index. Never reuse a retired number.
   demonstrated, general speedup is unproven and production growth is retained.
   Candidate host/WASM admission and completion semantics are reopening prerequisites,
   not an open-ended layout/staging campaign or public mutable DOM commitment.
+- [AR-0028: Owner Qualified Runtime Node Values](AR-0028-owner-qualified-runtime-node-values.md)
+  -- Under Review for implementation follow-up; ADR-0022 accepts explicit
+  retained owners, with node identity distinct from effective navigation.
+  Compiled focus/variable admission and cross-document ranking remain gated.
+- [AR-0029: Stylesheet Preprocessing Edition and Legacy Whitespace](AR-0029-stylesheet-preprocessing-edition-and-legacy-whitespace.md)
+  -- Accepted through ADR-0023; explicit strict-1.0 and modern preprocessing
+  profiles are compilation-graph scoped, private initially. Integration is
+  pending; original archival comparisons remain unchanged.

@@ -33,8 +33,12 @@ mod namespace_alias_compiler;
 mod output_compiler;
 #[path = "stylesheet_module_compiler.rs"]
 mod stylesheet_module_compiler;
+#[path = "stylesheet_preprocessing.rs"]
+pub(crate) mod stylesheet_preprocessing;
 #[path = "stylesheet_validation.rs"]
 mod stylesheet_validation;
+#[path = "template_declaration_compiler.rs"]
+mod template_declaration_compiler;
 #[path = "template_pattern_compiler.rs"]
 mod template_pattern_compiler;
 #[path = "variable_filtered_path_compiler.rs"]
@@ -53,13 +57,13 @@ pub(crate) use stylesheet_module_compiler::{
     validate_import_order_at,
 };
 use stylesheet_validation::validate_named_template_references;
+use template_declaration_compiler::compile_top_level_template;
 use template_pattern_compiler::compile_match_pattern;
 
 use instruction_compiler::{
     compile_comment, compile_literal_result_attributes, compile_processing_instruction,
-    compile_sequence_excluding_with_bindings, compile_text, effective_xml_space_preserved,
-    literal_result_namespaces, parse_template_modes, validate_exclude_result_prefixes,
-    validate_extension_element_prefixes,
+    compile_sequence_excluding_with_bindings, compile_text, literal_result_namespaces,
+    parse_template_modes, validate_exclude_result_prefixes, validate_extension_element_prefixes,
 };
 use mode_declaration_compiler::{
     validate_mode_declaration as validate_mode, validate_same_precedence_mode_declaration_conflicts,
@@ -944,6 +948,10 @@ fn global_dependencies(default: &GlobalBindingDefault) -> impl Iterator<Item = &
                     ..
                 }
                 | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::Path(_)
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::GeneratedNodeIdentity(_)
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::QualifiedGeneratedIdentity(_)
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::PathSubstring(_)
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::ComposedString(_)
                 | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::SumPath(_) => None,
             }));
         }
@@ -1065,90 +1073,6 @@ fn validate_stylesheet_root_controls(
             document.location(root),
         ));
     }
-    Ok(())
-}
-
-fn compile_top_level_template(
-    document: &Document,
-    element: NodeId,
-    root_template: &mut Option<Template>,
-    root_template_modes: &mut Vec<String>,
-    matched_templates: &mut Vec<MatchedTemplate>,
-    named_templates: &mut Vec<NamedTemplate>,
-) -> Result<(), CompileFailure> {
-    if let Some(name) = optional_attribute(document, element, None, "name") {
-        if optional_attribute(document, element, None, "match").is_none()
-            && optional_attribute(document, element, None, "mode").is_some()
-        {
-            return Err(invalid(
-                "XTSE0500",
-                "xsl:template mode is permitted only when match is present",
-                document.location(element),
-            ));
-        }
-        let name = normalize_named_template_name(document, element, name)?;
-        if named_templates.iter().any(|template| template.name == name) {
-            return Err(invalid(
-                "FXST0010",
-                format!("duplicate named template: {name}"),
-                document.location(element),
-            ));
-        }
-        named_templates.push(compile_named_template(document, element, &name)?);
-        if optional_attribute(document, element, None, "match").is_none() {
-            return Ok(());
-        }
-    }
-
-    let pattern = required_attribute(document, element, None, "match")?;
-    if pattern == "/" {
-        let has_priority = optional_attribute(document, element, None, "priority").is_some();
-        let has_mode = optional_attribute(document, element, None, "mode").is_some()
-            || effective_default_mode(document, element).is_some_and(|mode| mode != "#unnamed");
-        let has_competing_default = matched_templates.iter().any(|existing| {
-            existing.pattern == MatchPattern::Document && existing.modes.is_empty()
-        });
-        if has_priority || has_mode || root_template.is_some() || has_competing_default {
-            let matched_template = compile_matched_template(document, element, pattern)?;
-            let competes_with_default = matched_template.modes.is_empty()
-                || matched_template
-                    .modes
-                    .iter()
-                    .any(|mode| matches!(mode.as_str(), "#default" | "#unnamed" | "#all"));
-            if competes_with_default {
-                if let Some(previous) = root_template.take() {
-                    matched_templates.push(MatchedTemplate {
-                        pattern: MatchPattern::Document,
-                        import_precedence: 0,
-                        apply_imports_min_precedence: 0,
-                        priority: TemplatePriority::ROOT_DEFAULT,
-                        modes: Vec::new(),
-                        template: previous,
-                    });
-                    root_template_modes.clear();
-                }
-                matched_templates.push(matched_template);
-                return Ok(());
-            }
-            if matched_templates.iter().any(|existing| {
-                existing.pattern == matched_template.pattern
-                    && existing.modes == matched_template.modes
-            }) {
-                return Err(unsupported(
-                    "FXST1008",
-                    "template priority for duplicate mode-qualified root pattern is outside the private slice",
-                    document.location(element),
-                ));
-            }
-            matched_templates.push(matched_template);
-            return Ok(());
-        }
-        root_template_modes.clear();
-        *root_template = Some(compile_template(document, element)?);
-        return Ok(());
-    }
-
-    matched_templates.extend(compile_matched_templates(document, element, pattern)?);
     Ok(())
 }
 
@@ -1362,14 +1286,13 @@ fn text_only_global_constructor_value(
     document: &Document,
     element: NodeId,
 ) -> Result<String, CompileFailure> {
-    let preserve_whitespace = effective_xml_space_preserved(document, element)?;
-    Ok(document
-        .children(element)
-        .iter()
-        .filter(|child| document.kind(**child) == NodeKind::Text)
-        .map(|child| document.value(*child).unwrap_or_default())
-        .filter(|value| preserve_whitespace || !value.chars().all(char::is_whitespace))
-        .collect())
+    Ok(
+        stylesheet_preprocessing::constructor_children(document, element)?
+            .into_iter()
+            .filter(|child| document.kind(*child) == NodeKind::Text)
+            .map(|child| document.value(child).unwrap_or_default())
+            .collect(),
+    )
 }
 
 fn compile_xslt10_source_variable_path_global(
@@ -1497,7 +1420,7 @@ fn compile_xslt10_named_template_text_global(
     {
         return Ok(None);
     }
-    let children = meaningful_children(document, element);
+    let children = stylesheet_preprocessing::constructor_children(document, element)?;
     let [call] = children.as_slice() else {
         return Ok(None);
     };
@@ -1527,7 +1450,8 @@ fn compile_xslt10_named_template_text_global(
     let Some(called_template) = called_template else {
         return Ok(None);
     };
-    let template_children = meaningful_children(document, called_template);
+    let template_children =
+        stylesheet_preprocessing::constructor_children(document, called_template)?;
     let [value_of] = template_children.as_slice() else {
         return Ok(None);
     };
@@ -1566,7 +1490,7 @@ fn compile_xslt10_temporary_text_parts(
     {
         return Ok(None);
     }
-    let children = meaningful_children(document, element);
+    let children = stylesheet_preprocessing::constructor_children(document, element)?;
     if children.is_empty()
         || !children
             .iter()
@@ -1675,7 +1599,7 @@ fn compile_xslt10_conditional_text(
     if declared_type.is_some() {
         return Ok(None);
     }
-    let children = meaningful_children(document, element);
+    let children = stylesheet_preprocessing::constructor_children(document, element)?;
     let [choose] = children.as_slice() else {
         return Ok(None);
     };
@@ -1729,7 +1653,7 @@ fn static_xsl_text_child(
     document: &Document,
     parent: NodeId,
 ) -> Result<Option<String>, CompileFailure> {
-    let children = meaningful_children(document, parent);
+    let children = stylesheet_preprocessing::constructor_children(document, parent)?;
     let [text] = children.as_slice() else {
         return Ok(None);
     };
@@ -1737,14 +1661,13 @@ fn static_xsl_text_child(
         return Ok(None);
     }
     ensure_only_attributes(document, *text, &[], "xsl:text")?;
-    if document
-        .children(*text)
+    if stylesheet_preprocessing::constructor_children(document, *text)?
         .iter()
         .any(|child| document.kind(*child) != NodeKind::Text)
     {
         return Ok(None);
     }
-    Ok(Some(document.string_value(*text)))
+    instruction_compiler::compile_text_value(document, *text).map(Some)
 }
 
 fn compile_variable_global(
@@ -1977,7 +1900,7 @@ fn compile_parentless_temporary_node(
     element: NodeId,
     declared_type: Option<&str>,
 ) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
-    let children = meaningful_children(document, element);
+    let children = stylesheet_preprocessing::constructor_children(document, element)?;
     let [constructor] = children.as_slice() else {
         return Ok(None);
     };
@@ -2146,7 +2069,7 @@ fn compile_constructed_elements(
     parent: NodeId,
 ) -> Result<Vec<ConstructedElement>, CompileFailure> {
     let mut elements = Vec::new();
-    for child in meaningful_children(document, parent) {
+    for child in stylesheet_preprocessing::constructor_children(document, parent)? {
         if document.kind(child) != NodeKind::Element {
             return Err(unsupported(
                 "FXST1015",
@@ -2163,7 +2086,7 @@ fn compile_constructed_nodes(
     document: &Document,
     parent: NodeId,
 ) -> Result<Vec<ConstructedNode>, CompileFailure> {
-    meaningful_children(document, parent)
+    stylesheet_preprocessing::constructor_children(document, parent)?
         .into_iter()
         .map(|child| compile_constructed_node(document, child))
         .collect()
@@ -2232,7 +2155,7 @@ pub(super) fn compile_constructed_children(
     document: &Document,
     parent: NodeId,
 ) -> Result<Vec<ConstructedNode>, CompileFailure> {
-    meaningful_children(document, parent)
+    stylesheet_preprocessing::constructor_children(document, parent)?
         .into_iter()
         .map(|child| compile_constructed_node(document, child))
         .collect()
@@ -2386,7 +2309,7 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
                 }
             };
             let required = parse_template_parameter_required(document, child)?;
-            let children = meaningful_children(document, child);
+            let children = stylesheet_preprocessing::constructor_children(document, child)?;
             if required
                 && (optional_attribute(document, child, None, "select").is_some()
                     || !children.is_empty())
@@ -2528,7 +2451,7 @@ fn compile_named_template_parameter(
         }
     };
     let required = parse_template_parameter_required(document, child)?;
-    let children = meaningful_children(document, child);
+    let children = stylesheet_preprocessing::constructor_children(document, child)?;
     if required
         && (optional_attribute(document, child, None, "select").is_some() || !children.is_empty())
     {
@@ -2587,7 +2510,12 @@ fn compile_template_parameter_default(
                 document.location(child),
             ));
         }
-        return Ok(TemplateParameterDefault::Text(document.string_value(child)));
+        return Ok(TemplateParameterDefault::Text(
+            children
+                .iter()
+                .map(|node| document.value(*node).unwrap_or_default())
+                .collect(),
+        ));
     };
     ensure_no_meaningful_children(document, child, "xsl:param")?;
     if let Ok(value) = select.parse::<i64>() {

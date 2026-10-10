@@ -24,6 +24,29 @@ impl<'a> From<SequenceContext<'a>> for BooleanNodeFocus<'a> {
     }
 }
 
+impl BooleanNodeFocus<'_> {
+    fn is_non_source(self) -> bool {
+        self.namespace.is_some() || self.other_focus
+    }
+}
+
+pub(super) fn path_string_predicate(
+    inputs: &SequenceInputs<'_>,
+    focus: BooleanNodeFocus<'_>,
+    expression: &crate::xslt::golden_semantics_experiment::Xslt10PathStringFunction,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if focus.is_non_source() {
+        return Err(super::failure(
+            "FXRT0007",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "path string predicates require ordinary source focus",
+        ));
+    }
+    super::value_evaluator::xslt10_path_string_predicate(inputs, focus.node, expression, control)
+}
+
 impl From<Option<NodeId>> for BooleanNodeFocus<'_> {
     fn from(node: Option<NodeId>) -> Self {
         Self {

@@ -2,7 +2,9 @@ param(
     [string]$ArchivePath = (Join-Path $PSScriptRoot '..\.workbench\oasis-xslt10\XSLT-testsuite-04.ZIP'),
     [string]$ExtractedTestsPath = (Join-Path $PSScriptRoot '..\.workbench\oasis-xslt10\extracted-full\testsuite\TESTS'),
     [string]$TraceCase,
-    [string]$TraceFrontier
+    [string]$TraceFrontier,
+    [ValidateSet('modern', 'strict-xslt10')]
+    [string]$PreprocessingProfile = 'modern'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,8 +32,10 @@ if ($cases.Count -ne 3173) {
 $priorRoot = $env:FASTXSLT_OASIS_XSLT10_ROOT
 $priorTraceCase = $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE
 $priorTraceFrontier = $env:FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER
+$priorPreprocessingProfile = $env:FASTXSLT_OASIS_PREPROCESSING_PROFILE
 try {
     $env:FASTXSLT_OASIS_XSLT10_ROOT = $resolvedTests
+    $env:FASTXSLT_OASIS_PREPROCESSING_PROFILE = $PreprocessingProfile
     if ([string]::IsNullOrWhiteSpace($TraceCase)) {
         Remove-Item Env:FASTXSLT_OASIS_XSLT10_TRACE_CASE -ErrorAction SilentlyContinue
     }
@@ -53,4 +57,5 @@ finally {
     $env:FASTXSLT_OASIS_XSLT10_ROOT = $priorRoot
     $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE = $priorTraceCase
     $env:FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER = $priorTraceFrontier
+    $env:FASTXSLT_OASIS_PREPROCESSING_PROFILE = $priorPreprocessingProfile
 }

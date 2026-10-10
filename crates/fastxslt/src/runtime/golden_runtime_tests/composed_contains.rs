@@ -27,6 +27,14 @@ fn run(
     program: &crate::xslt::golden_semantics_experiment::StylesheetProgram,
     control: &mut InvocationControl,
 ) -> Result<String, super::super::ExecutionFailure> {
+    run_using(program, control, WhitespaceRepresentation::VisibilityView)
+}
+
+fn run_using(
+    program: &crate::xslt::golden_semantics_experiment::StylesheetProgram,
+    control: &mut InvocationControl,
+    representation: WhitespaceRepresentation,
+) -> Result<String, super::super::ExecutionFailure> {
     let source = Document::from_parsed(
         parse_document(
             "urn:contains:source",
@@ -45,12 +53,103 @@ fn run(
         &BTreeMap::new(),
         MultipleMatchPolicy::UseLast,
         "composed-contains",
-        WhitespaceRepresentation::VisibilityView,
+        representation,
         None,
         None,
         control,
     )?;
     serialize_xml(&result, &program.output, "composed-contains", 8192, control)
+}
+
+#[test]
+fn generated_source_and_temporary_root_strings_are_ascii_alphanumeric() {
+    let program = compile(
+        r#"<xsl:variable name="tree"><leaf/></xsl:variable><xsl:value-of select="generate-id(/)"/><xsl:text>|</xsl:text><xsl:value-of select="generate-id(root($tree))"/><xsl:text>|</xsl:text><xsl:value-of select="generate-id(root($tree))"/>"#,
+        "3.0",
+    )
+    .unwrap();
+    let actual = run(&program, &mut InvocationControl::unbounded()).unwrap();
+    let fields = actual.split('|').collect::<Vec<_>>();
+    assert_eq!(fields.len(), 3);
+    assert_ne!(fields[0], fields[1]);
+    assert_eq!(fields[1], fields[2]);
+    for identity in fields {
+        assert!(identity.as_bytes()[0].is_ascii_alphabetic());
+        assert!(identity.bytes().all(|byte| byte.is_ascii_alphanumeric()));
+    }
+}
+
+#[test]
+fn composed_contains_generated_ids_keep_source_identity_and_legacy_first_node_conversion() {
+    let body = r#"<xsl:value-of select="concat('+',generate-id(/),'+')"/><xsl:text>|</xsl:text><xsl:value-of select="generate-id(/)"/><xsl:text>|</xsl:text><xsl:value-of select="concat('empty=',generate-id(r/missing))"/><xsl:text>|</xsl:text><xsl:value-of select="contains(concat('+',generate-id(r/n),'+'),concat('+',generate-id(r/n[1]),'+'))"/><xsl:text>|</xsl:text><xsl:value-of select="contains(concat('+',generate-id(/),'+'),concat('+',generate-id(r),'+'))"/><xsl:text>|</xsl:text><xsl:for-each select="r/n[1]"><xsl:value-of select="concat(generate-id(),':',generate-id(.))"/></xsl:for-each>"#;
+    let program = compile(body, "1.0").unwrap();
+    let actual = run(&program, &mut InvocationControl::unbounded()).unwrap();
+    let fields = actual.split('|').collect::<Vec<_>>();
+    assert_eq!(fields.len(), 6);
+    assert_eq!(fields[0], format!("+{}+", fields[1]));
+    assert_eq!(fields[2..5], ["empty=", "true", "false"]);
+    let (implicit, explicit) = fields[5].split_once(':').unwrap();
+    assert_eq!(implicit, explicit);
+    assert_ne!(implicit, fields[1]);
+    for identity in [fields[1], implicit] {
+        assert!(identity.as_bytes()[0].is_ascii_alphabetic());
+        assert!(identity.bytes().all(|byte| byte.is_ascii_alphanumeric()));
+    }
+    assert_eq!(
+        run_using(
+            &program,
+            &mut InvocationControl::unbounded(),
+            WhitespaceRepresentation::CompleteReference,
+        )
+        .unwrap(),
+        actual,
+    );
+    assert_eq!(
+        compile(body, "3.0").unwrap_err().category,
+        super::FailureCategory::Unsupported
+    );
+    let namespace = compile(
+        r#"<xsl:value-of select="concat('+',generate-id(r/namespace::*),'+')"/>"#,
+        "1.0",
+    )
+    .unwrap();
+    let value = run(&namespace, &mut InvocationControl::unbounded()).unwrap();
+    assert!(value.starts_with("+fastxsltPrincipalNs"));
+    assert!(value.ends_with('+'));
+}
+
+#[test]
+fn composed_contains_generated_ids_preserve_control_and_short_circuiting() {
+    let program = compile(r#"<xsl:if test="false() and contains(concat('+',generate-id(r/n),'+'),'+')"><xsl:text>bad</xsl:text></xsl:if><xsl:value-of select="concat('+',generate-id(/),'+')"/>"#, "1.0").unwrap();
+    let mut measured = InvocationControl::unbounded();
+    let expected = run(&program, &mut measured).unwrap();
+    let charge = measured.consumed(WorkDomain::XPathOperation);
+    let plain = compile(r#"<xsl:if test="false() and contains(concat('x','y'),'+')"><xsl:text>bad</xsl:text></xsl:if><xsl:value-of select="concat('+',generate-id(/),'+')"/>"#, "1.0").unwrap();
+    let mut plain_control = InvocationControl::unbounded();
+    assert_eq!(run(&plain, &mut plain_control).unwrap(), expected);
+    assert_eq!(charge, plain_control.consumed(WorkDomain::XPathOperation));
+    for allowance in [charge - 1, charge] {
+        let mut limits = WorkLimits::unbounded();
+        limits.xpath_operations = allowance;
+        let actual = run(
+            &program,
+            &mut InvocationControl::new(CancellationToken::new(), limits),
+        );
+        if allowance == charge {
+            assert_eq!(actual.unwrap(), expected);
+        } else {
+            let failure = actual.unwrap_err();
+            assert_eq!(failure.code, "FXCT0002");
+            assert_eq!(failure.request_id.as_deref(), Some("composed-contains"));
+        }
+    }
+    let mut cancelled =
+        InvocationControl::unbounded().cancelling_on_charge(WorkDomain::XPathOperation, 2);
+    assert_eq!(run(&program, &mut cancelled).unwrap_err().code, "FXCT0001");
+    assert_eq!(
+        run(&program, &mut InvocationControl::unbounded()).unwrap(),
+        expected
+    );
 }
 
 #[test]

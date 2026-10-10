@@ -467,6 +467,15 @@ fn compile_static_attribute_name(
             document.location(element),
         ));
     }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(namespace) = namespace_override
+        && namespace != XMLNS_NAMESPACE
+    {
+        return Ok(ExpandedName {
+            namespace: (!namespace.is_empty()).then(|| namespace.to_owned()),
+            local: local.to_owned(),
+        });
+    }
     if prefix == "xmlns" {
         return Err(invalid(
             "XTDE0855",

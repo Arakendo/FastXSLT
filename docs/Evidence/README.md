@@ -1,5 +1,11 @@
 # Evidence
 
+- [OASIS XSLT 1.0 Grouped Document Variable Scalars](oasis-xslt10-grouped-document-variable-scalars-2026-10-07.md)
+
+- [OASIS XSLT 1.0 Positional Namespace Identity](oasis-xslt10-positional-namespace-identity-2026-10-07.md)
+
+- [XSLT 1.0 Concat Sort Keys and Runtime Decomposition](oasis-xslt10-concat-sort-and-runtime-decomposition-2026-10-04.md)
+
 - [OASIS XSLT 1.0 74% Compatibility Tranche](oasis-xslt10-74-percent-compatibility-tranche-2026-09-30.md)
 Evidence records reproducible observations: peer reviews, audits, profiles,
 suite results, implementation checks, and environment-specific validation.
@@ -7,6 +13,8 @@ suite results, implementation checks, and environment-specific validation.
 Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
+
+- [OASIS XSLT 1.0 ID Name Composition and Decomposition](oasis-xslt10-id-name-composition-and-decomposition-2026-10-04.md)
 
 - [OASIS XSLT 1.0 Detached Cross-Document Node Values](oasis-xslt10-detached-cross-document-node-values-2026-09-29.md)
 - [OASIS XSLT 1.0 Unavailable Output-Encoding Fallback](oasis-xslt10-unavailable-output-encoding-fallback-2026-09-29.md)
@@ -95,7 +103,13 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Imported Namespace-Alias Precedence](oasis-xslt10-imported-namespace-alias-precedence-2026-09-23.md)
 - [OASIS XSLT 1.0 Included Output Import Precedence](oasis-xslt10-included-output-import-precedence-2026-09-23.md)
 - [OASIS XSLT 1.0 Dynamic Computed-Attribute Namespace](oasis-xslt10-dynamic-computed-attribute-namespace-2026-09-23.md)
+- [OASIS XSLT 1.0 Explicit Attribute Namespaces and Namespace Copy](oasis-xslt10-explicit-attribute-namespaces-and-namespace-copy-2026-10-04.md)
 - [OASIS XSLT 1.0 Dynamic Computed-Element Namespace](oasis-xslt10-dynamic-computed-element-namespace-2026-09-23.md)
+- [OASIS XSLT 1.0 Computed Element Namespaces and Dispatch](oasis-xslt10-computed-element-namespaces-and-dispatch-2026-10-04.md)
+- [OASIS XSLT 1.0 Namespace Identity Strings](oasis-xslt10-namespace-identity-strings-2026-10-04.md)
+- [OASIS XSLT 1.0 Filtered Union Identity](oasis-xslt10-filtered-union-identity-2026-10-04.md)
+- [OASIS XSLT 1.0 Sort Compiler and Quoted Colon Diagnostics](oasis-xslt10-sort-compiler-and-quoted-colon-diagnostics-2026-10-04.md)
+- [XSLT 1.0 Current Predicate Lexical Boundaries](oasis-xslt10-current-predicate-lexical-boundaries-2026-10-04.md)
 - [OASIS XSLT 1.0 Template-Parameter Defaults](oasis-xslt10-template-parameter-sequence-constructor-2026-09-23.md)
 - [OASIS XSLT 1.0 Output-Declaration Recovery](oasis-xslt10-output-declaration-recovery-2026-09-23.md)
 - [OASIS XSLT 1.0 Included Template Conflict Selection](oasis-xslt10-included-template-conflict-selection-2026-09-23.md)

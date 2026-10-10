@@ -668,6 +668,10 @@ pub(crate) enum Xslt10ApplyUnionPart {
     Id(Box<Xslt10IdLookup>),
     Key(Box<Xslt10KeyLookup>),
     Variable(String),
+    LiteralDocumentPath {
+        reference: DocumentRootReference,
+        path: LocationPath,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -744,6 +748,7 @@ pub(crate) struct SortKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SortSelect {
     LocationPath(LocationPath),
+    Xslt10Concat(Box<Xslt10ConcatExpression>),
     Xslt10BinaryNumeric(Box<BinaryNumericExpression>),
     Xslt10VariablePositionPath {
         path: LocationPath,
@@ -789,6 +794,7 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     ContextNameElement {
+        xslt10_compatibility: bool,
         namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
         attribute_set_names: Vec<ExpandedName>,
@@ -797,6 +803,7 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     DynamicNameElement {
+        xslt10_compatibility: bool,
         name: DynamicElementName,
         namespace_override: Option<DynamicNamespaceValue>,
         static_namespaces: Arc<[NamespaceBinding]>,
@@ -895,6 +902,11 @@ pub(crate) enum Instruction {
         select: Box<BinaryNumericExpression>,
         location: SourceLocation,
     },
+    Xslt10GeneratedUnionIdentityVariable {
+        name: String,
+        select: Box<Xslt10GeneratedUnionPosition>,
+        location: SourceLocation,
+    },
     Xslt10ConcatVariable {
         name: String,
         select: Box<Xslt10ConcatExpression>,
@@ -924,7 +936,7 @@ pub(crate) enum Instruction {
     SourceVariablePathVariable {
         name: String,
         source: String,
-        select: LocationPath,
+        select: BoundVariablePath,
         location: SourceLocation,
     },
     SourceNodeUnionVariable {
@@ -1059,6 +1071,11 @@ pub(crate) enum Instruction {
         recover_unattached_attributes: bool,
         location: SourceLocation,
     },
+    CopyOfXslt10MixedUnion {
+        select: ApplySelection,
+        recover_unattached_attributes: bool,
+        location: SourceLocation,
+    },
     CopyOfStaticAtomicText {
         value: String,
         location: SourceLocation,
@@ -1094,6 +1111,19 @@ pub(crate) enum Instruction {
         recover_unattached_attributes: bool,
         location: SourceLocation,
     },
+}
+
+/// Private single-owner variable-path plans; runtime owners are never compiled.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum BoundVariablePath {
+    Path(LocationPath),
+    FirstFilteredChildren(Vec<BoundVariableChild>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct BoundVariableChild {
+    pub(crate) path: LocationPath,
+    pub(crate) filter: Option<(LocationPath, String)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1336,6 +1366,20 @@ pub(crate) enum NamespaceScalarKind {
     LocalName,
     NamespaceUri,
     Count,
+    GeneratedIdentity,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10GeneratedUnionPosition {
+    pub(crate) selection: Xslt10GeneratedIdentitySelection,
+    pub(crate) variable: String,
+    pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10GeneratedIdentitySelection {
+    SourcePaths(Vec<LocationPath>),
+    Qualified(Box<crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1354,6 +1398,9 @@ pub(crate) enum ValueExpression {
     },
     Xslt10IdLookup(Box<Xslt10IdLookup>),
     Xslt10CountIdLookup(Box<Xslt10IdLookup>),
+    Xslt10NameIdLookup(Box<Xslt10IdLookup>),
+    Xslt10LocalNameIdLookup(Box<Xslt10IdLookup>),
+    Xslt10NamespaceUriIdLookup(Box<Xslt10IdLookup>),
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Xslt10CountKeyLookup(Box<Xslt10KeyLookup>),
     LocationPath(LocationPath),
@@ -1377,6 +1424,7 @@ pub(crate) enum ValueExpression {
     RootPath(LocationPath),
     RootVariable(String),
     GeneratedNodeIdentity(LocationPath),
+    Xslt10GeneratedUnionPosition(Box<Xslt10GeneratedUnionPosition>),
     GeneratedRootIdentity(LocationPath),
     GeneratedTemporaryRootIdentity {
         variable: String,
@@ -1386,6 +1434,7 @@ pub(crate) enum ValueExpression {
     Xslt10LiteralDocumentPath {
         reference: DocumentRootReference,
         path: LocationPath,
+        outer_attribute_filter: Option<Xslt10OuterAttributeFilter>,
     },
     NodeIdentityEqual {
         left: LocationPath,
@@ -1506,6 +1555,7 @@ pub(crate) enum ValueExpression {
     Xslt10VariableSum(String),
     Xslt10PathSubstring(Box<Xslt10PathSubstring>),
     Xslt10VariableSubstring(Box<Xslt10VariableSubstring>),
+    Xslt10ComposedString(Box<Xslt10ComposedString>),
     Xslt10PathTranslate(Box<Xslt10PathTranslate>),
     Xslt10NormalizedVariableTranslate(Box<Xslt10NormalizedVariableTranslate>),
     Xslt10ComposedPathTranslate(Box<Xslt10ComposedPathTranslate>),
@@ -1558,6 +1608,13 @@ pub(crate) enum ValueExpression {
     StringLength(Box<StringLengthExpression>),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     ConditionalPath(Box<ConditionalPathExpression>),
+}
+
+/// A terminal node-set equality filter with its outer source scalarized before lookup.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10OuterAttributeFilter {
+    pub(crate) candidate: ExpandedName,
+    pub(crate) outer: ExpandedName,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1647,6 +1704,28 @@ pub(crate) struct Xslt10PathSubstring {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10ComposedString {
+    Path(LocationPath),
+    After {
+        source: Box<Self>,
+        delimiter: String,
+    },
+    Substring {
+        source: Box<Self>,
+        start: Box<Xslt10StringBound>,
+        length: Option<Box<Xslt10StringBound>>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10StringBound {
+    Literal(u64),
+    Length(Box<Xslt10ComposedString>),
+    Boolean(Box<BooleanExpression>),
+    Multiply(Box<Self>, Box<Self>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Xslt10VariableSubstring {
     pub(crate) variable: String,
     pub(crate) start_bits: u64,
@@ -1723,7 +1802,13 @@ pub(crate) enum Xslt10ConcatPart {
         position_variable: String,
     },
     Path(LocationPath),
+    PathSubstring(Box<Xslt10PathSubstring>),
+    ComposedString(Box<Xslt10ComposedString>),
     SumPath(LocationPath),
+    GeneratedNodeIdentity(LocationPath),
+    QualifiedGeneratedIdentity(
+        crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath,
+    ),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1799,6 +1884,7 @@ pub(crate) enum StringComparison {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum BooleanExpression {
+    Xslt10PathStringPredicate(Box<Xslt10PathStringFunction>),
     VariableEqualsInteger(EqualityTest),
     VariableEqualsEmptySequence(String),
     VariableEffectiveBooleanValue(String),

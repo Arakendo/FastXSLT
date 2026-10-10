@@ -18,6 +18,19 @@ use super::{
     Xslt10KeyValue, Xslt10MuenchianSelection, Xslt10TemporaryTextPart,
 };
 
+fn generated_identity_selection_owned(
+    selection: &super::Xslt10GeneratedIdentitySelection,
+) -> usize {
+    match selection {
+        super::Xslt10GeneratedIdentitySelection::SourcePaths(paths) => {
+            vec_owned(paths, LocationPath::known_owned_capacity_bytes)
+        }
+        super::Xslt10GeneratedIdentitySelection::Qualified(path) => {
+            size_of_val(path.as_ref()) + path.known_owned_capacity_bytes()
+        }
+    }
+}
+
 impl StylesheetProgram {
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
         self.declared_version.capacity()
@@ -541,6 +554,9 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
                 Xslt10ApplyUnionPart::Id(lookup) => xslt10_id_lookup_owned(lookup),
                 Xslt10ApplyUnionPart::Key(lookup) => xslt10_key_lookup_owned(lookup),
                 Xslt10ApplyUnionPart::Variable(name) => name.capacity(),
+                Xslt10ApplyUnionPart::LiteralDocumentPath { reference, path } => {
+                    document_root_reference_owned(reference) + path.known_owned_capacity_bytes()
+                }
             })
         }
         ApplySelection::PathUnion(alternatives)
@@ -715,6 +731,18 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::Xslt10BinaryNumericVariable { .. }) => {
             context_derived_variable_owned(instruction)
         }
+        Instruction::Xslt10GeneratedUnionIdentityVariable {
+            name,
+            select,
+            location,
+        } => {
+            name.capacity()
+                + size_of_val(select.as_ref())
+                + generated_identity_selection_owned(&select.selection)
+                + select.variable.capacity()
+                + location_owned(&select.location)
+                + location_owned(location)
+        }
         Instruction::Xslt10ConcatVariable {
             name,
             select,
@@ -784,6 +812,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::CopyOfSourceDocuments { .. }
         | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
+        | Instruction::CopyOfXslt10MixedUnion { .. }
         | Instruction::CopyOfStaticAtomicText { .. }
         | Instruction::CopyOfVariable { .. }
         | Instruction::CopyOfAtomicValue { .. }) => copy_of_owned(instruction),
@@ -835,6 +864,7 @@ fn element_instruction_owned(value: &Instruction) -> usize {
 
 fn dynamic_name_element_owned(value: &Instruction) -> usize {
     let Instruction::DynamicNameElement {
+        xslt10_compatibility: _,
         name,
         namespace_override,
         static_namespaces,
@@ -894,6 +924,7 @@ fn dynamic_element_namespace_owned(
 
 fn context_name_element_owned(value: &Instruction) -> usize {
     let Instruction::ContextNameElement {
+        xslt10_compatibility: _,
         namespace_override,
         static_namespaces,
         attribute_set_names,
@@ -969,12 +1000,26 @@ fn path_binding_owned(instruction: &Instruction) -> usize {
             source,
             select,
             location,
-        } => {
-            name.capacity()
-                + source.capacity()
-                + select.known_owned_capacity_bytes()
-                + location_owned(location)
-        }
+        } => name.capacity() + source.capacity() + match select {
+            crate::xslt::golden_semantics_experiment::BoundVariablePath::Path(path) => {
+                path.known_owned_capacity_bytes()
+            }
+            crate::xslt::golden_semantics_experiment::BoundVariablePath::FirstFilteredChildren(
+                steps,
+            ) => {
+                steps.capacity()
+                    * size_of::<crate::xslt::golden_semantics_experiment::BoundVariableChild>()
+                    + steps
+                        .iter()
+                        .map(|step| {
+                            step.path.known_owned_capacity_bytes()
+                                + step.filter.as_ref().map_or(0, |(path, variable)| {
+                                    path.known_owned_capacity_bytes() + variable.capacity()
+                                })
+                        })
+                        .sum::<usize>()
+            }
+        } + location_owned(location),
         _ => unreachable!("path-binding accounting receives one path binding"),
     }
 }
@@ -1251,6 +1296,9 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
                 crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
             ) + location_owned(location)
         }
+        Instruction::CopyOfXslt10MixedUnion {
+            select, location, ..
+        } => apply_selection_owned(select) + location_owned(location),
         Instruction::CopyOfStaticAtomicText { value, location } => {
             value.capacity() + location_owned(location)
         }
@@ -1354,6 +1402,9 @@ fn for_each_owned(value: &Instruction) -> usize {
 
 fn sort_key_owned(sort: &SortKey) -> usize {
     let select = match &sort.select {
+        SortSelect::Xslt10Concat(expression) => {
+            size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
+        }
         SortSelect::LocationPath(path)
         | SortSelect::CountPath(path)
         | SortSelect::NumberPath(path) => path.known_owned_capacity_bytes(),
@@ -1519,9 +1570,11 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::BinaryNumeric(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }
-        ValueExpression::Xslt10IdLookup(lookup) | ValueExpression::Xslt10CountIdLookup(lookup) => {
-            xslt10_id_lookup_owned(lookup)
-        }
+        ValueExpression::Xslt10IdLookup(lookup)
+        | ValueExpression::Xslt10CountIdLookup(lookup)
+        | ValueExpression::Xslt10NameIdLookup(lookup)
+        | ValueExpression::Xslt10LocalNameIdLookup(lookup)
+        | ValueExpression::Xslt10NamespaceUriIdLookup(lookup) => xslt10_id_lookup_owned(lookup),
         ValueExpression::ContextNodeName
         | ValueExpression::ContextNodeLocalName
         | ValueExpression::ContextNodeNamespaceUri
@@ -1585,6 +1638,12 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                 + variable.capacity()
                 + suffix.known_owned_capacity_bytes()
         }
+        ValueExpression::Xslt10GeneratedUnionPosition(select) => {
+            size_of_val(select.as_ref())
+                + generated_identity_selection_owned(&select.selection)
+                + select.variable.capacity()
+                + location_owned(&select.location)
+        }
         ValueExpression::Xslt10VariablePath { variable, path } => {
             variable.capacity() + path.known_owned_capacity_bytes()
         }
@@ -1627,6 +1686,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Xslt10PathSubstring(expression) => {
             size_of_val(expression.as_ref()) + expression.path.known_owned_capacity_bytes()
         }
+        ValueExpression::Xslt10ComposedString(expression) => {
+            size_of_val(expression.as_ref()) + composed_string_owned(expression)
+        }
         ValueExpression::Xslt10VariableSubstring(expression) => {
             size_of_val(expression.as_ref()) + expression.variable.capacity()
         }
@@ -1666,8 +1728,16 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::GeneratedDocumentRootIdentity(reference) => {
             document_root_reference_owned(reference)
         }
-        ValueExpression::Xslt10LiteralDocumentPath { reference, path } => {
-            document_root_reference_owned(reference) + path.known_owned_capacity_bytes()
+        ValueExpression::Xslt10LiteralDocumentPath {
+            reference,
+            path,
+            outer_attribute_filter,
+        } => {
+            document_root_reference_owned(reference)
+                + path.known_owned_capacity_bytes()
+                + outer_attribute_filter.as_ref().map_or(0, |filter| {
+                    name_owned(&filter.candidate) + name_owned(&filter.outer)
+                })
         }
         ValueExpression::NodeIdentityEqual { left, right } => path_pair_owned(left, right),
         ValueExpression::IntegerFor(expression) => {
@@ -1752,6 +1822,7 @@ fn sequence_item_owned(value: &SequenceItemExpression) -> usize {
 
 fn boolean_expression_owned(value: &BooleanExpression) -> usize {
     match value {
+        BooleanExpression::Xslt10PathStringPredicate(value) => size_of_val(value.as_ref()) + path_string_function_owned(value),
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
         BooleanExpression::VariableEqualsEmptySequence(variable)
         | BooleanExpression::VariableEffectiveBooleanValue(variable)
@@ -1856,6 +1927,20 @@ fn concat_pair_owned(haystack: &Xslt10ConcatExpression, needle: &Xslt10ConcatExp
         + xslt10_concat_owned(haystack)
         + size_of_val(needle)
         + xslt10_concat_owned(needle)
+}
+
+fn path_string_function_owned(
+    value: &crate::xslt::golden_semantics_experiment::Xslt10PathStringFunction,
+) -> usize {
+    value.path.known_owned_capacity_bytes()
+        + match &value.operand {
+            crate::xslt::golden_semantics_experiment::Xslt10StringOperand::Literal(value) => {
+                value.capacity()
+            }
+            crate::xslt::golden_semantics_experiment::Xslt10StringOperand::Path(path) => {
+                path.known_owned_capacity_bytes()
+            }
+        }
 }
 
 fn boolean_string_owned(value: &BooleanExpression) -> usize {
@@ -2232,8 +2317,61 @@ fn xslt10_concat_owned(
             variable,
             position_variable,
         } => variable.capacity() + position_variable.capacity(),
-        Xslt10ConcatPart::Path(path) | Xslt10ConcatPart::SumPath(path) => {
-            path.known_owned_capacity_bytes()
+        Xslt10ConcatPart::Path(path)
+        | Xslt10ConcatPart::SumPath(path)
+        | Xslt10ConcatPart::GeneratedNodeIdentity(path) => path.known_owned_capacity_bytes(),
+        Xslt10ConcatPart::QualifiedGeneratedIdentity(path) => path.known_owned_capacity_bytes(),
+        Xslt10ConcatPart::PathSubstring(expression) => {
+            size_of_val(expression.as_ref()) + expression.path.known_owned_capacity_bytes()
+        }
+        Xslt10ConcatPart::ComposedString(expression) => {
+            size_of_val(expression.as_ref()) + composed_string_owned(expression)
         }
     })
+}
+
+fn composed_string_owned(
+    value: &crate::xslt::golden_semantics_experiment::Xslt10ComposedString,
+) -> usize {
+    use crate::xslt::golden_semantics_experiment::Xslt10ComposedString;
+    match value {
+        Xslt10ComposedString::Path(path) => path.known_owned_capacity_bytes(),
+        Xslt10ComposedString::After { source, delimiter } => {
+            size_of_val(source.as_ref()) + composed_string_owned(source) + delimiter.capacity()
+        }
+        Xslt10ComposedString::Substring {
+            source,
+            start,
+            length,
+        } => {
+            size_of_val(source.as_ref())
+                + composed_string_owned(source)
+                + size_of_val(start.as_ref())
+                + string_bound_owned(start)
+                + length.as_ref().map_or(0, |value| {
+                    size_of_val(value.as_ref()) + string_bound_owned(value)
+                })
+        }
+    }
+}
+
+fn string_bound_owned(
+    value: &crate::xslt::golden_semantics_experiment::Xslt10StringBound,
+) -> usize {
+    use crate::xslt::golden_semantics_experiment::Xslt10StringBound;
+    match value {
+        Xslt10StringBound::Literal(_) => 0,
+        Xslt10StringBound::Length(value) => {
+            size_of_val(value.as_ref()) + composed_string_owned(value)
+        }
+        Xslt10StringBound::Boolean(value) => {
+            size_of_val(value.as_ref()) + boolean_expression_owned(value)
+        }
+        Xslt10StringBound::Multiply(left, right) => {
+            size_of_val(left.as_ref())
+                + string_bound_owned(left)
+                + size_of_val(right.as_ref())
+                + string_bound_owned(right)
+        }
+    }
 }

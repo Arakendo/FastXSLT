@@ -11,10 +11,10 @@ use crate::xslt::golden_semantics_experiment::{ApplySelection, Instruction, Sort
 use super::{
     ExecutionFailure, FailureCategory, LiteralDocumentTarget, ResultNode, RuntimeVariables,
     SequenceContext, SequenceInputs, TemporaryFocus, WhitespaceRepresentation, control_failure,
-    derive_effective_source, dynamic_document, execute_sequence, failure, failure_at,
-    literal_document_target, namespace_focus, required_source_context, select_apply_nodes,
-    select_literal_document_nodes, select_source_variable_path, sort_selected_nodes,
-    temporary_tree_executor, validate_literal_document_context,
+    derive_effective_source, dynamic_document, execute_sequence, external_document_inputs, failure,
+    failure_at, literal_document_target, namespace_focus, required_source_context,
+    select_apply_nodes, select_literal_document_nodes, select_source_variable_path,
+    sort_selected_nodes, temporary_tree_executor, validate_literal_document_context,
 };
 
 fn execute_for_each_variable<'a>(
@@ -32,6 +32,7 @@ fn execute_for_each_variable<'a>(
             body,
             SequenceContext {
                 node: None,
+                current_template_index: None,
                 temporary_focus: Some(TemporaryFocus::Document(tree)),
                 namespace_focus: None,
                 ..execution
@@ -40,28 +41,36 @@ fn execute_for_each_variable<'a>(
             control,
         );
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
-        let nodes = sort_selected_nodes(inputs, nodes.clone(), sorts, variables, control)?;
-        let focus_size = nodes.len();
-        let mut result = Vec::new();
-        for (index, node) in nodes.into_iter().enumerate() {
-            result.extend(execute_sequence(
-                inputs,
-                body,
-                SequenceContext {
-                    node: Some(node),
-                    temporary_focus: None,
-                    namespace_focus: None,
-                    atomic_focus: None,
-                    focus_position: index + 1,
-                    focus_size,
-                    ..execution
-                },
-                variables,
-                control,
-            )?);
-        }
-        return Ok(result);
+    if let Some((owner, nodes)) = variables.retained_source(inputs.globals, variable)
+        && inputs
+            .source
+            .is_none_or(|source| !source.same_effective_storage(owner))
+    {
+        validate_literal_document_context(inputs, variables.has_source_node_values())?;
+        control
+            .charge(WorkDomain::XdmNode, nodes.len())
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        let external = external_document_inputs(inputs, owner);
+        return execute_source_nodes(
+            &external,
+            nodes.clone(),
+            sorts,
+            body,
+            execution,
+            variables,
+            control,
+        );
+    }
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, variable)? {
+        return execute_source_nodes(
+            inputs,
+            nodes.clone(),
+            sorts,
+            body,
+            execution,
+            variables,
+            control,
+        );
     }
     Err(failure(
         "FXRT0002",
@@ -69,6 +78,91 @@ fn execute_for_each_variable<'a>(
         Some(inputs.request_id),
         format!("unbound or unsupported sequence variable: ${variable}"),
     ))
+}
+
+fn execute_source_nodes<'a>(
+    inputs: &SequenceInputs<'a>,
+    nodes: Vec<super::NodeId>,
+    sorts: &[SortKey],
+    body: &[Instruction],
+    execution: SequenceContext<'a>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let nodes = sort_selected_nodes(inputs, nodes, sorts, variables, control)?;
+    let focus_size = nodes.len();
+    let mut result = Vec::new();
+    for (index, node) in nodes.into_iter().enumerate() {
+        result.extend(execute_sequence(
+            inputs,
+            body,
+            SequenceContext {
+                node: Some(node),
+                current_template_index: None,
+                temporary_focus: None,
+                namespace_focus: None,
+                atomic_focus: None,
+                focus_position: index + 1,
+                focus_size,
+                ..execution
+            },
+            variables,
+            control,
+        )?);
+    }
+    Ok(result)
+}
+
+fn execute_for_each_source_document<'a>(
+    inputs: &SequenceInputs<'a>,
+    select: &ApplySelection,
+    sorts: &[SortKey],
+    body: &[Instruction],
+    execution: SequenceContext<'a>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let ApplySelection::Xslt10SourceDocumentsPath { references, path } = select else {
+        unreachable!("source-document iteration receives a compiled source reference/path")
+    };
+    let prepared =
+        dynamic_document::prepare_source_documents(inputs, execution.node, references, control)?;
+    let Some(dynamic) = prepared.first() else {
+        return Ok(Vec::new());
+    };
+    if prepared.len() != 1 {
+        return Err(failure(
+            "FXRT1017",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "source-document iteration admits one effective document, not cross-document ordering",
+        ));
+    }
+    let source = inputs.source.ok_or_else(|| {
+        failure(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "source-document iteration requires a source",
+        )
+    })?;
+    let qualified = variables.qualify_local_sources(source, inputs.request_id, control)?;
+    validate_literal_document_context(inputs, qualified.has_source_node_values())?;
+    let effective = derive_effective_source(
+        &inputs.program.source_whitespace,
+        &dynamic.document,
+        WhitespaceRepresentation::VisibilityView,
+        inputs.request_id,
+        control,
+    )?;
+    let document = effective.as_ref().unwrap_or(&dynamic.document);
+    let external = external_document_inputs(inputs, document);
+    let nodes =
+        super::evaluate_location_path_controlled(document, document.document_node(), path, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    execute_source_nodes(
+        &external, nodes, sorts, body, execution, &qualified, control,
+    )
 }
 
 pub(super) fn execute<'a>(
@@ -83,8 +177,22 @@ pub(super) fn execute<'a>(
             variable,
             sorts,
             body,
-            ..
+            location,
         } => {
+            if variables
+                .literal_document(inputs.globals, variable)
+                .is_some()
+            {
+                return Err(failure_at(
+                    "FXRT0007",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    location.clone(),
+                    format!(
+                        "secondary-document variable selection is unsupported by xsl:for-each: ${variable}"
+                    ),
+                ));
+            }
             execute_for_each_variable(inputs, variable, sorts, body, execution, variables, control)
         }
         Instruction::ForEachStaticIntegerRange {
@@ -92,6 +200,17 @@ pub(super) fn execute<'a>(
         } => execute_for_each_static_integer_range(
             inputs, *start, *end, body, execution, variables, control,
         ),
+        Instruction::ForEachNodes {
+            select: ApplySelection::GlobalTemporaryChildren(_),
+            location,
+            ..
+        } => Err(failure_at(
+            "FXRT0007",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            location.clone(),
+            "wildcard temporary-tree for-each selection is not supported",
+        )),
         Instruction::ForEachNodes {
             select,
             sorts,
@@ -137,6 +256,7 @@ fn execute_for_each_static_integer_range<'a>(
             body,
             SequenceContext {
                 node: None,
+                current_template_index: None,
                 temporary_focus: None,
                 namespace_focus: None,
                 atomic_focus: None,
@@ -163,13 +283,20 @@ fn execute_for_each_nodes<'a>(
     if let ApplySelection::QualifiedPath(path) = select {
         return namespace_focus::execute(inputs, path, sorts, body, execution, variables, control);
     }
+    if let ApplySelection::Xslt10SourceDocumentsPath { .. } = select {
+        return execute_for_each_source_document(
+            inputs, select, sorts, body, execution, variables, control,
+        );
+    }
     if let Some(target) = literal_document_target(Some(select)) {
         return execute_for_each_literal_document_root(
             inputs, target, sorts, body, execution, variables, control,
         );
     }
     if let ApplySelection::TemporaryPath { variable, steps } = select
-        && variables.source_nodes(inputs.globals, variable).is_none()
+        && variables
+            .source_nodes_in_context(inputs, variable)?
+            .is_none()
     {
         let tree = variables
             .temporary_tree(inputs.globals, variable)
@@ -204,6 +331,7 @@ fn execute_for_each_nodes<'a>(
                 body,
                 SequenceContext {
                     node: None,
+                    current_template_index: None,
                     temporary_focus: Some(TemporaryFocus::Node(tree, node)),
                     namespace_focus: None,
                     atomic_focus: None,
@@ -235,6 +363,7 @@ fn execute_for_each_nodes<'a>(
             body,
             SequenceContext {
                 node: Some(node),
+                current_template_index: None,
                 temporary_focus: None,
                 namespace_focus: None,
                 atomic_focus: None,
@@ -319,6 +448,7 @@ fn execute_for_each_literal_document_root<'a>(
             body,
             SequenceContext {
                 node: Some(node),
+                current_template_index: None,
                 temporary_focus: None,
                 namespace_focus: None,
                 atomic_focus: None,

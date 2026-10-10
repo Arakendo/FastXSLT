@@ -13,6 +13,128 @@ fn program(version: &str, body: &str) -> super::StylesheetProgram {
 }
 
 #[test]
+fn namespace_copy_of_keeps_mixed_and_document_selections_unsupported() {
+    for select in ["r/namespace::* | r", "document('extra.xml')/r/namespace::*"] {
+        let stylesheet = document(
+            "urn:namespace:copy-style",
+            &format!(
+                r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:template match="/"><out><xsl:copy-of select="{select}"/></out></xsl:template></xsl:stylesheet>"#,
+            ),
+        );
+        let failure = compile_stylesheet(&stylesheet).unwrap_err();
+        assert_eq!(
+            failure.category,
+            crate::compile::golden_stylesheet_experiment::CompileCategory::Unsupported
+        );
+        assert_eq!(failure.location.resource, "urn:namespace:copy-style");
+    }
+    let literal = program(
+        "1.0",
+        r#"<out><xsl:copy-of select="'namespace::p'"/></out>"#,
+    );
+    assert_eq!(
+        run(
+            &literal,
+            &document("urn:namespace:copy-source", "<r/>"),
+            WhitespaceRepresentation::VisibilityView,
+            &mut InvocationControl::unbounded(),
+        )
+        .unwrap(),
+        "<out>namespace::p</out>"
+    );
+}
+
+#[test]
+fn namespace_copy_of_reuses_qualified_copy_and_preserves_control() {
+    let source = document(
+        "urn:namespace:copy-source",
+        r#"<r xmlns:p="urn:p" xmlns:q="urn:q"> <a/> </r>"#,
+    );
+    for version in ["1.0", "3.0"] {
+        let direct = program(
+            version,
+            r#"<out><xsl:copy-of select="r/namespace::*"/><child/></out>"#,
+        );
+        let reference = program(
+            version,
+            r#"<out><xsl:for-each select="r/namespace::*"><xsl:copy/></xsl:for-each><child/></out>"#,
+        );
+        let mut measured = InvocationControl::unbounded();
+        let actual = run(
+            &direct,
+            &source,
+            WhitespaceRepresentation::VisibilityView,
+            &mut measured,
+        )
+        .unwrap();
+        assert_eq!(
+            actual,
+            run(
+                &reference,
+                &source,
+                WhitespaceRepresentation::CompleteReference,
+                &mut InvocationControl::unbounded(),
+            )
+            .unwrap()
+        );
+        for domain in [WorkDomain::XPathNodeVisit, WorkDomain::ResultTextByte] {
+            let charge = measured.consumed(domain);
+            assert!(charge > 0);
+            for allowance in [charge - 1, charge] {
+                let mut limits = WorkLimits::unbounded();
+                match domain {
+                    WorkDomain::XPathNodeVisit => limits.xpath_node_visits = allowance,
+                    WorkDomain::ResultTextByte => limits.result_text_bytes = allowance,
+                    _ => unreachable!("bounded namespace copy control domains"),
+                }
+                let outcome = run(
+                    &direct,
+                    &source,
+                    WhitespaceRepresentation::VisibilityView,
+                    &mut InvocationControl::new(CancellationToken::new(), limits),
+                );
+                if allowance == charge {
+                    assert_eq!(outcome.unwrap(), actual);
+                } else {
+                    assert_eq!(outcome.unwrap_err().code, "FXCT0002");
+                }
+            }
+        }
+        let error = run(
+            &direct,
+            &source,
+            WhitespaceRepresentation::VisibilityView,
+            &mut InvocationControl::unbounded().cancelling_on_charge(WorkDomain::ResultTextByte, 0),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "FXCT0001");
+        assert_eq!(
+            run(
+                &direct,
+                &source,
+                WhitespaceRepresentation::VisibilityView,
+                &mut InvocationControl::unbounded(),
+            )
+            .unwrap(),
+            actual
+        );
+        let late = program(
+            version,
+            r#"<out>child<xsl:copy-of select="r/namespace::p"/></out>"#,
+        );
+        let error = run(
+            &late,
+            &source,
+            WhitespaceRepresentation::VisibilityView,
+            &mut InvocationControl::unbounded(),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "XTDE0410");
+        assert_eq!(error.location.unwrap().resource, "urn:namespace:copy-style");
+    }
+}
+
+#[test]
 fn namespace_copy_attaches_owned_bindings_deduplicates_and_outlives_owners() {
     for version in ["1.0", "3.0"] {
         let (result, output) = {

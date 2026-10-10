@@ -1706,6 +1706,76 @@ fn xslt10_boolean_following_sibling_comparison_uses_axis_existence() {
 }
 
 #[test]
+fn xslt10_current_predicate_normalization_preserves_quoted_text() {
+    let parsed = parse_document(
+        "memory:current-literal.xml",
+        br#"<doc refid="b"><part id="current()/@refid">attribute literal</part><part id="current()">current()</part><part id="b">actual context</part></doc>"#,
+        ParseLimits { max_events: 32, max_depth: 4 },
+    )
+    .unwrap();
+    let document = Document::from_parsed(parsed).unwrap();
+    let doc = document.children(document.document_node())[0];
+    for (expression, expected) in [
+        ("part[@id='current()/@refid']", "attribute literal"),
+        ("part[@id=\"current()/@refid\"]", "attribute literal"),
+        ("part[.='current()']", "current()"),
+        ("part[.=\"current()\"]", "current()"),
+        (
+            "part[@id='current()/@refid' or @id=current()/@refid]",
+            "attribute literal|actual context",
+        ),
+        ("part[@id=current()/@refid]", "actual context"),
+    ] {
+        let path = parse_xslt10_location_path(expression, location())
+            .unwrap_or_else(|failure| panic!("{expression}: {failure:?}"));
+        let mut control = InvocationControl::unbounded();
+        let selected =
+            evaluate_location_path_controlled(&document, doc, &path, &mut control).unwrap();
+        let actual = selected
+            .iter()
+            .map(|node| document.string_value(*node))
+            .collect::<Vec<_>>()
+            .join("|");
+        assert_eq!(actual, expected, "{expression}");
+        assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+        assert_eq!(path.location, location());
+        if super::find_xslt10_current_call(expression, "current()").is_none() {
+            let reference = parse_location_path(expression, location()).unwrap();
+            let mut reference_control = InvocationControl::unbounded();
+            assert_eq!(
+                evaluate_location_path_controlled(
+                    &document,
+                    doc,
+                    &reference,
+                    &mut reference_control
+                )
+                .unwrap(),
+                selected
+            );
+            assert_eq!(
+                reference_control.consumed(WorkDomain::XPathNodeVisit),
+                control.consumed(WorkDomain::XPathNodeVisit)
+            );
+        }
+        let mut cancelled =
+            InvocationControl::unbounded().cancelling_on_charge(WorkDomain::XPathNodeVisit, 0);
+        assert!(matches!(
+            evaluate_location_path_controlled(&document, doc, &path, &mut cancelled),
+            Err(crate::execution_control_experiment::ControlFailure::Cancelled { .. })
+        ));
+    }
+    assert!(parse_location_path("part[@id=current()/@refid]", location()).is_err());
+    for expression in [
+        "part[@id=mycurrent()/@refid]",
+        "part[@id=p:current()/@refid]",
+        "part[@id=écurrent()/@refid]",
+    ] {
+        assert!(super::find_xslt10_current_call(expression, "current()/@").is_none());
+        assert!(parse_xslt10_location_path(expression, location()).is_err());
+    }
+}
+
+#[test]
 fn xslt10_path_predicate_compares_candidate_and_outer_context_attributes() {
     let parsed = parse_document(
         "memory:source.xml",

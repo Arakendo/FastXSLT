@@ -282,23 +282,133 @@ fn xslt10_context_name_attribute_uses_source_lexical_name() {
 }
 
 #[test]
-fn xslt10_literal_name_avt_observes_reserved_xmlns_rule_at_runtime() {
+fn xslt10_xmlns_prefix_discarding_is_explicit_and_profile_local() {
+    let source = document("memory:source.xml", b"<doc><name>xmlns:chosen</name></doc>");
+    for name in [
+        "xmlns:chosen",
+        "{'xmlns:chosen'}",
+        "{doc/name}",
+        "xml:chosen",
+        "{'xml:chosen'}",
+        "unbound:chosen",
+        "{'unbound:chosen'}",
+    ] {
+        for namespace in ["urn:ordinary", "", "http://www.w3.org/XML/1998/namespace"] {
+            let stylesheet = document(
+                "memory:xmlns-discard.xsl",
+                format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="{name}" namespace="{namespace}">kept</xsl:attribute></out></xsl:template></xsl:stylesheet>"#).as_bytes(),
+            );
+            let program = compile_stylesheet(&stylesheet).unwrap();
+            let result = execute_program(
+                &program,
+                &source,
+                "xmlns-discard",
+                &mut InvocationControl::unbounded(),
+            )
+            .unwrap();
+            let serialized = serialize_xml(
+                &result,
+                &program.output,
+                "xmlns-discard",
+                4096,
+                &mut InvocationControl::unbounded(),
+            )
+            .unwrap();
+            assert!(!serialized.contains("xmlns:chosen"));
+            let parsed = document("memory:result.xml", serialized.as_bytes());
+            let out = parsed.children(parsed.document_node())[0];
+            let attributes = parsed.attributes(out);
+            assert_eq!(attributes.len(), 1);
+            let attribute = attributes[0];
+            assert_eq!(parsed.name(attribute).unwrap().local, "chosen");
+            assert_eq!(
+                parsed.name(attribute).unwrap().namespace.as_deref(),
+                (!namespace.is_empty()).then_some(namespace)
+            );
+            assert_eq!(parsed.value(attribute), Some("kept"));
+        }
+    }
+    for (version, name, namespace) in [
+        ("3.0", "xmlns:chosen", "urn:ordinary"),
+        ("1.0", "xmlns:chosen", "http://www.w3.org/2000/xmlns/"),
+        ("1.0", "xmlns", "urn:ordinary"),
+    ] {
+        let stylesheet = document(
+            "memory:xmlns-invalid.xsl",
+            format!(r#"<xsl:stylesheet version="{version}" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="{name}" namespace="{namespace}">bad</xsl:attribute></out></xsl:template></xsl:stylesheet>"#).as_bytes(),
+        );
+        assert_eq!(
+            compile_stylesheet(&stylesheet).unwrap_err().code,
+            "XTDE0855"
+        );
+    }
+}
+
+#[test]
+fn explicit_attribute_namespace_uses_local_not_principal_version() {
+    let source = document("memory:source.xml", b"<doc/>");
+    for name in ["xmlns:chosen", "{'xmlns:chosen'}"] {
+        for (principal, local, succeeds) in [("3.0", "1.0", true), ("1.0", "3.0", false)] {
+            let stylesheet = document(
+                "memory:local-attribute-version.xsl",
+                format!(r#"<xsl:stylesheet version="{principal}" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out xsl:version="{local}"><xsl:attribute name="{name}" namespace="urn:ordinary">kept</xsl:attribute></out></xsl:template></xsl:stylesheet>"#).as_bytes(),
+            );
+            match compile_stylesheet(&stylesheet) {
+                Err(error) => {
+                    assert!(!succeeds);
+                    assert_eq!(
+                        error.code,
+                        if name.starts_with('{') {
+                            "FXST1062"
+                        } else {
+                            "XTDE0855"
+                        }
+                    );
+                }
+                Ok(program) => {
+                    let result = execute_program(
+                        &program,
+                        &source,
+                        "local-attribute-version",
+                        &mut InvocationControl::unbounded(),
+                    );
+                    if succeeds {
+                        result.expect("local 1.0 context permits discarding the lexical prefix");
+                    } else {
+                        assert_eq!(result.unwrap_err().code, "XTDE0855");
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn xslt10_literal_name_avt_discards_xmlns_prefix_with_explicit_ordinary_namespace() {
     let stylesheet = document(
         "memory:literal-dynamic-attribute-name.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="{'xmlns:bad'}" namespace="urn:not-xmlns">bad</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
     );
     let source = document("memory:source.xml", br"<doc/>");
     let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
-    let failure = execute_program(
+    let result = execute_program(
         &program,
         &source,
         "literal-dynamic-attribute-name-request",
         &mut InvocationControl::unbounded(),
     )
-    .expect_err("an xmlns-prefixed computed name must fail");
-
-    assert_eq!(failure.code, "XTDE0855");
-    assert_eq!(failure.category, super::FailureCategory::Invalid);
+    .expect("an explicit ordinary namespace permits discarding the reserved prefix");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "literal-dynamic-attribute-name-request",
+        4096,
+        &mut InvocationControl::unbounded(),
+    )
+    .unwrap();
+    assert!(serialized.contains("xmlns:ns0=\"urn:not-xmlns\""));
+    assert!(serialized.contains("ns0:bad=\"bad\""));
+    assert!(!serialized.contains("xmlns:bad"));
 }
 
 #[test]

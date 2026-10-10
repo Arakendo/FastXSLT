@@ -40,7 +40,17 @@ pub(super) fn variable_string_value(
     if let Some(values) = variables.detached_source_node_strings(name) {
         return Ok(values.first().map_or("", String::as_str).to_owned());
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+    if let Some((owner, nodes)) = variables.retained_source(inputs.globals, name) {
+        return nodes.first().map_or_else(
+            || Ok(String::new()),
+            |node| {
+                owner
+                    .string_value_controlled(*node, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))
+            },
+        );
+    }
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         let Some(node) = nodes.first() else {
             return Ok(String::new());
         };
@@ -55,6 +65,11 @@ pub(super) fn variable_string_value(
         return source
             .string_value_controlled(*node, control)
             .map_err(|failure| control_failure(failure, inputs.request_id));
+    }
+    if let Some(document) = variables.literal_document(inputs.globals, name) {
+        return super::literal_document_value_evaluator::document_string_value(
+            inputs, document, control,
+        );
     }
     if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
         return runtime_context::temporary_tree_string_value(tree, inputs.request_id, control);
@@ -139,6 +154,25 @@ pub(super) fn append_variable_path(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    if variables
+        .retained_source(inputs.globals, variable)
+        .is_some()
+        && let Some((owner, selected)) = super::super::bound_variable_path::select(
+            inputs,
+            variable,
+            &crate::xslt::golden_semantics_experiment::BoundVariablePath::Path(path.clone()),
+            variables,
+            control,
+        )?
+    {
+        if let Some(node) = selected.first() {
+            let value = owner
+                .string_value_controlled(*node, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            append_text(result, &value, inputs.request_id, control)?;
+        }
+        return Ok(());
+    }
     if let Some(dynamic) = variables.literal_document(inputs.globals, variable) {
         let effective = super::super::derive_effective_source(
             &inputs.program.source_whitespace,
@@ -161,7 +195,7 @@ pub(super) fn append_variable_path(
     }
     let source = required_comparison_source(inputs)?;
     let roots = variables
-        .source_nodes(inputs.globals, variable)
+        .source_nodes_in_context(inputs, variable)?
         .ok_or_else(|| {
             failure(
                 "XPTY0019",
@@ -196,7 +230,7 @@ pub(super) fn variable_string_comparison(
     if let Some(values) = variables.detached_source_node_strings(name) {
         return Ok(values.iter().any(|actual| (actual == expected) == equal));
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         let source = required_comparison_source(inputs)?;
         for node in nodes {
             let actual = source
@@ -225,7 +259,7 @@ pub(super) fn variable_number_comparison(
             .iter()
             .any(|actual| number_equals(actual, expected) == equal));
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         let source = required_comparison_source(inputs)?;
         for node in nodes {
             let actual = source
@@ -459,14 +493,24 @@ pub(super) fn first_path_string(
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
+    first_source_path_string(source, context, path, inputs.request_id, control)
+}
+
+fn first_source_path_string(
+    source: &Document,
+    context: NodeId,
+    path: &LocationPath,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
     let selected = evaluate_location_path_controlled(source, context, path, control)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        .map_err(|failure| control_failure(failure, request_id))?;
     let Some(node) = selected.first().copied() else {
         return Ok(String::new());
     };
     source
         .string_value_controlled(node, control)
-        .map_err(|failure| control_failure(failure, inputs.request_id))
+        .map_err(|failure| control_failure(failure, request_id))
 }
 
 pub(super) fn append_path_string_function(
@@ -476,6 +520,13 @@ pub(super) fn append_path_string_function(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    if matches!(
+        expression.kind,
+        Xslt10PathStringFunctionKind::Contains | Xslt10PathStringFunctionKind::StartsWith
+    ) {
+        let value = path_string_predicate(inputs, context, expression, control)?;
+        return append_boolean(inputs, value, result, control);
+    }
     let value = first_path_string(inputs, context, &expression.path, control)?;
     let path_operand;
     let operand = match &expression.operand {
@@ -508,6 +559,29 @@ pub(super) fn append_path_string_function(
             control,
         ),
     }
+}
+
+pub(super) fn path_string_predicate(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &Xslt10PathStringFunction,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let value = first_path_string(inputs, context, &expression.path, control)?;
+    let operand = match &expression.operand {
+        Xslt10StringOperand::Literal(value) => Cow::Borrowed(value.as_str()),
+        Xslt10StringOperand::Path(path) => {
+            Cow::Owned(first_path_string(inputs, context, path, control)?)
+        }
+    };
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(match expression.kind {
+        Xslt10PathStringFunctionKind::Contains => value.contains(operand.as_ref()),
+        Xslt10PathStringFunctionKind::StartsWith => value.starts_with(operand.as_ref()),
+        _ => unreachable!("boolean compilation admits contains and starts-with only"),
+    })
 }
 
 pub(super) fn append_variable_string_function(
@@ -589,7 +663,7 @@ pub(super) fn append_variable_sum(
         )
     })?;
     let selected = variables
-        .source_nodes(inputs.globals, variable)
+        .source_nodes_in_context(inputs, variable)?
         .ok_or_else(|| {
             failure(
                 "XPTY0004",
@@ -633,16 +707,36 @@ pub(super) fn append_path_substring(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let value = first_path_string(inputs, context, &expression.path, control)?;
+    let value = path_substring_value(inputs, context, expression, control)?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
+fn path_substring_value(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &Xslt10PathSubstring,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    path_substring_from_source(source, context, expression, inputs.request_id, control)
+}
+
+pub(super) fn path_substring_from_source(
+    source: &Document,
+    context: NodeId,
+    expression: &Xslt10PathSubstring,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let value = first_source_path_string(source, context, &expression.path, request_id, control)?;
     control
         .charge(WorkDomain::XPathOperation, 1)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let value = crate::xpath::static_string_experiment::evaluate_substring(
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(crate::xpath::static_string_experiment::evaluate_substring(
         &value,
         f64::from_bits(expression.start_bits),
         expression.length_bits.map(f64::from_bits),
-    );
-    append_text(result, &value, inputs.request_id, control)
+    ))
 }
 
 pub(super) fn append_variable_substring(
@@ -699,7 +793,7 @@ pub(super) fn append_normalized_variable_translate(
         )
     })?;
     let nodes = variables
-        .source_nodes(inputs.globals, &expression.variable)
+        .source_nodes_in_context(inputs, &expression.variable)?
         .ok_or_else(|| {
             failure(
                 "XPTY0004",
@@ -817,8 +911,40 @@ pub(super) fn concat_value(
                 let value = first_path_string(inputs, context, path, control)?;
                 result.push_str(&value);
             }
+            Xslt10ConcatPart::PathSubstring(expression) => {
+                let value = path_substring_value(inputs, context, expression, control)?;
+                result.push_str(&value);
+            }
+            Xslt10ConcatPart::ComposedString(expression) => {
+                let value = super::composed_string_evaluator::evaluate(
+                    inputs, context, expression, variables, control,
+                )?;
+                result.push_str(&value);
+            }
             Xslt10ConcatPart::SumPath(path) => {
                 let value = sum_path_lexical(inputs, context, path, control)?;
+                result.push_str(&value);
+            }
+            Xslt10ConcatPart::GeneratedNodeIdentity(path) => {
+                let (source, context) = required_source_context(inputs, context)?;
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                let nodes = evaluate_location_path_controlled(source, context, path, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                // XPath 1.0 node-set conversion selects the first node in document order.
+                if let Some(node) = nodes.first() {
+                    result.push_str(&runtime_context::source_node_identity(*node));
+                }
+            }
+            Xslt10ConcatPart::QualifiedGeneratedIdentity(path) => {
+                let value = super::super::namespace_focus::generated_identity(
+                    inputs,
+                    path,
+                    true,
+                    super::super::SequenceContext::new(context, None),
+                    control,
+                )?;
                 result.push_str(&value);
             }
         }
@@ -834,7 +960,7 @@ pub(super) fn variable_position_source_node(
     control: &mut InvocationControl,
 ) -> Result<Option<NodeId>, ExecutionFailure> {
     let nodes = variables
-        .source_nodes(inputs.globals, variable)
+        .source_nodes_in_context(inputs, variable)?
         .ok_or_else(|| {
             failure(
                 "XPTY0004",
@@ -863,7 +989,7 @@ pub(super) fn variable_node_position_source_node(
     control: &mut InvocationControl,
 ) -> Result<Option<NodeId>, ExecutionFailure> {
     let nodes = variables
-        .source_nodes(inputs.globals, variable)
+        .source_nodes_in_context(inputs, variable)?
         .ok_or_else(|| {
             failure(
                 "XPTY0004",

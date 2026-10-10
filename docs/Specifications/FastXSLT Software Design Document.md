@@ -227,6 +227,82 @@ result namespace fixup or serialization must preserve a selected qualified
 name; two prefixes bound to one namespace therefore compare as one expanded
 name without becoming indistinguishable serialization choices.
 
+ADR-0022 selects explicit immutable effective-owner retention for admitted
+runtime ordinary source-node values, not an invocation owner-table/token layer.
+Node identity is engine-assigned document origin plus local node identity;
+navigation and visible relationships come from the retained effective owner.
+Views preserve visible node identity without making their different navigation
+owners additional identity components. Separately prepared documents do not
+alias merely because resource identity or bytes coincide. Resource resolution,
+cache membership, URI spelling and allocation address are not document origin.
+Frames remain invocation-local under ADR-0017, and document switches preserve
+fresh source-context key/match caches. Physical layout, general cross-document
+ranking and compiled support remain separately gated. The first compiled slice
+now supports principal-source globals and owner-preserving lexical aliases
+during secondary-document template dispatch, including the unchanged `mdocs14`
+case. This does not imply broader cross-document consumer support.
+
+The current private document storage freezes source-derived typed-ID lookup
+metadata behind immutable shared ownership. Effective whitespace relationship
+overrides are likewise immutable once built and may be retained by owners of
+that same invocation's effective document. Source preparation alone may mutate
+its ID map before publication; no mutable metadata surface is exposed to
+execution. Sharing these buffers neither merges document origins nor reuses
+semantic key/match caches. The complete-copy adaptation remains a test oracle;
+retained-owner dispatch remains an incrementally gated runtime migration.
+Principal globals share one retained effective owner per invocation; lexical
+aliases group that owner with their local IDs in a lazily allocated COW map.
+An ordinary local-ID consumer must prove the retained selection has the current
+effective storage before navigation, or report explicit unsupported behavior.
+This conservative storage-eligibility check is not semantic node identity:
+equivalent independently stored views can share visible identity while failing
+the fast-path check. Owner-aware template dispatch re-enters the ordinary
+executor and creates fresh key/match state whenever effective storage changes.
+No owner table, public carrier or cross-invocation runtime sharing is introduced.
+
+The bounded XSLT 1.0 variable-path slice retains that effective owner through
+ordinary child/attribute paths and grouped first-node selection over named
+children with atomic-string attribute filters. Selection uses the shared charged
+XPath evaluator; first-node selection applies after the complete grouped path,
+not separately for each parent. Missing attributes do not equal empty strings.
+Retained selections support XSLT 1.0 string conversion and owner-aware dispatch.
+An XSLT 1.0 scalar read of a single parenthesized variable, `($variable)`,
+uses the same conversion as its ungrouped spelling. Existing sealed document-root
+bindings and aliases convert through an invocation-owned effective whitespace
+view and the shared charged document string traversal; local atomic shadowing
+still takes precedence. No new document acquisition, mixed-owner ranking,
+general grouped expression or modern expression support follows from this slice.
+Single-owner variable selections also support ordinary sequential `xsl:for-each`
+against the retained effective owner, including existing sort semantics and
+position/size focus. A foreign-owner switch establishes fresh source caches,
+charges selected-ID retention before copying, and preserves the lexical frame.
+The source-selected XSLT 1.0 `document(path)` iteration slice admits zero or one
+resolved effective document. Before a nonempty switch, bare lexical selections
+are qualified with their current effective owner in an isolated frame, with
+retention charged before copying. Key arguments convert selected values through
+their retained owner while key indexes remain confined to the focus document.
+An empty selection executes no body and acquires no unselected resource.
+Multiple resolved documents remain explicitly unsupported, without selecting
+cross-document ordering. Bound document-root variables and arbitrary document
+expressions are not admitted. Other foreign-owner switches still reject
+unqualified bare lexical selections. The ordinary same-source path uses the
+same shared iteration loop.
+This does not admit arbitrary predicates, foreign-node copying or all node
+consumers. New selection retention is charged before growth.
+
+A literal document-path branch in a mixed source union is admitted only when
+normal sealed resolution, parsing and effective-view evaluation produce an empty
+selection. Resolution failures and work exhaustion remain observable. Nonempty
+document branches remain explicitly unsupported; empty branches do not select
+general cross-document ranking or permit foreign local IDs into source ordering.
+The same private selection plan is used by the bounded XSLT 1.0 `xsl:copy-of`
+mixed-union slice. Selection and all empty-document guards finish before result
+construction; the existing source-node copier then owns the copied payload.
+Result values safely outlive their source, snapshot and compiled generation.
+Missing or denied document branches remain observable even when their requested
+path would be empty. This admits no nonempty foreign-node union or general
+cross-document copy/order behavior, and retains ordinary path-only copying.
+
 ADR-0021 selects bounded derived, element-relative namespace occurrences carried
 by private qualified semantic-node values rather than eagerly materialized
 prepared arena nodes. Source identity retains prepared origin across whitespace
@@ -278,7 +354,11 @@ implicit. Copying charges one result item and prefix/URI bytes before ownership;
 attachment charges timing/conflict scans and any existing binding payload copied
 when rebuilding the immutable namespace slice. Ordinary content uses the same
 loop without an extra scan, and serializers do not silently discard escaped
-attachments even for text output. Temporary namespace focus, `xsl:copy-of`,
+attachments even for text output. A direct terminal source namespace-axis
+`xsl:copy-of` lowers privately through this same qualified selector and empty
+copy constructor, retaining the original instruction location. Namespace nodes
+have no children or attributes; this lowering does not admit shallow copies of
+ordinary tree nodes or mixed/document selections. Temporary namespace focus,
 namespace variables, nonempty copy bodies, and general
 namespace constructors remain outside this slice.
 
@@ -316,8 +396,28 @@ operands. Conditional evaluation reuses the scalar concatenation/conversion
 and containment helper; it does not serialize a boolean result and parse it
 back. Existing operation charges and short-circuit behavior are preserved,
 and compiled retention includes both operand plans. This compatibility slice
-does not admit modern general string conversion, nested concatenations,
-generated-ID concatenation parts, or new namespace-focus consumers.
+also admits ordinary source-path `generate-id()` parts through the existing
+controlled location-path selector and source identity formatter. Empty
+selections yield an empty string; the 1.0 part selects the first node in
+document order. The zero-argument form uses the current source node. Each
+identity part charges an XPath operation in addition to path selection, and
+compiled retention accounts for the owned path. This does not admit modern
+general string conversion, nested concatenations,
+temporary identity parts, or new namespace-focus consumers. Global and key-use
+concatenations retain their narrower existing eligibility checks.
+
+From ordinary source focus, the bounded XSLT 1.0 typed-ID lookup may also
+compose with `name()`, `local-name()`, and `namespace-uri()`. Literal, path,
+and unqualified variable ID arguments and the existing bounded relative
+continuation reuse the same charged selector. The first selected node in
+document order supplies its ordinary name components; an empty selection
+supplies an empty string. Effective source navigation, typed-ID metadata,
+variable errors, budgets, cancellation, and compiled retention remain shared
+with existing consumers. This does not admit modern general expression
+composition, temporary-tree ID lookup, namespace focus, or runtime DTD
+acquisition. Private source and temporary-root generated-ID strings use only
+ASCII alphanumeric characters with an alphabetic first character; their
+concrete spelling is not a public identity representation.
 
 Inline `generate-id(path)` equality
 or inequality involving terminal namespace paths uses qualified node identity
@@ -325,7 +425,40 @@ directly, not generated strings or fabricated arena IDs. Source origin, owning
 element, and prefix determine equality; equal binding URIs do not. Empty
 selections compare as empty generated-ID strings. Legacy mode uses the first
 selected node; modern mode requires zero or one. Each operand and comparison
-is charged, and broader generated-ID consumers remain unsupported.
+is charged. From ordinary principal-source focus, scalar `generate-id()` on
+an admitted qualified path also returns an ASCII alphanumeric string with an
+alphabetic first character. Mixed selections reuse qualified normalization;
+tree nodes retain the existing source-ID spelling, while namespace strings
+use a disjoint owner-element and injectively encoded prefix spelling. The
+spelling is private, not a public node identifier or wire representation.
+XSLT 1.0 concatenation and composed containment may retain this qualified
+identity operand; compiled retention includes its path. Namespace encoding
+charges `64 + 2 * prefix UTF-8 bytes` XPath operations before string retention,
+in addition to the function and existing selector charges. Each cached dynamic
+document origin examined by the secondary-source rejection guard charges a
+node visit. Temporary, atomic, namespace-current, and secondary-document
+identity-string consumers remain unsupported; no cross-document ranking or
+identity representation is selected. Global and key-use concatenation remain
+subject to their narrower eligibility checks.
+
+XSLT 1.0 principal-source `generate-id((path | path)[position() = $variable])`
+uses the shared charged tree-union normalization before whole-set filtering.
+The reversed equality spelling is also admitted. Scalar output and local
+string-variable binding share the same private typed plan. Atomic numeric,
+string/untyped, and boolean position comparisons retain their respective
+XPath 1.0 conversion rules; non-atomic position values remain explicitly
+unsupported. Empty selections produce an empty atomic string, not a temporary
+tree. Existing invocation-local COW binding, source provenance, visibility
+views, work control, and compiled retention apply. A terminal namespace selection
+inside the grouped positional identity expression also uses the shared charged
+qualified-node selector, then the same atomic position conversion and existing
+principal namespace-string encoding. Whole-selection order precedes filtering;
+inherited bindings remain element-relative identities. The private typed plan
+distinguishes ordinary path unions from terminal namespace selection and counts
+the qualified path's boxed allocation in compiled retention. Only the resulting
+atomic string is bound, not namespace node values. Namespace positional unions,
+temporary/secondary source focus, and modern general expression composition
+are not inferred from this consumer.
 
 Namespace selections also admit scalar sort keys for name/local-name, string
 value, original position/size, and literals. Existing sort controls, numeric
@@ -407,6 +540,54 @@ before selecting the path, but this does not select a general legacy
 compatibility profile or expose a public or host-configurable policy. The
 current executable slice proves only the bounded module topologies below; it
 does not define a public module graph representation.
+
+A root rule that can delegate with `xsl:apply-imports` or `xsl:next-match`,
+including through reachable named calls, must enter ordinary matched-rule
+dispatch. The private direct-root fast path is eligible only when it can omit
+current-rule identity safely; unresolved calls into another module cannot prove
+that eligibility locally. Named calls preserve the current template rule.
+`xsl:for-each` clears it for the iteration body without erasing the enclosing
+rule after return. Continuation failures preserve the invoking instruction's
+location when no more specific location is available. This does not select a
+public rule carrier or admit unsupported namespace/atomic iteration bodies.
+
+[ADR-0023](../ADR/ADR-0023-compilation-scoped-stylesheet-preprocessing-profiles.md)
+selects explicit strict-XSLT-1.0 and modern stylesheet-preprocessing profiles
+once at the compilation-graph boundary. Include/import modules and embedded or
+literal-result stylesheets inherit the selected profile. Principal or local
+version declarations do not select preprocessing; legitimate expression/static
+compatibility remains separate. Both profiles feed one compiler/runtime.
+Strict preprocessing preserves the text-node stripping distinction; modern
+preprocessing merges text across removed comments/PIs before stripping, with
+the applicable edition-specific rules. Production integration remains open:
+a private test-gated strict graph reference derives immutable module text
+visibility before compilation, including include/import and embedded ancestry.
+Shared text selection serves common global/local/static constructors, comments
+and PIs; preserved text disqualifies lossy local `value-of`/`for-each` shortcuts.
+Global constructor eligibility and named/matched parameter defaults also consume
+that selection. Text-only defaults assemble selected fragments rather than
+re-reading the unfiltered subtree string value. Structural validation is not
+globally replaced by constructor selection.
+The private typed integer-range constructor shortcut also requires eligibility
+against selected variable, loop and wrapper content. Preserved text outside its
+proven shape produces explicit unsupported behavior, not a silently altered
+integer sequence. This does not select broader typed-constructor semantics.
+A test-only modern visibility reference exercises edition-specific forced
+whitespace stripping under preserved space, including adjacent-instruction
+rules. It retains original text fragments and uses merged-run eligibility;
+physical text merging, canonical lowering and production graph integration
+remain unimplemented gates, not implied by this reference.
+The strict graph reference accepts one aggregate preprocessing phase control,
+and the test-only workbench uses its supplied XDM ceiling independently of
+source preparation. Control failures retain the original failing module-root
+span with no transform request identity; this is phase provenance, not an exact
+charge-site span. That control does not meter graph loading or lowering.
+Residual constructor/parameter consumers, canonical modern special rules,
+broader compilation controls and compiled-profile confinement still need their
+promotion gates. Default production compilation remains modern. No public
+selector is selected. Source whitespace
+views, parser retention and original corpus comparison rules remain unchanged;
+reports must distinguish preprocessing profiles rather than combine their passes.
 
 The private common `xsl:message` subset constructs sequence-constructor content
 under the current invocation focus and variable frame for XSLT 1.0, 2.0, 3.0,
@@ -688,6 +869,13 @@ ordinary compatibility path parser and executes from the instruction's source
 focus with existing first-node string conversion, charging, cancellation,
 identity, and provenance behavior. This does not admit `current()` inside
 arbitrary composed expressions or in modern static context.
+Private compatibility-predicate normalization recognizes `current()` only
+outside quoted string literals and as an unqualified function name, not a
+suffix of a longer or qualified name. Quoted text remains ordinary predicate
+data. Shared predicate operator scanning uses UTF-8 character boundaries;
+unsupported Unicode expressions must not panic merely during scanning.
+This lexical distinction does not admit cross-document outer focus or general
+`current()` composition.
 The XSLT 1.0 compatibility path may compose an intermediate
 `count(child::*)` numeric predicate with a later general comparison between
 the candidate string value and the outer `current()/ancestor-or-self::*`
@@ -1213,6 +1401,64 @@ at compilation. Variable-valued, path-valued, mixed-text, and other dynamic
 sort controls remain explicit unsupported boundaries; execution does not gain
 a separate sort-control AVT evaluator.
 
+Private sort compilation owns typed key and collation-control lowering, not
+runtime state or host policy. QName fallback and shared path syntax checks
+distinguish unquoted colons from colons inside string literals. Unsupported
+composed sort expressions containing quoted punctuation must not become
+invalid namespace syntax solely because of that literal; actual malformed
+QNames and unbound prefixes retain their invalid-input diagnostics.
+
+Principal-source XSLT 1.0 sort keys may compose the existing bounded typed
+`concat()` operands through the shared lexical evaluator. Internal keys do
+not construct result text or consume result-text budgets; XPath work and
+cancellation remain charged before ordinary sort typing and stable comparison.
+Secondary-document concat sorting remains explicitly unsupported, as do
+unadmitted nested function operands. This does not widen modern sort grammar
+or imply a general expression evaluator.
+
+Within XSLT 1.0 concat, `substring(path, start[, length])` reuses the existing
+typed path-substring plan with finite numeric literal bounds. Ordinary output
+and internal concat values share first-node conversion, effective source
+navigation, substring rounding, and charged lexical evaluation. Restricted
+key-use and global-initialization concat profiles do not acquire this operand.
+
+A private bounded XSLT 1.0 composition plan additionally admits nested
+`substring()` and literal-delimiter `substring-after()` sources over ordinary
+paths. Substring bounds may combine finite literals, character lengths of
+admitted string sources, boolean-to-number conversion of
+`starts-with(path, literal)` or `contains(., literal)` tests with bounded `not()`,
+and multiplication.
+The plan is shared by ordinary value output and concat operands; it does not
+introduce a sort-specific interpreter. The composition parser limits recursive
+depth and node count, each operation observes invocation control, and character
+scans are charged by UTF-8 byte length before scanning. Character length and
+substring positions themselves remain Unicode character semantics.
+
+Path-based XSLT 1.0 `starts-with()` boolean conditions use the same first-node
+string conversion and predicate evaluation as ordinary output. Nested
+translation retains its existing compiler route, and namespace, temporary and
+atomic boolean focus do not acquire this path consumer. Variable bounds,
+arbitrary `number()` conversion, broader arithmetic, general recursive function
+composition and modern grammar remain outside this slice. Existing secondary
+document concat-sort restrictions remain unchanged.
+
+Direct path-substring sort keys use that same lexical owner with their actual
+source document and focus. String-value traversal is charged to the invocation's
+XDM string-value domain and observes cancellation; an internal key is not result
+text. No alternate unbounded string-value traversal is permitted for this path.
+The same controlled first-selected-node conversion applies to source path,
+union, key-result, positional, child-name and substring-after sort keys. Empty
+selection yields an empty key without traversing a fabricated node. Selection
+and conversion retain the actual source owner and invocation control; internal
+sort keys do not become semantic result text.
+
+Known `system-property()` zero- or multi-argument calls report `XPST0017`
+through the static introspection owner. XSLT 1.x forward-compatible processing
+defers that known arity error alongside admitted syntax/type errors until
+instantiation, preserving dormant-template behavior. Unsupported capability
+does not become a deferred error through this rule; broader function arities
+and general expression typing are not selected.
+
 Within XSLT 1.0 compatibility, a binary numeric sort-key expression reuses the
 same typed and charged path-arithmetic plan as ordinary value evaluation. The
 sort candidate supplies node, position, and size; the resulting lexical value
@@ -1322,6 +1568,23 @@ Unbound prefixes and empty names remain structured dynamic errors. This does
 not admit arbitrary name expressions, dynamic namespace AVTs, or a public
 dynamic-QName representation.
 
+For computed elements under XSLT 1.0 static context, an explicit admitted
+namespace determines the expanded name independently of the lexical prefix.
+An empty override produces a null namespace even for a prefixed QName.
+Ordinary prefixes may be retained; reserved `xml` or `xmlns` prefixes are
+discarded when their binding would be invalid, and the XML namespace uses
+canonical `xml`. Static, path-derived, variable-derived, and current-node names
+feed the same result-element construction. Dynamic instructions retain a
+private compatibility flag derived from their local static context; the
+principal stylesheet version does not override it. QName validation, reserved
+XMLNS URI rejection, absent-override resolution, and modern behavior remain
+unchanged. No namespace URI grants resource authority.
+
+Wildcard temporary-tree `for-each` selection remains outside the admitted
+slice and reports a located unsupported outcome. Named temporary paths use
+the existing shared temporary selector and focus; an unsupported selection
+must not fall through to a tree-only source dispatcher.
+
 Under XSLT 1.0 static context, a computed-element name AVT containing exactly
 one admitted location path may instead retain that typed path. Execution uses
 the ordinary charged XPath evaluator and first-node string conversion, then
@@ -1350,6 +1613,16 @@ The same private attribute-name plan may compile the exact `name()` / `name(.)`
 source-context operation or fold one XPath string-literal expression. Both feed
 the attribute-specific runtime `QName` validator; they do not widen the plan to
 arbitrary functions or AVT composition.
+
+For XSLT 1.0 computed attributes, an explicit admitted namespace override
+determines the expanded name independently of the lexical prefix. Static and
+dynamic names discard that prefix when necessary, including `xmlns` and
+rebound `xml`, and an empty override produces an unnamespaced attribute.
+The serializer supplies a safe prefix or canonical `xml` binding. Lexical QName
+validation, rejection of the exact name `xmlns`, and denial of the reserved
+XMLNS namespace URI remain intact. The instruction's existing per-attribute
+compatibility flag selects these rules, including local static version context;
+modern-profile rules and absent-override resolution are unchanged.
 
 Under the same XSLT 1.0 compatibility boundary, a computed-attribute name may
 be composed solely from static text and unqualified variable references. The
@@ -2129,6 +2402,17 @@ converted while its owning source is still active; only the scalar comparison
 value crosses into stylesheet-document evaluation. This does not admit raw
 cross-document node identities, ambient acquisition, or a general public
 multi-document expression contract.
+
+Scalar XSLT 1.0 value output may also use a literal `document()` path ending
+in the bounded `[@candidate=current()/@outer]` filter. Both attribute names are
+resolved in the consuming instruction's static namespace context. The outer
+attribute is converted to an optional string while its source owns the focus;
+the existing typed path then runs only in the sealed lookup document. Missing
+attributes remain empty node sets rather than empty strings, and value output
+uses the first matching node in document order. Attribute traversal and string
+conversion are charged to the invocation. Temporary focus, broader predicate
+composition, general cross-document value identity and live acquisition are
+not implied by this private scalar lookup.
 
 A literal-document `xsl:for-each` may similarly derive an invocation-owned
 detached view of local principal-source node variables before changing source

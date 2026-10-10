@@ -56,32 +56,40 @@ use crate::xpath::iri_to_uri_expression::{
     IriToUriParseFailure, parse as parse_iri_to_uri, recognizes as recognizes_iri_to_uri,
 };
 use crate::xpath::path_experiment::{
-    LocationPath, PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
-    parse_xslt10_location_path,
+    LocationPath, PathFailure, PathStep, has_unquoted_colon, parse_location_path,
+    parse_qualified_child_path, parse_xslt10_location_path,
 };
 use crate::xpath::path_operand_type_experiment::classify as classify_atomic_path_operand;
 use crate::xpath::string_length_experiment::{
     StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
 };
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, ChooseBranch, ComputedAttribute, DocumentBaseReference, DynamicElementName,
+    BooleanExpression, ChooseBranch, ComputedAttribute, DocumentBaseReference,
     DynamicNamespaceValue, ElementConstructorOrigin, FocusEqualityOperand, Instruction,
     LiteralAttributeValue, NestedDocumentReferences, SequenceItemExpression, SortCaseOrder,
     SortDataType, SortKey, SortLanguage, SortOrder, SortSelect, StringComparison, TemplateArgument,
     ValueExpression, Xslt10ConcatPart,
 };
 
+#[path = "instruction_compiler/bound_variable_path_compiler.rs"]
+mod bound_variable_path_compiler;
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
 mod computed_attribute_compiler;
+#[path = "instruction_compiler/computed_element_compiler.rs"]
+mod computed_element_compiler;
+use computed_element_compiler::compile_static_computed_element;
 #[path = "instruction_compiler/namespace_focus_compiler.rs"]
 mod namespace_focus_compiler;
-use computed_attribute_compiler::{
-    compile_computed_attribute, compile_computed_attributes, parse_xslt10_name_avt_parts,
-};
+use computed_attribute_compiler::{compile_computed_attribute, compile_computed_attributes};
 #[path = "instruction_compiler/boolean_expression_compiler.rs"]
 mod boolean_expression_compiler;
+#[path = "instruction_compiler/composed_string_compiler.rs"]
+mod composed_string_compiler;
 #[path = "instruction_compiler/conditional_expression_compiler.rs"]
 mod conditional_expression_compiler;
+#[path = "instruction_compiler/sort_compiler.rs"]
+mod sort_compiler;
+pub(super) use sort_compiler::compile_sort_keys;
 #[path = "instruction_compiler/value_expression_compiler.rs"]
 pub(super) mod value_expression_compiler;
 #[path = "instruction_compiler/xslt10_static_introspection_compiler.rs"]
@@ -101,6 +109,8 @@ use source_copy_compiler::compile_copy;
 mod attribute_set_compiler;
 #[path = "instruction_compiler/template_invocation_compiler.rs"]
 mod template_invocation_compiler;
+pub(super) use super::stylesheet_preprocessing::effective_xml_space_preserved;
+use super::stylesheet_preprocessing::{StylesheetPreprocessingProfile, preserves_literal_text};
 use attribute_set_compiler::compile_attribute_set_use_names;
 
 fn parse_context_focus_equality(
@@ -224,8 +234,13 @@ pub(super) fn compile_sequence_excluding_with_bindings(
                 if let Some(instruction) = compile_literal_text_node(
                     document,
                     child,
-                    preserve_whitespace
-                        || text_run_contains_non_whitespace(document, &children, index),
+                    preserves_literal_text(
+                        document,
+                        &children,
+                        index,
+                        preserve_whitespace,
+                        StylesheetPreprocessingProfile::Modern,
+                    ),
                 )? {
                     instructions.push(instruction);
                 }
@@ -254,7 +269,10 @@ pub(super) fn compile_sequence_excluding_with_bindings(
                             Ok(instruction) => instructions.push(instruction),
                             Err(failure)
                                 if uses_xslt10_forward_compatible_processing(document, child)
-                                    && matches!(failure.code, "XPST0003" | "XPTY0004") =>
+                                    && matches!(
+                                        failure.code,
+                                        "XPST0003" | "XPST0017" | "XPTY0004"
+                                    ) =>
                             {
                                 instructions.push(Instruction::Xslt10DeferredFailure {
                                     code: failure.code,
@@ -590,37 +608,6 @@ fn effective_expand_text(document: &Document, node: NodeId) -> Result<bool, Comp
     Ok(false)
 }
 
-fn text_run_contains_non_whitespace(
-    document: &Document,
-    siblings: &[NodeId],
-    text_index: usize,
-) -> bool {
-    let mut start = text_index;
-    while start > 0
-        && matches!(
-            document.kind(siblings[start - 1]),
-            NodeKind::Text | NodeKind::Comment | NodeKind::ProcessingInstruction
-        )
-    {
-        start -= 1;
-    }
-    let mut end = text_index + 1;
-    while end < siblings.len()
-        && matches!(
-            document.kind(siblings[end]),
-            NodeKind::Text | NodeKind::Comment | NodeKind::ProcessingInstruction
-        )
-    {
-        end += 1;
-    }
-    siblings[start..end].iter().any(|sibling| {
-        document.kind(*sibling) == NodeKind::Text
-            && document
-                .value(*sibling)
-                .is_some_and(|value| !is_xml_whitespace_only(value))
-    })
-}
-
 fn local_variable_name(variable: &Instruction) -> &String {
     let (Instruction::Variable { name, .. }
     | Instruction::StaticAtomicVariable { name, .. }
@@ -630,6 +617,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::ContextCountPathVariable { name, .. }
     | Instruction::Xslt10BinaryNumericVariable { name, .. }
     | Instruction::Xslt10ConcatVariable { name, .. }
+    | Instruction::Xslt10GeneratedUnionIdentityVariable { name, .. }
     | Instruction::Xslt10KeyVariable { name, .. }
     | Instruction::Xslt10LiteralDocumentVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
@@ -783,190 +771,6 @@ fn is_declared_extension_element(document: &Document, element: NodeId) -> bool {
     false
 }
 
-fn compile_static_computed_element(
-    document: &Document,
-    element: NodeId,
-) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(
-        document,
-        element,
-        &["name", "namespace", "use-attribute-sets"],
-        "xsl:element",
-    )?;
-    let name = required_attribute(document, element, None, "name")?;
-    let namespace = optional_attribute(document, element, None, "namespace");
-    let namespace_override = compile_dynamic_element_namespace(document, element, namespace)?;
-    if matches!(name.trim(), "{name()}" | "{name(.)}") {
-        let ComputedElementContent {
-            attribute_set_names,
-            computed_attributes,
-            body,
-        } = compile_computed_element_content(document, element)?;
-        return Ok(Instruction::ContextNameElement {
-            namespace_override,
-            static_namespaces: document.in_scope_namespaces(element).into(),
-            attribute_set_names,
-            computed_attributes,
-            body,
-            location: document.location(element).clone(),
-        });
-    }
-    if uses_xslt10_compatibility(document, element)
-        && let Some(name) = compile_dynamic_element_name(document, element, name)?
-    {
-        let ComputedElementContent {
-            attribute_set_names,
-            computed_attributes,
-            body,
-        } = compile_computed_element_content(document, element)?;
-        return Ok(Instruction::DynamicNameElement {
-            name,
-            namespace_override,
-            static_namespaces: document.in_scope_namespaces(element).into(),
-            attribute_set_names,
-            computed_attributes,
-            body,
-            location: document.location(element).clone(),
-        });
-    }
-    if matches!(namespace_override, Some(DynamicNamespaceValue::Path(_))) {
-        let ComputedElementContent {
-            attribute_set_names,
-            computed_attributes,
-            body,
-        } = compile_computed_element_content(document, element)?;
-        return Ok(Instruction::DynamicNameElement {
-            name: DynamicElementName::Literal(name.to_owned()),
-            namespace_override,
-            static_namespaces: document.in_scope_namespaces(element).into(),
-            attribute_set_names,
-            computed_attributes,
-            body,
-            location: document.location(element).clone(),
-        });
-    }
-    let static_namespace = namespace_override
-        .as_ref()
-        .map(|namespace| match namespace {
-            DynamicNamespaceValue::Static(value) => value.as_str(),
-            DynamicNamespaceValue::Path(_) => unreachable!("dynamic namespace returned above"),
-        });
-    let (name, mut namespaces) =
-        compile_static_computed_element_name(document, element, name, static_namespace)?;
-    let (computed_attributes, computed_attribute_nodes) =
-        compile_computed_attributes(document, element)?;
-    let attribute_set_names = compile_attribute_set_use_names(document, element, None)?;
-    retain_computed_attribute_namespace_bindings(&mut namespaces, &computed_attributes);
-    Ok(Instruction::LiteralElement {
-        origin: ElementConstructorOrigin::ComputedStatic,
-        name,
-        namespaces: namespaces.into(),
-        attributes: Vec::new(),
-        attribute_set_names,
-        computed_attributes,
-        body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
-        location: document.location(element).clone(),
-    })
-}
-
-fn compile_computed_element_content(
-    document: &Document,
-    element: NodeId,
-) -> Result<ComputedElementContent, CompileFailure> {
-    let (computed_attributes, computed_attribute_nodes) =
-        compile_computed_attributes(document, element)?;
-    let attribute_set_names = compile_attribute_set_use_names(document, element, None)?;
-    let body = compile_sequence_excluding(document, element, &computed_attribute_nodes)?;
-    Ok(ComputedElementContent {
-        attribute_set_names,
-        computed_attributes,
-        body,
-    })
-}
-
-struct ComputedElementContent {
-    attribute_set_names: Vec<ExpandedName>,
-    computed_attributes: Vec<ComputedAttribute>,
-    body: Vec<Instruction>,
-}
-
-fn compile_dynamic_element_namespace(
-    document: &Document,
-    element: NodeId,
-    lexical: Option<&str>,
-) -> Result<Option<DynamicNamespaceValue>, CompileFailure> {
-    let Some(lexical) = lexical else {
-        return Ok(None);
-    };
-    if !lexical.contains(['{', '}']) {
-        return Ok(Some(DynamicNamespaceValue::Static(lexical.to_owned())));
-    }
-    if uses_xslt10_compatibility(document, element)
-        && let Some(expression) = lexical
-            .strip_prefix('{')
-            .and_then(|value| value.strip_suffix('}'))
-        && !expression.contains(['{', '}'])
-        && let Ok(path) = compile_sort_path(
-            document,
-            element,
-            expression.trim(),
-            document.location(element),
-        )
-    {
-        return Ok(Some(DynamicNamespaceValue::Path(Box::new(path))));
-    }
-    Err(unsupported(
-        "FXST1045",
-        "the private xsl:element namespace slice requires a static URI or one XSLT 1.0 path AVT",
-        document.location(element),
-    ))
-}
-
-fn compile_dynamic_element_name(
-    document: &Document,
-    element: NodeId,
-    lexical: &str,
-) -> Result<Option<DynamicElementName>, CompileFailure> {
-    if let Some((prefix, suffix)) = lexical.split_once("{position()}")
-        && !prefix.contains(['{', '}'])
-        && !suffix.contains(['{', '}'])
-    {
-        return Ok(Some(DynamicElementName::FocusPosition {
-            prefix: prefix.to_owned(),
-            suffix: suffix.to_owned(),
-        }));
-    }
-    if let Some(parts) = parse_xslt10_name_avt_parts(lexical) {
-        return Ok(Some(DynamicElementName::VariableAvt(parts)));
-    }
-    let Some(expression) = lexical
-        .strip_prefix('{')
-        .and_then(|value| value.strip_suffix('}'))
-        .map(str::trim)
-    else {
-        return Ok(None);
-    };
-    if expression.contains(['{', '}']) {
-        return Ok(None);
-    }
-    if let Some((variable, path)) = value_expression_compiler::compile_xslt10_variable_path(
-        document,
-        element,
-        expression,
-        document.location(element),
-    )? {
-        return Ok(Some(DynamicElementName::SourceVariablePath {
-            variable,
-            path,
-        }));
-    }
-    Ok(
-        compile_sort_path(document, element, expression, document.location(element))
-            .ok()
-            .map(DynamicElementName::Path),
-    )
-}
-
 pub(super) fn retain_computed_attribute_namespace_bindings(
     namespaces: &mut Vec<NamespaceBinding>,
     attributes: &[ComputedAttribute],
@@ -1028,91 +832,6 @@ pub(super) fn retain_computed_attribute_namespace_bindings(
     }
 }
 
-fn compile_static_computed_element_name(
-    document: &Document,
-    element: NodeId,
-    lexical: &str,
-    namespace_override: Option<&str>,
-) -> Result<(ExpandedName, Vec<NamespaceBinding>), CompileFailure> {
-    const XMLNS_NAMESPACE: &str = "http://www.w3.org/2000/xmlns/";
-    if namespace_override == Some(XMLNS_NAMESPACE) {
-        return Err(invalid(
-            "XTDE0835",
-            "xsl:element cannot construct a name in the reserved xmlns namespace",
-            document.location(element),
-        ));
-    }
-    if lexical.contains(['{', '}']) {
-        return Err(unsupported(
-            "FXST1047",
-            "the private xsl:element slice requires a static QName",
-            document.location(element),
-        ));
-    }
-    if is_ascii_ncname(lexical) {
-        let namespace = match namespace_override {
-            Some("") => None,
-            Some(namespace) => Some(namespace),
-            None => namespace_for_prefix(document, element, "").filter(|value| !value.is_empty()),
-        };
-        return Ok((
-            ExpandedName {
-                namespace: namespace.map(str::to_owned),
-                local: lexical.to_owned(),
-            },
-            namespace
-                .map(|namespace| {
-                    vec![NamespaceBinding {
-                        prefix: None,
-                        namespace: namespace.to_owned(),
-                    }]
-                })
-                .unwrap_or_default(),
-        ));
-    }
-    let Some((prefix, local)) = lexical.split_once(':') else {
-        return Err(invalid(
-            "XTDE0820",
-            format!("xsl:element name is not a lexical QName: {lexical}"),
-            document.location(element),
-        ));
-    };
-    if !is_ascii_ncname(prefix) || !is_ascii_ncname(local) || local.contains(':') {
-        return Err(invalid(
-            "XTDE0820",
-            format!("xsl:element name is not a lexical QName: {lexical}"),
-            document.location(element),
-        ));
-    }
-    let namespace = match namespace_override {
-        Some("") => {
-            return Err(invalid(
-                "XTDE0835",
-                "a prefixed xsl:element name cannot use an empty namespace",
-                document.location(element),
-            ));
-        }
-        Some(namespace) => namespace,
-        None => namespace_for_prefix(document, element, prefix).ok_or_else(|| {
-            invalid(
-                "XTDE0830",
-                format!("xsl:element name uses an unbound prefix: {prefix}"),
-                document.location(element),
-            )
-        })?,
-    };
-    Ok((
-        ExpandedName {
-            namespace: Some(namespace.to_owned()),
-            local: local.to_owned(),
-        },
-        vec![NamespaceBinding {
-            prefix: Some(prefix.to_owned()),
-            namespace: namespace.to_owned(),
-        }],
-    ))
-}
-
 fn ensure_distinct_result_attributes(
     literal: &[crate::xslt::golden_semantics_experiment::LiteralAttribute],
     computed: &[crate::xslt::golden_semantics_experiment::ComputedAttribute],
@@ -1151,6 +870,18 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     ensure_no_meaningful_children(document, element, "xsl:copy-of")?;
     let select = required_attribute(document, element, None, "select")?;
     let recover_unattached_attributes = uses_xslt10_compatibility(document, element);
+    if crate::xpath::path_experiment::qualified_nodes::recognizes_namespace_axis(select) {
+        return namespace_focus_compiler::compile_copy_of(
+            select,
+            document.location(element),
+            recover_unattached_attributes,
+        );
+    }
+    if let Some(instruction) =
+        source_copy_compiler::compile_mixed_copy_union(document, element, select)?
+    {
+        return Ok(instruction);
+    }
     if let Some(instruction) = compile_copy_of_document_family(
         document,
         element,
@@ -1813,6 +1544,19 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
     if crate::xpath::path_experiment::qualified_nodes::recognizes_namespace_axis(select) {
         return namespace_focus_compiler::compile(document, element, select, sorts, &sort_nodes);
     }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(selection) =
+            template_invocation_compiler::compile_source_document_root_selection(
+                document, element, select,
+            )?
+    {
+        return Ok(Instruction::ForEachNodes {
+            select: selection,
+            sorts,
+            body: compile_sequence_excluding(document, element, &sort_nodes)?,
+            location,
+        });
+    }
     Ok(Instruction::ForEachNodes {
         select: template_invocation_compiler::parse_apply_selection(
             document,
@@ -1824,458 +1568,6 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
         body: compile_sequence_excluding(document, element, &sort_nodes)?,
         location,
     })
-}
-
-pub(super) fn compile_sort_keys(
-    document: &Document,
-    parent: NodeId,
-) -> Result<(Vec<SortKey>, Vec<NodeId>), CompileFailure> {
-    let xslt10_numeric_conversion = uses_xslt10_compatibility(document, parent);
-    let children = meaningful_children(document, parent);
-    let mut sorts = Vec::new();
-    let mut sort_nodes = Vec::new();
-    let mut saw_body = false;
-    for child in children {
-        if !is_xslt_element(document, child, "sort") {
-            saw_body = true;
-            continue;
-        }
-        if saw_body {
-            return Err(invalid(
-                "XTSE0010",
-                "xsl:sort must precede every other sequence-constructor child",
-                document.location(child),
-            ));
-        }
-        ensure_only_attributes(
-            document,
-            child,
-            &["select", "data-type", "order", "lang", "case-order"],
-            "xsl:sort",
-        )?;
-        ensure_no_meaningful_children(document, child, "xsl:sort")?;
-        let location = document.location(child).clone();
-        let select = compile_sort_select(
-            document,
-            child,
-            optional_attribute(document, child, None, "select").unwrap_or("."),
-            xslt10_numeric_conversion,
-            &location,
-        )?;
-        let data_type = compile_sort_data_type(
-            optional_attribute(document, child, None, "data-type"),
-            &location,
-        )?;
-        let (case_order, language) = compile_sort_collation_metadata(
-            document,
-            child,
-            &data_type,
-            xslt10_numeric_conversion,
-            &location,
-        )?;
-        let order = compile_sort_order(
-            optional_attribute(document, child, None, "order"),
-            &location,
-        )?;
-        sorts.push(SortKey {
-            select,
-            data_type,
-            xslt10_numeric_conversion,
-            order,
-            case_order,
-            language,
-            location,
-        });
-        sort_nodes.push(child);
-    }
-    Ok((sorts, sort_nodes))
-}
-
-fn compile_sort_select(
-    document: &Document,
-    sort: NodeId,
-    select: &str,
-    xslt10_compatibility: bool,
-    location: &SourceLocation,
-) -> Result<SortSelect, CompileFailure> {
-    if xslt10_compatibility && select.trim_start().starts_with("key(") {
-        return Ok(SortSelect::Xslt10KeyLookup(Box::new(
-            value_expression_compiler::compile_xslt10_literal_key_lookup(
-                document, sort, select, location,
-            )?,
-        )));
-    }
-    if xslt10_compatibility
-        && let Some((path, delimiter)) =
-            compile_xslt10_path_substring_after(document, sort, select, location)?
-    {
-        return Ok(SortSelect::Xslt10PathSubstringAfter { path, delimiter });
-    }
-    if xslt10_compatibility
-        && let Some(expression) = value_expression_compiler::compile_xslt10_path_substring(
-            document, sort, select, location,
-        )?
-    {
-        return Ok(SortSelect::Xslt10PathSubstring(Box::new(expression)));
-    }
-    if xslt10_compatibility
-        && let Some(expression) = value_expression_compiler::compile_xslt10_binary_numeric(
-            document, sort, select, location,
-        )
-    {
-        return Ok(SortSelect::Xslt10BinaryNumeric(Box::new(expression)));
-    }
-    if let Some(alternatives) = split_top_level_union(select) {
-        let alternatives = alternatives
-            .into_iter()
-            .map(str::trim)
-            .map(|alternative| {
-                if alternative.is_empty() {
-                    return Err(invalid(
-                        "XPST0003",
-                        "xsl:sort path union contains an empty alternative",
-                        location,
-                    ));
-                }
-                compile_sort_path(document, sort, alternative, location)
-            })
-            .collect::<Result<Vec<_>, CompileFailure>>()?;
-        return Ok(SortSelect::PathUnion(alternatives));
-    }
-    if let Some(value) = xpath_string_literal(select.trim()) {
-        return Ok(SortSelect::Literal(value.to_owned()));
-    }
-    if let Some(variable) = select.trim().strip_prefix('$')
-        && is_ascii_ncname(variable)
-    {
-        return Ok(SortSelect::Variable(variable.to_owned()));
-    }
-    if xslt10_compatibility
-        && let Some((path, variable, explicit_position_comparison)) =
-            value_expression_compiler::compile_xslt10_variable_position_path(
-                document, sort, select, location,
-            )?
-    {
-        return Ok(SortSelect::Xslt10VariablePositionPath {
-            path,
-            variable,
-            explicit_position_comparison,
-        });
-    }
-    if xslt10_compatibility && let Some(variable) = parse_xslt10_child_name_variable_sort(select) {
-        return Ok(SortSelect::Xslt10ChildNameEqualsVariable { variable });
-    }
-    if xslt10_compatibility
-        && let Some((path, literal, equal)) =
-            boolean_expression_compiler::parse_xslt10_source_path_comparison(select)
-        && let Some(literal) = xpath_string_literal(literal)
-    {
-        return Ok(SortSelect::Xslt10PathStringLiteralComparison {
-            path: compile_sort_path(document, sort, path, location)?,
-            literal: literal.to_owned(),
-            equal,
-        });
-    }
-    match select.trim() {
-        "position()" => Ok(SortSelect::ContextPosition),
-        "last()" => Ok(SortSelect::ContextSize),
-        "name()" | "name(.)" => Ok(SortSelect::ContextNodeName),
-        "local-name()" | "local-name(.)" => Ok(SortSelect::ContextNodeLocalName),
-        "string-length()" | "string-length(.)" => Ok(SortSelect::ContextStringLength),
-        _ => {
-            if let Some(path) =
-                compile_sort_function_path(document, sort, select, "count", location)?
-            {
-                return Ok(SortSelect::CountPath(path));
-            }
-            if let Some(path) =
-                compile_sort_function_path(document, sort, select, "number", location)?
-            {
-                return Ok(SortSelect::NumberPath(path));
-            }
-            Ok(SortSelect::LocationPath(compile_sort_path(
-                document, sort, select, location,
-            )?))
-        }
-    }
-}
-
-fn compile_xslt10_path_substring_after(
-    document: &Document,
-    context: NodeId,
-    expression: &str,
-    location: &SourceLocation,
-) -> Result<Option<(LocationPath, String)>, CompileFailure> {
-    let expression = expression.trim();
-    let Some(arguments) = expression
-        .strip_prefix("substring-after(")
-        .and_then(|arguments| arguments.strip_suffix(')'))
-    else {
-        return Ok(None);
-    };
-    let Some(arguments) = crate::xpath::static_string_experiment::split_arguments(arguments, 2)
-    else {
-        return Ok(None);
-    };
-    let [path, delimiter] = arguments.as_slice() else {
-        return Ok(None);
-    };
-    let Some(delimiter) = xpath_string_literal(delimiter.trim()) else {
-        return Ok(None);
-    };
-    Ok(Some((
-        compile_sort_path(document, context, path.trim(), location)?,
-        delimiter.to_owned(),
-    )))
-}
-
-fn parse_xslt10_child_name_variable_sort(expression: &str) -> Option<String> {
-    let (path, predicate) = expression.trim().split_once('[')?;
-    if !matches!(path.trim(), "./*" | "*") {
-        return None;
-    }
-    let predicate = predicate.strip_suffix(']')?;
-    let (left, right) = predicate.split_once('=')?;
-    if right.contains('=') {
-        return None;
-    }
-    let (left, right) = (left.trim(), right.trim());
-    let variable = if left == "name(.)" {
-        right.strip_prefix('$')?
-    } else if right == "name(.)" {
-        left.strip_prefix('$')?
-    } else {
-        return None;
-    };
-    is_ascii_ncname(variable).then(|| variable.to_owned())
-}
-
-fn compile_sort_data_type(
-    value: Option<&str>,
-    location: &SourceLocation,
-) -> Result<SortDataType, CompileFailure> {
-    match value.map(fold_static_sort_control_avt) {
-        None | Some(Some("text")) => Ok(SortDataType::Text),
-        Some(Some("number")) => Ok(SortDataType::Number),
-        Some(Some(value)) if is_prefixed_qname(value) => Err(unsupported(
-            "FXST1044",
-            format!("extension xsl:sort data-type is outside the admitted slice: {value}"),
-            location,
-        )),
-        Some(Some(value)) => Err(invalid(
-            "XTDE0030",
-            format!("invalid xsl:sort data-type: {value}"),
-            location,
-        )),
-        Some(None) => compile_sort_control_variable(value.expect("dynamic sort control exists"))
-            .map(SortDataType::Variable)
-            .ok_or_else(|| {
-                unsupported(
-                    "FXST1044",
-                    "dynamic xsl:sort data-type is outside the admitted variable-only slice",
-                    location,
-                )
-            }),
-    }
-}
-
-fn is_prefixed_qname(value: &str) -> bool {
-    let Some((prefix, local)) = value.split_once(':') else {
-        return false;
-    };
-    !local.contains(':') && is_ascii_ncname(prefix) && is_ascii_ncname(local)
-}
-
-fn compile_sort_order(
-    value: Option<&str>,
-    location: &SourceLocation,
-) -> Result<SortOrder, CompileFailure> {
-    match value.map(fold_static_sort_control_avt) {
-        None | Some(Some("ascending")) => Ok(SortOrder::Ascending),
-        Some(Some("descending")) => Ok(SortOrder::Descending),
-        Some(Some(value)) => Err(invalid(
-            "XTDE0030",
-            format!("invalid xsl:sort order: {value}"),
-            location,
-        )),
-        Some(None) => compile_sort_control_variable(value.expect("dynamic sort control exists"))
-            .map(SortOrder::Variable)
-            .ok_or_else(|| {
-                unsupported(
-                    "FXST1044",
-                    "dynamic xsl:sort order is outside the admitted variable-only slice",
-                    location,
-                )
-            }),
-    }
-}
-
-fn fold_static_sort_control_avt(value: &str) -> Option<&str> {
-    if !value.contains(['{', '}']) {
-        return Some(value);
-    }
-    let expression = value.strip_prefix('{')?.strip_suffix('}')?.trim();
-    xpath_string_literal(expression)
-}
-
-fn compile_sort_control_variable(value: &str) -> Option<String> {
-    let expression = value.strip_prefix('{')?.strip_suffix('}')?.trim();
-    let variable = expression.strip_prefix('$')?;
-    is_ascii_ncname(variable).then(|| variable.to_owned())
-}
-
-fn compile_sort_collation_metadata(
-    document: &Document,
-    sort: NodeId,
-    data_type: &SortDataType,
-    xslt10_compatibility: bool,
-    location: &SourceLocation,
-) -> Result<(SortCaseOrder, SortLanguage), CompileFailure> {
-    let lang = optional_attribute(document, sort, None, "lang");
-    let case_order = optional_attribute(document, sort, None, "case-order");
-    if !xslt10_compatibility
-        && matches!(data_type, SortDataType::Text | SortDataType::Variable(_))
-        && (lang.is_some() || case_order.is_some())
-    {
-        return Err(unsupported(
-            "FXST1063",
-            "language-sensitive text collation is outside the admitted xsl:sort slice",
-            location,
-        ));
-    }
-    if matches!(data_type, SortDataType::Number)
-        && lang
-            .into_iter()
-            .chain(case_order)
-            .any(|value| value.contains(['{', '}']))
-    {
-        return Err(unsupported(
-            "FXST1064",
-            "dynamic ignored xsl:sort collation attributes are outside the admitted numeric slice",
-            location,
-        ));
-    }
-    if matches!(data_type, SortDataType::Number) {
-        return Ok((SortCaseOrder::Default, SortLanguage::Codepoint));
-    }
-    let language = compile_sort_language(document, sort, lang, xslt10_compatibility, location)?;
-    let case_order = compile_sort_case_order(case_order, xslt10_compatibility, location)?;
-    Ok((case_order, language))
-}
-
-fn compile_sort_language(
-    document: &Document,
-    sort: NodeId,
-    lang: Option<&str>,
-    xslt10_compatibility: bool,
-    location: &SourceLocation,
-) -> Result<SortLanguage, CompileFailure> {
-    let language = if let Some(lang) = lang {
-        if let Some(lang) = fold_static_sort_control_avt(lang) {
-            if !is_xslt10_language_tag(lang) {
-                return Err(invalid(
-                    "XTDE0030",
-                    format!("invalid xsl:sort language hint: {lang}"),
-                    location,
-                ));
-            }
-            let primary = lang.split('-').next().unwrap_or_default();
-            match primary.to_ascii_lowercase().as_str() {
-                "en" => SortLanguage::English,
-                "es" => SortLanguage::Spanish,
-                "fr" => SortLanguage::French,
-                "sv" => SortLanguage::Swedish,
-                "tr" => SortLanguage::Turkish,
-                _ => {
-                    return Err(unsupported(
-                        "FXST1063",
-                        format!("unsupported xsl:sort language hint: {lang}"),
-                        location,
-                    ));
-                }
-            }
-        } else {
-            let expression = lang
-                .strip_prefix('{')
-                .and_then(|value| value.strip_suffix('}'))
-                .map(str::trim);
-            let expression = match expression {
-                Some(expression) => value_expression_compiler::compile_xslt10_concat(
-                    document, sort, expression, location,
-                )?,
-                None => None,
-            };
-            let expression = expression.filter(|expression| {
-                expression.parts.iter().all(|part| {
-                    matches!(
-                        part,
-                        Xslt10ConcatPart::Literal(_) | Xslt10ConcatPart::Variable(_)
-                    )
-                })
-            });
-            SortLanguage::Xslt10Concat(Box::new(expression.ok_or_else(|| {
-                unsupported(
-                    "FXST1063",
-                    "dynamic xsl:sort lang is outside the admitted compatibility concat slice",
-                    location,
-                )
-            })?))
-        }
-    } else if xslt10_compatibility {
-        SortLanguage::English
-    } else {
-        SortLanguage::Codepoint
-    };
-    Ok(language)
-}
-
-fn compile_sort_case_order(
-    case_order: Option<&str>,
-    xslt10_compatibility: bool,
-    location: &SourceLocation,
-) -> Result<SortCaseOrder, CompileFailure> {
-    match case_order.map(fold_static_sort_control_avt) {
-        // The XSLT 1.0 compatibility collation used by the admitted OASIS
-        // processors orders lowercase before uppercase when primary and
-        // secondary weights are equal. Keep the modern no-hint path on the
-        // codepoint/default behavior rather than leaking this compatibility
-        // choice into later language versions.
-        None if xslt10_compatibility => Ok(SortCaseOrder::LowerFirst),
-        None => Ok(SortCaseOrder::Default),
-        Some(Some("upper-first")) => Ok(SortCaseOrder::UpperFirst),
-        Some(Some("lower-first")) => Ok(SortCaseOrder::LowerFirst),
-        Some(Some(value)) => Err(invalid(
-            "XTDE0030",
-            format!("invalid xsl:sort case-order: {value}"),
-            location,
-        )),
-        Some(None) => {
-            compile_sort_control_variable(case_order.expect("dynamic case-order control exists"))
-                .map(SortCaseOrder::Variable)
-                .ok_or_else(|| {
-                    unsupported(
-                        "FXST1063",
-                        "dynamic xsl:sort case-order is outside the admitted variable-only slice",
-                        location,
-                    )
-                })
-        }
-    }
-}
-
-fn is_xslt10_language_tag(value: &str) -> bool {
-    let mut parts = value.split('-');
-    let Some(primary) = parts.next() else {
-        return false;
-    };
-    !primary.is_empty()
-        && primary.len() <= 8
-        && primary.bytes().all(|byte| byte.is_ascii_alphabetic())
-        && parts.all(|part| {
-            !part.is_empty()
-                && part.len() <= 8
-                && part.bytes().all(|byte| byte.is_ascii_alphanumeric())
-        })
 }
 
 fn compile_sort_path(
@@ -2291,7 +1583,7 @@ fn compile_sort_path(
     };
     match parsed {
         Ok(path) => Ok(path),
-        Err(PathFailure::Unsupported { .. }) if expression.contains(':') => {
+        Err(PathFailure::Unsupported { .. }) if has_unquoted_colon(expression) => {
             parse_qualified_child_path(expression, location.clone(), |prefix| {
                 namespace_for_prefix(document, element, prefix).map(str::to_owned)
             })
@@ -2299,39 +1591,6 @@ fn compile_sort_path(
         }
         Err(failure) => Err(map_path_failure(failure)),
     }
-}
-
-fn compile_sort_function_path(
-    document: &Document,
-    element: NodeId,
-    expression: &str,
-    function: &str,
-    location: &SourceLocation,
-) -> Result<Option<LocationPath>, CompileFailure> {
-    let expression = expression.trim();
-    let Some(argument) = expression
-        .strip_prefix(function)
-        .and_then(|value| value.strip_prefix('('))
-        .and_then(|value| value.strip_suffix(')'))
-        .map(str::trim)
-    else {
-        return Ok(None);
-    };
-    if argument.is_empty() {
-        return Ok(None);
-    }
-    let mut path = parse_location_path(argument, location.clone()).map_err(map_path_failure)?;
-    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
-        for step in &mut path.steps {
-            if let PathStep::ChildNamed(local) = step {
-                *step = PathStep::ChildExpandedName(ExpandedName {
-                    namespace: Some(namespace.to_owned()),
-                    local: local.clone(),
-                });
-            }
-        }
-    }
-    Ok(Some(path))
 }
 
 pub(super) fn uses_xslt10_compatibility(document: &Document, element: NodeId) -> bool {
@@ -2516,7 +1775,7 @@ pub(super) fn compile_processing_instruction(
             document.location(element),
         ));
     }
-    let children = meaningful_children(document, element);
+    let children = super::stylesheet_preprocessing::constructor_children(document, element)?;
     let mut value = String::new();
     let mut requires_dynamic_content = false;
     for child in children.iter().copied() {
@@ -2609,7 +1868,7 @@ pub(super) fn compile_comment(
             )
         })?
     } else {
-        let children = meaningful_children(document, element);
+        let children = super::stylesheet_preprocessing::constructor_children(document, element)?;
         let mut value = String::new();
         let mut requires_dynamic_content = false;
         for child in children.iter().copied() {
@@ -3027,6 +2286,17 @@ fn compile_select_variable(
     expression: &str,
     location: SourceLocation,
 ) -> Result<Instruction, CompileFailure> {
+    if uses_xslt10_compatibility(document, element)
+        && let Some(select) = value_expression_compiler::compile_generated_identity(
+            document, element, expression, &location,
+        )?
+    {
+        return Ok(Instruction::Xslt10GeneratedUnionIdentityVariable {
+            name,
+            select: Box::new(select),
+            location,
+        });
+    }
     if let Some(offset) = parse_context_position_offset(expression) {
         return Ok(Instruction::ContextPositionVariable {
             name: name.clone(),
@@ -3277,6 +2547,17 @@ fn compile_local_variable_path_variable(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<Option<Instruction>, CompileFailure> {
+    if uses_xslt10_compatibility(document, element)
+        && let Some((source, select)) =
+            bound_variable_path_compiler::compile(document, element, expression, location)?
+    {
+        return Ok(Some(Instruction::SourceVariablePathVariable {
+            name: name.to_owned(),
+            source,
+            select,
+            location: location.clone(),
+        }));
+    }
     let Some((source, select)) = value_expression_compiler::compile_xslt10_variable_path(
         document, element, expression, location,
     )?
@@ -3286,7 +2567,7 @@ fn compile_local_variable_path_variable(
     Ok(Some(Instruction::SourceVariablePathVariable {
         name: name.to_owned(),
         source,
-        select,
+        select: crate::xslt::golden_semantics_experiment::BoundVariablePath::Path(select),
         location: location.clone(),
     }))
 }
@@ -3349,7 +2630,7 @@ fn compile_content_variable(
         return Ok(variable);
     }
     if optional_attribute(document, element, None, "as").is_none()
-        && meaningful_children(document, element)
+        && super::stylesheet_preprocessing::constructor_children(document, element)?
             .iter()
             .all(|child| document.kind(*child) == NodeKind::Element)
     {
@@ -3408,7 +2689,7 @@ pub(super) fn compile_xslt10_static_text_tree(
     if !uses_xslt10_compatibility(document, element) {
         return Ok(None);
     }
-    let children = meaningful_children(document, element);
+    let children = super::stylesheet_preprocessing::constructor_children(document, element)?;
     if children.is_empty()
         || !children.iter().all(|child| {
             document.kind(*child) == NodeKind::Text || is_xslt_element(document, *child, "text")
@@ -3449,7 +2730,7 @@ fn compile_xslt10_value_of_tree_variable(
     {
         return Ok(None);
     }
-    let children = meaningful_children(document, element);
+    let children = super::stylesheet_preprocessing::constructor_children(document, element)?;
     let [value_of] = children.as_slice() else {
         return Ok(None);
     };
@@ -3481,7 +2762,7 @@ pub(super) fn compile_xslt10_for_each_text_path(
     if !uses_xslt10_compatibility(document, element) {
         return Ok(None);
     }
-    let children = meaningful_children(document, element);
+    let children = super::stylesheet_preprocessing::constructor_children(document, element)?;
     let [for_each] = children.as_slice() else {
         return Ok(None);
     };
@@ -3489,7 +2770,7 @@ pub(super) fn compile_xslt10_for_each_text_path(
         return Ok(None);
     }
     ensure_only_attributes(document, *for_each, &["select"], "xsl:for-each")?;
-    let body = meaningful_children(document, *for_each);
+    let body = super::stylesheet_preprocessing::constructor_children(document, *for_each)?;
     let [value_of] = body.as_slice() else {
         return Ok(None);
     };
@@ -3612,7 +2893,7 @@ fn compile_integer_range_variable(
             location,
         ));
     }
-    let children = meaningful_children(document, element);
+    let children = super::stylesheet_preprocessing::constructor_children(document, element)?;
     let [for_each] = children.as_slice() else {
         return Err(unsupported(
             "FXST1017",
@@ -3671,7 +2952,7 @@ fn validate_atomized_range_body(
     document: &Document,
     for_each: NodeId,
 ) -> Result<(), CompileFailure> {
-    let children = meaningful_children(document, for_each);
+    let children = super::stylesheet_preprocessing::constructor_children(document, for_each)?;
     let [wrapper] = children.as_slice() else {
         return Err(unsupported(
             "FXST1017",
@@ -3690,7 +2971,7 @@ fn validate_atomized_range_body(
             document.location(*wrapper),
         ));
     }
-    let body = meaningful_children(document, *wrapper);
+    let body = super::stylesheet_preprocessing::constructor_children(document, *wrapper)?;
     let [value_of] = body.as_slice() else {
         return Err(unsupported(
             "FXST1017",
@@ -3953,29 +3234,6 @@ fn effective_string_comparison(
         current = document.parent(node);
     }
     Ok(StringComparison::Codepoint)
-}
-
-pub(super) fn effective_xml_space_preserved(
-    document: &Document,
-    element: NodeId,
-) -> Result<bool, CompileFailure> {
-    const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
-    let mut current = Some(element);
-    while let Some(node) = current {
-        if let Some(value) = optional_attribute(document, node, Some(XML_NAMESPACE), "space") {
-            return match value {
-                "preserve" => Ok(true),
-                "default" => Ok(false),
-                _ => Err(invalid(
-                    "XTSE0020",
-                    "xml:space must be 'default' or 'preserve'",
-                    document.location(node),
-                )),
-            };
-        }
-        current = document.parent(node);
-    }
-    Ok(false)
 }
 
 fn validate_choose_structure(

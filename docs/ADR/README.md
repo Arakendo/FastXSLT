@@ -96,3 +96,11 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; derive bounded owner-qualified namespace values through shared
   semantic consumers without eager prepared-arena expansion or implying
   completed executable namespace support.
+- [ADR-0022: Explicit Retained Owners for Runtime Source Node Values](ADR-0022-explicit-retained-owners-for-runtime-source-node-values.md)
+  -- Accepted; retain effective source owners independently of document-origin
+  node identity, preserving frame isolation and source-context cache confinement.
+  Compiled admission and cross-document ranking remain separate gates.
+- [ADR-0023: Compilation Scoped Stylesheet Preprocessing Profiles](ADR-0023-compilation-scoped-stylesheet-preprocessing-profiles.md)
+  -- Accepted; select private strict-1.0 or modern preprocessing once for the
+  entire compilation graph, independent of local version compatibility.
+  Integration and public profile selection remain separate gates.

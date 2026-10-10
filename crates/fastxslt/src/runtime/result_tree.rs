@@ -285,6 +285,7 @@ pub(super) fn materialize_computed_attributes(
                 },
                 name,
                 variables,
+                attribute.recover_duplicate,
                 &attribute.location,
                 control,
             )?;
@@ -473,7 +474,7 @@ fn materialize_source_node_variable_count(
         .and_then(|()| control.charge(WorkDomain::XPathOperation, 1))
         .map_err(|failure| control_failure(failure, request_id))?;
     let nodes = variables
-        .source_nodes(inputs.globals, variable)
+        .source_nodes_in_context(inputs, variable)?
         .ok_or_else(|| {
             failure_at(
                 "XPTY0004",

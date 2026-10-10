@@ -12,3 +12,5 @@ pub(crate) mod qualified_nodes;
 pub(crate) mod namespace_binding_reference;
 #[cfg(test)]
 mod namespace_nodes_reference;
+#[cfg(test)]
+pub(crate) mod retained_nodes_reference;

@@ -1,5 +1,7 @@
 //! Hand-authored temporary-path golden behavior, not a corpus conformance claim.
 
+use std::collections::{BTreeMap, HashSet};
+
 use crate::execution_control_experiment::{
     CancellationToken, InvocationControl, WorkDomain, WorkLimits,
 };
@@ -8,13 +10,102 @@ use crate::xdm::owned_tree_experiment::Document;
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
-use super::super::{FailureCategory, compile_resource, execute_program, serialize_xml};
+use super::super::{
+    ExecutionFailure, ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest,
+    TransformSetBuilder, compile_resource, execute_program, execute_transform_set, serialize_xml,
+};
 
 const STYLE_ID: &str = "urn:golden:temporary-path-for-each:style";
 const STYLE: &[u8] =
     include_bytes!("../../../../../../corpus/golden/temporary-path-for-each/stylesheet.xsl");
 const EXPECTED: &str =
     include_str!("../../../../../../corpus/golden/temporary-path-for-each/expected.xml");
+
+fn document_variable_outcome(
+    global: &str,
+    local: &str,
+    consumer: &str,
+) -> Result<String, ExecutionFailure> {
+    let style = format!(
+        r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/>{global}<xsl:template match="/"><out>{local}{consumer}</out></xsl:template></xsl:stylesheet>"#
+    );
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8192, 16384));
+    let style_id = "https://example.test/sequence/style.xsl";
+    let source_id = "https://example.test/sequence/source.xml";
+    resources.admit(style_id, style.into_bytes()).unwrap();
+    resources
+        .admit(source_id, b"<r>principal</r>".to_vec())
+        .unwrap();
+    resources
+        .admit(
+            "https://example.test/sequence/extra.xml",
+            b"<r>external</r>".to_vec(),
+        )
+        .unwrap();
+    let snapshot = resources.seal();
+    let compiled = compile_resource(&snapshot, style_id).unwrap();
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        compiled,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 8192,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "sequence-variable".to_owned(),
+        result_identity: "result".to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .unwrap();
+    execute_transform_set(set.seal())
+        .map(|results| results.by_request["sequence-variable"].serialized.clone())
+}
+
+#[test]
+fn secondary_document_sequence_variables_report_unsupported_with_consumer_provenance() {
+    let binding = "<xsl:variable name='v' select=\"document('extra.xml')\"/>";
+    for consumer in [
+        "<xsl:apply-templates select='$v'><xsl:sort select='.'/></xsl:apply-templates>",
+        "<xsl:for-each select='$v'><xsl:value-of select='.'/></xsl:for-each>",
+    ] {
+        for (global, local) in [(binding, ""), ("", binding)] {
+            let error = document_variable_outcome(global, local, consumer).unwrap_err();
+            assert_eq!(error.code, "FXRT0007");
+            assert_eq!(error.category, FailureCategory::Unsupported);
+            assert_eq!(error.request_id.as_deref(), Some("sequence-variable"));
+            let location = error.location.unwrap();
+            assert_eq!(location.resource, "https://example.test/sequence/style.xsl");
+            assert!(location.span.start < location.span.end);
+            assert!(error.detail.contains("secondary-document variable"));
+        }
+    }
+}
+
+#[test]
+fn secondary_document_sequence_guard_respects_local_shadowing_and_unbound_variables() {
+    let global = "<xsl:variable name='v' select=\"document('extra.xml')\"/>";
+    for consumer in [
+        "<xsl:apply-templates select='$v'/>",
+        "<xsl:for-each select='$v'><xsl:value-of select='.'/></xsl:for-each>",
+    ] {
+        assert_eq!(
+            document_variable_outcome(global, "<xsl:variable name='v' select='/r'/>", consumer)
+                .unwrap(),
+            "<out>principal</out>"
+        );
+        let missing = document_variable_outcome("", "", consumer).unwrap_err();
+        assert_eq!(missing.code, "FXRT0002");
+        assert_eq!(missing.category, FailureCategory::Invalid);
+    }
+}
 
 fn program(bytes: &[u8]) -> StylesheetProgram {
     let mut builder = ResourceSetBuilder::new(ResourceLimits::new(1, 8192, 8192));
@@ -248,4 +339,70 @@ fn temporary_attribute_paths_do_not_admit_instruction_version_override() {
     assert_eq!(failure.code, "FXST1009");
     assert_eq!(failure.category, FailureCategory::Unsupported);
     assert_eq!(failure.location.unwrap().resource, STYLE_ID);
+}
+
+#[test]
+fn wildcard_temporary_for_each_reports_unsupported_instead_of_panicking() {
+    let failed_source = Document::from_parsed(
+        parse_document(
+            "urn:wildcard:failed",
+            b"<doc attempt='yes'/>",
+            ParseLimits {
+                max_events: 8,
+                max_depth: 4,
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let recovered_source = Document::from_parsed(
+        parse_document(
+            "urn:wildcard:recovered",
+            b"<doc/>",
+            ParseLimits {
+                max_events: 8,
+                max_depth: 4,
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    for (global, local) in [
+        ("<xsl:variable name='t'><box/></xsl:variable>", ""),
+        ("", "<xsl:variable name='t'><box/></xsl:variable>"),
+    ] {
+        let bytes = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/>{global}<xsl:template match="/"><out>{local}<xsl:if test="doc/@attempt='yes'"><xsl:for-each select="$t/*"><xsl:value-of select="name()"/></xsl:for-each></xsl:if></out></xsl:template></xsl:stylesheet>"#
+        );
+        let compiled = program(bytes.as_bytes());
+        let error = execute_program(
+            &compiled,
+            &failed_source,
+            "wildcard",
+            &mut InvocationControl::unbounded(),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "FXRT0007");
+        assert_eq!(error.category, FailureCategory::Unsupported);
+        assert_eq!(error.request_id.as_deref(), Some("wildcard"));
+        assert_eq!(error.location.unwrap().resource, STYLE_ID);
+        let recovered = execute_program(
+            &compiled,
+            &recovered_source,
+            "recovered",
+            &mut InvocationControl::unbounded(),
+        )
+        .unwrap();
+        assert_eq!(
+            serialize_xml(
+                &recovered,
+                &compiled.output,
+                "recovered",
+                8192,
+                &mut InvocationControl::unbounded()
+            )
+            .unwrap(),
+            "<out></out>"
+        );
+    }
 }

@@ -8,8 +8,8 @@ use encoding_rs::{BIG5, Encoding, ISO_2022_JP, SHIFT_JIS, WINDOWS_1252};
 
 use crate::runtime::oasis_html_comparator::normalize_for_xml_comparison;
 use crate::runtime::workbench_experiment::{
-    ExperimentalEngine, WorkbenchExternalSubsetLimits, WorkbenchFailure, WorkbenchLimits,
-    WorkbenchResource, WorkbenchStylesheetResources,
+    ExperimentalEngine, PreprocessingProbeOptions, WorkbenchExternalSubsetLimits, WorkbenchFailure,
+    WorkbenchLimits, WorkbenchResource, WorkbenchStylesheetResources,
 };
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::internal_subset::InternalSubsetLimits;
@@ -359,6 +359,13 @@ impl Measurement {
 #[ignore = "local-only OASIS XSLT 1.0 compatibility measurement; use scripts/measure-oasis-xslt10.ps1"]
 #[allow(clippy::too_many_lines)]
 fn measures_local_oasis_xslt10_compatibility() {
+    let preprocessing_profile = std::env::var("FASTXSLT_OASIS_PREPROCESSING_PROFILE")
+        .unwrap_or_else(|_| "modern".to_owned());
+    assert!(
+        matches!(preprocessing_profile.as_str(), "modern" | "strict-xslt10"),
+        "unknown measurement preprocessing profile"
+    );
+    let strict_preprocessing = preprocessing_profile == "strict-xslt10";
     let root = PathBuf::from(
         std::env::var_os(SUITE_ROOT_ENVIRONMENT)
             .expect("measurement script must supply the extracted OASIS TESTS directory"),
@@ -513,41 +520,26 @@ fn measures_local_oasis_xslt10_compatibility() {
                 dependencies: resources,
                 denied_identities: Vec::new(),
             };
-            match (
-                reviewed_external_subset,
-                reviewed_stylesheet_external_subset,
-            ) {
-                (source_external, stylesheet_external)
-                    if source_external.is_some() || stylesheet_external.is_some() =>
-                {
-                    ExperimentalEngine::new_with_bounded_external_subsets(
-                        source_identity.clone(),
-                        source,
-                        stylesheet_identity,
-                        stylesheet,
-                        stylesheet_resources,
-                        measurement_limits(),
-                        WorkbenchExternalSubsetLimits {
-                            declarations: dtd_reference_limits(),
-                            source: source_external.map(|external| {
-                                (external.reference, MAX_REVIEWED_EXTERNAL_SUBSET_BYTES)
-                            }),
-                            stylesheet: stylesheet_external.map(|external| {
-                                (external.reference, MAX_REVIEWED_EXTERNAL_SUBSET_BYTES)
-                            }),
-                        },
-                    )
-                }
-                _ => ExperimentalEngine::new_with_bounded_internal_subsets(
-                    source_identity.clone(),
-                    source,
-                    stylesheet_identity,
-                    stylesheet,
-                    stylesheet_resources,
-                    measurement_limits(),
-                    dtd_reference_limits(),
-                ),
-            }
+            ExperimentalEngine::new_with_preprocessing_probe(
+                source_identity.clone(),
+                source,
+                stylesheet_identity,
+                stylesheet,
+                stylesheet_resources,
+                measurement_limits(),
+                PreprocessingProbeOptions {
+                    strict: strict_preprocessing,
+                    subsets: WorkbenchExternalSubsetLimits {
+                        declarations: dtd_reference_limits(),
+                        source: reviewed_external_subset.map(|external| {
+                            (external.reference, MAX_REVIEWED_EXTERNAL_SUBSET_BYTES)
+                        }),
+                        stylesheet: reviewed_stylesheet_external_subset.map(|external| {
+                            (external.reference, MAX_REVIEWED_EXTERNAL_SUBSET_BYTES)
+                        }),
+                    },
+                },
+            )
         }));
         let engine = match engine {
             Ok(Ok(engine)) => {
@@ -837,6 +829,7 @@ fn measures_local_oasis_xslt10_compatibility() {
     );
 
     println!("OASIS_XSLT10_MEASUREMENT_BEGIN");
+    println!("preprocessing-profile\t{preprocessing_profile}");
     for (key, value) in &measurement.counters {
         println!("counter\t{key}\t{value}");
     }
@@ -969,6 +962,13 @@ fn reviewed_source_document_resources(case: &LegacyCase) -> Vec<WorkbenchResourc
         // beside the stylesheet. Admit the same reviewed bytes under that
         // distinct logical identity; resolution itself remains engine-owned.
         "Lotus/select_select68#1" => &[("select68.xml", "select68.xml")],
+        // As above, select59's literal reference uses the stylesheet-relative
+        // identity, not the principal input's source/ identity. This explicit
+        // import mapping grants no runtime filesystem fallback.
+        "Lotus/select_select59#1" => &[("select59.xml", "select59.xml")],
+        // select71 likewise references the unchanged principal fixture beside
+        // its stylesheet; admit bytes explicitly, not ambient file authority.
+        "Lotus/select_select71#1" => &[("select71.xml", "select71.xml")],
         "Lotus/reluri_reluri10#1" => &[(
             "level1/level2/level3/xreluri09a.xml",
             "level1/level2/level3/xreluri09a.xml",

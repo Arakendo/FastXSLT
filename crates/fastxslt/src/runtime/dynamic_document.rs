@@ -1,5 +1,9 @@
 //! Invocation-owned preparation for literal sealed-snapshot `document()` references.
 
+#[cfg(test)]
+#[path = "dynamic_document/retained_owner_tests.rs"]
+mod retained_owner_tests;
+
 use std::collections::HashSet;
 use std::sync::Arc;
 

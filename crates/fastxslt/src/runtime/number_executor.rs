@@ -276,7 +276,7 @@ fn dynamic_variable_string_value(
             .collect::<Vec<_>>()
             .join(" "));
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, variable)? {
         let source = inputs.source.ok_or_else(|| {
             failure(
                 "FXRT1004",

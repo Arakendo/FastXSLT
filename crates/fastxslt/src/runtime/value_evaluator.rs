@@ -2,6 +2,16 @@
 
 use std::cmp::Ordering;
 
+#[path = "value_evaluator/literal_document_value_evaluator.rs"]
+mod literal_document_value_evaluator;
+
+use literal_document_value_evaluator::append_xslt10_literal_document_path;
+
+#[path = "value_evaluator/composed_string_evaluator.rs"]
+mod composed_string_evaluator;
+#[path = "value_evaluator/generated_identity_evaluator.rs"]
+mod generated_identity_evaluator;
+
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{NodeId, SourceLocation, StringValueVisitFailure};
@@ -72,6 +82,9 @@ mod xslt10_compatibility;
 #[path = "value_evaluator/temporary_attribute_path.rs"]
 mod temporary_attribute_path;
 
+#[path = "value_evaluator/id_value_evaluator.rs"]
+mod id_value_evaluator;
+
 use super::{
     ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceContext,
     SequenceFocus, SequenceInputs, append_text, control_failure, failure, failure_at,
@@ -93,6 +106,15 @@ pub(super) fn evaluate_xslt10_variable_string_comparison(
 
 pub(super) fn xslt10_number_lexical(value: &str) -> String {
     xslt10_compatibility::number_lexical(value)
+}
+
+pub(super) fn xslt10_path_string_predicate(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &crate::xslt::golden_semantics_experiment::Xslt10PathStringFunction,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    xslt10_compatibility::path_string_predicate(inputs, context, expression, control)
 }
 
 pub(super) fn xslt10_variable_string_length(
@@ -147,7 +169,7 @@ pub(super) fn variable_string_function_value(
             )),
         };
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, variable)? {
         return match nodes.as_slice() {
             [] => Ok(String::new()),
             [node] => {
@@ -225,6 +247,24 @@ pub(super) fn xslt10_variable_number(
     Ok(
         crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&value)
             .unwrap_or(f64::NAN),
+    )
+}
+
+pub(super) fn xslt10_generated_union_identity(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    select: &crate::xslt::golden_semantics_experiment::Xslt10GeneratedUnionPosition,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    generated_identity_evaluator::union_position_value(
+        inputs,
+        context,
+        &select.selection,
+        &select.variable,
+        &select.location,
+        variables,
+        control,
     )
 }
 
@@ -318,6 +358,16 @@ pub(super) fn evaluate_xslt10_concat(
     Ok(value)
 }
 
+pub(super) fn evaluate_xslt10_concat_lexical(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &crate::xslt::golden_semantics_experiment::Xslt10ConcatExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    xslt10_compatibility::concat_value(inputs, context, expression, variables, control)
+}
+
 fn evaluate_xslt10_variable_string_variables_comparison(
     inputs: &SequenceInputs<'_>,
     left: &str,
@@ -326,8 +376,8 @@ fn evaluate_xslt10_variable_string_variables_comparison(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
-    if variables.source_nodes(inputs.globals, left).is_some()
-        || variables.source_nodes(inputs.globals, right).is_some()
+    if variables.source_nodes_in_context(inputs, left)?.is_some()
+        || variables.source_nodes_in_context(inputs, right)?.is_some()
     {
         return Err(failure(
             "FXRT1015",
@@ -435,35 +485,12 @@ pub(super) fn execute_value_of(
             let parent = super::namespace_focus::parent_context(inputs, path, execution, control)?;
             append_context_node_namespace_uri(inputs, parent, result, control)?;
         }
-        ValueExpression::Xslt10IdLookup(lookup) => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let variable_value = xslt10_id_variable_value(inputs, lookup, variables, control)?;
-            if let Some(node) = super::id_lookup::select(
-                source,
-                context,
-                lookup,
-                variable_value.as_deref(),
-                inputs.request_id,
-                control,
-            )?
-            .first()
-            {
-                append_source_string_value(inputs, *node, result, control)?;
-            }
-        }
-        ValueExpression::Xslt10CountIdLookup(lookup) => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let variable_value = xslt10_id_variable_value(inputs, lookup, variables, control)?;
-            let count = super::id_lookup::select(
-                source,
-                context,
-                lookup,
-                variable_value.as_deref(),
-                inputs.request_id,
-                control,
-            )?
-            .len();
-            append_text(result, &count.to_string(), inputs.request_id, control)?;
+        ValueExpression::Xslt10IdLookup(_)
+        | ValueExpression::Xslt10CountIdLookup(_)
+        | ValueExpression::Xslt10NameIdLookup(_)
+        | ValueExpression::Xslt10LocalNameIdLookup(_)
+        | ValueExpression::Xslt10NamespaceUriIdLookup(_) => {
+            id_value_evaluator::execute(inputs, select, execution, variables, result, control)?;
         }
         ValueExpression::Xslt10KeyLookup(lookup) => {
             append_xslt10_key_lookup(inputs, lookup, context, variables, result, control)?;
@@ -570,7 +597,7 @@ pub(super) fn execute_value_of(
         }
         ValueExpression::CountSourceNodeVariable(variable) => {
             let count = variables
-                .source_nodes(inputs.globals, variable)
+                .source_nodes_in_context(inputs, variable)?
                 .map(Vec::len)
                 .or_else(|| {
                     variables
@@ -599,6 +626,11 @@ pub(super) fn execute_value_of(
         ValueExpression::GeneratedNodeIdentity(path) => {
             append_generated_node_identity(inputs, path, context, result, control)?;
         }
+        ValueExpression::Xslt10GeneratedUnionPosition(select) => {
+            let value =
+                xslt10_generated_union_identity(inputs, context, select, variables, control)?;
+            append_text(result, &value, inputs.request_id, control)?;
+        }
         ValueExpression::GeneratedRootIdentity(path) => {
             append_generated_root_identity(inputs, path, context, result, control)?;
         }
@@ -616,8 +648,29 @@ pub(super) fn execute_value_of(
         ValueExpression::GeneratedDocumentRootIdentity(reference) => {
             append_generated_document_root_identity(inputs, reference, result, control)?;
         }
-        ValueExpression::Xslt10LiteralDocumentPath { reference, path } => {
-            append_xslt10_literal_document_path(inputs, reference, path, result, control)?;
+        ValueExpression::Xslt10LiteralDocumentPath {
+            reference,
+            path,
+            outer_attribute_filter,
+        } => {
+            if outer_attribute_filter.is_some() && execution.temporary_focus.is_some() {
+                return Err(failure_at(
+                    "FXRT0007",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    path.location.clone(),
+                    "current-attribute document lookup requires ordinary source focus",
+                ));
+            }
+            append_xslt10_literal_document_path(
+                inputs,
+                context,
+                reference,
+                path,
+                outer_attribute_filter.as_ref(),
+                result,
+                control,
+            )?;
         }
         ValueExpression::NodeIdentityEqual { left, right } => {
             let equal = evaluate_node_identity_equal(inputs, left, right, context, control)?;
@@ -970,6 +1023,12 @@ pub(super) fn execute_value_of(
                 inputs, context, expression, result, control,
             )?;
         }
+        ValueExpression::Xslt10ComposedString(expression) => {
+            let value = composed_string_evaluator::evaluate(
+                inputs, context, expression, variables, control,
+            )?;
+            append_text(result, &value, inputs.request_id, control)?;
+        }
         ValueExpression::Xslt10VariableSubstring(expression) => {
             xslt10_compatibility::append_variable_substring(
                 inputs, expression, variables, result, control,
@@ -1128,6 +1187,18 @@ fn append_binary_numeric(
         control,
     )?;
     append_text(result, &value, inputs.request_id, control)
+}
+
+pub(super) fn evaluate_xslt10_path_substring_lexical(
+    source: &crate::xdm::owned_tree_experiment::Document,
+    context: NodeId,
+    expression: &crate::xslt::golden_semantics_experiment::Xslt10PathSubstring,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    xslt10_compatibility::path_substring_from_source(
+        source, context, expression, request_id, control,
+    )
 }
 
 pub(super) fn evaluate_binary_numeric_value(
@@ -1810,36 +1881,6 @@ fn append_generated_document_root_identity(
     append_text(result, &identity, inputs.request_id, control)
 }
 
-fn append_xslt10_literal_document_path(
-    inputs: &SequenceInputs<'_>,
-    reference: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
-    path: &crate::xpath::path_experiment::LocationPath,
-    result: &mut Vec<ResultNode>,
-    control: &mut InvocationControl,
-) -> Result<(), ExecutionFailure> {
-    let dynamic = super::dynamic_document::prepare_document(inputs, reference, control)?;
-    let effective_document = super::derive_effective_source(
-        &inputs.program.source_whitespace,
-        dynamic.document.as_ref(),
-        super::WhitespaceRepresentation::VisibilityView,
-        inputs.request_id,
-        control,
-    )?;
-    let document = effective_document
-        .as_ref()
-        .unwrap_or(dynamic.document.as_ref());
-    let selected =
-        evaluate_location_path_controlled(document, document.document_node(), path, control)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let Some(node) = selected.first().copied() else {
-        return Ok(());
-    };
-    let value = document
-        .string_value_controlled(node, control)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    append_text(result, &value, inputs.request_id, control)
-}
-
 fn append_integer_for(
     inputs: &SequenceInputs<'_>,
     expression: &crate::xpath::integer_for_experiment::IntegerForExpression,
@@ -1887,7 +1928,7 @@ fn append_generated_temporary_root_identity(
     };
     append_text(
         result,
-        &format!("fastxslt-temporary-d{identity}"),
+        &format!("fastxsltTemporaryD{identity}"),
         inputs.request_id,
         control,
     )
@@ -2065,7 +2106,7 @@ fn append_root_variable_string(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let nodes = variables
-        .source_nodes(inputs.globals, name)
+        .source_nodes_in_context(inputs, name)?
         .ok_or_else(|| {
             failure(
                 "FXRT0002",
@@ -2881,7 +2922,7 @@ fn append_variable_value(
         }
         return Ok(());
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         for (index, node) in nodes.iter().enumerate() {
             if index > 0 {
                 append_text(result, separator, inputs.request_id, control)?;
@@ -2913,7 +2954,7 @@ fn variable_is_empty(
     if let Some(values) = variables.atomic_sequences.get(name) {
         return Ok(values.is_empty());
     }
-    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+    if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         return Ok(nodes.is_empty());
     }
     if variables.temporary_tree(inputs.globals, name).is_some() {
@@ -2943,7 +2984,7 @@ fn variable_is_string(
             matches!(values.as_slice(), [value] if value.atomic_type() == BuiltinAtomicType::String),
         );
     }
-    if variables.source_nodes(inputs.globals, name).is_some()
+    if variables.source_nodes_in_context(inputs, name)?.is_some()
         || variables.temporary_tree(inputs.globals, name).is_some()
         || (variables.allows_global_fallback(name) && inputs.globals.empty_sequences.contains(name))
     {

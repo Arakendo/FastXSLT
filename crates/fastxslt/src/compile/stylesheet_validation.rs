@@ -69,6 +69,7 @@ fn validate_named_calls(
             | Instruction::ContextCountPathVariable { .. }
             | Instruction::Xslt10BinaryNumericVariable { .. }
             | Instruction::Xslt10ConcatVariable { .. }
+            | Instruction::Xslt10GeneratedUnionIdentityVariable { .. }
             | Instruction::Xslt10KeyVariable { .. }
             | Instruction::Xslt10LiteralDocumentVariable { .. }
             | Instruction::SourceNodeVariable { .. }
@@ -95,6 +96,7 @@ fn validate_named_calls(
             | Instruction::CopyOfSourceDocuments { .. }
             | Instruction::CopyOfXslt10KeyLookup { .. }
             | Instruction::CopyOfPathUnion { .. }
+            | Instruction::CopyOfXslt10MixedUnion { .. }
             | Instruction::CopyOfStaticAtomicText { .. }
             | Instruction::CopyOfVariable { .. }
             | Instruction::CopyOfAtomicValue { .. }

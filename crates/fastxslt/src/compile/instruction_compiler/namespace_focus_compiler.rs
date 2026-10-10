@@ -8,6 +8,39 @@ use crate::xslt::golden_semantics_experiment::ApplySelection;
 use crate::xslt::golden_semantics_experiment::NamespaceScalarKind;
 use crate::xslt::golden_semantics_experiment::SortSelect;
 
+pub(super) fn compile_copy_of(
+    select: &str,
+    location: &super::SourceLocation,
+    recover_unattached_attributes: bool,
+) -> Result<Instruction, CompileFailure> {
+    let path = crate::xpath::path_experiment::qualified_nodes::parse(select, location.clone())
+        .map_err(map_path_failure)?;
+    if !matches!(
+        path,
+        crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath::Namespace { .. }
+    ) {
+        return Err(unsupported(
+            "FXXP1001",
+            "namespace copy-of admits only a terminal namespace selection",
+            location,
+        ));
+    }
+    // Namespace nodes have no children or attributes. An empty copy constructor
+    // therefore has the same copy semantics without admitting shallow tree copies.
+    Ok(Instruction::ForEachNodes {
+        select: ApplySelection::QualifiedPath(path),
+        sorts: Vec::new(),
+        body: vec![Instruction::Copy {
+            attributes: Vec::new(),
+            attribute_set_names: Vec::new(),
+            body: Vec::new(),
+            recover_unattached_attributes,
+            location: location.clone(),
+        }],
+        location: location.clone(),
+    })
+}
+
 pub(super) fn compile_scalar(
     expression: &str,
     location: &super::SourceLocation,
@@ -31,6 +64,7 @@ pub(super) fn compile_scalar(
         ("local-name", NamespaceScalarKind::LocalName),
         ("namespace-uri", NamespaceScalarKind::NamespaceUri),
         ("count", NamespaceScalarKind::Count),
+        ("generate-id", NamespaceScalarKind::GeneratedIdentity),
     ] {
         if let Some(argument) = expression
             .strip_prefix(function)
@@ -40,7 +74,7 @@ pub(super) fn compile_scalar(
             let path =
                 crate::xpath::path_experiment::qualified_nodes::parse(argument, location.clone())
                     .map_err(map_path_failure)?;
-            if matches!(
+            if kind == NamespaceScalarKind::GeneratedIdentity || matches!(
                 path,
                 crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath::Namespace { .. }
             ) {

@@ -6,25 +6,322 @@ standards scope are decided.
 
 ## Current critical path
 
-The latest namespace slice carries actual qualified focus through the shared
+The current OASIS checkpoint is 2,500 / 3,173 exact comparisons (78.79%);
+80% requires another 39 exact cases. Resume the ranked ordinary frontier,
+without implicitly opening secondary-document DTDs, cross-document value
+identity, namespace-valued variables, or legacy namespace-copy recovery.
+
+The [positional namespace identity slice](../Evidence/oasis-xslt10-positional-namespace-identity-2026-10-07.md)
+gets unchanged `Lotus/idkey_idkey31#1` through shared qualified selection and
+scalar identity binding. It does not admit namespace-valued frames, mixed
+namespace positional unions, secondary identity strings, or new preprocessing
+edition behavior. The conserved replay reports 2,700 initialized, 2,652
+executed, 470 initialization failures, 48 execution failures, 14 mismatches,
+four comparator gaps and 423 / 431 expected-error credits at that checkpoint.
+
+The [grouped variable scalar continuation](../Evidence/oasis-xslt10-grouped-document-variable-scalars-2026-10-07.md)
+conserves the exact numerator. Transparent `($variable)` reads reuse existing
+legacy conversion; sealed document-root values are converted through their
+effective owner, not the active principal document. The unchanged archival
+root-node case now gets past compilation and fails explicitly on its historical
+backslash UNC reference (`FXRS0005`), without an invented resolver mapping.
+Current replay: 2,701 initialized, 2,652 executed, 469 initialization failures,
+49 execution failures, 14 mismatches, four comparator gaps, and 423 / 431
+expected-error credits. This is semantic progress, not another exact pass.
+
+[AR-0029](../Architectural%20Reviews/AR-0029-stylesheet-preprocessing-edition-and-legacy-whitespace.md)
+is accepted through
+[ADR-0023](../ADR/ADR-0023-compilation-scoped-stylesheet-preprocessing-profiles.md):
+explicit strict-1.0 and modern preprocessing profiles are selected once for the
+whole compilation graph, including include/import modules, independently of
+local version compatibility. Next, integrate the private selector through shared
+and static/temporary constructors, validate module/ancestry inheritance and
+replay OASIS under strict mode plus pinned modern cases under modern mode.
+The current 2,500 exact checkpoint still uses modern preprocessing; acceptance
+does not relabel it as strict-profile coverage. Preserve separate profile-labelled
+reports and original archived comparisons even if the strict numerator falls.
+No public selector or fixture normalization is selected.
+
+The private graph reference now selects strict preprocessing once, before
+compiling all loaded modules. Twenty-seven focused controls prove transitive
+include/import, embedded ancestry, literal-result stylesheet and common
+global/local/static constructor parity, with retained identity/provenance and
+bounded-view controls. Production remains modern; strict selection is test-only.
+Unchanged full replays report **modern 2,500 / 3,173 (78.79%)** and **strict
+experiment 2,497 / 3,173 (78.70%)**, not a combined numerator. Strict gains the
+Microsoft case and loses four Lotus archival comparisons. Next: residual
+constructor/parameter audit, canonical modern instruction-specific rules and
+compiled-profile confinement before promotion. Strict graph preprocessing now
+uses a supplied aggregate phase control, including the corpus workbench's XDM
+ceiling; exact/one-less budgets, cancellation across module boundaries and
+original module-root failure provenance are tested. Graph loading and lowering
+are not metered by that control and retain their existing independent limits.
+Lossy local `value-of`/`for-each` constructor shortcuts now reject eligibility
+when preserved text requires the complete shared sequence path.
+Global text-parts, named-template/conditional/parentless constructor eligibility
+and named/matched parameter defaults now use common text selection. Text-only
+parameter defaults concatenate selected fragments, not the original subtree
+string value that could reintroduce stripped whitespace. Both full profile
+replays remain conserved. The admitted typed integer-range shortcut now uses
+common constructor selection at variable, loop and wrapper levels: preserved
+text disqualifies it explicitly rather than being discarded, while ordinary
+strip-eligible formatting remains supported. Structural handling and canonical
+preprocessing still need their audit before promotion.
+The test-only modern visibility reference now proves forced stripping under
+all 20 specified parent instructions, before param/sort/context-item/on-completion
+and after catch, even under preserved space. It retains original text fragments
+and uses merged-run eligibility; it is not yet canonical merged-text lowering
+or a production graph path. Exact/one-less work and cancellation controls pass.
+The measurement script can replay either named profile; its default remains
+modern until the private integration gates are complete.
+
+The 2026-10-07 replay establishes this checkpoint. The next shared architectural
+frontier is [AR-0028](../Architectural%20Reviews/AR-0028-owner-qualified-runtime-node-values.md):
+ordinary node values must retain their actual document owner through focus
+switches, variables and unions. The test-only retained-owner reference now
+passes four identity/lifetime, effective-view and controlled-retention tests.
+Three additional controls prove real sealed-owner reuse and existing literal-
+document COW/complete-clone frame parity. Three more tests establish retained
+ordinary-node sequence parity through test-gated runtime frame hooks. Three
+ordering/isolation controls now cover same-origin mixed normalization,
+cross-origin identity-only deduplication and concurrent local retained values.
+The invocation-table reference passes three identity/control/capacity tests:
+it reduces owner clones but does not save selection-buffer space. Rotated
+reference timing shows cheaper large-vector clones but slower table lookup;
+nine complete allocation scopes show higher table total/peak requested bytes.
+Two live-admission controls now prove retained-owner frame aliases survive real
+resolver growth and concurrent old/new snapshots. Cache review requires fresh
+source-context key/match caches during migration; origin alone is not a view key.
+The [accepted retained-owner ADR](../ADR/ADR-0022-explicit-retained-owners-for-runtime-source-node-values.md)
+selects explicit owner retention, distinguishing document-origin node identity
+from effective navigation ownership. Compiled
+generation/focus parity and integrated frame costs now have a bounded compiled
+slice; general cross-document ranking remains open. Unchanged `mdocs14` now
+compares exactly under ADR-0022; acceptance itself never implied corpus support.
+The borrowed principal-owner adaptation reference now preserves effective
+relationships and typed-ID metadata without copying node records. Exact-budget,
+cancellation and release controls pass. Six allocation cells and five release
+timing windows per cell identify material copied-ID metadata cost (about 119 KB
+cumulative requested bytes and 68 microseconds construct/drop at 500 items).
+The paired shared-metadata candidate now requests 80 bytes across every tested
+shape, with roughly 54–64 ns median construct/drop versus about 72 microseconds
+for the 500-item ID-copy lane. Private document metadata is immutable and shared;
+the copying oracle remains. Integrated Rust dispatch/allocation controls now
+pass; broader consumer and host-cost gates remain pending. Reference-only
+measurements never earn corpus credit.
+Bound sealed-document variables can now enter ordinary template dispatch with
+fresh effective-source caches, preserving aliases, mode and atomic parameters.
+Principal-source globals now retain one immutable effective owner, and lexical
+aliases preserve it through COW/complete-clone frames. Owner-aware dispatch
+returns from secondary focus through the ordinary executor; other local-ID
+consumers reject nonempty foreign-owner selections with `FXRT1017`. Retained
+frame storage is lazy on ordinary paths. Exact-budget, active cancellation,
+key/match-cache confinement, concurrent generation and allocation-release
+controls pass. Sorted document-variable selection and broader node-value
+consumers are not admitted by this slice. The next bounded owner-preserving
+path slice now gets unchanged `mdocs16` through grouped first-node child paths
+with atomic-string attribute filters, retained attribute aliases and XSLT 1.0
+string conversion. Unchanged `select59` also compares exactly: its literal
+document-path union branch evaluates empty after ordinary sealed resolution.
+The harness explicitly admits its reviewed bytes under the stylesheet-relative
+identity; nonempty document-union branches remain unsupported. Cross-document
+ranking remains unselected. The conserved replay reports 2,697 initialized,
+2,648 executed, 473 initialization failures, 49 execution failures, 14 XML
+mismatches, four comparator gaps and 423 / 431 expected-error credits.
+Both cases earn exact credit only after unchanged execution/comparison.
+Private binding/path extraction and remaining ADR-0004 source/directory pressure
+are recorded in AR-0028; broader owner-path expansion requires the next cohesion
+review rather than growing the composition roots unchecked.
+The first behavior-preserving checkpoint is now implemented: key/mixed union
+evaluation has a private source-selection owner, grouped beside retained
+variable-path evaluation. The runtime composition root is 6,591 lines (down
+from 6,672), and its direct child-file count is 15 (down from 16). Remaining
+dispatch/compiler decomposition debt is not retired by this extraction.
+The next owner-aware slice admits ordinary retained single-owner variables to
+sequential `xsl:for-each`, using the same sort/body executor, fresh source caches
+on owner switches, charged ID retention and restored lexical/focus context.
+A first-party golden covers sorted secondary iteration, nested principal return,
+key-cache confinement, COW/complete-clone parity and control/release boundaries.
+Bound document-root variables and arbitrary document expressions remain outside
+that slice. Its complete OASIS replay conserved 78.66%; golden evidence was not
+additional corpus credit. The next slice admits source-selected `document(path)`
+iteration only when resolution produces zero or one effective document. Lexical
+source selections retain their effective owner before a focus switch; key lookup
+converts its argument using that owner but searches the current focus document.
+Unchanged `idkey52` now compares exactly, raising the checkpoint to 78.70%.
+Its document selection is empty at the actual `bibref` focus; independent
+nonempty tests prove owner/key/focus behavior rather than inferring it from
+that corpus pass. Multiple-document iteration remains explicitly unsupported.
+The replay now reports 2,698 initialized, 2,649 executed and 472 initialization
+failures; execution failures, mismatches, comparator gaps and expected-error
+credits remain unchanged. `idkey49` still needs mixed-document identity
+expressions and is not credited in advance.
+Template-executing global initialization remains a separate lifecycle question.
+
+Unchanged `impincl18` now compares exactly: a root rule using `apply-imports`,
+directly or through a reachable named call, uses ordinary matched-rule dispatch
+rather than the identity-less direct-root fast path. A call into another module
+is conservatively ineligible for that fast path. `for-each` clears the current
+rule for its body while named calls preserve it; the enclosing rule survives
+after iteration. Located continuation errors remain structured. Ordinary roots
+without delegation keep their fast path. The replay reaches 2,650 executions
+and 48 execution failures; all other denominator/accounting totals are conserved.
+[Current-rule and decomposition record](../Architectural%20Reviews/AR-0028-owner-qualified-runtime-node-values.md#current-template-rule-conservation--2026-10-07)
+
+Unchanged `select71` now compares exactly through XSLT 1.0 `copy-of` over the
+shared mixed-union selection plan. All document branches must evaluate empty
+after normal sealed resolution; local nodes are normalized before copying into
+result-owned storage. Nonempty foreign branches remain unsupported. Its
+stylesheet-relative XML reference is explicitly admitted by the first-party
+harness, with unchanged upstream bytes and no runtime filesystem fallback.
+The full replay reaches 2,699 initialized and 2,651 executed, with 471
+initialization failures and 48 execution failures; mismatch, comparator-gap and
+expected-error totals remain conserved.
+[Copy-union conservation record](../Architectural%20Reviews/AR-0028-owner-qualified-runtime-node-values.md#guarded-copy-union-conservation--2026-10-07)
+
+Unchanged `mdocs17` now compares exactly through a bounded literal-document
+lookup ending in `[@candidate=current()/@outer]`. The outer attribute is
+converted while its source owns the focus; only its optional string value
+crosses into sealed-document evaluation. Expanded names, missing-versus-empty
+attributes, first-node conversion, work controls and authority remain explicit.
+This does not admit general cross-document values or temporary lookup focus.
+
+The follow-up private literal-document compiler/evaluator extraction is
+complete, with all corpus totals conserved. Broader document expressions still
+require an explicit value-ownership review; smaller source files do not admit
+cross-document node sequences or template execution during global initialization.
+
+[Current attribute document lookup evidence](../Evidence/oasis-xslt10-current-predicate-lexical-boundaries-2026-10-04.md#current-attribute-document-lookup)
+
+An earlier frontier exposed a diagnostic classification defect:
+`mdocs14` holds a bound secondary-document variable, but general sequence
+dispatch called it unbound. `apply-templates` and `for-each` now report that
+ownership boundary as located `FXRT0007 / unsupported`; genuinely missing
+variables remain invalid and local source-node shadowing still executes.
+That repair conserved its then-current numerator and failure totals and did
+not itself admit cross-document variable dispatch; the later ADR-0022 slice
+above admits only its independently tested operations. Remaining ordinary
+unsupported cases increasingly require shared ownership or expression work,
+not another case-specific recognizer. Review that scope before extending it.
+
+[Secondary document classification evidence](../Evidence/oasis-xslt10-current-predicate-lexical-boundaries-2026-10-04.md#secondary-document-sequence-classification)
+
+The latest shared string-expression tranche makes unchanged `sort36` compare
+exactly. Ordinary value output and concat keys share bounded nested substring
+sources and dynamic bounds made from string lengths, selected boolean-to-number
+conversion and multiplication. Path-based `starts-with()` conditions reuse the
+same controlled conversion as value output. This is not a sort-only shortcut
+or a general expression evaluator; variable bounds, arbitrary numeric
+conversion, broader operators and secondary-document concat sorting remain
+unsupported. The prior sort traversal repairs remain covered by exact budget,
+cancellation, recovery and whitespace-view/reference regressions.
+
+[Concat sort and runtime decomposition evidence](../Evidence/oasis-xslt10-concat-sort-and-runtime-decomposition-2026-10-04.md)
+
+The latest lexical repair keeps quoted `current()` text distinct from the
+XSLT function and removes a UTF-8 predicate-scanner panic. It gains no corpus
+passes. The full replay remains conserved; `mdocs14` still needs cross-document
+value ownership. The subsequent scalar lookup tranche above closes `mdocs17`
+without carrying bare node IDs across source ownership.
+
+[Current predicate lexical evidence](../Evidence/oasis-xslt10-current-predicate-lexical-boundaries-2026-10-04.md)
+
+A recent namespace slice carries actual qualified focus through the shared
 boolean evaluator, admitting bounded `contains(., literal)` and focus-number
 conditions in `if`/`choose` with short-circuit composition. Unchanged
 `position111` now compares exactly. Mixed sorting, namespace variables, broader
 conditionals and temporary namespace focus remain unsupported. Resume ordinary
-corpus breadth from the ranked remaining frontier; the immediate 80% target
-still requires 54 more exact comparisons.
+corpus breadth from the ranked remaining frontier.
 
 Namespace-count template arguments reuse the existing qualified selector.
 XSLT 1.0 composed `contains()` conditions now reuse typed concatenation and
 variable string conversion through the same evaluator as scalar output, with
-short-circuit composition preserved. `idkey31` advances to `generate-id(/)`
-inside concatenation, but does not yet compare exactly. Namespace-valued
-variables and broader generated-ID strings remain unsupported. Full replay
+short-circuit composition preserved. Ordinary source `generate-id(path)` and
+zero-argument identity parts now compose with the same bounded concatenation
+plan. The full 2026-10-04 replay leaves exact coverage unchanged; `idkey31`
+advances past concatenated root identity to filtered namespace-ID variable
+selection, but does not yet compare exactly. Namespace-valued
+variables and broader generated-ID strings remained unsupported at that
+checkpoint; the narrower principal-source string extension below supersedes
+that restriction for its tested consumers. Full replay
 remains unchanged; the four comparator gaps involving legacy reference bytes
 or nonparseable XML remain uncredited.
 
-The XSLT 1.0 compatibility track has reached 2,485 / 3,173 exact OASIS
-comparisons (78.32%). The provisional 75% checkpoint was crossed by replaying
+[Source identity composition evidence](../Evidence/oasis-xslt10-concat-contains-composition-2026-09-23.md#source-identity-composition-on-2026-10-04)
+
+The next 2026-10-04 tranche extracts private concat and typed-ID compiler
+owners before extending composition. XSLT 1.0 `name(id(...))`,
+`local-name(id(...))`, and `namespace-uri(id(...))` now reuse the shared
+charged typed-ID selector and ordinary node-name consumers. `Bug76054`
+advances from compilation to a visible secondary-`document()` DTD denial;
+that runtime parsing profile is not implicitly widened. Source and temporary
+generated-ID strings now satisfy the required ASCII alphanumeric spelling.
+Exact coverage remains 2,485 / 3,173; the next breadth slice should avoid
+the deferred secondary-DTD and namespace-variable identity boundaries.
+
+[Typed ID composition and decomposition evidence](../Evidence/oasis-xslt10-id-name-composition-and-decomposition-2026-10-04.md)
+
+A 2026-10-04 tranche repairs XSLT 1.0 explicit computed-attribute
+namespace overrides through static and dynamic names, gaining three unchanged
+exact cases. Direct terminal namespace `xsl:copy-of` now lowers through the
+existing qualified selector and empty copy constructor, but gains no exact
+case: `Namespace_Bug85356` reaches the still-unselected legacy default-namespace
+copy recovery boundary. Mixed/document namespace copies remain unsupported.
+That repair did not cover computed elements; the subsequent tranche below
+addresses their explicit namespace behavior separately.
+
+[Explicit attribute namespaces and namespace copy evidence](../Evidence/oasis-xslt10-explicit-attribute-namespaces-and-namespace-copy-2026-10-04.md)
+
+The subsequent computed-element tranche first extracts its private compiler
+without changing any corpus disposition, then repairs XSLT 1.0 explicit
+namespace handling for static and dynamic names. Empty overrides discard
+lexical prefixes; reserved prefixes are replaced safely and XML names use
+canonical `xml`. Local static context selects compatibility. Two unchanged
+cases compare exactly. Temporary wildcard `for-each` remains unsupported but
+now returns a located diagnostic instead of reaching an internal panic;
+existing named temporary paths retain their shared execution path.
+
+[Computed element namespaces and dispatch evidence](../Evidence/oasis-xslt10-computed-element-namespaces-and-dispatch-2026-10-04.md)
+
+The next namespace-identity tranche admits scalar qualified `generate-id()`
+strings and their XSLT 1.0 concat/containment operands from principal-source
+focus. Owner/prefix uniqueness, first-node versus modern cardinality,
+mixed normalization, whitespace-view identity, concurrency, charges, and
+controlled recovery share the existing qualified selector. Temporary and
+secondary-document string consumers remain explicitly unsupported rather
+than aliasing principal IDs. `idkey30` advances to its filtered-union identity
+expression, but that replay gains no exact case. Its 2,490 / 3,173 checkpoint
+does not credit an improved first blocker; the next tranche below earns credit.
+
+[Namespace identity string evidence](../Evidence/oasis-xslt10-namespace-identity-strings-2026-10-04.md)
+
+The filtered-union identity tranche reuses shared charged union normalization
+before whole-set `position() = $atomic` filtering. Scalar output and local
+atomic string bindings share one private evaluator; empty identity strings
+remain false rather than acquiring temporary-tree truthiness. Unchanged
+`Lotus/idkey_idkey30#1` now compares exactly. Namespace-valued variables,
+non-atomic position comparisons, temporary/secondary source identity consumers,
+and modern generalized expressions remain unsupported. Resume ranked ordinary
+breadth without widening those boundaries.
+
+[Filtered union identity evidence](../Evidence/oasis-xslt10-filtered-union-identity-2026-10-04.md)
+
+The subsequent sort checkpoint extracts private typed key/control compilation
+before semantic repair, conserving every OASIS counter and existing sort test.
+Quote-aware namespace routing then distinguishes the valid but unsupported
+composed `sort36` expression from invalid QName syntax. Its quoted `Re: ` is
+not a namespace name. This earns no exact-case credit; composed conditional
+substring/concat sort keys remain a future shared expression slice.
+The conservation replay also replaces an accidental QName error with the real
+`system-property()` wrong-arity diagnostic and preserves existing XSLT 1.x
+forward-compatible deferral for that known expression error. Mixed
+principal/secondary document unions remain outside the current ordering
+boundary, not a parser shortcut toward 80%.
+
+[Sort compiler and diagnostic evidence](../Evidence/oasis-xslt10-sort-compiler-and-quoted-colon-diagnostics-2026-10-04.md)
+
+The XSLT 1.0 compatibility track has reached 2,492 / 3,173 exact OASIS
+comparisons (78.54%). The provisional 75% checkpoint was crossed by replaying
 one already-proven sealed external-subset mechanism across the reviewed case-
 local `plants.dtd` family, not by weakening XML semantics or authority. Two
 post-checkpoint safe slices—declared ISO-2022-JP input and dynamic
@@ -33,7 +330,7 @@ the numerator because the affected archival input is malformed under strict
 decoding and the PI cases expose earlier unrelated AVT gaps. AR-0025 has now
 concluded as successful bounded feasibility with deferred expansion: its
 private reference paths leave nine explicitly unsupported cases in the
-currently observed 133-case direct-DTD attribution set without changing
+previously observed 133-case direct-DTD attribution set without changing
 production-default denial. Those nine
 require external general/parameter entities or unavailable absolute subsets,
 so ordinary non-DTD corpus breadth resumes instead of opening that larger XML
@@ -52,7 +349,7 @@ still deny every DTD. The complete runner now owns
 the direct-DTD attribution accounting: 128 internal subsets, 102 external
 identifiers, 37 attribute-list declarations, ten default-attribute candidates,
 nine entity declarations, five external-general-entity candidates, and 26
-typed-ID candidates across 133 currently observed cases. These are overlapping
+typed-ID candidates across those 133 cases. These are overlapping
 pressure counts, not expected passes or a closed denominator. Three typed-ID
 cases became attributable only after their earlier stylesheet-expression
 compile blocker was removed. A further six became attributable when literal

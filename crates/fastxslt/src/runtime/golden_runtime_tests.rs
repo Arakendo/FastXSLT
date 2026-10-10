@@ -6,6 +6,26 @@ mod path_unions;
 #[path = "golden_runtime_tests/composed_contains.rs"]
 mod composed_contains;
 
+#[path = "golden_runtime_tests/concat_sort.rs"]
+mod concat_sort;
+
+#[path = "golden_runtime_tests/current_document_lookup.rs"]
+mod current_document_lookup;
+#[path = "golden_runtime_tests/document_variable_dispatch.rs"]
+mod document_variable_dispatch;
+
+#[path = "golden_runtime_tests/id_name_composition.rs"]
+mod id_name_composition;
+
+#[path = "golden_runtime_tests/identity_union_position.rs"]
+mod identity_union_position;
+
+#[path = "golden_runtime_tests/computed_element_namespaces.rs"]
+mod computed_element_namespaces;
+
+#[path = "golden_runtime_tests/template_rule_context.rs"]
+mod template_rule_context;
+
 use std::collections::{BTreeMap, HashSet};
 
 use crate::execution_control_experiment::{
@@ -2268,7 +2288,7 @@ fn generate_id_uses_stable_distinct_source_node_identity() {
 
     assert_eq!(
         results.by_request["generate-id"].serialized,
-        "<out><same>true</same><different>false</different><current-same>true</current-same><current>fastxslt-principal-n0</current><first>fastxslt-principal-n2</first><again>fastxslt-principal-n2</again><empty></empty></out>"
+        "<out><same>true</same><different>false</different><current-same>true</current-same><current>fastxsltPrincipalN0</current><first>fastxsltPrincipalN2</first><again>fastxsltPrincipalN2</again><empty></empty></out>"
     );
 }
 
@@ -5286,7 +5306,7 @@ fn xslt10_generate_id_key_avt_uses_first_selected_source_node_identity() {
 
     assert_eq!(
         results.by_request["key-identity-avt"].serialized,
-        "<out><a href=\"#fastxslt-principal-n6\">seattle</a><a href=\"#\">missing</a></out>"
+        "<out><a href=\"#fastxsltPrincipalN6\">seattle</a><a href=\"#\">missing</a></out>"
     );
 }
 
@@ -5313,7 +5333,7 @@ fn xslt10_generate_id_avt_uses_the_current_source_node_identity() {
 
     assert_eq!(
         results.by_request["context-identity-avt"].serialized,
-        "<out><entry id=\"node-fastxslt-principal-n2-end\">fastxslt-principal-n2</entry></out>"
+        "<out><entry id=\"node-fastxsltPrincipalN2-end\">fastxsltPrincipalN2</entry></out>"
     );
 }
 
@@ -13708,7 +13728,7 @@ fn xslt10_source_valued_global_tree_honors_constructor_xml_space() {
 }
 
 #[test]
-fn xslt10_text_only_global_constructor_strips_only_defaulted_whitespace_nodes() {
+fn modern_global_constructor_merges_comment_separated_whitespace() {
     const SOURCE: &str = "urn:fastxslt:global-text-space:source";
     const STYLESHEET: &str = "urn:fastxslt:global-text-space:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
@@ -13742,7 +13762,7 @@ fn xslt10_text_only_global_constructor_strips_only_defaulted_whitespace_nodes() 
 
     assert_eq!(
         results.by_request["global-text-space"].serialized,
-        "<out>//AAA/CCC/text()|\n    kept\n  </out>"
+        "<out>\n    //AAA/CCC/text()\n  |\n    kept\n  </out>"
     );
 }
 

@@ -9,7 +9,7 @@ use super::{
 };
 use crate::execution_control_experiment::{CancellationToken, InvocationControl};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
-use crate::runtime::golden_runtime_experiment::compile_resource_with_denied_and_limits;
+use crate::runtime::golden_runtime_experiment::compile_resource_with_preprocessing_control;
 #[cfg(test)]
 use crate::runtime::prepared_input_experiment::PreparationCapacity;
 use crate::runtime::prepared_input_experiment::PreparedInputBuilder;
@@ -24,6 +24,8 @@ struct ConstructionOptions {
     stylesheet_external_subset: Option<(&'static str, usize)>,
     #[cfg(test)]
     capacity: PreparationCapacity,
+    #[cfg(test)]
+    strict_preprocessing: bool,
 }
 
 #[cfg(test)]
@@ -119,6 +121,7 @@ impl ExperimentalEngine {
                 source_external_subset: None,
                 stylesheet_external_subset: None,
                 capacity: PreparationCapacity::Growth,
+                strict_preprocessing: false,
             },
         )
     }
@@ -146,6 +149,7 @@ impl ExperimentalEngine {
                 source_external_subset: None,
                 stylesheet_external_subset: None,
                 capacity: PreparationCapacity::Growth,
+                strict_preprocessing: false,
             },
         )
     }
@@ -173,6 +177,36 @@ impl ExperimentalEngine {
                 source_external_subset: external_subsets.source,
                 stylesheet_external_subset: external_subsets.stylesheet,
                 capacity: PreparationCapacity::Growth,
+                strict_preprocessing: false,
+            },
+        )
+    }
+
+    /// Test-only profile replay; no supported host selector or wire change.
+    #[cfg(test)]
+    pub(crate) fn new_with_preprocessing_probe(
+        source_id: impl Into<String>,
+        source: Vec<u8>,
+        stylesheet_id: impl Into<String>,
+        stylesheet: Vec<u8>,
+        stylesheet_resources: WorkbenchStylesheetResources,
+        limits: WorkbenchLimits,
+        probe: super::PreprocessingProbeOptions,
+    ) -> Result<Self, WorkbenchFailure> {
+        Self::new_with_construction_options(
+            source_id,
+            source,
+            stylesheet_id,
+            stylesheet,
+            stylesheet_resources,
+            limits,
+            &ConstructionOptions {
+                source: Some(probe.subsets.declarations),
+                stylesheet: Some(probe.subsets.declarations),
+                source_external_subset: probe.subsets.source,
+                stylesheet_external_subset: probe.subsets.stylesheet,
+                capacity: PreparationCapacity::Growth,
+                strict_preprocessing: probe.strict,
             },
         )
     }
@@ -242,11 +276,22 @@ impl ExperimentalEngine {
             dtd_limits.stylesheet,
             dtd_limits.stylesheet_external_subset,
         );
-        let program = compile_resource_with_denied_and_limits(
+        #[cfg(test)]
+        let compile_limits = if dtd_limits.strict_preprocessing {
+            compile_limits.with_strict_preprocessing()
+        } else {
+            compile_limits
+        };
+        // Compilation preprocessing and source preparation have independent
+        // phase budgets. This does not meter graph loading or lowering.
+        let mut preprocessing_control =
+            InvocationControl::new(CancellationToken::new(), work_limits(limits));
+        let program = compile_resource_with_preprocessing_control(
             &snapshot,
             &stylesheet_id,
             stylesheet_resources.denied_identities,
             compile_limits,
+            &mut preprocessing_control,
         )
         .map_err(|failure| project_execution(&failure))?;
         let builder = PreparedInputBuilder::with_parse_limits(

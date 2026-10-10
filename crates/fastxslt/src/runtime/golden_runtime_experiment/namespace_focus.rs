@@ -41,6 +41,7 @@ pub(super) fn execute<'a>(
             body,
             SequenceContext {
                 node,
+                current_template_index: None,
                 namespace_focus,
                 temporary_focus: None,
                 atomic_focus: None,
@@ -92,7 +93,7 @@ pub(super) fn generated_identity_equal<'a>(
     })
 }
 
-fn select<'a>(
+pub(super) fn select<'a>(
     inputs: &SequenceInputs<'a>,
     path: &QualifiedLocationPath,
     execution: SequenceContext<'a>,
@@ -130,6 +131,76 @@ fn select<'a>(
     Ok(selected)
 }
 
+pub(super) fn generated_identity<'a>(
+    inputs: &SequenceInputs<'a>,
+    path: &QualifiedLocationPath,
+    first_node: bool,
+    execution: SequenceContext<'a>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|error| control_failure(error, inputs.request_id))?;
+    // Secondary documents have invocation-qualified identities of their own.
+    // Do not label their local IDs as principal IDs while cross-document string
+    // identity remains deferred. same_origin also recognizes effective views.
+    super::runtime_context::ensure_principal_identity_context(
+        inputs,
+        execution.node,
+        path.location(),
+        control,
+    )?;
+    let selected = select(inputs, path, execution, control)?;
+    if !first_node && selected.len() > 1 {
+        return Err(failure_at(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            path.location().clone(),
+            "generate-id requires zero or one qualified node",
+        ));
+    }
+    let Some(node) = selected.first().copied() else {
+        return Ok(String::new());
+    };
+    node_identity(inputs, node, control)
+}
+
+// Callers must establish principal-origin eligibility before selecting nodes.
+pub(super) fn node_identity(
+    inputs: &SequenceInputs<'_>,
+    node: QualifiedSourceNode<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    use std::fmt::Write;
+
+    match node {
+        QualifiedSourceNode::Tree { id, .. } => {
+            Ok(super::runtime_context::source_node_identity(id))
+        }
+        QualifiedSourceNode::Namespace(namespace) => {
+            let QualifiedSourceNode::Tree { id: owner, .. } =
+                node.parent().expect("namespace has an owner")
+            else {
+                unreachable!("namespace parent is an element");
+            };
+            // Only the current source is admitted by select(). Match its existing
+            // tree-ID vocabulary, with a disjoint namespace tag and injective UTF-8
+            // prefix encoding. Neither URI equality nor a view's address is identity.
+            // Charge the bounded encoding work before allocating the string.
+            let charge = 64_usize.saturating_add(namespace.prefix().len().saturating_mul(2));
+            control
+                .charge(WorkDomain::XPathOperation, charge)
+                .map_err(|error| control_failure(error, inputs.request_id))?;
+            let mut value = format!("fastxsltPrincipalNs{}P", owner.index());
+            for byte in namespace.prefix().bytes() {
+                write!(value, "{byte:02X}").expect("String formatting cannot fail");
+            }
+            Ok(value)
+        }
+    }
+}
+
 pub(super) fn count<'a>(
     inputs: &SequenceInputs<'a>,
     path: &QualifiedLocationPath,
@@ -158,6 +229,10 @@ pub(super) fn execute_scalar<'a>(
     else {
         unreachable!("qualified scalar adapter receives a typed namespace scalar");
     };
+    if matches!(kind, NamespaceScalarKind::GeneratedIdentity) {
+        let value = generated_identity(inputs, path, *first_node, execution, control)?;
+        return append_text(result, &value, inputs.request_id, control);
+    }
     if matches!(kind, NamespaceScalarKind::Count) {
         return append_text(
             result,
@@ -187,6 +262,9 @@ pub(super) fn execute_scalar<'a>(
         NamespaceScalarKind::LocalName => ValueExpression::ContextNodeLocalName,
         NamespaceScalarKind::NamespaceUri => ValueExpression::ContextNodeNamespaceUri,
         NamespaceScalarKind::Count => unreachable!("count handled before scalar node selection"),
+        NamespaceScalarKind::GeneratedIdentity => {
+            unreachable!("identity handled before scalar node selection")
+        }
     };
     super::execute_value_of(
         inputs,

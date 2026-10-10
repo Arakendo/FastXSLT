@@ -1,5 +1,6 @@
 //! Adapts an admitted stylesheet resource into the private compiled program.
 
+use crate::compile::golden_stylesheet_experiment::stylesheet_preprocessing::StylesheetPreprocessingProfile;
 use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
     compile_stylesheet_module_at_unlinked, compile_stylesheet_with_import_and_include,
@@ -10,6 +11,7 @@ use crate::compile::golden_stylesheet_experiment::{
     compile_stylesheet_with_single_include_program_at,
     compile_stylesheet_with_two_included_programs_at, validate_import_order_at,
 };
+use crate::execution_control_experiment::InvocationControl;
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
 use crate::xml::internal_subset::InternalSubsetLimits;
 use crate::xml::quick_xml_experiment::ParseLimits;
@@ -33,6 +35,7 @@ pub(in crate::runtime) struct StylesheetCompileLimits {
     xml: ParseLimits,
     internal_subset: Option<InternalSubsetLimits>,
     external_subset: Option<StylesheetExternalSubsetLimits>,
+    preprocessing: StylesheetPreprocessingProfile,
 }
 
 impl StylesheetCompileLimits {
@@ -53,7 +56,14 @@ impl StylesheetCompileLimits {
             xml,
             internal_subset: None,
             external_subset: None,
+            preprocessing: StylesheetPreprocessingProfile::Modern,
         }
+    }
+
+    #[cfg(test)]
+    pub(in crate::runtime) const fn with_strict_preprocessing(mut self) -> Self {
+        self.preprocessing = StylesheetPreprocessingProfile::StrictXslt10;
+        self
     }
 
     #[cfg(test)]
@@ -107,25 +117,37 @@ pub(in crate::runtime) fn compile_resource_with_denied(
     )
 }
 
+#[cfg(test)]
 pub(in crate::runtime) fn compile_resource_with_denied_and_limits(
     snapshot: &ResourceSnapshot,
     stylesheet_id: &str,
     denied: impl IntoIterator<Item = String>,
     limits: StylesheetCompileLimits,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
+    compile_resource_with_preprocessing_control(
+        snapshot,
+        stylesheet_id,
+        denied,
+        limits,
+        &mut InvocationControl::unbounded(),
+    )
+}
+
+/// Private phase control: charges stylesheet preprocessing, not graph loading
+/// or lowering. Loading retains its independent XML/dependency ceilings.
+pub(in crate::runtime) fn compile_resource_with_preprocessing_control(
+    snapshot: &ResourceSnapshot,
+    stylesheet_id: &str,
+    denied: impl IntoIterator<Item = String>,
+    limits: StylesheetCompileLimits,
+    control: &mut InvocationControl,
+) -> Result<StylesheetProgram, ExecutionFailure> {
     let mut resolver = SnapshotResolver::new(
         snapshot,
         denied,
         ResolutionLimits::new(limits.resolution_attempts),
     );
-    compile_resource_with_resolver_and_limits(
-        &mut resolver,
-        stylesheet_id,
-        limits.dependency,
-        limits.xml,
-        limits.internal_subset,
-        limits.external_subset,
-    )
+    compile_resource_with_resolver_and_limits(&mut resolver, stylesheet_id, limits, control)
 }
 
 #[cfg(test)]
@@ -136,35 +158,76 @@ fn compile_resource_with_resolver(
     compile_resource_with_resolver_and_limits(
         resolver,
         stylesheet_id,
-        DEFAULT_DEPENDENCY_LIMITS,
-        super::XML_LIMITS,
-        None,
-        None,
+        StylesheetCompileLimits {
+            dependency: DEFAULT_DEPENDENCY_LIMITS,
+            ..StylesheetCompileLimits::new(
+                2,
+                5,
+                1_048_576,
+                DEFAULT_RESOLUTION_ATTEMPTS,
+                super::XML_LIMITS,
+            )
+        },
+        &mut InvocationControl::unbounded(),
     )
 }
 
 fn compile_resource_with_resolver_and_limits(
     resolver: &mut SnapshotResolver<'_>,
     stylesheet_id: &str,
-    dependency_limits: DependencyLimits,
-    xml_limits: ParseLimits,
-    internal_subset_limits: Option<InternalSubsetLimits>,
-    external_subset_limits: Option<StylesheetExternalSubsetLimits>,
+    limits: StylesheetCompileLimits,
+    control: &mut InvocationControl,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
     let graph = load_stylesheet_dependency_graph(
         resolver,
         stylesheet_id,
-        dependency_limits,
-        xml_limits,
-        internal_subset_limits,
-        external_subset_limits,
+        limits.dependency,
+        limits.xml,
+        limits.internal_subset,
+        limits.external_subset,
     )
     .map_err(dependency_failure)?;
+    #[cfg(test)]
+    let graph = if limits.preprocessing == StylesheetPreprocessingProfile::StrictXslt10 {
+        let mut graph = graph;
+        preprocess_strict_graph(&mut graph, control)?;
+        graph
+    } else {
+        graph
+    };
+    let _ = (limits.preprocessing, control);
     debug_assert_eq!(graph.identity, stylesheet_id);
     let mut program = compile_loaded_graph(&graph).map_err(compile_failure)?;
     crate::compile::golden_stylesheet_experiment::finalize_attribute_sets(&mut program)
         .map_err(compile_failure)?;
     Ok(program)
+}
+
+#[cfg(test)]
+fn preprocess_strict_graph(
+    graph: &mut LoadedStylesheetModule,
+    control: &mut crate::execution_control_experiment::InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    use crate::compile::golden_stylesheet_experiment::stylesheet_preprocessing::{
+        StrictPreprocessingFailure, strict_stylesheet_view,
+    };
+    graph.document = strict_stylesheet_view(&graph.document, graph.root, control).map_err(
+        |error| match error {
+            StrictPreprocessingFailure::Compile(error) => compile_failure(error),
+            StrictPreprocessingFailure::Control(error) => {
+                let mut failure = super::control_failure(error, &graph.identity);
+                // Initialization has no transform request. The original module
+                // root identifies the failing phase, not an exact charge site.
+                failure.request_id = None;
+                failure.location = Some(graph.document.location(graph.root).clone());
+                failure
+            }
+        },
+    )?;
+    for dependency in &mut graph.dependencies {
+        preprocess_strict_graph(dependency, control)?;
+    }
+    Ok(())
 }
 
 fn compile_loaded_graph(
@@ -813,6 +876,10 @@ fn resolution_failure(
         ),
     }
 }
+
+#[cfg(test)]
+#[path = "resource_compiler/stylesheet_preprocessing_tests.rs"]
+mod stylesheet_preprocessing_tests;
 
 #[cfg(test)]
 mod tests {

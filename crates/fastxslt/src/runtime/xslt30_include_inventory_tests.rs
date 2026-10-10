@@ -177,7 +177,8 @@ fn executes_include_0202_apply_imports_with_parameter_and_computed_attribute() {
 #[test]
 fn executes_include_0105_principal_global_override_and_imported_named_template() {
     let execution = execute_inline_case_with_dependencies("include-0105");
-    assert!(execution.import_precedences.is_empty());
+    // The root calling another module now retains its matched-rule identity.
+    assert_eq!(execution.import_precedences, [0]);
     assert_eq!(
         execution.global_text_defaults,
         [("test".to_owned(), "OK".to_owned())]
@@ -219,7 +220,7 @@ fn executes_include_0501_later_import_global_parameter_precedence() {
 #[test]
 fn executes_include_0103_embedded_stylesheet_fragment_and_base() {
     let execution = execute_inline_case_with_dependencies("include-0103");
-    assert!(execution.import_precedences.is_empty());
+    assert_eq!(execution.import_precedences, [0]);
     assert!(execution.global_text_defaults.is_empty());
     assert_eq!(execution.named_template_names, ["x"]);
     assert_xml_equivalent(&execution.actual, &execution.expected);

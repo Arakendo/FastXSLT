@@ -56,6 +56,11 @@ pub(super) fn compile(
     ) {
         return composition;
     }
+    if let Some(value) =
+        compile_path_string_predicate(document, element, parsed, location, xslt10_compatibility)?
+    {
+        return Ok(value);
+    }
     if let Some(identity) = compile_identity_test(parsed, location)? {
         return Ok(identity);
     }
@@ -116,6 +121,32 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+fn compile_path_string_predicate(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+    xslt10_compatibility: bool,
+) -> Result<Option<BooleanExpression>, CompileFailure> {
+    if !xslt10_compatibility || !expression.starts_with("starts-with(") {
+        return Ok(None);
+    }
+    let Some(arguments) = expression
+        .strip_prefix("starts-with(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(|value| crate::xpath::static_string_experiment::split_arguments(value, 2))
+    else {
+        return Ok(None);
+    };
+    if arguments.len() != 2 || arguments[0].contains('(') || arguments[0].contains('$') {
+        return Ok(None);
+    }
+    super::value_expression_compiler::compile_xslt10_path_string_function(
+        document, element, expression, location,
+    )
+    .map(|value| value.map(|value| BooleanExpression::Xslt10PathStringPredicate(Box::new(value))))
 }
 
 fn compile_string_contains(

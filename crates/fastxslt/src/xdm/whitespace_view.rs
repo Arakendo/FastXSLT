@@ -92,7 +92,8 @@ impl Document {
             origin: self.origin.clone(),
             nodes: self.nodes.clone(),
             root: self.root,
-            child_overrides: (!child_overrides.is_empty()).then_some(child_overrides),
+            child_overrides: (!child_overrides.is_empty())
+                .then(|| std::sync::Arc::new(child_overrides)),
             id_index: self.id_index.clone(),
         })
     }
@@ -104,13 +105,17 @@ impl Document {
 
     #[cfg(test)]
     pub(crate) fn child_override_count(&self) -> usize {
-        self.child_overrides.as_ref().map_or(0, HashMap::len)
+        self.child_overrides
+            .as_ref()
+            .map_or(0, |overrides| overrides.len())
     }
 
     #[cfg(test)]
     pub(crate) fn exclusive_view_capacity_bytes(&self) -> usize {
         self.child_overrides.as_ref().map_or(0, |overrides| {
-            overrides.capacity() * std::mem::size_of::<(NodeId, Box<[NodeId]>)>()
+            std::mem::size_of::<HashMap<NodeId, Box<[NodeId]>>>()
+                + 2 * std::mem::size_of::<usize>()
+                + overrides.capacity() * std::mem::size_of::<(NodeId, Box<[NodeId]>)>()
                 + overrides
                     .values()
                     .map(|children| std::mem::size_of_val(children.as_ref()))

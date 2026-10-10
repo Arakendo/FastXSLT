@@ -593,6 +593,33 @@ pub(super) fn compile_source_documents_descendant_selection(
     element: NodeId,
     expression: &str,
 ) -> Result<Option<ApplySelection>, CompileFailure> {
+    compile_source_documents_selection(document, element, expression, false)
+}
+
+pub(super) fn compile_source_document_root_selection(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    let Some(argument) = expression
+        .trim()
+        .strip_prefix("document(")
+        .and_then(|body| body.strip_suffix(')'))
+    else {
+        return Ok(None);
+    };
+    if argument.trim().starts_with(['\'', '"']) {
+        return Ok(None);
+    }
+    compile_source_documents_selection(document, element, expression.trim(), true)
+}
+
+fn compile_source_documents_selection(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    allow_root: bool,
+) -> Result<Option<ApplySelection>, CompileFailure> {
     let Some(argument_and_tail) = expression.strip_prefix("document(") else {
         return Ok(None);
     };
@@ -632,7 +659,17 @@ pub(super) fn compile_source_documents_descendant_selection(
             let references =
                 parse_xslt10_location_path(references.trim(), document.location(element).clone())
                     .map_err(map_path_failure)?;
-            if let Some(name) = tail
+            if allow_root && tail.is_empty() {
+                Ok(Some(ApplySelection::Xslt10SourceDocumentsPath {
+                    references,
+                    path: parse_selection_path(
+                        document,
+                        element,
+                        "/",
+                        document.location(element).clone(),
+                    )?,
+                }))
+            } else if let Some(name) = tail
                 .strip_prefix("//")
                 .filter(|name| !name.is_empty() && !name.contains('/'))
             {
@@ -1208,6 +1245,17 @@ fn parse_xslt10_key_selection(
                 )?
                 .expect("id() prefix was checked");
                 compiled.push(Xslt10ApplyUnionPart::Id(Box::new(lookup)));
+            } else if alternative.starts_with("document(") {
+                let Some(ApplySelection::LiteralDocumentPath { reference, path }) =
+                    compile_literal_document_path_selection(document, element, alternative)?
+                else {
+                    return Err(unsupported(
+                        "FXXP1001",
+                        "this union branch requires a literal document child path",
+                        location,
+                    ));
+                };
+                compiled.push(Xslt10ApplyUnionPart::LiteralDocumentPath { reference, path });
             } else if let Some(variable) = alternative
                 .strip_prefix('$')
                 .filter(|name| is_ascii_ncname(name))
