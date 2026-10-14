@@ -247,47 +247,7 @@ pub(super) fn compile_sequence_excluding_with_bindings(
             }
             NodeKind::Comment | NodeKind::ProcessingInstruction => {}
             NodeKind::Element => {
-                let name = document.name(child).expect("element nodes have names");
-                if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
-                    if name.local == "fallback" && uses_xslt10_compatibility(document, child) {
-                        ensure_fallback_attributes(document, child)?;
-                    } else if uses_xslt10_forward_compatible_processing(document, child)
-                        && !is_xslt10_template_element(&name.local)
-                    {
-                        instructions.extend(compile_xslt10_forward_compatible_instruction(
-                            document,
-                            child,
-                            &name.local,
-                        )?);
-                    } else {
-                        match compile_xslt_instruction(
-                            document,
-                            child,
-                            &name.local,
-                            &mut local_variables,
-                        ) {
-                            Ok(instruction) => instructions.push(instruction),
-                            Err(failure)
-                                if uses_xslt10_forward_compatible_processing(document, child)
-                                    && matches!(
-                                        failure.code,
-                                        "XPST0003" | "XPST0017" | "XPTY0004"
-                                    ) =>
-                            {
-                                instructions.push(Instruction::Xslt10DeferredFailure {
-                                    code: failure.code,
-                                    detail: failure.detail,
-                                    location: failure.location,
-                                });
-                            }
-                            Err(failure) => return Err(failure),
-                        }
-                    }
-                } else if is_declared_extension_element(document, child) {
-                    instructions.extend(compile_extension_fallbacks(document, child)?);
-                } else {
-                    instructions.push(compile_literal_element(document, child)?);
-                }
+                compile_sequence_element(document, child, &mut local_variables, &mut instructions)?;
             }
             NodeKind::Document | NodeKind::Attribute => {
                 return Err(invalid(
@@ -300,6 +260,70 @@ pub(super) fn compile_sequence_excluding_with_bindings(
     }
     Ok(instructions)
 }
+
+/// One element-dispatch owner for baseline and canonical-content traversal.
+/// Lexical bindings and forward-compatible failure handling remain shared.
+fn compile_sequence_element(
+    document: &Document,
+    child: NodeId,
+    local_variables: &mut Vec<String>,
+    instructions: &mut Vec<Instruction>,
+) -> Result<(), CompileFailure> {
+    compile_sequence_element_with_literal_compiler(
+        document,
+        child,
+        local_variables,
+        instructions,
+        &mut compile_literal_element,
+    )
+}
+
+fn compile_sequence_element_with_literal_compiler<E: From<CompileFailure>>(
+    document: &Document,
+    child: NodeId,
+    local_variables: &mut Vec<String>,
+    instructions: &mut Vec<Instruction>,
+    literal_compiler: &mut impl FnMut(&Document, NodeId) -> Result<Instruction, E>,
+) -> Result<(), E> {
+    let name = document.name(child).expect("element nodes have names");
+    if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
+        if name.local == "fallback" && uses_xslt10_compatibility(document, child) {
+            ensure_fallback_attributes(document, child)?;
+        } else if uses_xslt10_forward_compatible_processing(document, child)
+            && !is_xslt10_template_element(&name.local)
+        {
+            instructions.extend(compile_xslt10_forward_compatible_instruction(
+                document,
+                child,
+                &name.local,
+            )?);
+        } else {
+            match compile_xslt_instruction(document, child, &name.local, local_variables) {
+                Ok(instruction) => instructions.push(instruction),
+                Err(failure)
+                    if uses_xslt10_forward_compatible_processing(document, child)
+                        && matches!(failure.code, "XPST0003" | "XPST0017" | "XPTY0004") =>
+                {
+                    instructions.push(Instruction::Xslt10DeferredFailure {
+                        code: failure.code,
+                        detail: failure.detail,
+                        location: failure.location,
+                    });
+                }
+                Err(failure) => return Err(failure.into()),
+            }
+        }
+    } else if is_declared_extension_element(document, child) {
+        instructions.extend(compile_extension_fallbacks(document, child)?);
+    } else {
+        instructions.push(literal_compiler(document, child)?);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "instruction_compiler/stylesheet_content_reference.rs"]
+mod stylesheet_content_reference;
 
 fn is_xslt10_template_element(local_name: &str) -> bool {
     matches!(
@@ -551,33 +575,45 @@ fn compile_literal_text_node(
     if !preserve_whitespace && is_xml_whitespace_only(value) {
         return Ok(None);
     }
-    if effective_expand_text(document, node)? {
-        let expression = value
-            .strip_prefix('{')
-            .and_then(|value| value.strip_suffix('}'));
-        if let Some(expression) = expression
-            && expression.contains(" instance of element(")
-            && expression.contains("//")
-        {
-            let parent = document.parent(node).expect("stylesheet text has a parent");
-            return Ok(Some(Instruction::ValueOf {
-                select: compile_value_expression(
-                    document,
-                    parent,
-                    expression,
-                    document.location(node),
-                )?,
-                separator: " ".to_owned(),
-                disable_output_escaping: false,
-                location: document.location(node).clone(),
-            }));
-        }
+    compile_literal_text_value(
+        document,
+        document.parent(node).expect("stylesheet text has a parent"),
+        value,
+        effective_expand_text(document, node)?,
+        document.location(node),
+    )
+    .map(Some)
+}
+
+fn compile_literal_text_value(
+    document: &Document,
+    parent: NodeId,
+    value: &str,
+    expand_text: bool,
+    location: &SourceLocation,
+) -> Result<Instruction, CompileFailure> {
+    if expand_text && let Some(expression) = admitted_expanded_text_expression(value) {
+        return Ok(Instruction::ValueOf {
+            select: compile_value_expression(document, parent, expression, location)?,
+            separator: " ".to_owned(),
+            disable_output_escaping: false,
+            location: location.clone(),
+        });
     }
-    Ok(Some(Instruction::Text {
+    Ok(Instruction::Text {
         value: value.to_owned(),
         disable_output_escaping: false,
-        location: document.location(node).clone(),
-    }))
+        location: location.clone(),
+    })
+}
+
+fn admitted_expanded_text_expression(value: &str) -> Option<&str> {
+    value
+        .strip_prefix('{')
+        .and_then(|value| value.strip_suffix('}'))
+        .filter(|expression| {
+            expression.contains(" instance of element(") && expression.contains("//")
+        })
 }
 
 fn effective_expand_text(document: &Document, node: NodeId) -> Result<bool, CompileFailure> {
@@ -686,6 +722,20 @@ pub(super) fn compile_literal_element(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
+    let (mut instruction, excluded) = compile_literal_element_parts(document, element)?;
+    let Instruction::LiteralElement { body, .. } = &mut instruction else {
+        unreachable!("literal element parts")
+    };
+    *body = compile_sequence_excluding(document, element, &excluded)?;
+    Ok(instruction)
+}
+
+/// Static construction owns validation and attribute exclusions; sequence
+/// traversal remains supplied by its caller. No result or source state enters.
+fn compile_literal_element_parts(
+    document: &Document,
+    element: NodeId,
+) -> Result<(Instruction, Vec<NodeId>), CompileFailure> {
     validate_extension_element_prefixes(document, element)?;
     if is_declared_extension_element(document, element) {
         return Err(unsupported(
@@ -716,19 +766,22 @@ pub(super) fn compile_literal_element(
         compile_attribute_set_use_names(document, element, Some(XSLT_NAMESPACE))?;
     let mut namespaces = literal_result_namespaces(document, element);
     retain_computed_attribute_namespace_bindings(&mut namespaces, &computed_attributes);
-    Ok(Instruction::LiteralElement {
-        origin: ElementConstructorOrigin::Literal,
-        name: document
-            .name(element)
-            .expect("literal result element has a name")
-            .clone(),
-        namespaces: namespaces.into(),
-        attributes,
-        attribute_set_names,
-        computed_attributes,
-        body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
-        location: document.location(element).clone(),
-    })
+    Ok((
+        Instruction::LiteralElement {
+            origin: ElementConstructorOrigin::Literal,
+            name: document
+                .name(element)
+                .expect("literal result element has a name")
+                .clone(),
+            namespaces: namespaces.into(),
+            attributes,
+            attribute_set_names,
+            computed_attributes,
+            body: Vec::new(),
+            location: document.location(element).clone(),
+        },
+        computed_attribute_nodes,
+    ))
 }
 
 fn is_declared_extension_element(document: &Document, element: NodeId) -> bool {
@@ -3111,7 +3164,12 @@ pub(super) fn compile_choose(
             } else {
                 compile_sequence(document, child)?
             };
-            branches.push(ChooseBranch { test, body });
+            branches.push(ChooseBranch {
+                #[cfg(test)]
+                condition_reference: document.location(child).clone(),
+                test,
+                body,
+            });
         } else if is_xslt_element(document, child, "otherwise") {
             ensure_only_attributes(
                 document,

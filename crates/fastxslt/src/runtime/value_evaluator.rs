@@ -126,6 +126,24 @@ pub(super) fn xslt10_variable_string_length(
     xslt10_compatibility::variable_string_length(inputs, variable, variables, control)
 }
 
+pub(super) fn xslt10_variable_string_length_boolean(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&SourceLocation>,
+) -> Result<bool, ExecutionFailure> {
+    xslt10_compatibility::variable_string_length_at(
+        inputs,
+        variable,
+        variables,
+        control,
+        #[cfg(test)]
+        location,
+    )
+    .map(|length| length != 0)
+}
+
 pub(super) fn xslt10_variable_string_value(
     inputs: &SequenceInputs<'_>,
     variable: &str,
@@ -250,6 +268,48 @@ pub(super) fn xslt10_variable_number(
     )
 }
 
+pub(super) fn xslt10_variable_integer_equality(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    expected: i64,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let expected = expected
+        .to_string()
+        .parse::<f64>()
+        .expect("i64 lexical values are valid XPath doubles");
+    xslt10_compatibility::variable_number_comparison(
+        inputs, variable, expected, true, variables, control,
+    )
+}
+
+pub(super) fn xslt10_variable_number_relation(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    expected: f64,
+    operator: crate::xslt::golden_semantics_experiment::FocusComparison,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    xslt10_compatibility::variable_number_relation(
+        inputs, variable, expected, operator, variables, control,
+    )
+}
+
+pub(super) fn xslt10_variable_pair_relation(
+    inputs: &SequenceInputs<'_>,
+    left: &str,
+    right: &str,
+    operator: crate::xslt::golden_semantics_experiment::FocusComparison,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    xslt10_compatibility::variable_numeric_pair_relation(
+        inputs, left, right, operator, variables, control,
+    )
+}
+
 pub(super) fn xslt10_generated_union_identity(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
@@ -317,6 +377,8 @@ pub(super) fn evaluate_as_temporary_text(
         variables,
         &mut result,
         control,
+        #[cfg(test)]
+        None,
     )?;
     let mut value = String::new();
     for node in result {
@@ -368,38 +430,26 @@ pub(super) fn evaluate_xslt10_concat_lexical(
     xslt10_compatibility::concat_value(inputs, context, expression, variables, control)
 }
 
-fn evaluate_xslt10_variable_string_variables_comparison(
+pub(super) fn evaluate_xslt10_variable_string_variables_comparison(
     inputs: &SequenceInputs<'_>,
-    left: &str,
-    right: &str,
+    operands: [(&str, bool); 2],
     equal: bool,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
-    if variables.source_nodes_in_context(inputs, left)?.is_some()
-        || variables.source_nodes_in_context(inputs, right)?.is_some()
-    {
-        return Err(failure(
-            "FXRT1015",
-            FailureCategory::Unsupported,
-            Some(inputs.request_id),
-            "general XSLT 1.0 node-set pair comparison is outside the admitted variable comparison slice",
-        ));
-    }
-    super::evaluate_variable_string_equality(
-        inputs,
-        left,
-        right,
-        crate::xslt::golden_semantics_experiment::StringComparison::Codepoint,
-        variables,
-        control,
-    )
-    .map(|matches| matches == equal)
+    xslt10_compatibility::variable_scalar_equality(inputs, operands, equal, variables, control)
 }
 
 #[expect(
     clippy::too_many_lines,
     reason = "the exhaustive typed value-expression dispatch is one cohesive responsibility"
+)]
+#[cfg_attr(
+    test,
+    allow(
+        clippy::too_many_arguments,
+        reason = "test-only explicit read provenance; production signature unchanged"
+    )
 )]
 pub(super) fn execute_value_of(
     inputs: &SequenceInputs<'_>,
@@ -409,6 +459,7 @@ pub(super) fn execute_value_of(
     variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
+    #[cfg(test)] read_location: Option<&SourceLocation>,
 ) -> Result<(), ExecutionFailure> {
     let context = execution.node;
     let focus = execution.sequence_focus();
@@ -731,7 +782,14 @@ pub(super) fn execute_value_of(
             append_context_node_normalized_string(inputs, context, result, control)?;
         }
         ValueExpression::Xslt10NormalizedVariable(variable) => {
-            let value = xslt10_variable_string_value(inputs, variable, variables, control)?;
+            let value = xslt10_compatibility::variable_string_value_at(
+                inputs,
+                variable,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
+            )?;
             let normalized = normalized_lexical_string(&value, inputs.request_id, control)?;
             append_text(result, &normalized, inputs.request_id, control)?;
         }
@@ -907,18 +965,36 @@ pub(super) fn execute_value_of(
             append_boolean(inputs, value, result, control)?;
         }
         ValueExpression::Xslt10VariableString(variable) => {
-            let value =
-                xslt10_compatibility::variable_string_value(inputs, variable, variables, control)?;
+            let value = xslt10_compatibility::variable_string_value_at(
+                inputs,
+                variable,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
+            )?;
             append_text(result, &value, inputs.request_id, control)?;
         }
         ValueExpression::Xslt10VariableStringLength(variable) => {
-            let length =
-                xslt10_compatibility::variable_string_length(inputs, variable, variables, control)?;
+            let length = xslt10_compatibility::variable_string_length_at(
+                inputs,
+                variable,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
+            )?;
             append_text(result, &length.to_string(), inputs.request_id, control)?;
         }
         ValueExpression::Xslt10VariableStringLengthTimes { variable, factor } => {
-            let length =
-                xslt10_compatibility::variable_string_length(inputs, variable, variables, control)?;
+            let length = xslt10_compatibility::variable_string_length_at(
+                inputs,
+                variable,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
+            )?;
             control
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -933,8 +1009,14 @@ pub(super) fn execute_value_of(
             append_text(result, &value.to_string(), inputs.request_id, control)?;
         }
         ValueExpression::Xslt10VariableNumber(variable) => {
-            let value =
-                xslt10_compatibility::variable_string_value(inputs, variable, variables, control)?;
+            let value = xslt10_compatibility::variable_string_value_at(
+                inputs,
+                variable,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
+            )?;
             let value = xslt10_compatibility::number_lexical(&value);
             append_text(result, &value, inputs.request_id, control)?;
         }
@@ -1050,9 +1132,16 @@ pub(super) fn execute_value_of(
             )?;
         }
         ValueExpression::Xslt10Concat(expression) => {
-            xslt10_compatibility::append_concat(
-                inputs, context, expression, variables, result, control,
+            let value = xslt10_compatibility::concat_value_at(
+                inputs,
+                context,
+                expression,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
             )?;
+            append_text(result, &value, inputs.request_id, control)?;
         }
         ValueExpression::Xslt10VariableBooleanComparison {
             variable,
@@ -1077,7 +1166,11 @@ pub(super) fn execute_value_of(
         }
         ValueExpression::Xslt10VariableStringVariablesComparison { left, right, equal } => {
             let matches = evaluate_xslt10_variable_string_variables_comparison(
-                inputs, left, right, *equal, variables, control,
+                inputs,
+                [(left, false), (right, false)],
+                *equal,
+                variables,
+                control,
             )?;
             append_boolean(inputs, matches, result, control)?;
         }
@@ -1109,7 +1202,12 @@ pub(super) fn execute_value_of(
             negate,
         } => {
             let matches = xslt10_compatibility::variable_number_comparison(
-                inputs, variable, *value, *equal, variables, control,
+                inputs,
+                variable,
+                f64::from(*value),
+                *equal,
+                variables,
+                control,
             )?;
             append_boolean(inputs, matches != *negate, result, control)?;
         }

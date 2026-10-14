@@ -36,6 +36,8 @@ pub(in crate::runtime) struct StylesheetCompileLimits {
     internal_subset: Option<InternalSubsetLimits>,
     external_subset: Option<StylesheetExternalSubsetLimits>,
     preprocessing: StylesheetPreprocessingProfile,
+    #[cfg(test)]
+    modern_preprocessing_reference: bool,
 }
 
 impl StylesheetCompileLimits {
@@ -57,12 +59,22 @@ impl StylesheetCompileLimits {
             internal_subset: None,
             external_subset: None,
             preprocessing: StylesheetPreprocessingProfile::Modern,
+            #[cfg(test)]
+            modern_preprocessing_reference: false,
         }
     }
 
     #[cfg(test)]
     pub(in crate::runtime) const fn with_strict_preprocessing(mut self) -> Self {
         self.preprocessing = StylesheetPreprocessingProfile::StrictXslt10;
+        self.modern_preprocessing_reference = false;
+        self
+    }
+
+    #[cfg(test)]
+    const fn with_modern_preprocessing_reference(mut self) -> Self {
+        self.preprocessing = StylesheetPreprocessingProfile::Modern;
+        self.modern_preprocessing_reference = true;
         self
     }
 
@@ -188,31 +200,58 @@ fn compile_resource_with_resolver_and_limits(
     )
     .map_err(dependency_failure)?;
     #[cfg(test)]
-    let graph = if limits.preprocessing == StylesheetPreprocessingProfile::StrictXslt10 {
+    let graph = if limits.preprocessing == StylesheetPreprocessingProfile::StrictXslt10
+        || limits.modern_preprocessing_reference
+    {
         let mut graph = graph;
-        preprocess_strict_graph(&mut graph, control)?;
+        preprocess_stylesheet_graph(&mut graph, limits.preprocessing, control)?;
         graph
     } else {
         graph
     };
     let _ = (limits.preprocessing, control);
     debug_assert_eq!(graph.identity, stylesheet_id);
-    let mut program = compile_loaded_graph(&graph).map_err(compile_failure)?;
+    #[cfg(test)]
+    let reference_context = crate::compile::golden_stylesheet_experiment::stylesheet_preprocessing::StylesheetCompilationContext::for_reference(
+        limits.preprocessing,
+        limits.modern_preprocessing_reference,
+    );
+    #[cfg(test)]
+    let compiled = if reference_context
+        == crate::compile::golden_stylesheet_experiment::stylesheet_preprocessing::StylesheetCompilationContext::baseline()
+    {
+        compile_loaded_graph(&graph)
+    } else {
+        stylesheet_graph_context::compile_context_tree(&graph, reference_context, true)
+            .unwrap_or_else(|| compile_loaded_graph(&graph))
+    };
+    #[cfg(not(test))]
+    let compiled = compile_loaded_graph(&graph);
+    let mut program = compiled.map_err(compile_failure)?;
     crate::compile::golden_stylesheet_experiment::finalize_attribute_sets(&mut program)
         .map_err(compile_failure)?;
+    #[cfg(test)]
+    {
+        program = reference_context.qualify_module(program);
+    }
     Ok(program)
 }
 
 #[cfg(test)]
-fn preprocess_strict_graph(
+#[path = "resource_compiler/stylesheet_graph_context.rs"]
+mod stylesheet_graph_context;
+
+#[cfg(test)]
+fn preprocess_stylesheet_graph(
     graph: &mut LoadedStylesheetModule,
+    profile: StylesheetPreprocessingProfile,
     control: &mut crate::execution_control_experiment::InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     use crate::compile::golden_stylesheet_experiment::stylesheet_preprocessing::{
-        StrictPreprocessingFailure, strict_stylesheet_view,
+        StrictPreprocessingFailure, stylesheet_visibility_view,
     };
-    graph.document = strict_stylesheet_view(&graph.document, graph.root, control).map_err(
-        |error| match error {
+    graph.document = stylesheet_visibility_view(&graph.document, graph.root, profile, control)
+        .map_err(|error| match error {
             StrictPreprocessingFailure::Compile(error) => compile_failure(error),
             StrictPreprocessingFailure::Control(error) => {
                 let mut failure = super::control_failure(error, &graph.identity);
@@ -222,10 +261,9 @@ fn preprocess_strict_graph(
                 failure.location = Some(graph.document.location(graph.root).clone());
                 failure
             }
-        },
-    )?;
+        })?;
     for dependency in &mut graph.dependencies {
-        preprocess_strict_graph(dependency, control)?;
+        preprocess_stylesheet_graph(dependency, profile, control)?;
     }
     Ok(())
 }

@@ -9,6 +9,10 @@ use retained_source_values::RetainedSourceSelection;
 mod retained_node_frames_reference;
 
 #[cfg(test)]
+#[path = "runtime_context/global_demand_reference.rs"]
+mod global_demand_reference;
+
+#[cfg(test)]
 #[path = "golden_runtime_experiment/namespace_nodes_reference_tests.rs"]
 mod namespace_nodes_reference_tests;
 
@@ -67,6 +71,14 @@ pub(super) struct GlobalDocumentContext<'a> {
 
 #[derive(Debug, Default)]
 pub(super) struct RuntimeGlobals {
+    #[cfg(test)]
+    pub(super) demand_string_reference: Option<global_demand_reference::StringReadHook>,
+    #[cfg(test)]
+    pub(super) demand_temporary_reference: Option<global_demand_reference::TemporaryReadHook>,
+    #[cfg(test)]
+    pub(super) demand_source_reference: Option<global_demand_reference::SourceReadHook>,
+    #[cfg(test)]
+    pub(super) demand_boolean_reference: Option<global_demand_reference::BooleanReadHook>,
     pub(super) principal_owner: Option<Arc<Document>>,
     #[cfg(test)]
     retained_nodes_reference:

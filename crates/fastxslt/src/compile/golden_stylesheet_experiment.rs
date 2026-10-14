@@ -56,6 +56,14 @@ pub(crate) use stylesheet_module_compiler::{
     compile_stylesheet_with_two_included_programs_at, discovered_stylesheet_dependencies_at,
     validate_import_order_at,
 };
+#[cfg(test)]
+pub(crate) use stylesheet_module_compiler::{
+    compile_stylesheet_with_imported_and_included_programs_at_in_context,
+    compile_stylesheet_with_imported_programs_at_in_context,
+    compile_stylesheet_with_imports_in_context,
+    compile_stylesheet_with_included_programs_at_in_context,
+    compile_stylesheet_with_single_imported_program_at_in_context,
+};
 use stylesheet_validation::validate_named_template_references;
 use template_declaration_compiler::compile_top_level_template;
 use template_pattern_compiler::compile_match_pattern;
@@ -341,6 +349,8 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 
     let output_same_precedence_properties = output_specified_properties.clone();
     let mut program = StylesheetProgram {
+        preprocessing:
+            crate::xslt::golden_semantics_experiment::StylesheetPreprocessingStamp::ModernBaseline,
         declared_version,
         default_initial_mode,
         source_whitespace: source_whitespace.finish(),
@@ -1121,6 +1131,8 @@ fn compile_global_binding(
     }
     let default = compile_global_default(document, element, label)?;
     Ok(GlobalBinding {
+        #[cfg(test)]
+        declaration_reference: document.location(element).clone(),
         kind,
         name,
         required,

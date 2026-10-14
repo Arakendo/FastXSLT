@@ -431,6 +431,439 @@ core tests (60 ignored), 22 native tests (three ignored), four WASM adapter
 tests, 18 worker tests, formatting, strict Clippy, documentation, local links
 and pinned conformance checks. The official WASM target and diff checks pass.
 
+### Modern graph-reference checkpoint (2026-10-10)
+
+A separate test-only opt-in now routes the modern visibility reference through
+the loaded stylesheet graph before lowering. The existing graph pass accepts
+one profile, shared across principal and dependency modules. Strict selection
+clears the candidate-modern opt-in; no local-version inference, adapter field,
+environment selector or public API is added. Existing production and corpus
+modern compilation do not opt in.
+
+The new end-to-end control includes a version-1.0 dependency from a version-3.0
+principal. Under inherited preserved space, the modern candidate removes the
+comment-separated whitespace before `xsl:param`, while its parameter-default
+text survives. The test also observes the unchanged default path's extra
+leading whitespace separately, rather than relabeling that path as corrected.
+Exact/one-less aggregate budgets preserve the included module's failure
+provenance. Twenty-eight focused controls pass.
+
+This establishes graph plumbing and a concrete lowering effect, not canonical
+text merging, empty-element validation, compiled-artifact profile confinement
+or production promotion. The candidate still retains original text fragments.
+ADR-0004 review: graph orchestration is 1,086 lines and its named profile test
+child 405; retain this private composition/test seam for the bounded extension.
+The full canonical-stage decomposition review remains required.
+
+Validation: all local verification gates pass, including 1,691 core tests
+(60 ignored), 22 native tests (3 ignored), 4 WASM adapter tests and 18 worker
+tests, strict Clippy, documentation, local links and pinned conformance checks.
+The official `wasm32-unknown-unknown` build check and diff checks also pass.
+The unchanged original OASIS lanes replay at 2,500/3,173 modern exact matches
+and 2,497/3,173 strict exact matches; neither replay enables the new modern
+graph-reference candidate. No corpus credit is added for this checkpoint.
+
+### Modern empty-content validation checkpoint (2026-10-10)
+
+The test-only modern graph reference now applies the `XTSE0260` rule after its
+comment/PI and whitespace eligibility decisions. The reviewed unconditionally
+empty subset is `include`, `import`, `output`, `strip-space`,
+`preserve-space`, `decimal-format`, `namespace-alias`, `output-character`,
+`mode`, `context-item`, `copy-of` and `number`, qualified by the XSLT namespace.
+Conditional content models remain instruction-validator responsibilities; this
+table is not claimed as a complete language content-model inventory.
+In particular, modern `xsl:key` permits a sequence constructor when `use` is
+absent; it is deliberately excluded and a reference control pins that boundary.
+The engine's existing narrower key lowering does not redefine the modern
+content model.
+
+Whitespace removed by preprocessing does not cause the error. Retained
+non-whitespace text, child elements and preserved whitespace do, at the original
+owning element location. Modern forced stripping still takes precedence, so
+`xsl:mode` formatting removed by that rule remains acceptable. Same-spelled
+literal/foreign elements do not acquire XSLT validation. Strict preprocessing
+does not inherit this modern static-validation pass.
+
+Thirty-one focused controls pass. An included version-1.0 module under the
+modern candidate reports the exact original `xsl:output` location and no
+transform request identity. Exact failure-work capacity reaches `XTSE0260`;
+one-less capacity fails earlier with `FXCT0002`, and injected cancellation
+before validation reports `FXCT0001`. Failed preprocessing leaves the sealed
+snapshot reusable by the separate unchanged compilation lane. The cancellation
+fault counts charge calls, independently of aggregate charged work units.
+
+ADR-0004 review: keep the bounded rules with their stylesheet-preprocessing
+owner and the end-to-end proof in the existing graph-profile test child. No
+new sibling file, XDM policy field, public selector or second compiler is added.
+Canonical merged-text lowering and compiled-profile confinement remain open.
+
+### Template-argument consumer audit (2026-10-10)
+
+The residual audit found `compile_content_argument_value` still selecting
+`meaningful_children` and reading the unfiltered subtree string value for its
+text-only branch. A paired-profile regression first failed under the unchanged
+modern lane: a strip-eligible whitespace-only argument produced two spaces
+instead of empty text. The compiler now uses shared constructor selection and
+assembles only selected fragments. Preserved whitespace around a dynamic
+`xsl:value-of` is visible to eligibility and uses the complete shared sequence
+fallback rather than being discarded by the specialized constructor.
+
+This is shared compiler behavior, not activation of the candidate modern graph
+pass. Profile selection stays compilation-scoped and private. The focused
+family now contains 32 controls; original corpus expectations remain unchanged.
+ADR-0004: retain the existing template-invocation compiler's argument-value
+responsibility for this bounded filter/read correction; it acquires no runtime
+state, acquisition authority, public API or new cross-layer policy dependency.
+
+Final checkpoint validation: 32 focused controls and all repository gates pass,
+including 1,695 core tests (60 ignored), 22 native tests (3 ignored), 4 WASM
+adapter tests, 18 worker tests, formatting, strict Clippy, documentation, local
+Markdown links and pinned conformance checks. The official WASM target and diff
+checks pass. Full original OASIS replays remain 2,500/3,173 modern and
+2,497/3,173 strict; the template-argument correction earns no additional
+archival exact pass. The modern graph candidate remains test-only and is not
+enabled by either of these corpus replays.
+
+ADR-0004 size checkpoint: the preprocessing owner is 816 physical lines,
+template-invocation compilation 1,678 and the named graph-profile test child
+489. Retain their existing private responsibilities for these bounded repairs;
+review canonical-stage ownership/decomposition before the larger merging and
+profile-confinement integration.
+
+### Completed-artifact confinement checkpoint (2026-10-10)
+
+Completed resource-graph programs now carry private compilation provenance:
+modern baseline, strict reference or modern reference. Separating the two
+modern stages prevents the candidate's partial preprocessing implementation
+from being treated as interchangeable with the unchanged baseline. The stamp
+is stylesheet-derived static metadata, independent of local expression/version
+compatibility; clones and equality retain it. It is not a public selector,
+semantic inspection field, cache key guarantee or ABI/wire representation.
+
+The existing retained-program assembly paths reject foreign stamps with
+`FXST1058 / unsupported` at the original dependency declaration: single/multiple
+includes, single/multiple imports, and mixed import/include composition. Tests
+put both foreign reference stages at each position, retain baseline reuse as
+the success control, and prove equal declared version or otherwise equal modern
+template payload does not erase provenance. A strict selection also clears a
+previous candidate-modern opt-in.
+
+There is no compiled-program cache to partition. Fresh module lowering in a
+resource graph still creates local baseline-labelled intermediate programs;
+the graph's selected preprocessing has already been applied to its immutable
+views, and only the fully assembled/finalized artifact is stamped as that graph
+reference. Intermediate-module context threading and canonical-stage promotion
+remain to be audited. This checkpoint guards reuse of completed artifacts; it
+does not claim those remaining integration gates are finished.
+
+### Canonical text-run reference checkpoint (2026-10-10)
+
+A private test-only child-content reference applies the selected visibility
+profile, then coalesces surviving adjacent text into logical runs. Runs retain
+ordered borrowed fragments with each original node, value and source location.
+The reference does not copy text payload, replace XDM node identities, mutate
+the source, fabricate a joined span, or store invocation state in compiled or
+prepared artifacts. Element boundaries end runs. Strict stripping occurs before
+coalescing; modern merged-run eligibility and forced stripping occur before
+retention. A run is not claimed as a new externally observable XDM text node.
+
+The focused family now has 38 controls. New controls pin strict/modern fragment
+differences, `xsl:text`, Unicode/NBSP, source-payload and location borrowing,
+forced-stripped whitespace not returning, exact/one-less charged work, partial
+retention failure and cancellation during coalescing after visibility succeeds.
+Both failure paths leave the original document reusable. Charges cover traversal
+and retained logical slots before allocation; they are not allocator/RSS byte
+accounting. The reference is not yet consumed by graph lowering or the original
+corpus lanes, and earns no additional conformance credit.
+
+ADR-0004 review: keep module-reuse validation within the existing private module
+composition owner (1,729 lines), and declarative compilation provenance within
+the static semantic-program model (2,275 lines). The latter remains a cohesive
+type model, not an execution or host-policy owner; its small marker does not
+justify splitting unrelated declarations during this checkpoint. Canonical
+content has a named private child under the preprocessing subject (272 lines),
+rather than another sibling in the dense compilation directory. The graph
+composition owner is 1,098 lines and its named profile controls 621. No new
+public layer, crate, generic provider or upward XDM-to-compiler dependency is
+introduced. Revisit ownership before canonical graph promotion.
+
+Validation: 38 focused controls and all repository gates pass, including 1,701
+core tests (60 ignored), 22 native tests (3 ignored), 4 WASM adapter tests and
+18 worker tests, formatting, strict Clippy, docs, links and pinned conformance
+checks. The official `wasm32-unknown-unknown` build and diff checks pass. Full
+original OASIS replays conserve 2,500/3,173 modern exact matches and
+2,497/3,173 strict exact matches, with 423/431 expected-error credits in each
+lane. Neither replay uses the candidate-modern or canonical-content reference.
+No new archival pass is credited.
+
+### Canonical position-provenance checkpoint (2026-10-10)
+
+The private canonical reference now resolves decoded logical-run positions to
+an original fragment, retaining its original node/location and a fragment-local
+decoded byte offset. UTF-8 interior bytes and out-of-range offsets are rejected.
+At a boundary the following nonempty fragment owns the position; EOF belongs to
+the final fragment. No concatenation or replacement source span is required.
+
+Entity-reference and CDATA controls explicitly preserve the distinction between
+decoded offsets and raw XML byte coordinates. Adding a decoded offset to an
+original span would be unsound, so this reference supplies a fragment anchor,
+not a fabricated exact raw-byte diagnostic. A finer map would require evidence
+from XML adaptation; it is not inferred from the fragment's string length.
+
+Four additional controls bring the preprocessing family to 42. They cover
+multibyte characters, boundaries/EOF, very large invalid offsets, profile-specific
+stripping, original location borrowing, entity/CDATA anchors, exact/one-less
+lookup work, mid-lookup cancellation and reuse. Lookup charges each fragment
+visit and retains no new buffer. Production and corpus selection are unchanged;
+no archival pass is credited by these hand-authored controls.
+
+The next consumer seam is literal versus expanded text lowering. Literal text
+may retain fragment-wise emission and provenance, but whole-run expression
+recognition must not independently parse comment-separated fragments or pretend
+that their source spans are contiguous. Canonical graph lowering and explicit
+intermediate-module profile context remain open before promotion.
+
+Validation: all 42 focused controls and repository gates pass, including 1,705
+core tests (60 ignored), 22 native tests (3 ignored), 4 WASM adapter tests and
+18 worker tests. Formatting, strict Clippy, documentation, local links, pinned
+conformance checks, the official WASM target check and diff checks pass. The
+canonical module is 461 lines including its eight controls, within its existing
+named preprocessing responsibility. No original corpus replay is needed to credit
+this test-only change: the last measured modern/strict exact numerators remain
+2,500 and 2,497 respectively, and neither lane uses this reference.
+
+### Canonical sequence-lowering reference checkpoint (2026-10-10)
+
+The canonical-content reference now has a first vertical lowering consumer.
+Shared baseline element dispatch was separated into one private function; the
+canonical traversal calls that same owner rather than copying instruction,
+extension/fallback, local-binding or forward-compatible failure logic. Ordinary
+literal runs emit the original fragment instructions, retaining each original
+location and the same runtime instruction/text charges as baseline lowering.
+No merged text identity or fabricated span is introduced.
+
+Nine controls bring the focused family to 51. Differential checks compare
+complete instruction values under both profiles for literal/Unicode content,
+excluded elements, initial/local bindings, recursive literal and conditional
+constructors, fallback handling and exact original compiler failures. A compiled
+artifact executes through the shared runtime after the original stylesheet and
+effective view are dropped. Exact/one-less preprocessing work, cancellation and
+subsequent reuse remain conserved. The preprocessing control meters visibility
+and canonical traversal, not general lowering CPU or instruction allocation.
+
+Split expanded-text runs return `FXST1066 / unsupported` in the private reference
+instead of being treated as separate text-value templates. Single-fragment text
+continues through the existing compiler. General whole-run expression parsing
+and its provenance integration are not selected by this checkpoint. Recursive
+constructors currently use baseline traversal of the same selected view; the
+new reference is local sequence integration, not complete graph promotion.
+Neither original corpus lane opts into it, and the new controls earn no pass.
+
+ADR-0004 review: the instruction compiler remains 3,361 lines and owns the common
+instruction-dispatch semantics; its newly factored dispatch does not add another
+semantic owner. The private vertical reference is a named 418-line child with
+nine controls, borrowing preprocessing content and calling parent dispatch in
+one direction. The instruction-compiler directory now has 20 direct files, all
+named instruction/expression subjects. For this bounded checkpoint retain that
+layout rather than relocate unrelated compiler families while changing traversal.
+Before extending the reference to recursive graph lowering, review a cohesive
+sequence-construction subgroup and intermediate profile-context ownership; no
+generic helper bucket, public provider or new crate is justified here.
+
+Validation: all 51 focused controls and repository gates pass, including 1,714
+core tests (60 ignored), 22 native tests (3 ignored), 4 WASM adapter tests and
+18 worker tests. Formatting, strict Clippy, documentation, local links, pinned
+conformance checks, the official WASM target and diff checks pass. Fresh complete
+original OASIS replays conserve modern 2,500/3,173 with 14 mismatches and strict
+2,497/3,173 with 17 mismatches; both retain 423/431 expected-error credits. Neither
+replay selects the canonical sequence reference. Production default behavior and
+archived expectations are unchanged.
+
+### Include-graph compilation context checkpoint (2026-10-10)
+
+A private compiler-owned context now carries the selected preprocessing identity
+into each module of an already-preprocessed include-only reference graph. The
+principal program is qualified before retained includes merge, so the existing
+`FXST1058 / unsupported` check compares actual graph identities rather than
+baseline-labelled intermediates. Supplied foreign artifacts are never relabelled
+to make them fit. Existing baseline include entry points use the same assembly
+owner with baseline context; no second include composer is introduced.
+
+The context is compilation provenance, not a view validator or whitespace
+algorithm. The graph owner must apply the selected profile first. It does not
+infer version, acquire resources, expose host policy, create a cache or add a
+public selector. Principal leaves keep full principal validation; dependency
+leaves retain the existing unlinked contract until their parent composes them.
+
+Six new controls bring the focused family to 57. They compare whole compiled
+programs and intermediate stamps for nested and branching includes under all
+three stages; inject both foreign stages at each of two include positions;
+preserve original compiler-failure provenance and reuse; and distinguish missing
+principal references from dependency references legitimately supplied by a parent.
+An import edge defers the whole shape without mutating effective documents.
+Import and mixed graphs still use the original assembler and final reference
+stamp; this checkpoint does not claim their intermediate context is integrated.
+Canonical recursive/text lowering remains separately pending.
+
+ADR-0004 review: context is a small scalar compilation concern in the existing
+854-line preprocessing owner, and retained include assembly stays in its
+1,747-line composition owner. The resource adapter is 1,110 lines and retains
+orchestration; its new named 350-line graph-context child owns only the bounded
+test-reference traversal and six controls. The resource-compiler subject has two
+direct files. No runtime state, generic document provider, alternate instruction
+compiler, public contract or crate split is introduced.
+
+Validation: the focused family is 57 controls; all repository gates pass,
+including 1,720 core tests (60 ignored), 22 native tests (3 ignored), 4 WASM
+adapter tests and 18 worker tests. Formatting, strict Clippy, documentation,
+local links, pinned conformance checks, the official WASM target and diff checks
+pass. Fresh complete original OASIS replays conserve modern 2,500/3,173 with
+14 mismatches and strict 2,497/3,173 with 17 mismatches, each with 423/431
+expected-error credits. Strict include-only corpus graphs now use explicit
+module context; unchanged exact accounting proves conservation, not new credit.
+Neither lane selects recursive canonical lowering. No production default,
+archival expectation or public contract changed.
+
+### Import/mixed compilation context checkpoint (2026-10-10)
+
+The explicit context now reaches intermediate programs of admitted import and
+principal import/include reference trees as well as include-only graphs.
+Context-qualified retained composition calls the existing precedence, output,
+alias and conflict owners; newly compiled programs are qualified before merge,
+while foreign retained artifacts remain rejected at the dependency declaration.
+Principal import-order and root dependency-count checks are conserved. Nested
+mixed shapes outside the existing slice defer to the original classification
+path without publishing a partially composed graph or mutating effective trees.
+
+The first full strict replay exposed one regression: routing flat principal
+imports through generic retained-program assembly bypassed document-aware
+namespace-alias precedence and made
+`Microsoft/Namespace-alias_NSAlias_In_Import#1` disagree with its original result.
+The generic path was not retained for that shape. Flat principal imports now
+use the existing document-aware compiler with the same explicit context;
+principal aliases and visibility declarations still participate before imported
+module lowering. Context qualification does not reconstruct already-lowered
+namespace semantics. A focused conflicting-alias control pins complete compiled
+program parity under all three preprocessing stages.
+
+Five additional controls bring the focused family to 62. Import/mixed programs
+and intermediate stamps are compared against the baseline assembly; foreign
+artifacts are injected at every retained position; original import-order and
+dependency-count failures and unsupported nested mixed shapes are conserved.
+The earlier include-to-import deferral control now proves admitted composition
+and immutable graph reuse. Recursive canonical lowering and whole-run expanded
+text remain separate promotion gates. Production defaults stay unchanged.
+
+ADR-0004 review: composition remains in its named 1,811-line owner rather than
+duplicating precedence semantics. The private graph-context child is 657 lines,
+including 11 controls, and owns reference traversal rather than instruction
+lowering or resource acquisition. The 854-line preprocessing owner retains the
+scalar context definition; no public selector, provider, host policy or crate
+boundary is introduced.
+
+Validation: all 62 focused controls and repository gates pass, including 1,725
+core tests (60 ignored), 22 native tests (3 ignored), 4 WASM adapter tests and
+18 worker tests. Formatting, strict Clippy, documentation, local links, pinned
+conformance checks, the official WASM target and diff checks pass. Fresh full
+original OASIS replays restore and conserve modern 2,500/3,173 with 14 mismatches
+and strict 2,497/3,173 with 17 mismatches; each retains 423/431 expected-error
+credits. Neither lane selects recursive canonical lowering, and no archived
+expectation or production default changed. These controls earn no new corpus
+credit.
+
+### Whole-run expanded-text reference checkpoint (2026-10-10)
+
+The canonical sequence reference now lowers split text for the existing narrow
+whole-expression `expand-text` form through the shared expression compiler.
+Baseline literal lowering was factored into node selection and value lowering;
+the baseline recognizer and successful instruction semantics are unchanged.
+The reference joins only surviving fragments after edition selection and only
+when no fragment is excluded. General text-value-template syntax remains outside
+this tranche; unsupported and partially excluded expanded runs retain explicit
+`FXST1066` rather than interpreting fragments independently.
+
+Copied decoded bytes are charged conservatively to the private preprocessing
+XDM work domain before buffer growth. This is not runtime result-text charging,
+allocator-exact accounting or a new public compilation budget. The logical
+expression uses the first original fragment as its diagnostic anchor; no new
+XDM identity, merged source span or raw XML offset is manufactured. Shared
+expression failures remain unchanged apart from selecting that original anchor.
+
+Four additional controls bring the focused family to 66: comment/PI/CDATA split
+expression parity, shared failure provenance, exact/one-less copy budgets and
+cancellation after partial copying with immutable reuse, and real runtime
+execution after original fragment-owner release. The successful typed expression
+uses modern local expression semantics under both preprocessing profiles, proving
+that edition selection does not choose its local expression version. Recursive
+constructors still use baseline traversal of the selected view; neither corpus
+lane nor production defaults select this local canonical reference.
+
+ADR-0004 review: the shared instruction owner is 3,373 lines and retains the
+same dispatch/expression responsibilities; its change is a 12-line net factoring
+of existing literal-value lowering. The named private canonical sequence child
+is 665 lines with 13 controls and still calls that owner in one direction.
+Retain the current 20-file instruction subject layout at this bounded checkpoint;
+recursive integration must revisit the previously identified sequence-construction
+subgroup rather than add a second constructor compiler or generic context.
+
+Validation: all 66 focused controls and repository gates pass, including 1,729
+core tests (60 ignored), 22 native tests (3 ignored), 4 WASM adapter tests and
+18 worker tests. Formatting, strict Clippy, documentation, local links, pinned
+conformance checks, the official WASM target and diff checks pass. Fresh complete
+original replays remain modern 2,500/3,173 with 14 mismatches and strict
+2,497/3,173 with 17 mismatches, each with 423/431 expected-error credits.
+This private reference earns no corpus credit and changes no archived output.
+
+### Recursive literal-constructor reference checkpoint (2026-10-10)
+
+Canonical traversal now recurses through nested literal-result element bodies.
+One profile-selected visibility view is created at entry and reused at every
+literal depth; recursive calls coalesce its surviving children rather than
+reselecting an edition or creating another view. The existing literal owner
+still validates control/extension attributes and namespace exclusions, builds
+static/dynamic attributes and returns computed-attribute body exclusions.
+Only body traversal changes in the private reference.
+
+The shared element dispatcher accepts a private literal-compilation function;
+XSLT instruction dispatch, lexical variable updates, extension fallbacks and
+forward-compatible failures remain in their existing owner. Production supplies
+its original literal compiler. The canonical reference supplies the same static
+literal construction followed by canonical body traversal. This is a statically
+dispatched private hook, not a public provider, second instruction compiler or
+new runtime backend. XSLT instruction bodies, attribute-content compilation and
+static/temporary constructor paths remain on baseline selected-view traversal;
+this checkpoint does not claim full recursive integration.
+
+Four additional controls bring the focused family to 70. Complete instruction
+parity covers literal and computed attributes, exclusions, inherited/reset space
+and explicit text. Failure controls preserve shared validation order and original
+nested locations. Exact/one-less aggregate traversal work, cancellation after
+entering a nested body and successful immutable view reuse are tested. A split
+expanded expression nested two literal levels executes through the ordinary
+runtime after all original stylesheet/fragment owners are dropped, under both
+preprocessing profiles. No corpus lane opts into this reference.
+
+ADR-0004 review: the instruction owner is 3,406 lines, with its existing static
+literal construction separated from body traversal and dispatch still shared.
+The canonical sequence child is 877 lines including 17 controls; it owns only
+reference traversal, invoking existing static/dispatch owners in one direction.
+The 20-file directory was revisited for a sequence-construction subgroup. Retain
+the named local reference for this literal-only checkpoint: moving unrelated
+instruction/expression families would not clarify this two-owner seam. Before
+extending the hook through general XSLT instruction bodies, review a cohesive
+sequence-construction owner rather than grow a broad mutable compiler context.
+There is no added production dispatch allocation, public surface or crate split;
+no build-time or execution-speed improvement is claimed.
+
+Validation: all 70 focused controls and repository gates pass, including 1,733
+core tests (60 ignored), 22 native tests (3 ignored), 4 WASM adapter tests and
+18 worker tests. Formatting, strict Clippy, documentation, local links, pinned
+conformance checks, the official WASM target and diff checks pass. Complete
+original OASIS replays conserve modern 2,500/3,173 with 14 mismatches and strict
+2,497/3,173 with 17 mismatches, each with 423/431 expected-error credits.
+Neither profile selects this canonical reference in corpus measurement; no
+archived expectation, production default or exact credit changes.
+
 ## Reopening triggers
 
 Independent standards evidence falsifies the selected edition distinction;
@@ -453,3 +886,30 @@ named consumer requires public profile selection beyond the private decision.
 - 2026-10-09 -- Typed-range constructor eligibility now retains selected text
   in admission decisions; explicit unsupported controls and both complete
   corpus replays pass. Canonical preprocessing/profile confinement remain open.
+- 2026-10-10 -- Modern graph-reference empty-content checks and shared
+  template-argument text selection verified. All gates and both original corpus
+  lanes pass; canonical merging and compiled-profile confinement remain open.
+- 2026-10-10 -- Completed-artifact stamps and retained-program reuse checks
+  verified; borrowed canonical text-run reference established. All gates and
+  original corpus lanes pass. Canonical graph lowering and intermediate-module
+  context integration remain pending before promotion.
+- 2026-10-10 -- Canonical position lookup and first shared sequence-lowering
+  consumer verified. Original fragment instructions/provenance survive owner
+  release; split expanded text stays explicitly unsupported in the reference.
+  All gates and both full original corpus replays pass without numerator drift.
+  Recursive canonical lowering and intermediate graph context remain pending.
+- 2026-10-10 -- Explicit private module context integrated for reference
+  include-only trees, with branching, retained-artifact rejection and original
+  failure-provenance controls. All gates and both original corpus replays pass.
+  Import/mixed intermediate context and recursive canonical lowering remain open.
+- 2026-10-10 -- Import and principal mixed reference contexts integrated with
+  existing graph gates. Full replay caught a flat-import namespace-alias seam;
+  document-aware child compilation was preserved and a regression control added.
+  Recursive canonical lowering remains open; no production promotion is implied.
+- 2026-10-10 -- Narrow whole-run expanded-text reference uses shared expression
+  lowering with original-fragment anchors, pre-copy work charging, cancellation
+  and runtime owner-release controls. Recursive canonical integration remains open.
+- 2026-10-10 -- Nested literal-result bodies now recurse canonically through
+  shared static construction and element dispatch. Attribute exclusions,
+  failure provenance, aggregate traversal controls and owner-release execution
+  are pinned; XSLT/static/temporary recursive integration remains open.

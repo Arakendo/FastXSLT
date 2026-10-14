@@ -81,7 +81,19 @@ fn serialize_element<'a>(
             && children
                 .iter()
                 .filter(|child| !is_replaced_content_type_meta(child, inject_content_type))
-                .all(|child| matches!(child, ResultNode::Element { .. }));
+                .all(|child| {
+                    matches!(child, ResultNode::Element { .. })
+                        || options.html_mode == HtmlMode::None
+                            && options.xhtml_mode == XhtmlMode::None
+                            && matches!(
+                                child,
+                                ResultNode::Comment(_) | ResultNode::ProcessingInstruction { .. }
+                            )
+                })
+            && (inject_content_type
+                || children
+                    .iter()
+                    .any(|child| matches!(child, ResultNode::Element { .. })));
         serialize_content_type_if_needed(
             options,
             inject_content_type,

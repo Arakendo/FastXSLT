@@ -1,5 +1,13 @@
 //! Private `XPath` 1.0 value-conversion compatibility operations.
 
+#[path = "xslt10_compatibility/numeric_pairs.rs"]
+mod numeric_pairs;
+pub(super) use numeric_pairs::compare as variable_numeric_pair_relation;
+
+#[path = "xslt10_compatibility/variable_equality.rs"]
+mod variable_equality;
+pub(super) use variable_equality::compare as variable_scalar_equality;
+
 use std::borrow::Cow;
 use std::collections::HashMap;
 
@@ -25,6 +33,43 @@ pub(super) fn variable_string_value(
     name: &str,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    variable_string_value_at(
+        inputs,
+        name,
+        variables,
+        control,
+        #[cfg(test)]
+        None,
+    )
+}
+
+pub(super) fn variable_string_value_at(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&crate::xdm::owned_tree_experiment::SourceLocation>,
+) -> Result<String, ExecutionFailure> {
+    variable_string_value_for(
+        inputs,
+        name,
+        variables,
+        control,
+        #[cfg(test)]
+        location,
+        #[cfg(test)]
+        false,
+    )
+}
+
+fn variable_string_value_for(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&crate::xdm::owned_tree_experiment::SourceLocation>,
+    #[cfg(test)] comparison: bool,
 ) -> Result<String, ExecutionFailure> {
     if let Some(value) = variables.atomics.get(name) {
         return Ok(value.lexical().to_owned());
@@ -77,6 +122,13 @@ pub(super) fn variable_string_value(
     if variables.allows_global_fallback(name) && inputs.globals.empty_sequences.contains(name) {
         return Ok(String::new());
     }
+    #[cfg(test)]
+    if variables.allows_global_fallback(name)
+        && let Some(reader) = &inputs.globals.demand_string_reference
+        && let Some(value) = reader.read(name, location, comparison, control)?
+    {
+        return Ok(value);
+    }
     Err(failure(
         "FXRT0002",
         FailureCategory::Invalid,
@@ -128,7 +180,31 @@ pub(super) fn variable_string_length(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<usize, ExecutionFailure> {
-    let value = variable_string_value(inputs, name, variables, control)?;
+    variable_string_length_at(
+        inputs,
+        name,
+        variables,
+        control,
+        #[cfg(test)]
+        None,
+    )
+}
+
+pub(super) fn variable_string_length_at(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&crate::xdm::owned_tree_experiment::SourceLocation>,
+) -> Result<usize, ExecutionFailure> {
+    let value = variable_string_value_at(
+        inputs,
+        name,
+        variables,
+        control,
+        #[cfg(test)]
+        location,
+    )?;
     let mut length = 0_usize;
     for _ in value.chars() {
         control
@@ -227,6 +303,15 @@ pub(super) fn variable_string_comparison(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    #[cfg(test)]
+    if variables.allows_global_fallback(name)
+        && let Some(reader) = &inputs.globals.demand_source_reference
+        && let Some((owner, nodes)) = reader.read(name, control)?
+    {
+        let mut frame = variables.clone();
+        frame.bind_retained_source_nodes(name.to_owned(), owner, nodes);
+        return variable_string_comparison(inputs, name, expected, equal, &frame, control);
+    }
     if let Some(values) = variables.detached_source_node_strings(name) {
         return Ok(values.iter().any(|actual| (actual == expected) == equal));
     }
@@ -242,22 +327,65 @@ pub(super) fn variable_string_comparison(
         }
         return Ok(false);
     }
-    let actual = variable_string_value(inputs, name, variables, control)?;
+    let actual = variable_string_value_for(
+        inputs,
+        name,
+        variables,
+        control,
+        #[cfg(test)]
+        None,
+        #[cfg(test)]
+        true,
+    )?;
     Ok((actual == expected) == equal)
 }
 
 pub(super) fn variable_number_comparison(
     inputs: &SequenceInputs<'_>,
     name: &str,
-    expected: i32,
+    expected: f64,
     equal: bool,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    variable_numeric_predicate(inputs, name, variables, control, &|actual| {
+        number_equals(actual, expected) == equal
+    })
+}
+
+pub(super) fn variable_number_relation(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    expected: f64,
+    operator: crate::xslt::golden_semantics_experiment::FocusComparison,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    variable_numeric_predicate(inputs, name, variables, control, &|actual| {
+        let actual = crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(actual)
+            .unwrap_or(f64::NAN);
+        super::super::compare_xpath_numbers(actual, operator, expected)
+    })
+}
+
+fn variable_numeric_predicate(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    matches: &impl Fn(&str) -> bool,
+) -> Result<bool, ExecutionFailure> {
+    #[cfg(test)]
+    if variables.allows_global_fallback(name)
+        && let Some(reader) = &inputs.globals.demand_source_reference
+        && let Some((owner, nodes)) = reader.read(name, control)?
+    {
+        let mut frame = variables.clone();
+        frame.bind_retained_source_nodes(name.to_owned(), owner, nodes);
+        return variable_numeric_predicate(inputs, name, &frame, control, matches);
+    }
     if let Some(values) = variables.detached_source_node_strings(name) {
-        return Ok(values
-            .iter()
-            .any(|actual| number_equals(actual, expected) == equal));
+        return Ok(values.iter().any(|actual| matches(actual)));
     }
     if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         let source = required_comparison_source(inputs)?;
@@ -265,14 +393,23 @@ pub(super) fn variable_number_comparison(
             let actual = source
                 .string_value_controlled(*node, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            if number_equals(&actual, expected) == equal {
+            if matches(&actual) {
                 return Ok(true);
             }
         }
         return Ok(false);
     }
-    let actual = variable_string_value(inputs, name, variables, control)?;
-    Ok(number_equals(&actual, expected) == equal)
+    let actual = variable_string_value_for(
+        inputs,
+        name,
+        variables,
+        control,
+        #[cfg(test)]
+        None,
+        #[cfg(test)]
+        true,
+    )?;
+    Ok(matches(&actual))
 }
 
 fn required_comparison_source<'a>(
@@ -288,9 +425,9 @@ fn required_comparison_source<'a>(
     })
 }
 
-fn number_equals(actual: &str, expected: i32) -> bool {
+fn number_equals(actual: &str, expected: f64) -> bool {
     crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(actual)
-        .and_then(|actual| actual.partial_cmp(&f64::from(expected)))
+        .and_then(|actual| actual.partial_cmp(&expected))
         == Some(std::cmp::Ordering::Equal)
 }
 
@@ -874,6 +1011,25 @@ pub(super) fn concat_value(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
+    concat_value_at(
+        inputs,
+        context,
+        expression,
+        variables,
+        control,
+        #[cfg(test)]
+        None,
+    )
+}
+
+pub(super) fn concat_value_at(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &Xslt10ConcatExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&crate::xdm::owned_tree_experiment::SourceLocation>,
+) -> Result<String, ExecutionFailure> {
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -882,7 +1038,14 @@ pub(super) fn concat_value(
         match part {
             Xslt10ConcatPart::Literal(value) => result.push_str(value),
             Xslt10ConcatPart::Variable(name) => {
-                let value = variable_string_value(inputs, name, variables, control)?;
+                let value = variable_string_value_at(
+                    inputs,
+                    name,
+                    variables,
+                    control,
+                    #[cfg(test)]
+                    location,
+                )?;
                 result.push_str(&value);
             }
             Xslt10ConcatPart::VariablePosition {

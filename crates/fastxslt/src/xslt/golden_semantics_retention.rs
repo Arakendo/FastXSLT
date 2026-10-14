@@ -1838,7 +1838,7 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::VariableStringEquals {
             left,
             right,
-            comparison: _,
+            ..
         }
         | BooleanExpression::Xslt10VariableNumericComparison {
             left,

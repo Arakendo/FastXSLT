@@ -210,7 +210,13 @@ impl Measurement {
     ) {
         self.increment("initialization-failure");
         let frontier = failure_frontier(failure);
-        trace_frontier_failure(identity, "initialization", &frontier, failure);
+        trace_frontier_failure(
+            identity,
+            "initialization",
+            &frontier,
+            failure,
+            expected_error,
+        );
         *self
             .initialization_frontiers
             .entry(frontier.clone())
@@ -234,7 +240,7 @@ impl Measurement {
     ) {
         self.increment("execution-failure");
         let frontier = failure_frontier(failure);
-        trace_frontier_failure(identity, "execution", &frontier, failure);
+        trace_frontier_failure(identity, "execution", &frontier, failure, expected_error);
         *self
             .execution_frontiers
             .entry(frontier.clone())
@@ -1203,7 +1209,13 @@ fn trace_case_failure(identity: &str, phase: &str, failure: &WorkbenchFailure) {
     );
 }
 
-fn trace_frontier_failure(identity: &str, phase: &str, frontier: &str, failure: &WorkbenchFailure) {
+fn trace_frontier_failure(
+    identity: &str,
+    phase: &str,
+    frontier: &str,
+    failure: &WorkbenchFailure,
+    expected_error: bool,
+) {
     let Some(requested) = std::env::var_os(TRACE_FRONTIER_ENVIRONMENT) else {
         return;
     };
@@ -1211,7 +1223,7 @@ fn trace_frontier_failure(identity: &str, phase: &str, frontier: &str, failure: 
         return;
     }
     println!(
-        "frontier-trace\t{identity}\tphase={phase}\tfrontier={frontier}\tdetail={}",
+        "frontier-trace\t{identity}\tphase={phase}\tfrontier={frontier}\texpected-error={expected_error}\tdetail={}",
         escaped_detail(&failure.detail)
     );
 }
@@ -2809,6 +2821,29 @@ fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'
             .then(|| document.value(*attribute))
             .flatten()
     })
+}
+
+#[test]
+fn standard_frontiers_exclude_expected_error_cases_in_both_phases() {
+    let failure = WorkbenchFailure {
+        code: "FXXP1001".to_owned(),
+        category: "unsupported".to_owned(),
+        request_id: None,
+        location: None,
+        detail: "unsupported expression".to_owned(),
+    };
+    let mut measurement = Measurement::default();
+    for expected_error in [false, true] {
+        measurement.initialization_failure("initialization", &failure, expected_error);
+        measurement.execution_failure("execution", &failure, expected_error);
+    }
+    let frontier = failure_frontier(&failure);
+    assert_eq!(measurement.initialization_frontiers[&frontier], 2);
+    assert_eq!(measurement.execution_frontiers[&frontier], 2);
+    assert_eq!(measurement.standard_initialization_frontiers[&frontier], 1);
+    assert_eq!(measurement.standard_execution_frontiers[&frontier], 1);
+    assert_eq!(measurement.counters["initialization-failure"], 2);
+    assert_eq!(measurement.counters["execution-failure"], 2);
 }
 
 #[test]

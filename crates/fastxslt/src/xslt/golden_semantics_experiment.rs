@@ -33,6 +33,8 @@ mod retention;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StylesheetProgram {
+    // Compilation provenance, not local version compatibility or host policy.
+    pub(crate) preprocessing: StylesheetPreprocessingStamp,
     pub(crate) declared_version: String,
     pub(crate) default_initial_mode: Option<String>,
     pub(crate) source_whitespace: SourceWhitespacePolicy,
@@ -53,6 +55,17 @@ pub(crate) struct StylesheetProgram {
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
+}
+
+/// Private completed-artifact confinement. Reference stages remain distinct
+/// from the baseline even when they select the same modern edition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StylesheetPreprocessingStamp {
+    ModernBaseline,
+    #[cfg(test)]
+    StrictXslt10Reference,
+    #[cfg(test)]
+    ModernReference,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -157,6 +170,8 @@ pub(crate) enum GlobalBindingKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct GlobalBinding {
+    #[cfg(test)]
+    pub(crate) declaration_reference: SourceLocation,
     pub(crate) kind: GlobalBindingKind,
     pub(crate) name: String,
     pub(crate) required: bool,
@@ -1892,6 +1907,8 @@ pub(crate) enum BooleanExpression {
         left: String,
         right: String,
         comparison: StringComparison,
+        xslt10_compatibility: bool,
+        explicit_string: [bool; 2],
     },
     Xslt10VariableStringLiteralEquals {
         variable: String,
@@ -2061,6 +2078,8 @@ pub(crate) enum NestedDocumentReferences {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ChooseBranch {
+    #[cfg(test)]
+    pub(crate) condition_reference: SourceLocation,
     pub(crate) test: BooleanExpression,
     pub(crate) body: Vec<Instruction>,
 }

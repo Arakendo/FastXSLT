@@ -280,6 +280,8 @@ pub(super) fn execute_scalar<'a>(
         variables,
         result,
         control,
+        #[cfg(test)]
+        None,
     )
 }
 

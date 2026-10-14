@@ -1067,11 +1067,13 @@ fn parse_scalar(
     if let Some(comparison) = compile_xslt10_variable_literal(parsed, xslt10_compatibility) {
         return Ok(comparison);
     }
-    if let Some((left, right)) = parse_variable_string_equality(parsed) {
+    if let Some([left, right]) = parse_variable_string_equality(parsed) {
         return Ok(BooleanExpression::VariableStringEquals {
-            left: left.to_owned(),
-            right: right.to_owned(),
+            left: left.name.to_owned(),
+            right: right.name.to_owned(),
             comparison,
+            xslt10_compatibility,
+            explicit_string: [left.explicit, right.explicit],
         });
     }
     if parsed.starts_with('/') || parsed.starts_with('@') {
@@ -1407,23 +1409,30 @@ fn parse_constant_string_boolean(expression: &str) -> Option<bool> {
     Some(xpath_string_literal(left.trim())? == xpath_string_literal(right.trim())?)
 }
 
-fn parse_variable_string_equality(expression: &str) -> Option<(&str, &str)> {
-    let (left, right) = expression.split_once('=')?;
-    Some((
-        variable_string_operand(left)?,
-        variable_string_operand(right)?,
-    ))
+struct ParsedStringVariable<'a> {
+    name: &'a str,
+    explicit: bool,
 }
 
-fn variable_string_operand(expression: &str) -> Option<&str> {
+fn parse_variable_string_equality(expression: &str) -> Option<[ParsedStringVariable<'_>; 2]> {
+    let (left, right) = expression.split_once('=')?;
+    Some([
+        variable_string_operand(left)?,
+        variable_string_operand(right)?,
+    ])
+}
+
+fn variable_string_operand(expression: &str) -> Option<ParsedStringVariable<'_>> {
     let expression = expression.trim();
-    let expression = expression
+    let explicit = expression
         .strip_prefix("string(")
-        .and_then(|value| value.strip_suffix(')'))
-        .unwrap_or(expression)
-        .trim();
+        .and_then(|value| value.strip_suffix(')'));
+    let expression = explicit.unwrap_or(expression).trim();
     let variable = expression.strip_prefix('$')?;
-    is_ascii_ncname(variable).then_some(variable)
+    is_ascii_ncname(variable).then_some(ParsedStringVariable {
+        name: variable,
+        explicit: explicit.is_some(),
+    })
 }
 
 fn parse_path_context_string_predicate(expression: &str) -> Option<(&str, &str)> {
@@ -1564,4 +1573,44 @@ fn unsupported_boolean_expression(expression: &str, location: &SourceLocation) -
         format!("unsupported conditional expression: {expression}"),
         location,
     )
+}
+
+#[cfg(test)]
+mod equality_intent_tests {
+    use super::*;
+
+    #[test]
+    fn equality_plan_preserves_conversion_intent_and_compatibility() {
+        let location = SourceLocation {
+            resource: "urn:equality-intent".into(),
+            span: 0..1,
+        };
+        for compatibility in [false, true] {
+            for (expression, conversions) in [
+                ("$a = $b", [false, false]),
+                ("string($a) = $b", [true, false]),
+                ("$a = string($b)", [false, true]),
+                ("string( $a ) = string($b)", [true, true]),
+            ] {
+                let plan = parse_scalar(
+                    expression,
+                    expression,
+                    &location,
+                    StringComparison::HtmlAsciiCaseInsensitive,
+                    compatibility,
+                )
+                .unwrap();
+                assert_eq!(
+                    plan,
+                    BooleanExpression::VariableStringEquals {
+                        left: "a".into(),
+                        right: "b".into(),
+                        comparison: StringComparison::HtmlAsciiCaseInsensitive,
+                        xslt10_compatibility: compatibility,
+                        explicit_string: conversions,
+                    }
+                );
+            }
+        }
+    }
 }

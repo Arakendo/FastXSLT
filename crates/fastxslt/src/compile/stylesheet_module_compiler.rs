@@ -9,6 +9,7 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::instruction_compiler::compile_literal_element;
 use super::namespace_alias_compiler;
+use super::stylesheet_preprocessing::StylesheetCompilationContext;
 use super::stylesheet_validation::validate_named_template_references;
 use super::{
     CompileFailure, XSLT_NAMESPACE, compile_stylesheet_at_excluding_unvalidated,
@@ -105,6 +106,7 @@ fn merge_included_program(
     mut included_program: StylesheetProgram,
     location: &SourceLocation,
 ) -> Result<(), CompileFailure> {
+    ensure_same_preprocessing(program, &included_program, location)?;
     merge_attribute_set_declarations(program, &mut included_program, location);
     if program.root_template.is_some() && included_program.root_template.is_some() {
         materialize_root_template_in_declaration_order(program);
@@ -187,6 +189,21 @@ fn merge_included_program(
         program.global_bindings.push(binding);
     }
     super::order_merged_global_dependencies(&mut program.global_bindings, location)?;
+    Ok(())
+}
+
+fn ensure_same_preprocessing(
+    principal: &StylesheetProgram,
+    dependency: &StylesheetProgram,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    if principal.preprocessing != dependency.preprocessing {
+        return Err(unsupported(
+            "FXST1058",
+            "compiled stylesheet reuse requires the same preprocessing edition and stage",
+            location,
+        ));
+    }
     Ok(())
 }
 
@@ -481,6 +498,22 @@ pub(crate) fn compile_stylesheet_with_included_programs_at(
     principal_root: NodeId,
     included_programs: Vec<StylesheetProgram>,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_with_included_programs_at_in_context(
+        principal,
+        principal_root,
+        included_programs,
+        StylesheetCompilationContext::baseline(),
+    )
+}
+
+/// Assemble retained modules only within an explicitly selected compilation
+/// context. The caller must already have applied the graph's preprocessing.
+pub(crate) fn compile_stylesheet_with_included_programs_at_in_context(
+    principal: &Document,
+    principal_root: NodeId,
+    included_programs: Vec<StylesheetProgram>,
+    context: StylesheetCompilationContext,
+) -> Result<StylesheetProgram, CompileFailure> {
     let include_declarations = include_nodes_at(principal, principal_root)?;
     if include_declarations.len() != included_programs.len() {
         return Err(invalid(
@@ -498,6 +531,7 @@ pub(crate) fn compile_stylesheet_with_included_programs_at(
         principal_root,
         &include_declarations,
     )?;
+    program = context.qualify_module(program);
     for (mut included, include) in included_programs.into_iter().zip(include_declarations) {
         apply_principal_namespace_aliases(principal, principal_root, &mut included)?;
         merge_included_program(&mut program, included, principal.location(include))?;
@@ -540,6 +574,7 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
         *include,
         imported_program,
         included_program,
+        StylesheetCompilationContext::baseline(),
     )
 }
 
@@ -548,6 +583,22 @@ pub(crate) fn compile_stylesheet_with_imported_and_included_programs_at(
     principal_root: NodeId,
     imported_program: StylesheetProgram,
     included_program: StylesheetProgram,
+) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_with_imported_and_included_programs_at_in_context(
+        principal,
+        principal_root,
+        imported_program,
+        included_program,
+        StylesheetCompilationContext::baseline(),
+    )
+}
+
+pub(crate) fn compile_stylesheet_with_imported_and_included_programs_at_in_context(
+    principal: &Document,
+    principal_root: NodeId,
+    imported_program: StylesheetProgram,
+    included_program: StylesheetProgram,
+    context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
     let dependencies = dependency_nodes_at(principal, principal_root)?;
     let [import, include] = dependencies.as_slice() else {
@@ -573,6 +624,7 @@ pub(crate) fn compile_stylesheet_with_imported_and_included_programs_at(
         *include,
         imported_program,
         included_program,
+        context,
     )
 }
 
@@ -583,10 +635,14 @@ fn compose_imported_and_included_programs(
     include: NodeId,
     mut imported_program: StylesheetProgram,
     mut included_program: StylesheetProgram,
+    context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
     let dependencies = [import, include];
     let mut program =
         compile_stylesheet_at_excluding_unvalidated(principal, principal_root, &dependencies)?;
+    program = context.qualify_module(program);
+    ensure_same_preprocessing(&program, &imported_program, principal.location(import))?;
+    ensure_same_preprocessing(&program, &included_program, principal.location(include))?;
     let included_minimum_precedence = included_program
         .matched_templates
         .iter()
@@ -677,6 +733,18 @@ pub(crate) fn compile_stylesheet_with_imports(
     principal: &Document,
     imported: &[(&Document, NodeId)],
 ) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_with_imports_in_context(
+        principal,
+        imported,
+        StylesheetCompilationContext::baseline(),
+    )
+}
+
+pub(crate) fn compile_stylesheet_with_imports_in_context(
+    principal: &Document,
+    imported: &[(&Document, NodeId)],
+    context: StylesheetCompilationContext,
+) -> Result<StylesheetProgram, CompileFailure> {
     let import_declarations = import_nodes(principal)?;
     if import_declarations.is_empty() || import_declarations.len() != imported.len() {
         return Err(invalid(
@@ -695,6 +763,7 @@ pub(crate) fn compile_stylesheet_with_imports(
     let root = document_element(principal)?;
     let mut principal_program =
         compile_stylesheet_excluding_unvalidated(principal, &import_declarations)?;
+    principal_program = context.qualify_module(principal_program);
     let (_, principal_aliases) = namespace_aliases_at(principal, root)?;
     let single_import_aliases = if imported.len() == 1 && !principal_aliases.is_empty() {
         let (nodes, mut aliases) = namespace_aliases_at(imported[0].0, imported[0].1)?;
@@ -720,6 +789,7 @@ pub(crate) fn compile_stylesheet_with_imports(
             }
             let mut program =
                 compile_imported_program_excluding(document, *root, precedence, &excluded)?;
+            program = context.qualify_module(program);
             if index == 0 {
                 if let Some((_, aliases)) = &single_import_aliases {
                     namespace_alias_compiler::apply(&mut program, aliases);
@@ -779,6 +849,20 @@ pub(crate) fn compile_stylesheet_with_imported_programs_at(
     principal_root: NodeId,
     imported_programs: Vec<StylesheetProgram>,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_with_imported_programs_at_in_context(
+        principal,
+        principal_root,
+        imported_programs,
+        StylesheetCompilationContext::baseline(),
+    )
+}
+
+pub(crate) fn compile_stylesheet_with_imported_programs_at_in_context(
+    principal: &Document,
+    principal_root: NodeId,
+    imported_programs: Vec<StylesheetProgram>,
+    context: StylesheetCompilationContext,
+) -> Result<StylesheetProgram, CompileFailure> {
     let import_declarations = import_nodes_at(principal, principal_root)?;
     if imported_programs.len() < 2 || import_declarations.len() != imported_programs.len() {
         return Err(invalid(
@@ -792,7 +876,15 @@ pub(crate) fn compile_stylesheet_with_imported_programs_at(
         principal_root,
         &import_declarations,
     )?;
+    principal_program = context.qualify_module(principal_program);
     let mut imported_programs = imported_programs;
+    for (program, declaration) in imported_programs.iter().zip(&import_declarations) {
+        ensure_same_preprocessing(
+            &principal_program,
+            program,
+            principal.location(*declaration),
+        )?;
+    }
     let mut next_maximum = -1;
     for program in imported_programs.iter_mut().rev() {
         let shift =
@@ -873,7 +965,21 @@ pub(crate) fn compile_stylesheet_with_imported_programs_at(
 pub(crate) fn compile_stylesheet_with_single_imported_program_at(
     principal: &Document,
     principal_root: NodeId,
+    imported_program: StylesheetProgram,
+) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_with_single_imported_program_at_in_context(
+        principal,
+        principal_root,
+        imported_program,
+        StylesheetCompilationContext::baseline(),
+    )
+}
+
+pub(crate) fn compile_stylesheet_with_single_imported_program_at_in_context(
+    principal: &Document,
+    principal_root: NodeId,
     mut imported_program: StylesheetProgram,
+    context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
     let import_declarations = import_nodes_at(principal, principal_root)?;
     if import_declarations.len() != 1 {
@@ -887,6 +993,12 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
         principal,
         principal_root,
         &import_declarations,
+    )?;
+    principal_program = context.qualify_module(principal_program);
+    ensure_same_preprocessing(
+        &principal_program,
+        &imported_program,
+        principal.location(import_declarations[0]),
     )?;
     rebase_imported_program(
         &mut imported_program,
@@ -1400,6 +1512,8 @@ pub(super) fn compile_simplified_stylesheet_at(
         location: document.location(root).clone(),
     };
     Ok(StylesheetProgram {
+        preprocessing:
+            crate::xslt::golden_semantics_experiment::StylesheetPreprocessingStamp::ModernBaseline,
         declared_version: declared_version.to_owned(),
         default_initial_mode: None,
         source_whitespace: SourceWhitespacePolicy::Preserve,

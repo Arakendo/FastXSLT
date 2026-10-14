@@ -627,7 +627,7 @@ fn static_string_function_can_supply_a_template_parameter_default() {
 }
 
 #[test]
-fn xslt10_variable_pair_comparison_rejects_general_node_set_pairs() {
+fn xslt10_variable_pair_comparison_supports_mixed_node_set_scalar_pairs() {
     let source = parse_document(
         "memory:node-set-pair.xml",
         b"<doc><left>x</left><right>x</right></doc>",
@@ -642,7 +642,7 @@ fn xslt10_variable_pair_comparison_rejects_general_node_set_pairs() {
         "memory:node-set-pair.xsl",
         br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
           <xsl:variable name="left" select="/doc/left"/>
-          <xsl:variable name="right" select="/doc/right"/>
+          <xsl:variable name="right" select="'scalar'"/>
           <xsl:template match="/"><xsl:value-of select="$left=$right"/></xsl:template>
         </xsl:stylesheet>"#,
         ParseLimits {
@@ -655,16 +655,15 @@ fn xslt10_variable_pair_comparison_rejects_general_node_set_pairs() {
     let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
         .expect("variable pair comparison should compile to an explicit runtime boundary");
 
-    let failure = execute_program(
+    let result = execute_program(
         &program,
         &source,
         "node-set-pair-request",
         &mut InvocationControl::unbounded(),
     )
-    .expect_err("general node-set pair comparison should remain unsupported");
+    .expect("mixed node-set/scalar comparison should execute");
 
-    assert_eq!(failure.category, FailureCategory::Unsupported);
-    assert_eq!(failure.code, "FXRT1015");
+    assert!(matches!(result.children.as_slice(), [ResultNode::Text(text)] if text == "false"));
 }
 
 #[test]

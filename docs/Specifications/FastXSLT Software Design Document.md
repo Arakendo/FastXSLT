@@ -577,6 +577,68 @@ whitespace stripping under preserved space, including adjacent-instruction
 rules. It retains original text fragments and uses merged-run eligibility;
 physical text merging, canonical lowering and production graph integration
 remain unimplemented gates, not implied by this reference.
+The modern candidate can also be selected explicitly by private graph tests;
+one chosen profile is applied to loaded modules before lowering. This is not
+the default modern compiler behavior, a public selector or a promoted corpus
+lane. Canonical merged-text lowering and compiled-profile confinement remain
+required before promotion.
+That test-only candidate validates retained content for the reviewed subset of
+unconditionally empty XSLT elements after whitespace selection, preserving
+`XTSE0260`, original element provenance and preprocessing control precedence.
+Conditional content models remain instruction-owned; this is not complete
+content-model validation or a production behavior change.
+Content-built template arguments, like parameter defaults, consume selected
+constructor children. Text-only arguments assemble selected fragments rather
+than the unfiltered subtree value; preserved dynamic-constructor text remains
+visible to shortcut eligibility and the complete shared sequence fallback.
+Completed graph programs retain a private preprocessing-stage stamp. Baseline
+modern, strict reference and candidate modern are distinct; local version is
+not the stamp. Existing retained-program composition checks reject mismatched
+stamps before publishing a combined artifact. No cache or public inspection,
+ABI, wire or profile-selector contract follows from the marker.
+A compiler-owned private context qualifies newly compiled modules of an
+already-preprocessed admitted include, import or principal mixed reference graph
+before composition. Each module inherits one selected preprocessing identity;
+retained dependency artifacts
+must match it. The token does not apply whitespace rules, prove an effective
+view, infer local version, grant authority or relabel supplied foreign artifacts.
+Principal leaves retain principal validation; dependency leaves retain their
+unlinked compilation contract. Context-qualified composition reuses existing
+precedence and conflict handling, import-order and root dependency-count gates.
+Unsupported nested mixed shapes still defer to the existing classification path;
+context propagation does not admit broader dependency graphs.
+Flat principal imports retain the document-aware child-compilation path:
+higher-precedence namespace aliases and visibility declarations participate
+before imported-module lowering. A context token cannot recover those semantics
+by relabelling already-lowered instructions.
+A compiler-owned test-only canonical-content reference groups surviving text
+fragments into logical runs while borrowing their original payload and source
+locations. It does not mutate XDM, assign replacement text identities or
+fabricate merged spans. Canonical graph lowering remains pending; the reference
+is not a second compiler.
+Its private logical-text position lookup retains the original fragment's node
+and source location plus a decoded UTF-8 byte offset. Fragment-boundary positions
+belong to the following nonempty fragment; end-of-run belongs to the final
+fragment. Interior UTF-8 bytes and out-of-range positions have no anchor.
+Decoded offsets must not be added to raw XML spans: entity references and CDATA
+can make those coordinate systems differ. Lookup work is charged and cancellable;
+this reference does not select a public diagnostic-offset representation.
+A private canonical sequence-lowering reference consumes logical children using
+the existing element-dispatch owner and lexical bindings. Ordinary literal text
+retains fragment-wise instructions and original locations, with unchanged
+runtime text charging. Split expanded-text runs can use the existing admitted
+whole-expression form through the same expression compiler after a charged
+logical-value copy. The first original fragment supplies the diagnostic anchor;
+no merged span or decoded-offset-to-raw-span mapping is fabricated. General
+text-value templates and partially excluded expanded runs remain explicitly
+unsupported in this private reference, not silently compiled as independent
+templates. Literal-element body lowering now recurses canonically over that
+same effective view, while static validation, namespaces, attributes and
+computed-attribute exclusions stay in the existing literal compiler owner.
+XSLT instruction bodies and static/temporary paths still use baseline traversal.
+This
+vertical reference does not promote either graph profile, establish full
+canonical lowering, or define a new wire/API surface.
 The strict graph reference accepts one aggregate preprocessing phase control,
 and the test-only workbench uses its supplied XDM ceiling independently of
 source preparation. Control failures retain the original failing module-root
@@ -1893,10 +1955,14 @@ stylesheet errors reported as `XTSE0020`, with the structured invalid category
 and stylesheet source location preserved. XSLT 2.0 accepts only `yes`/`no`;
 XSLT 3.0 additionally accepts the exact lower-case `true`/`false` and numeric
 `1`/`0` forms after whitespace normalization.
-Requested indentation currently adds newline plus two-space depth prefixes only
-around non-empty element-only child sequences. Text-only and mixed-content
-elements remain inline so indentation does not alter their string values; wider
-pretty-printing choices remain implementation-defined and unclaimed.
+Requested XML indentation adds newline plus two-space depth prefixes around
+non-empty child sequences containing at least one element and otherwise only
+elements, comments or processing instructions. Comment-only, PI-only, text-only
+and mixed-text content remains inline. Existing text is neither removed nor
+rewritten; suppression and inherited indentation restrictions still apply.
+HTML/XHTML retain their element-only eligibility rule. These are conservative
+private formatting choices, not a promise to reproduce archival indentation;
+wider pretty-printing choices remain implementation-defined and unclaimed.
 The private HTML serializer accepts general semantic result trees for explicit
 `method="html"`. When the output method is absent, an unnamespaced `html` first
 significant result element selects legacy HTML serialization; this adaptive

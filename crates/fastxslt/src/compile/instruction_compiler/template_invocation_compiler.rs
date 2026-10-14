@@ -1578,12 +1578,17 @@ fn compile_content_argument_value(
 ) -> Result<TemplateArgumentValue, CompileFailure> {
     const MAX_CONTENT_BINDINGS: usize = 64;
 
-    let children = meaningful_children(document, element);
+    let children = super::super::stylesheet_preprocessing::constructor_children(document, element)?;
     if children
         .iter()
         .all(|node| document.kind(*node) == NodeKind::Text)
     {
-        return Ok(TemplateArgumentValue::Text(document.string_value(element)));
+        return Ok(TemplateArgumentValue::Text(
+            children
+                .iter()
+                .map(|node| document.value(*node).unwrap_or_default())
+                .collect(),
+        ));
     }
     if children.iter().all(|node| {
         document.kind(*node) == NodeKind::Text

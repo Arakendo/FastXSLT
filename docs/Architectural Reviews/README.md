@@ -160,3 +160,35 @@ and add the record to this index. Never reuse a retired number.
   -- Accepted through ADR-0023; explicit strict-1.0 and modern preprocessing
   profiles are compilation-graph scoped, private initially. Integration is
   pending; original archival comparisons remain unchanged.
+- [AR-0030: Invocation Owned Global Constructor Evaluation](AR-0030-invocation-owned-global-constructor-evaluation.md)
+  -- Under Review; 102 reference/golden tests include compiled legacy reads,
+  owned tree/source values, recursive lifetime, view parity and owner isolation.
+  Schedule probes distinguish unused failures and work costs from static admission.
+  Typed temporary-copy reads now share the same resolver and existing copier.
+  Direct boolean reads now share those cells with value-kind truth, shadowing,
+  short-circuit/cycle and failure/control checks; their read sites remain unknown.
+  Failure/message probes preserve origin fields; cycle-related provenance remains open.
+  A bounded optional-context reference preserves the primary failure on truncation.
+  Test-only compiled declaration locations and per-failure capture-once are proven.
+  Failed cells capture typed/direct/unary/concat-variable read paths; other sites stay unknown.
+  A bounded first-cycle observation preserves the closing read before unwind.
+  Direct string-length conditions retain `if`/`when` sites without caller inference.
+  Nested boolean composition preserves those sites and short-circuiting.
+  Typed string/numeric equality reuse the completed-value consumer; legacy integer
+  equality and relational literals no longer use first-node conversion.
+  Variable-pair relations use bounded operands and charged pair work; general
+  equality/inequality conversion and global admission remain open. Scalar
+  temporary equality reads now demand safely; source scalarization remains guarded.
+  Explicit two-sided legacy string conversion is separately compiled and tested;
+  bare, mixed and modern equality semantics are not broadened by that slice.
+  A later private scalar comparator supplies legacy boolean/numeric precedence
+  and fragment semantics; source node-set equality remains explicitly guarded.
+  The following source-pair slice admits independent existential equality and
+  inequality with bounded buffers; mixed scalar/node-set cases remain guarded.
+  The next mixed slice admits typed boolean, numeric and string/fragment operands
+  against source sets in either order. Mixed explicit/bare conditional equality
+  now preserves per-operand conversion with first/later/empty-node evidence.
+  Typed relations preserve boolean and numeric values; node-set/boolean pairs
+  use whole-set truth, with production parameter/control golden evidence.
+  Modern parity, production integration and static-versus-demand selection remain
+  pending.

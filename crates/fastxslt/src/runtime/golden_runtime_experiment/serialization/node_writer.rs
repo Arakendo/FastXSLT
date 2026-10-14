@@ -233,7 +233,11 @@ fn begin_element<'a, 'o>(
             && children
                 .iter()
                 .filter(|child| !is_replaced_content_type_meta(child, inject_content_type))
-                .all(|child| matches!(child, ResultNode::Element { .. }));
+                .all(|child| is_indentable_child(child, options))
+            && (inject_content_type
+                || children
+                    .iter()
+                    .any(|child| matches!(child, ResultNode::Element { .. })));
         serialize_content_type_if_needed(
             options,
             inject_content_type,
@@ -268,6 +272,16 @@ fn begin_element<'a, 'o>(
             result.map(|_| None)
         }
     }
+}
+
+fn is_indentable_child(child: &ResultNode, options: SerializationOptions<'_>) -> bool {
+    matches!(child, ResultNode::Element { .. })
+        || options.html_mode == HtmlMode::None
+            && options.xhtml_mode == XhtmlMode::None
+            && matches!(
+                child,
+                ResultNode::Comment(_) | ResultNode::ProcessingInstruction { .. }
+            )
 }
 
 fn finish_element(

@@ -341,3 +341,281 @@ fn typed_range_shortcut_still_accepts_strip_eligible_formatting() {
         );
     }
 }
+
+#[test]
+fn modern_reference_preprocesses_included_parameter_boundaries_before_lowering() {
+    let principal = r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:include href="child.xsl"/><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:call-template name="n"/></xsl:template></xsl:stylesheet>"#;
+    let included = r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0" xml:space="preserve"><xsl:template name="n"> <!--ignored--> <xsl:param name="p"> P</xsl:param><out><xsl:value-of select="$p"/></out></xsl:template></xsl:stylesheet>"#;
+    let modules = [
+        (PRINCIPAL, principal),
+        ("https://example.invalid/child.xsl", included),
+    ];
+    let mut builder = ResourceSetBuilder::new(ResourceLimits::new(2, 8192, 16384));
+    for (identity, xml) in modules {
+        builder.admit(identity, xml.as_bytes().to_vec()).unwrap();
+    }
+    let snapshot = builder.seal();
+    let limits = StylesheetCompileLimits::new(5, 8, 32768, 8, super::super::XML_LIMITS)
+        .with_modern_preprocessing_reference();
+    let mut measured = InvocationControl::unbounded();
+    let program = compile_resource_with_preprocessing_control(
+        &snapshot,
+        PRINCIPAL,
+        std::iter::empty(),
+        limits,
+        &mut measured,
+    )
+    .unwrap();
+    let source = Document::from_parsed(
+        parse_document("urn:source", b"<r/>", super::super::XML_LIMITS).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        execute_compiled_stylesheet_for_test(&program, &source, "modern-reference").unwrap(),
+        "<out> P</out>"
+    );
+    assert_eq!(execute(&modules, false), "  <out> P</out>");
+    let required = measured.consumed(WorkDomain::XdmNode);
+    for limit in [required, required - 1] {
+        let mut control = InvocationControl::new(
+            CancellationToken::new(),
+            WorkLimits {
+                xdm_nodes: limit,
+                ..WorkLimits::unbounded()
+            },
+        );
+        let result = compile_resource_with_preprocessing_control(
+            &snapshot,
+            PRINCIPAL,
+            std::iter::empty(),
+            limits,
+            &mut control,
+        );
+        if limit == required {
+            result.unwrap();
+        } else {
+            let failure = result.unwrap_err();
+            assert_eq!(failure.code, "FXCT0002");
+            assert_eq!(
+                failure.location.unwrap().resource,
+                "https://example.invalid/child.xsl"
+            );
+        }
+    }
+}
+
+#[test]
+fn modern_reference_empty_content_failure_is_module_owned_and_controlled() {
+    let principal = r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:include href="child.xsl"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#;
+    let child = r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0" xml:space="preserve"><xsl:output omit-xml-declaration="yes"> <!--ignored--> </xsl:output></xsl:stylesheet>"#;
+    let child_id = "https://example.invalid/child.xsl";
+    let mut builder = ResourceSetBuilder::new(ResourceLimits::new(2, 8192, 16384));
+    builder
+        .admit(PRINCIPAL, principal.as_bytes().to_vec())
+        .unwrap();
+    builder.admit(child_id, child.as_bytes().to_vec()).unwrap();
+    let snapshot = builder.seal();
+    let limits = StylesheetCompileLimits::new(5, 8, 32768, 8, super::super::XML_LIMITS)
+        .with_modern_preprocessing_reference();
+    let run = |control: &mut InvocationControl| {
+        compile_resource_with_preprocessing_control(
+            &snapshot,
+            PRINCIPAL,
+            std::iter::empty(),
+            limits,
+            control,
+        )
+    };
+    let mut measured = InvocationControl::unbounded();
+    let failure = run(&mut measured).unwrap_err();
+    assert_eq!(failure.code, "XTSE0260");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id, None);
+    let original = Document::from_parsed(
+        parse_document(child_id, child.as_bytes(), super::super::XML_LIMITS).unwrap(),
+    )
+    .unwrap();
+    let root = original.children(original.document_node())[0];
+    let output = original.children(root)[0];
+    assert_eq!(failure.location.as_ref(), Some(original.location(output)));
+    let required = measured.consumed(WorkDomain::XdmNode);
+    for (limit, code) in [(required, "XTSE0260"), (required - 1, "FXCT0002")] {
+        let mut control = InvocationControl::new(
+            CancellationToken::new(),
+            WorkLimits {
+                xdm_nodes: limit,
+                ..WorkLimits::unbounded()
+            },
+        );
+        assert_eq!(run(&mut control).unwrap_err().code, code);
+    }
+    // Fault injection counts charge calls, not the aggregate charged units.
+    let mut cancelled = InvocationControl::unbounded().cancelling_on_charge(WorkDomain::XdmNode, 3);
+    assert_eq!(run(&mut cancelled).unwrap_err().code, "FXCT0001");
+    // Failed preprocessing publishes no mutated graph or program. The original
+    // snapshot remains reusable under the separate unchanged reference lane.
+    let program = compile_resource_with_denied_and_limits(
+        &snapshot,
+        PRINCIPAL,
+        std::iter::empty(),
+        StylesheetCompileLimits::new(5, 8, 32768, 8, super::super::XML_LIMITS),
+    )
+    .unwrap();
+    let source = Document::from_parsed(
+        parse_document("urn:source", b"<r/>", super::super::XML_LIMITS).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        execute_compiled_stylesheet_for_test(&program, &source, "recovery").unwrap(),
+        "<out></out>"
+    );
+    assert_eq!(
+        run(&mut InvocationControl::unbounded())
+            .unwrap_err()
+            .location,
+        failure.location
+    );
+}
+
+#[test]
+fn template_argument_content_consumes_only_profile_selected_fragments() {
+    let xml = r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:call-template name="n"><xsl:with-param name="e"> <!--ignored--> </xsl:with-param><xsl:with-param name="p" xml:space="preserve"> <?ignored yes?> </xsl:with-param><xsl:with-param name="m"> <!--ignored-->M<!--ignored--> </xsl:with-param></xsl:call-template></out></xsl:template><xsl:template name="n"><xsl:param name="e"/><xsl:param name="p"/><xsl:param name="m"/><xsl:value-of select="$e"/>|<xsl:value-of select="$p"/>|<xsl:value-of select="$m"/></xsl:template></xsl:stylesheet>"#;
+    assert_eq!(execute(&[(PRINCIPAL, xml)], false), "<out>|  | M </out>");
+    assert_eq!(execute(&[(PRINCIPAL, xml)], true), "<out>|  |M</out>");
+    let dynamic = r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:call-template name="n"><xsl:with-param name="p" xml:space="preserve"> <xsl:value-of select="'X'"/> </xsl:with-param></xsl:call-template></out></xsl:template><xsl:template name="n"><xsl:param name="p"/><xsl:value-of select="$p"/></xsl:template></xsl:stylesheet>"#;
+    for strict in [false, true] {
+        assert_eq!(execute(&[(PRINCIPAL, dynamic)], strict), "<out> X </out>");
+    }
+}
+
+#[test]
+fn completed_preprocessing_stamps_survive_clone_and_separate_reference_stages() {
+    use crate::xslt::golden_semantics_experiment::StylesheetPreprocessingStamp;
+    let snapshot = control_graph();
+    let limits = StylesheetCompileLimits::new(5, 8, 32768, 8, super::super::XML_LIMITS);
+    let run = |limits| {
+        compile_resource_with_denied_and_limits(&snapshot, PRINCIPAL, std::iter::empty(), limits)
+            .unwrap()
+    };
+    let baseline = run(limits);
+    let strict = run(limits.with_strict_preprocessing());
+    let modern = run(limits.with_modern_preprocessing_reference());
+    assert_eq!(
+        baseline.preprocessing,
+        StylesheetPreprocessingStamp::ModernBaseline
+    );
+    assert_eq!(
+        strict.preprocessing,
+        StylesheetPreprocessingStamp::StrictXslt10Reference
+    );
+    assert_eq!(
+        modern.preprocessing,
+        StylesheetPreprocessingStamp::ModernReference
+    );
+    assert_eq!(strict.clone().preprocessing, strict.preprocessing);
+    assert_eq!(modern.clone().preprocessing, modern.preprocessing);
+    assert_eq!(baseline.declared_version, strict.declared_version);
+    assert_eq!(baseline.root_template, modern.root_template);
+    assert_ne!(baseline, modern);
+    // Selection is graph-owned: choosing strict clears the modern candidate.
+    let selected = run(limits
+        .with_modern_preprocessing_reference()
+        .with_strict_preprocessing());
+    assert_eq!(
+        selected.preprocessing,
+        StylesheetPreprocessingStamp::StrictXslt10Reference
+    );
+}
+
+#[test]
+fn retained_compiled_module_reuse_rejects_mismatched_preprocessing_stamps() {
+    use crate::compile::golden_stylesheet_experiment::{
+        compile_stylesheet_with_imported_and_included_programs_at,
+        compile_stylesheet_with_imported_programs_at, compile_stylesheet_with_included_programs_at,
+        compile_stylesheet_with_single_imported_program_at,
+        compile_stylesheet_with_single_include_program_at,
+    };
+    let dependency =
+        r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"/>"#;
+    let baseline = compile(&[(PRINCIPAL, dependency)], false).unwrap();
+    let strict = compile(&[(PRINCIPAL, dependency)], true).unwrap();
+    let mut builder = ResourceSetBuilder::new(ResourceLimits::new(1, 8192, 8192));
+    builder
+        .admit(PRINCIPAL, dependency.as_bytes().to_vec())
+        .unwrap();
+    let modern = compile_resource_with_denied_and_limits(
+        &builder.seal(),
+        PRINCIPAL,
+        std::iter::empty(),
+        StylesheetCompileLimits::new(5, 8, 32768, 8, super::super::XML_LIMITS)
+            .with_modern_preprocessing_reference(),
+    )
+    .unwrap();
+    for (body, mixed) in [
+        (r#"<xsl:include href="a.xsl"/>"#, false),
+        (r#"<xsl:import href="a.xsl"/>"#, false),
+        (
+            r#"<xsl:include href="a.xsl"/><xsl:include href="b.xsl"/>"#,
+            false,
+        ),
+        (
+            r#"<xsl:import href="a.xsl"/><xsl:import href="b.xsl"/>"#,
+            false,
+        ),
+        (
+            r#"<xsl:import href="a.xsl"/><xsl:include href="b.xsl"/>"#,
+            true,
+        ),
+    ] {
+        let xml = format!(
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0">{body}</xsl:stylesheet>"#
+        );
+        let document = Document::from_parsed(
+            parse_document(PRINCIPAL, xml.as_bytes(), super::super::XML_LIMITS).unwrap(),
+        )
+        .unwrap();
+        let root = document.children(document.document_node())[0];
+        let reuse = |program: StylesheetProgram, position: usize| {
+            let (first, second) = if position == 0 {
+                (program, baseline.clone())
+            } else {
+                (baseline.clone(), program)
+            };
+            if mixed {
+                compile_stylesheet_with_imported_and_included_programs_at(
+                    &document, root, first, second,
+                )
+            } else if body.matches("href").count() == 2 {
+                if body.starts_with("<xsl:include") {
+                    compile_stylesheet_with_included_programs_at(
+                        &document,
+                        root,
+                        vec![first, second],
+                    )
+                } else {
+                    compile_stylesheet_with_imported_programs_at(
+                        &document,
+                        root,
+                        vec![first, second],
+                    )
+                }
+            } else if body.starts_with("<xsl:include") {
+                compile_stylesheet_with_single_include_program_at(&document, root, first)
+            } else {
+                compile_stylesheet_with_single_imported_program_at(&document, root, first)
+            }
+        };
+        reuse(baseline.clone(), 0).unwrap();
+        for foreign in [&strict, &modern] {
+            for position in 0..body.matches("href").count() {
+                let failure = reuse(foreign.clone(), position).unwrap_err();
+                assert_eq!(failure.code, "FXST1058");
+                assert_eq!(failure.category, CompileCategory::Unsupported);
+                assert_eq!(
+                    failure.location,
+                    *document.location(document.children(root)[position])
+                );
+            }
+        }
+    }
+}

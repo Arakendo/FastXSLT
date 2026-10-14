@@ -129,6 +129,132 @@ fn run(
 }
 
 #[test]
+fn xml_indentation_formats_nontext_comments_and_processing_instructions() {
+    let cases = [
+        (vec![ResultNode::Comment("one".into())], "<r><!--one--></r>"),
+        (
+            vec![ResultNode::ProcessingInstruction {
+                target: "pi".into(),
+                value: "v".into(),
+            }],
+            "<r><?pi v?></r>",
+        ),
+        (
+            vec![
+                element(None, "e", vec![]),
+                ResultNode::Comment("one".into()),
+                ResultNode::ProcessingInstruction {
+                    target: "pi".into(),
+                    value: "v".into(),
+                },
+            ],
+            "<r>\n  <e></e>\n  <!--one-->\n  <?pi v?>\n</r>",
+        ),
+    ];
+    for (children, expected) in cases {
+        let node = element(None, "r", children);
+        let options = options(&[], &[]);
+        for recursive in [false, true] {
+            let (result, actual, charged) =
+                run(&node, options, recursive, usize::MAX, usize::MAX, None);
+            result.unwrap();
+            assert_eq!(actual, expected);
+            assert_eq!(charged, expected.len());
+            assert!(
+                run(
+                    &node,
+                    options,
+                    recursive,
+                    expected.len(),
+                    expected.len(),
+                    None
+                )
+                .0
+                .is_ok()
+            );
+            assert!(
+                run(
+                    &node,
+                    options,
+                    recursive,
+                    expected.len() - 1,
+                    usize::MAX,
+                    None
+                )
+                .0
+                .is_err()
+            );
+            assert!(
+                run(
+                    &node,
+                    options,
+                    recursive,
+                    usize::MAX,
+                    expected.len() - 1,
+                    None
+                )
+                .0
+                .is_err()
+            );
+            assert!(
+                run(&node, options, recursive, usize::MAX, usize::MAX, Some(2))
+                    .0
+                    .is_err()
+            );
+        }
+    }
+}
+
+#[test]
+fn xml_comment_indentation_keeps_mixed_text_and_suppressed_content_inline() {
+    let cases = [
+        (
+            vec![
+                ResultNode::Text(" ".into()),
+                ResultNode::Comment("one".into()),
+            ],
+            "<r> <!--one--></r>",
+        ),
+        (
+            vec![
+                ResultNode::Xslt10DisableOutputEscapingText("x".into()),
+                ResultNode::Comment("one".into()),
+            ],
+            "<r>x<!--one--></r>",
+        ),
+    ];
+    for (children, expected) in cases {
+        let node = element(None, "r", children);
+        assert_eq!(
+            run(
+                &node,
+                options(&[], &[]),
+                false,
+                usize::MAX,
+                usize::MAX,
+                None
+            )
+            .1,
+            expected
+        );
+    }
+    let node = element(None, "r", vec![ResultNode::Comment("one".into())]);
+    let suppress = [name(None, "r")];
+    let mut options = options(&[], &[]);
+    options.suppress_indentation_elements = &suppress;
+    assert_eq!(
+        run(&node, options, false, usize::MAX, usize::MAX, None).1,
+        "<r><!--one--></r>"
+    );
+    options.suppress_indentation_elements = &[];
+    options.indent = false;
+    assert_eq!(
+        run(&node, options, false, usize::MAX, usize::MAX, None).1,
+        "<r><!--one--></r>"
+    );
+}
+
+#[test]
 fn iterative_writer_matches_recursive_output_modes_and_work_charges() {
     let maps = [('é', "mapped".into())];
     for namespace in [

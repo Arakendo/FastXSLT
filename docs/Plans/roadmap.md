@@ -11,6 +11,115 @@ The current OASIS checkpoint is 2,500 / 3,173 exact comparisons (78.79%);
 without implicitly opening secondary-document DTDs, cross-document value
 identity, namespace-valued variables, or legacy namespace-copy recovery.
 
+The [XML indentation frontier check](../Evidence/oasis-xslt10-xml-indentation-frontier-2026-10-10.md)
+retains bounded formatting of element/comment/PI sequences, but rejects a
+comment-only candidate that gained one archival comparison outside the selected
+modern serialization rule. Fresh replays conserve modern **2,500 / 3,173**
+and strict experiment **2,497 / 3,173**. The standard-operation frontier has
+84 initialization and 11 execution failures; invalid XML, missing resources,
+deferred DTD mechanisms and legacy recovery are not interchangeable with
+ordinary implementation gaps. No authority or expected-output change is made
+to reach the target.
+
+Detailed frontier traces now label expected-error membership explicitly, so a
+full standard-operation trace can be filtered independently of ranked all-case
+examples. The next named ordinary candidate is `Lotus/variable_variable40#1`:
+global content constructed through template dispatch. First establish invocation
+focus, dependency/cycle and bounded temporary-tree ownership through the shared
+executor; this is not permission for a second global-constructor interpreter.
+The investigation now opens
+[AR-0030](../Architectural%20Reviews/AR-0030-invocation-owned-global-constructor-evaluation.md):
+globals currently materialize before shared execution and expose only completed
+values. Transitive reads through dispatched templates require a deliberate
+dependency/evaluation owner. Keep the existing unsupported boundary while the
+review compares static admission with safe invocation-owned demand resolution.
+The reference now has 102 focused/golden tests. Compiled legacy string-value
+reads can demand evaluation through the shared executor, including dispatched
+and conditional dependencies, cycle cleanup, root focus, local shadowing,
+qualified names, linked module precedence, supplied parameters, exact/one-less
+retention, cancellation and owner/concurrent-invocation isolation. Owned tree and
+source values now survive outstanding borrows during recursive demand evaluation;
+effective-view parity and release are proved. Foreign-focus `copy-of` retains its
+explicit `FXRT1017` guard. Named-template
+bodies still stand in for constructor plans; production reads and `variable40`
+remain unchanged and no corpus pass is credited. Modern `string($first)` is still
+explicitly compiler-unsupported. Eager-versus-demand schedule probes now pin
+unused terminating failures, additional work costs, supplied-default pruning and
+untaken mode cycles through one evaluator; this is not static reachability analysis.
+Typed temporary-copy reads now demand through the same cells and shared copier;
+recursive structure, local shadowing, result lifetime, work parity and distinct
+constructor/consumer failures are pinned. Other typed consumers remain pending.
+Direct effective-boolean reads now use those same test-only cells: empty trees
+remain true, source sets use nonemptiness, and local shadowing, short-circuiting,
+cycle/failure reuse and cached-read controls are pinned. Their read-edge locations
+remain explicitly unknown; no production boolean or global admission changes.
+A differential source-sequence comparison probe exposed first-node scalarization;
+the test bridge now hands a retained owner and full selection to the existing
+string comparator, preserving empty/local shadowing, failure cleanup and the
+foreign-owner guard. Unmigrated scalar comparisons stay guarded; broader typed
+comparison integration and equality/inequality type coverage remain open. Legacy integer
+equality now reuses node-set numeric comparison instead of first-node conversion;
+a production golden fixture and demand/completed-value matrix pin the correction.
+Relational literal comparisons now share that traversal; later-node matches,
+empty/NaN selections and exact/one-less/cancelled string-value traversal controls are pinned.
+Variable-pair relations now preserve both node-sets through a private bounded
+numeric-operand owner, with charged pair work, failure cleanup and a production
+golden check. This does not select demand evaluation or broaden global admission.
+Temporary-value equality/inequality now reaches the test-only resolver with
+reuse, cycle cleanup and local-shadowing evidence. General equality still needs
+explicit edition/type routing; source sequences remain guarded on the scalar path.
+Condition plans now preserve explicit string-conversion intent and compatibility.
+Two-sided explicit legacy `string()` equality uses controlled first-node/empty
+conversion, separately from bare node-set comparison; compiler, demand-control
+and production golden checks pin this narrow distinction. Mixed-conversion and
+modern behavior remain unchanged; general type-aware equality remains open.
+Bare legacy scalar pairs now share type-aware equality/inequality across
+conditions and value-of, including boolean/numeric precedence and temporary
+fragment semantics. Source node-set pairs remain guarded. Typed-frame tests,
+controlled failure/reuse and a production numeric/string golden pin this slice;
+boolean local-declaration syntax and general node-set equality are not credited.
+Source-to-source variable pairs now share independently existential equality
+and inequality, with bounded string buffers, charged pair work, cancellation
+and production golden evidence. Mixed node-set/scalar and foreign-owner cases
+remain guarded. Comparison tests were privately extracted before this expansion;
+the unchanged 88-test structural checkpoint preceded two new comparison tests.
+The subsequent mixed node-set/scalar slice now handles boolean nonemptiness,
+numeric conversion and string/fragment comparison in both operand orders,
+without first-node scalarization. Typed-frame, production and control tests pin
+that distinction. Mixed explicit/bare conditional equality now preserves each
+operand's conversion intent, including empty selections and later-node matches;
+two reference tests, a control-matrix extension and the production golden pin it.
+Foreign-owner comparisons remain deferred; general global-constructor admission
+is still unchanged.
+Typed relational operands now preserve booleans and numeric infinities instead
+of lexicalizing them before numeric conversion. Node-set/boolean relations use
+whole-set truth in both directions. A failing pre-fix probe, typed-frame matrix
+and ordinary supplied-parameter golden with control checks pin this correction.
+Failure/message probes preserve originating instruction spans and control fields
+without replaying constructor messages. Global declaration locations and bounded
+related cycle context still need representation before production integration.
+A capped secondary-context reference preserves the original failure and explicitly
+marks truncation. Test-only compiled declaration locations now survive module
+merge and ordering; a per-failure capture-once reference prevents trace growth.
+Generic resolver failed cells now own those context slots without a second value
+map. An opt-in bounded reference now propagates actual compiled temporary-copy
+read locations through shared execution. Direct `xsl:value-of` string-variable
+reads and selected unary conversions now carry their own compiled instruction
+location. Direct variable operands in `concat` now carry that same explicit
+instruction site. Direct boolean string-length reads now retain their `if`/`when`
+site, including nested `not`/`and`/`or` with conserved short-circuit behavior.
+Other composed operands and unmigrated comparison readers remain unknown.
+Failed cells capture their active path before unwind; this is not yet a complete
+causal/cycle trace or a production diagnostic policy.
+An opt-in first-cycle observation now captures the closing read before unwind;
+it is separate from failed-cell context and does not select production attachment.
+Next compare admission strategies and finish
+value-kind/context/diagnostic integration before recommending a resolver ADR.
+Qualified global document paths, composed match predicates and dynamic numeric
+formatting are the other recorded candidates, each with downstream gaps rather
+than an assumed pass count. Existing ISO-2022-JP and archival indentation
+dispositions remain unchanged.
+
 The [positional namespace identity slice](../Evidence/oasis-xslt10-positional-namespace-identity-2026-10-07.md)
 gets unchanged `Lotus/idkey_idkey31#1` through shared qualified selection and
 scalar identity binding. It does not admit namespace-valued frames, mixed
@@ -43,7 +152,7 @@ reports and original archived comparisons even if the strict numerator falls.
 No public selector or fixture normalization is selected.
 
 The private graph reference now selects strict preprocessing once, before
-compiling all loaded modules. Twenty-seven focused controls prove transitive
+compiling all loaded modules. Seventy focused controls prove transitive
 include/import, embedded ancestry, literal-result stylesheet and common
 global/local/static constructor parity, with retained identity/provenance and
 bounded-view controls. Production remains modern; strict selection is test-only.
@@ -72,8 +181,72 @@ all 20 specified parent instructions, before param/sort/context-item/on-completi
 and after catch, even under preserved space. It retains original text fragments
 and uses merged-run eligibility; it is not yet canonical merged-text lowering
 or a production graph path. Exact/one-less work and cancellation controls pass.
+A separate private graph-reference opt-in now runs that modern view over each
+loaded module before compilation. Its mixed-version include test proves forced
+pre-parameter stripping reaches lowering without stripping the parameter's
+own text, with exact/one-less aggregate phase budgets. Neither production nor
+the existing corpus-modern lane opts into this candidate yet.
+The candidate now rejects retained content in 12 reviewed unconditionally empty
+XSLT declarations/instructions with `XTSE0260`, after whitespace selection.
+Preserved whitespace, expanded names, original included-module locations,
+exact/one-less failure budgets and cancellation are tested. This is not a
+complete content-model validator; conditional instruction models and canonical
+text merging remain separate integration work. Production defaults stay unchanged.
+Content-built template arguments now use the same selected children as parameter
+defaults, including text-only assembly. This repairs unfiltered subtree reads
+that could reintroduce stripped whitespace; preserved text around a dynamic
+constructor also disqualifies lossy shortcuts and uses the shared sequence path.
 The measurement script can replay either named profile; its default remains
 modern until the private integration gates are complete.
+
+Completed graph artifacts now retain a private preprocessing stamp, separating
+modern baseline, strict reference and candidate-modern reference even when the
+declared version or payload is equal. Existing retained-program include/import
+reuse rejects mismatched stamps with `FXST1058`; no cache, public selector or
+protocol field is added. A compiler-owned private context now qualifies each
+module in admitted reference include, import and principal mixed trees before
+retained-module composition, including branching/transitive dependencies.
+Principal validation and unlinked
+dependency behavior remain distinct; foreign retained modules are not relabelled
+to fit the selected context. Context-qualified import and mixed assembly reuse
+the existing precedence/conflict owners. Import ordering, root dependency-count
+limits and unsupported nested mixed shapes remain unchanged; this is not broader
+graph admission. Recursive canonical lowering remains part of the promotion audit.
+Flat principal imports retain document-aware child compilation: higher-precedence
+namespace aliases and visibility declarations must act before child lowering,
+not be reconstructed from retained instructions. A full strict replay exposed
+an alias regression in the first generic traversal; the shared document-aware
+path and a focused precedence control now guard this seam.
+A test-only canonical-content reference now coalesces surviving text into
+logical runs of borrowed original fragments. It preserves every fragment's
+location without replacing XDM identities or copying payload. Both-profile
+controls cover element boundaries, forced stripping, Unicode, exact/one-less
+retention work, cancellation after partial coalescing and source reuse. This
+is not yet the graph's lowering input; next integrate the canonical content
+boundary through shared/static constructors before promoting either profile.
+Logical-run position lookup now preserves original fragment ownership at UTF-8
+boundaries, including strict/modern offset changes, entity references and CDATA.
+Decoded offsets are not added to raw XML spans; fragment provenance is retained
+without claiming a finer tokenizer map. Lookup visits are bounded and cancellable.
+The canonical reference distinguishes ordinary literal fragment emission from
+whole-run `expand-text` recognition, without independently parsing fragments or
+joining source spans. This remains private reference work, not corpus credit.
+A private canonical sequence-lowering reference now consumes those logical
+children through shared element dispatch, retaining ordinary text as original
+fragment instructions with their original locations. Controls pin binding scope,
+exclusions, recursive constructors, forward-compatible fallback, compile failure
+provenance and execution after stylesheet-owner release. Split expanded-text
+runs now use the existing narrow whole-expression compiler over the joined
+surviving value, with copied bytes charged before growth and the first original
+fragment as diagnostic anchor. This does not implement general text-value
+templates; forms outside that existing slice and partially excluded expanded
+runs remain explicitly unsupported (`FXST1066`). Nested literal-element bodies
+now recurse over canonical children of the same selected view, retaining shared
+static validation/attributes and computed-attribute exclusions. XSLT instruction
+bodies and static/temporary constructor paths still use baseline traversal of
+that view; their recursive canonical and full graph integration remain pending.
+Intermediate-module context is integrated
+for the already-admitted graph shapes described above.
 
 The 2026-10-07 replay establishes this checkpoint. The next shared architectural
 frontier is [AR-0028](../Architectural%20Reviews/AR-0028-owner-qualified-runtime-node-values.md):
@@ -502,7 +675,9 @@ execution failures. The focused wildcard transform passes under both 1.0 and 3.0
 ### Next OASIS target: 80%
 
 The immediate target is at least **2,539 / 3,173 exact matches**;
-the current 2,485 leaves **54 additional matches** to earn. The previously
+the current modern 2,500 leaves **39 additional matches** to earn. The strict
+experimental checkpoint is 2,497, requiring 42; do not combine these profiles.
+The previously
 discussed 82% checkpoint (2,602 matches) is a later ambition. This is a campaign
 target, not authorization to alter fixtures, comparisons, expected-error credit,
 or the selected security/compatibility profile.

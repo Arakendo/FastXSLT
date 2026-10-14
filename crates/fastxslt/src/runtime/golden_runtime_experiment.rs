@@ -1012,11 +1012,35 @@ fn execute_value_of_instruction(
         unreachable!("value-of executor receives one value-of instruction")
     };
     if !disable_output_escaping {
-        return execute_value_of(inputs, select, separator, execution, scope, result, control);
+        return execute_value_of(
+            inputs,
+            select,
+            separator,
+            execution,
+            scope,
+            result,
+            control,
+            #[cfg(test)]
+            Some(match instruction {
+                Instruction::ValueOf { location, .. } => location,
+                _ => unreachable!(),
+            }),
+        );
     }
     let mut value = Vec::new();
     execute_value_of(
-        inputs, select, separator, execution, scope, &mut value, control,
+        inputs,
+        select,
+        separator,
+        execution,
+        scope,
+        &mut value,
+        control,
+        #[cfg(test)]
+        Some(match instruction {
+            Instruction::ValueOf { location, .. } => location,
+            _ => unreachable!(),
+        }),
     )?;
     for node in value {
         match node {
@@ -1310,9 +1334,19 @@ fn execute_result_instruction<'a>(
         Instruction::NextMatch { .. } | Instruction::ApplyImports { .. } => {
             execute_continuation_instruction(inputs, instruction, execution, scope, control)
         }
-        Instruction::If { test, body, .. } => {
-            execute_if(inputs, test, body, execution, scope, control)
-        }
+        Instruction::If { test, body, .. } => execute_if(
+            inputs,
+            test,
+            body,
+            execution,
+            scope,
+            control,
+            #[cfg(test)]
+            Some(match instruction {
+                Instruction::If { location, .. } => location,
+                _ => unreachable!(),
+            }),
+        ),
         Instruction::Choose {
             branches,
             otherwise,
@@ -1723,6 +1757,13 @@ fn execute_copy_of_variable(
         && inputs.globals.empty_sequences.contains(variable)
     {
         return Ok(copied);
+    }
+    #[cfg(test)]
+    if variables.allows_global_fallback(variable)
+        && let Some(reader) = &inputs.globals.demand_temporary_reference
+        && let Some(tree) = reader.read(variable, location, control)?
+    {
+        return temporary_tree_executor::copy_temporary_tree(inputs, &tree, control);
     }
     Err(failure_at(
         "FXRT0002",
@@ -3928,14 +3969,17 @@ fn execute_if(
     execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&SourceLocation>,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if evaluate_boolean(
+    if evaluate_boolean_at(
         inputs,
         test,
         execution.into(),
         execution.sequence_focus(),
         variables,
         control,
+        #[cfg(test)]
+        location,
     )? {
         execute_sequence(inputs, body, execution, variables, control)
     } else {
@@ -3952,13 +3996,15 @@ fn execute_choose(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     for branch in branches {
-        if evaluate_boolean(
+        if evaluate_boolean_at(
             inputs,
             &branch.test,
             execution.into(),
             execution.sequence_focus(),
             variables,
             control,
+            #[cfg(test)]
+            Some(&branch.condition_reference),
         )? {
             return execute_sequence(inputs, &branch.body, execution, variables, control);
         }
@@ -3990,6 +4036,63 @@ fn evaluate_xslt10_template_parameter_text_choice(
 }
 
 fn evaluate_boolean(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    node_focus: BooleanNodeFocus<'_>,
+    focus: Option<SequenceFocus>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    evaluate_boolean_at(
+        inputs,
+        expression,
+        node_focus,
+        focus,
+        variables,
+        control,
+        #[cfg(test)]
+        None,
+    )
+}
+
+fn evaluate_boolean_at(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    node_focus: BooleanNodeFocus<'_>,
+    focus: Option<SequenceFocus>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&SourceLocation>,
+) -> Result<bool, ExecutionFailure> {
+    if matches!(
+        expression,
+        BooleanExpression::Not(_) | BooleanExpression::And { .. } | BooleanExpression::Or { .. }
+    ) {
+        return evaluate_boolean_logic(
+            inputs,
+            expression,
+            node_focus,
+            focus,
+            variables,
+            control,
+            #[cfg(test)]
+            location,
+        );
+    }
+    if let BooleanExpression::Xslt10VariableStringLength(variable) = expression {
+        return value_evaluator::xslt10_variable_string_length_boolean(
+            inputs,
+            variable,
+            variables,
+            control,
+            #[cfg(test)]
+            location,
+        );
+    }
+    evaluate_nonlogical_boolean(inputs, expression, node_focus, focus, variables, control)
+}
+
+fn evaluate_nonlogical_boolean(
     inputs: &SequenceInputs<'_>,
     expression: &BooleanExpression,
     node_focus: BooleanNodeFocus<'_>,
@@ -4050,12 +4153,6 @@ fn evaluate_boolean(
         return evaluate_xslt10_context_position_modulo_variable(
             inputs, focus, divisor, location, variables, control,
         );
-    }
-    if let BooleanExpression::Xslt10VariableStringLength(variable) = expression {
-        return value_evaluator::xslt10_variable_string_length(
-            inputs, variable, variables, control,
-        )
-        .map(|length| length != 0);
     }
     if let Some(value) =
         evaluate_child_attribute_variable_boolean(inputs, expression, context, variables, control)
@@ -4299,14 +4396,10 @@ fn evaluate_ordinary_boolean(
         BooleanExpression::ContextLanguageMatches(language) => {
             evaluate_context_language_matches(inputs, context, language, control)
         }
-        composition @ (BooleanExpression::Or { .. } | BooleanExpression::And { .. }) => {
-            evaluate_boolean_composition(inputs, composition, node_focus, focus, variables, control)
-        }
-        BooleanExpression::Not(expression) => {
-            evaluate_boolean(inputs, expression, node_focus, focus, variables, control)
-                .map(|value| !value)
-        }
-        BooleanExpression::NodeIdentityEqual { .. }
+        BooleanExpression::Or { .. }
+        | BooleanExpression::And { .. }
+        | BooleanExpression::Not(_)
+        | BooleanExpression::NodeIdentityEqual { .. }
         | BooleanExpression::RootIdentityEqualsVariable { .. }
         | BooleanExpression::TemporaryRootIdentityEqual { .. }
         | BooleanExpression::DocumentRootIdentityEqual { .. }
@@ -4371,8 +4464,27 @@ fn evaluate_variable_boolean(
             left,
             right,
             comparison,
+            xslt10_compatibility,
+            explicit_string,
         } => {
-            evaluate_variable_string_equality(inputs, left, right, *comparison, variables, control)
+            if *xslt10_compatibility && *explicit_string != [true, true] {
+                return value_evaluator::evaluate_xslt10_variable_string_variables_comparison(
+                    inputs,
+                    [(left, explicit_string[0]), (right, explicit_string[1])],
+                    true,
+                    variables,
+                    control,
+                );
+            }
+            let explicit = *xslt10_compatibility && *explicit_string == [true, true];
+            evaluate_variable_string_equality(
+                inputs,
+                [left, right],
+                *comparison,
+                explicit,
+                variables,
+                control,
+            )
         }
         BooleanExpression::Xslt10VariableStringLiteralEquals {
             variable,
@@ -4656,9 +4768,9 @@ fn evaluate_xslt10_variable_numeric_comparison(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
-    let left = value_evaluator::xslt10_variable_number(inputs, left, variables, control)?;
-    let right = value_evaluator::xslt10_variable_number(inputs, right, variables, control)?;
-    Ok(compare_xpath_numbers(left, operator, right))
+    value_evaluator::xslt10_variable_pair_relation(
+        inputs, left, right, operator, variables, control,
+    )
 }
 
 fn evaluate_xslt10_numeric_boolean(
@@ -4679,11 +4791,14 @@ fn evaluate_xslt10_numeric_boolean(
             variable,
             operator,
             value_bits,
-        } => Some(
-            value_evaluator::xslt10_variable_number(inputs, variable, variables, control).map(
-                |variable| compare_xpath_numbers(variable, *operator, f64::from_bits(*value_bits)),
-            ),
-        ),
+        } => Some(value_evaluator::xslt10_variable_number_relation(
+            inputs,
+            variable,
+            f64::from_bits(*value_bits),
+            *operator,
+            variables,
+            control,
+        )),
         _ => None,
     }
 }
@@ -4724,24 +4839,56 @@ fn evaluate_identity_boolean(
     Ok(Some(value))
 }
 
-fn evaluate_boolean_composition(
+fn evaluate_boolean_logic(
     inputs: &SequenceInputs<'_>,
     expression: &BooleanExpression,
     context: BooleanNodeFocus<'_>,
     focus: Option<SequenceFocus>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&SourceLocation>,
 ) -> Result<bool, ExecutionFailure> {
+    if let BooleanExpression::Not(operand) = expression {
+        return evaluate_boolean_at(
+            inputs,
+            operand,
+            context,
+            focus,
+            variables,
+            control,
+            #[cfg(test)]
+            location,
+        )
+        .map(|value| !value);
+    }
     let (left, right, conjunction) = match expression {
         BooleanExpression::And { left, right } => (left.as_ref(), right.as_ref(), true),
         BooleanExpression::Or { left, right } => (left.as_ref(), right.as_ref(), false),
         _ => unreachable!("boolean composition helper receives only and/or expressions"),
     };
-    let left = evaluate_boolean(inputs, left, context, focus, variables, control)?;
+    let left = evaluate_boolean_at(
+        inputs,
+        left,
+        context,
+        focus,
+        variables,
+        control,
+        #[cfg(test)]
+        location,
+    )?;
     match (conjunction, left) {
         (true, false) => Ok(false),
         (false, true) => Ok(true),
-        _ => evaluate_boolean(inputs, right, context, focus, variables, control),
+        _ => evaluate_boolean_at(
+            inputs,
+            right,
+            context,
+            focus,
+            variables,
+            control,
+            #[cfg(test)]
+            location,
+        ),
     }
 }
 
@@ -4978,14 +5125,21 @@ fn evaluate_node_string_equals(
 
 fn evaluate_variable_string_equality(
     inputs: &SequenceInputs<'_>,
-    left: &str,
-    right: &str,
+    operands: [&str; 2],
     comparison: StringComparison,
+    explicit_legacy_strings: bool,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
-    let left = variable_string_value(inputs, left, variables, control)?;
-    let right = variable_string_value(inputs, right, variables, control)?;
+    // Explicit legacy string() converts a node-set's first node. Bare equality
+    // must not acquire that meaning; modern cardinality rules are separate too.
+    let convert = if explicit_legacy_strings {
+        value_evaluator::xslt10_variable_string_value
+    } else {
+        variable_string_value
+    };
+    let left = convert(inputs, operands[0], variables, control)?;
+    let right = convert(inputs, operands[1], variables, control)?;
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -5008,6 +5162,14 @@ fn variable_string_value(
         && let Some(value) = inputs.globals.atomics.get(variable)
     {
         return Ok(value.lexical().to_owned());
+    }
+    #[cfg(test)]
+    if variables.temporary_tree(inputs.globals, variable).is_none()
+        && variables.allows_global_fallback(variable)
+        && let Some(reader) = &inputs.globals.demand_string_reference
+        && let Some(value) = reader.read(variable, None, true, control)?
+    {
+        return Ok(value);
     }
     let tree = variables
         .temporary_tree(inputs.globals, variable)
@@ -5076,14 +5238,13 @@ fn evaluate_variable_integer_equality(
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     if test.xslt10_compatibility {
-        let actual =
-            value_evaluator::xslt10_variable_number(inputs, &test.variable, variables, control)?;
-        let expected = test
-            .integer
-            .to_string()
-            .parse::<f64>()
-            .expect("i64 lexical values are valid XPath doubles");
-        return Ok(actual.partial_cmp(&expected) == Some(std::cmp::Ordering::Equal));
+        return value_evaluator::xslt10_variable_integer_equality(
+            inputs,
+            &test.variable,
+            test.integer,
+            variables,
+            control,
+        );
     }
     let value = variables.atomics.get(&test.variable).ok_or_else(|| {
         failure(
@@ -5143,6 +5304,13 @@ fn evaluate_variable_effective_boolean_value(
             [value] => atomic_effective_boolean_value(value, inputs.request_id),
             _ => Err(invalid_effective_boolean_value(inputs.request_id)),
         };
+    }
+    #[cfg(test)]
+    if variables.allows_global_fallback(variable)
+        && let Some(reader) = &inputs.globals.demand_boolean_reference
+        && let Some(value) = reader.read(variable, control)?
+    {
+        return Ok(value);
     }
     Err(failure(
         "FXRT0002",
