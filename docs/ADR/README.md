@@ -104,3 +104,8 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; select private strict-1.0 or modern preprocessing once for the
   entire compilation graph, independent of local version compatibility.
   Integration and public profile selection remain separate gates.
+- [ADR-0024: Invocation Owned Global Resolution With Shared Execution](ADR-0024-invocation-owned-global-resolution-with-shared-execution.md)
+  -- Accepted; one invocation resolver and shared constructors, initially eagerly
+  initialized. Static analysis is admission/scheduling only; specialized paths
+  must preserve the same semantics and fall back when eligibility is unproved.
+  Production integration remains gated independently.

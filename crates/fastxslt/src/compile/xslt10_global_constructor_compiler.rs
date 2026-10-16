@@ -74,10 +74,10 @@ fn compile_source_value_node(
             ensure_only_attributes(document, node, &["select"], "xsl:value-of")?;
             ensure_no_meaningful_children(document, node, "xsl:value-of")?;
             let select = required_attribute(document, node, None, "select")?;
-            parse_location_path(select, document.location(node).clone())
-                .map(ConstructedNode::Xslt10SourcePathString)
-                .map(Some)
-                .map_err(map_path_failure)
+            // Non-path selections belong to shared sequence compilation.
+            Ok(parse_location_path(select, document.location(node).clone())
+                .ok()
+                .map(ConstructedNode::Xslt10SourcePathString))
         }
         NodeKind::Element if is_xslt_element(document, node, "text") => {
             compile_text_value(document, node).map(|value| Some(ConstructedNode::Text(value)))

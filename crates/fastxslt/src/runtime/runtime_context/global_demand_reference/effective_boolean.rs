@@ -1,5 +1,5 @@
 //! Test-only effective-boolean reads through the one demand value owner.
-//! Read-site provenance is deliberately unknown until explicitly threaded.
+//! Compiled condition sites are threaded separately from constructor failures.
 
 use super::failure_observations::driver;
 use super::*;

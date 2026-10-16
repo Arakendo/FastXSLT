@@ -161,12 +161,34 @@ and add the record to this index. Never reuse a retired number.
   profiles are compilation-graph scoped, private initially. Integration is
   pending; original archival comparisons remain unchanged.
 - [AR-0030: Invocation Owned Global Constructor Evaluation](AR-0030-invocation-owned-global-constructor-evaluation.md)
-  -- Under Review; 102 reference/golden tests include compiled legacy reads,
+  -- Under Review for implementation follow-up; ADR-0024 accepts one invocation
+  resolver with initial eager scheduling. 125 reference/golden tests plus one
+  manual replay include compiled legacy reads,
   owned tree/source values, recursive lifetime, view parity and owner isolation.
   Schedule probes distinguish unused failures and work costs from static admission.
+  Edition obligations and a manual same-owner scheduling cost probe are recorded;
+  neither selects production initialization policy or establishes host performance.
+  A same-program ordinary-global production control checks semantic parity before
+  comparing production, demand and eager-through-demand costs.
+  Bounded static admission now orders named calls/import winners and refuses
+  dynamic cases safely; accepted ADR-0024 makes static analysis non-semantic and
+  specialized initializers proven optimizations with shared-path fallback.
+  Actual declaration-child bodies now use shared sequence lowering, with profile,
+  dispatch, failure/cycle and control evidence. A single-module declaration/link
+  lane now passes unchanged `variable40` through the existing XML comparator in
+  both profiles, experimentally only. One supplied include now reuses the module
+  linker with cross-module failure/cycle and profile parity. One import now reuses
+  shared composition and selects winning constructor bodies by resolved precedence;
+  transitive/mixed graphs and production admission remain separate. The review records explicit
+  decision-readiness gates.
   Typed temporary-copy reads now share the same resolver and existing copier.
   Direct boolean reads now share those cells with value-kind truth, shadowing,
-  short-circuit/cycle and failure/control checks; their read sites remain unknown.
+  short-circuit/cycle and failure/control checks; direct conditions now preserve
+  compiled `if`/`when` sites, while unmigrated locationless reads remain unknown.
+  Boolean value-expression reads now retain their `value-of` site without
+  manufacturing dependency edges for skipped operands.
+  String-literal comparison consumers now retain their instruction sites,
+  including mixed copy/comparison cycles; unmigrated read sites remain unknown.
   Failure/message probes preserve origin fields; cycle-related provenance remains open.
   A bounded optional-context reference preserves the primary failure on truncation.
   Test-only compiled declaration locations and per-failure capture-once are proven.

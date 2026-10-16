@@ -221,6 +221,11 @@ fn named_template_owned(value: &NamedTemplate) -> usize {
 fn global_binding_owned(value: &GlobalBinding) -> usize {
     value.name.capacity()
         + match &value.default {
+            GlobalBindingDefault::SharedConstructor { body, location } => {
+                size_of_val(body.as_ref())
+                    + body.iter().map(instruction_owned).sum::<usize>()
+                    + location_owned(location)
+            }
             GlobalBindingDefault::Text(text) | GlobalBindingDefault::Variable(text) => {
                 text.capacity()
             }

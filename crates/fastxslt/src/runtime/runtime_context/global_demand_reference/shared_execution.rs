@@ -1,6 +1,7 @@
 //! Test-only demand reads through the existing compiled sequence executor.
 //!
-//! Named template bodies stand in for not-yet-admitted global constructors.
+//! Older probes use named template bodies as constructor stand-ins; the
+//! declaration-body probe supplies plans lowered at actual global declarations.
 //! Placeholder global declarations permit ordinary static variable resolution;
 //! constructor placeholders are never installed. Source-path defaults use the
 //! existing controlled path evaluator and retain their effective owner.
@@ -46,6 +47,7 @@ mod effective_boolean;
 
 struct Driver {
     program: Arc<StylesheetProgram>,
+    constructor_bodies: BTreeMap<String, Vec<Instruction>>,
     source: Arc<Document>,
     resolver: DemandReference<OwnedValue, ExecutionFailure>,
     self_reference: Weak<Self>,
@@ -60,6 +62,24 @@ impl Driver {
         source: Arc<Document>,
         supplied: &BTreeMap<String, String>,
         complete_frame_clones: bool,
+        control: &mut InvocationControl,
+    ) -> Result<Rc<Self>, ExecutionFailure> {
+        Self::with_constructor_bodies(
+            program,
+            source,
+            supplied,
+            complete_frame_clones,
+            BTreeMap::new(),
+            control,
+        )
+    }
+
+    fn with_constructor_bodies(
+        program: Arc<StylesheetProgram>,
+        source: Arc<Document>,
+        supplied: &BTreeMap<String, String>,
+        complete_frame_clones: bool,
+        constructor_bodies: BTreeMap<String, Vec<Instruction>>,
         control: &mut InvocationControl,
     ) -> Result<Rc<Self>, ExecutionFailure> {
         let seeds = program
@@ -86,6 +106,7 @@ impl Driver {
             .map_err(|error| control_failure(error, "demand-shared-reference"))?;
         Ok(Rc::new_cyclic(|self_reference| Self {
             program,
+            constructor_bodies,
             source,
             resolver,
             self_reference: self_reference.clone(),
@@ -110,29 +131,44 @@ impl Driver {
         source: &Document,
         control: &mut InvocationControl,
     ) -> Result<TemporaryTree, ExecutionFailure> {
+        let nodes = self.execute_nodes_with_frame(body, variables, source, control)?;
+        materialize_result_nodes(&nodes, "demand-shared-reference", control)
+    }
+
+    fn execute_nodes_with_frame(
+        &self,
+        body: &[Instruction],
+        variables: &RuntimeVariables,
+        source: &Document,
+        control: &mut InvocationControl,
+    ) -> Result<Vec<super::super::super::ResultNode>, ExecutionFailure> {
         let weak = self.self_reference.clone();
         let temporary_weak = self.self_reference.clone();
         let source_weak = self.self_reference.clone();
         let boolean_weak = self.self_reference.clone();
         let globals = RuntimeGlobals {
-            demand_boolean_reference: Some(super::BooleanReadHook::new(move |name, control| {
-                boolean_weak
-                    .upgrade()
-                    .expect("active invocation owner")
-                    .read_value(name, control)
-                    .map(|value| {
-                        value.map(|value| match value.as_ref() {
-                            OwnedValue::Temporary(_) => true,
-                            OwnedValue::Source(selection) => !selection.nodes.is_empty(),
+            demand_boolean_reference: Some(super::BooleanReadHook::new(
+                move |name, location, control| {
+                    boolean_weak
+                        .upgrade()
+                        .expect("active invocation owner")
+                        .read_value_at(name, location, control)
+                        .map(|value| {
+                            value.map(|value| match value.as_ref() {
+                                OwnedValue::Temporary(_) => true,
+                                OwnedValue::Source(selection) => !selection.nodes.is_empty(),
+                            })
                         })
-                    })
-            })),
-            demand_source_reference: Some(SourceReadHook::new(move |name, control| {
+                },
+            )),
+            demand_source_reference: Some(SourceReadHook::new(move |name, location, control| {
                 let owner = source_weak.upgrade().expect("active invocation owner");
                 if !owner.program.global_bindings.iter().any(|binding| binding.name == name && matches!(binding.default, crate::xslt::golden_semantics_experiment::GlobalBindingDefault::LocationPath(_))) {
                     return Ok(None);
                 }
-                let value = owner.read_value(name, control)?.expect("known binding");
+                let value = owner
+                    .read_value_at(name, location, control)?
+                    .expect("known binding");
                 let OwnedValue::Source(selection) = value.as_ref() else {
                     return Ok(None);
                 };
@@ -184,6 +220,7 @@ impl Driver {
         };
         let dynamic_documents = RefCell::default();
         let inputs = SequenceInputs {
+            initializing_globals: None,
             program: &self.program,
             source: Some(source),
             request_id: "demand-shared-reference",
@@ -196,14 +233,13 @@ impl Driver {
             denied_resources: None,
             dynamic_documents: &dynamic_documents,
         };
-        let nodes = execute_sequence(
+        execute_sequence(
             &inputs,
             body,
             SequenceContext::new(Some(source.document_node()), None),
             variables,
             control,
-        )?;
-        materialize_result_nodes(&nodes, inputs.request_id, control)
+        )
     }
 
     fn read_string(
@@ -259,15 +295,16 @@ impl Driver {
                     return OwnedValue::select_source(&self.source, path, control)
                         .map_err(|error| Arc::new(Failure::Evaluation(error)));
                 }
-                let constructor_name =
-                    format!("{}_constructor", self.program.global_bindings[binding].name);
-                let constructor = self
-                    .program
-                    .named_templates
-                    .iter()
-                    .find(|template| template.name == constructor_name)
-                    .expect("reference fixture provides a constructor body");
-                self.execute(&constructor.template.body, control)
+                let name = &self.program.global_bindings[binding].name;
+                let body = if let Some(body) = self.constructor_bodies.get(name) {
+                    body.as_slice()
+                } else {
+                    let constructor_name = format!("{name}_constructor");
+                    &self.program.named_templates.iter()
+                        .find(|template| template.name == constructor_name)
+                        .expect("reference fixture provides a constructor body").template.body
+                };
+                self.execute(body, control)
                     .map(|tree| OwnedValue::Temporary(Arc::new(tree)))
                     .map_err(|error| Arc::new(Failure::Evaluation(error)))
             })

@@ -2,9 +2,9 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Under Review |
+| Status | Under Review for implementation follow-up; ownership accepted in ADR-0024 |
 | Opened | 2026-10-10 |
-| Last reviewed | 2026-10-13 |
+| Last reviewed | 2026-10-15 |
 | Scope | Global initialization, shared sequence execution and dependency resolution |
 | Trigger | OASIS `Lotus/variable_variable40#1` requires template dispatch while constructing a global value |
 | Related ADRs | ADR-0004, ADR-0007, ADR-0012, ADR-0014, ADR-0017, ADR-0022, ADR-0023 |
@@ -19,13 +19,19 @@ compiled state?
 
 ## Trigger and evidence
 
+**Current implementation checkpoint (2026-10-15):** unchanged `variable40` now
+passes through production shared-constructor execution, not only the reference.
+Both full OASIS profiles gain one exact comparison: modern **2,501 / 3,173
+(78.82%)**, strict **2,498 / 3,173 (78.73%)**. Broader integration remains open;
+the historical trigger below describes the original unsupported boundary.
+
 The unchanged `Lotus/variable_variable40#1` constructs `$TreeFrag` with
-`xsl:apply-templates select="//b"`. It currently fails compilation with
+`xsl:apply-templates select="//b"`. It originally failed compilation with
 `FXST1015`. Its matched templates include recursive application and text
 construction; the principal transformation later reads the completed value.
 No new resource authority is required by this case.
 
-Current initialization runs `materialize_global_defaults` before constructing
+At opening, initialization ran `materialize_global_defaults` before constructing
 the transformation's `SequenceInputs`. Direct dependencies recognized by
 `global_dependencies` are topologically ordered, including after module merge.
 `SequenceInputs` borrows a completed `RuntimeGlobals`; ordinary execution does
@@ -111,18 +117,46 @@ The blocker is global evaluation ownership, not XML parsing, resource acquisitio
 or stylesheet preprocessing edition. Selecting strict preprocessing does not
 choose eager versus demand evaluation.
 
-No alternative is selected. The first unanswered questions are whether static
-admission can cover a useful shared slice, and whether a safe demand reference can
-integrate with existing lexical frames without cloning the entire invocation or
-holding recursive borrows. Evaluation strategy also affects unused failures and
+ADR-0024 selects one invocation resolver and initial eager scheduling. The safe
+demand reference demonstrates recursive
+execution with existing lexical frames without cloning the entire invocation or
+holding recursive borrows. Static admission's useful coverage and production
+declaration integration remain unresolved; bounded original-declaration linking
+now works in the reference. Evaluation strategy also affects unused failures and
 message observations; compare permitted behavior by edition rather than assume
 eager and demand execution are interchangeable in every observable circumstance.
 
 ## Disposition
 
-Under Review. Keep the production unsupported boundary until a bounded experiment
-establishes context, dependencies and cleanup. Do not promote a resolver or public
-global-value representation solely to gain the motivating archival case.
+Ownership is accepted in
+[ADR-0024](../ADR/ADR-0024-invocation-owned-global-resolution-with-shared-execution.md).
+This review remains open for implementation follow-up. The first production
+slice is authorized, but retain unsupported guards until production context,
+dependency, diagnostic, control and performance gates pass. Acceptance earns no
+corpus credit and does not select the reference's physical representation.
+
+### Decision-readiness checkpoint (2026-10-14)
+
+The reference now has 125 focused tests plus a manually executed unchanged
+`variable40` replay. This is enough to establish safe
+recursive ownership and useful legacy shared-executor feasibility, not enough
+to claim complete production integration. Further migration of individual
+read-site locations is not the sole remaining architectural gate.
+
+| Question | Evidence now | Remaining gate |
+| --- | --- | --- |
+| Can recursive reads avoid a live mutable cell borrow? | Demand reference, unwind, reuse and isolation tests; ADR-0024 accepts the owner | Implement the private production interface and preserve those invariants |
+| Can actual global bodies reuse sequence lowering? | Original declarations, one supplied include or import, shared validation/linking and unchanged `variable40` replay now work privately | Transitive/mixed graphs, additional value kinds and production admission |
+| Does the body preserve compilation-profile meaning? | Strict/modern text difference through the same compiler and executor | Whole graph integration; no profile selection from local version |
+| Are schedules interchangeable? | Eager/demand probes expose unused failures, messages and work differences; bounded static admission now handles straight-line named calls but refuses dynamic dispatch | Select edition-specific initialization policy; broader static analysis is not disproved or selected |
+| Are controls and diagnostics conserved? | Exact/one-less limits, cancellation, failed-cell reuse and original instruction locations | Remaining typed reads, standard cycle identity and bounded production attachment policy |
+| Is the implementation economical? | Same-owner constructor scheduling probe and same-program ordinary-global production control | Production integration cost and host-visible regression measurement; do not ship test-hook plumbing as the representation |
+
+Maintainer acceptance with modifications is recorded in ADR-0024. Production
+integration may now proceed within its scope. Further approval is still needed
+for materially different ownership, lazy-error policy or broader public/context
+contracts. Next checkpoint decomposition, then integrate the first shared-owner
+constructor slice and replay unchanged `variable40` through production.
 
 ## First demand-reference checkpoint
 
@@ -1199,13 +1233,1136 @@ replays remain modern 2,500 / 3,173 exact with 14 mismatches, strict 2,497 / 3,1
 with 17 mismatches, and 423 expected-error credits in each. No corpus credit or
 production integration is inferred from these reference tests.
 
+## Direct boolean condition provenance (2026-10-14)
+
+The direct effective-boolean reference now receives the compiled condition site
+through the existing location-aware boolean dispatcher and passes it to the
+same bounded read-path owner. Nested `not`, `and` and `or` keep the enclosing
+`if` or `when` site; this is a whole-instruction span, not an operand-token span.
+The ordinary locationless entry point remains for unmigrated consumers and
+explicitly supplies no location. No caller-focus or failure-location inference
+is introduced.
+
+The expanded nested-condition matrix exercises bare variable reads alongside
+the existing string-length reads. Failure reuse preserves the original
+terminating-message location and memoized observation while separately retaining
+the condition read site. A new direct-boolean cycle test preserves all three
+edges, including the closing `when`, and verifies both active stacks unwind.
+All 103 focused tests pass. The hook remains test-only; production demand
+resolution, global admission and diagnostic attachment policy remain undecided.
+
+Checkpoint validation: full repository verification passes with 1,840 core tests
+(60 ignored), 22 native tests (3 ignored), four WASM adapter tests and 18 worker
+tests. The official WASM target check and diff checks pass. Fresh OASIS replays
+conserve modern 2,500 / 3,173 exact with 14 mismatches and strict 2,497 / 3,173
+with 17 mismatches; both retain 423 expected-error credits. No corpus gain is
+claimed for diagnostic-reference integration.
+
+## Boolean value-expression read provenance (2026-10-14)
+
+The existing value-expression dispatcher now forwards its known instruction
+location for `boolean($value)`, admitted boolean-literal comparisons and
+two-variable `and`. These consumers use the same location-aware effective-
+boolean reader as conditions, with no new boolean evaluator or global state.
+The location is still test-only and denotes the containing instruction rather
+than an invented operand span.
+
+Two additional tests cover the four expression shapes, primary failure versus
+read-site separation, memoized failure/message reuse, and a shadowed false left
+operand that skips the failing right operand with observation enabled or
+disabled. No skipped operand acquires a dependency edge. Syntax admission,
+production global initialization and diagnostic attachment policy are unchanged.
+The reference now contains 105 focused tests.
+
+Validation: all focused tests and 1,842 core tests pass (60 ignored), alongside
+22 native tests (3 ignored), four WASM adapter tests and 18 worker tests. Full
+repository verification, the official WASM check and diff checks pass. Fresh
+OASIS replays conserve modern 2,500 / 3,173 exact (14 mismatches) and strict
+2,497 / 3,173 exact (17 mismatches), with 423 expected-error credits in both.
+
+## String-literal comparison read provenance (2026-10-14)
+
+Admitted legacy variable/string-literal comparisons now forward known instruction
+locations through the existing comparison consumer. This covers conditions and
+value-of equality, inequality and the already-admitted negated equality form.
+The source-value hook accepts an optional site as well, so typed source handoff
+does not silently discard it. Its existing locationless entry point supplies
+`None` for unmigrated callers. Comparison meaning, selection ownership and
+production global admission are unchanged.
+
+Two previous unknown-location assertions now require the actual `if` site,
+including the middle read of a copy/comparison/copy cycle. One new test exercises
+value-of comparison forms, originating-message versus read-site distinction,
+memoized failure reuse and active-path cleanup. All 106 focused tests pass.
+No general comparison-operand token spans or production diagnostic-attachment
+contract are selected.
+
+Validation: 1,843 core tests pass (60 ignored), alongside 22 native tests
+(3 ignored), four WASM adapter tests and 18 worker tests. Full repository
+verification, official WASM checking and diff checks pass. Fresh OASIS runs
+remain modern 2,500 / 3,173 exact (14 mismatches) and strict 2,497 / 3,173 exact
+(17 mismatches), each with 423 expected-error credits. No corpus gain is claimed.
+
+## Actual declaration-body lowering reference (2026-10-14)
+
+A test-only compiler entry now lowers children of actual `xsl:variable`
+declarations through the existing sequence compiler. The demand driver accepts
+these immutable instruction plans directly; older named-template surrogates
+remain the differential scaffolding. No XML rewriting, new instruction evaluator,
+production global variant, runtime policy or public API is introduced.
+
+Four tests establish forward template-discovered dependencies, single evaluation,
+strict-versus-modern comment-separated text, COW/complete-clone parity, original
+declaration-child failure locations after stylesheet-owner release, memoized
+messages, circularity cleanup, exact/one-less limits in four work domains, and
+cancellation in each domain. The forward-dispatch document is also compiled by
+the normal entry point and still fails with `FXST1015`, explicitly conserving
+production's unsupported boundary.
+
+This is **body lowering, not whole-stylesheet integration**. The surrounding
+program still comes from an explicit placeholder-declaration scaffold; its
+binding metadata and linkage are not evidence that the original global
+declarations were admitted. The reference body map is test-only and is not a
+selected production plan representation. `variable40` is not credited.
+
+ADR-0004 review: the compiler composition unit is 3,093 lines and gains only an
+11-line test-only forwarding seam into its existing sequence compiler. It owns
+no new lowering algorithm or runtime state; retain this bounded seam rather than
+create an artificial module for a forwarding function. The reference driver
+remains below 1,000 lines. The 15-file reference directory gains no file; the
+existing evaluation-schedule family now owns declaration-body integration tests
+as well as schedule comparisons. Future production admission must review the
+compiler composition pressure before adding a declaration-plan owner. Existing
+dependency direction remains compiler -> static instructions -> runtime; no
+compiler dependency on runtime is added.
+
+Validation: all 110 focused tests pass. Full repository verification passes with
+1,847 core tests (60 ignored), 22 native tests (3 ignored), four WASM adapter
+tests and 18 worker tests, plus strict Clippy, formatting, documentation, links,
+unsafe-surface and pinned-corpus checks. The official WASM target check and diff
+checks pass. Fresh unchanged OASIS replays conserve modern 2,500 / 3,173 exact
+(14 mismatches) and strict 2,497 / 3,173 (17 mismatches), with 423 expected-error
+credits in each. No performance measurement or production-support credit is
+attached to this tranche.
+
+## Single-module declaration/link reference (2026-10-14)
+
+The next test-only compiler owner, `global_constructor_reference.rs`, reads the
+original declarations and bodies from one unchanged stylesheet. It reuses the
+ordinary global attribute/name/required checks, sequence compiler, top-level
+compiler and named-template validator. This removes the separately authored
+placeholder stylesheet from this lane. Actual declaration locations and expanded
+names survive; duplicate names using different prefixes for the same URI fail.
+
+The returned sidecar still pairs resolved binding metadata with instruction
+bodies, using a private empty default marker that the reference driver never
+materializes. That marker is not a selected production representation. No
+source-dependent state enters compiled plans, and no second evaluator is added.
+The ordinary global compiler calls the same validation helper with its unchanged
+default compiler; production admission remains unchanged.
+
+Three regular tests cover forward matched/named dispatch, qualified variable
+reads, supplied-parameter precedence, original declaration provenance, duplicate
+and malformed names, invalid required values, missing nested named calls and
+explicit profile guards. This lane rejects select defaults, typed/required and
+empty defaults, imports/includes, namespace aliases and attribute sets. Empty
+defaults must not accidentally acquire result-tree-fragment truth semantics.
+Broader composition and rewriting must be proved before those guards move.
+
+The manually ignored `demand_declaration_reference_replays_local_variable40`
+test reads original local OASIS stylesheet, source and expected bytes under
+`FASTXSLT_OASIS_XSLT10_ROOT`. The archive SHA-256 was verified as
+`66750E63994C3A07252D8A6555E82E5CE5127D1942005BCC8314C7D736BD7BD5`.
+Both modern and strict effective-stylesheet runs pass the **existing unchanged
+OASIS XML comparator**, and `TreeFrag` evaluates once. Initial dispatch models
+the built-in document rule without injecting a stylesheet template. The shared
+executor's semantic nodes go through the existing serializer.
+
+An initial byte-string assertion failed solely on a newline after the XML
+declaration. That is not a byte-exact pass: the replay now uses the existing
+suite comparator's established prolog treatment, not a new normalization or
+edited expected output. The normal compiler still returns `FXST1015` for the
+unchanged stylesheet. This experimental result adds **no production corpus
+credit** and does not amend the conserved numerator.
+
+Reproduce the local replay with the explicit corpus root set, then run
+`cargo test -p fastxslt --all-features demand_declaration_reference_replays_local_variable40 -- --ignored --nocapture`.
+
+ADR-0004 review: the 3,110-line compiler composition unit gains a narrow
+default-lowering callback and a test-only module declaration, not another
+sequence compiler. The 109-line private reference module owns experiment
+composition only; it consumes compiler-owned documents/plans and must not acquire
+runtime state or resource authority. The compile directory now has 19 direct
+files: retain named compiler responsibilities flat for this bounded checkpoint,
+rather than mix test experiment orchestration into the production composition
+loop. Revisit grouping with the next production global-plan extraction. The
+runtime driver remains below 1,000 lines, and its semantic-node return seam uses
+the same executor and existing result-to-temporary conversion. No duplicated
+instruction semantics, new unsafe surface or public API is introduced.
+
+Validation: 113 focused tests pass, with the ignored local `variable40` replay
+executed separately and passing in both profiles. Full repository verification
+passes with 1,850 core tests (61 ignored), 22 native tests (3 ignored), four
+WASM adapter tests and 18 worker tests. Formatting, strict Clippy, documentation,
+local links, unsafe-surface and pinned-corpus gates pass, as do the official WASM
+target and diff checks. Fresh full OASIS replays retain modern 2,500 / 3,173
+exact (14 mismatches) and strict 2,497 / 3,173 (17 mismatches), each with 423
+expected-error credits. No performance claim or production corpus gain follows.
+
+## Single-include constructor linking (2026-10-14)
+
+The test-only declaration compiler now admits exactly one explicitly supplied
+include. Both effective documents are supplied by the caller under one explicit
+compilation-context token; neither URI resolution nor filesystem/network
+acquisition is added. Nested includes, multiple dependencies and imports remain
+guarded. The existing single-module entry retains its prior guard.
+
+Module bodies are lowered before named-call validation, then the existing
+`merge_included_program` combines definitions and rejects same-precedence
+duplicates. Only after that merge does the reference validate ordinary templates
+and constructor bodies against the combined named-template set. It does not
+implement alternative include precedence or copy a second linker. Constructor
+body maps merge only after the shared linker has rejected equal-name collisions.
+
+Three tests prove cross-module named calls and global reads, namespace-qualified
+binding identity, one evaluation per binding, original declaration ownership,
+strict/modern whitespace behavior and COW/complete-clone parity. Missing named
+calls retain the included instruction location; duplicate included globals retain
+the existing `FXST0029` result. A cross-module cycle and an included terminating
+message both unwind, memoize failure and preserve originating-module evidence.
+Explicit nested/multiple/import guards remain covered.
+
+The import path was inspected but not duplicated: its existing owner combines
+precedence rebasing, root-template handling and definition merging after compiling
+the principal module. The next import experiment should first expose that
+already-compiled-program composition as a behavior-preserving checkpoint, then
+attach constructor plans to the **winning resolved declaration**, not merely
+overwrite a name-keyed map. Include success does not prove that import rule.
+
+ADR-0004: the 1,811-line module compiler changes only the visibility of its
+existing include merge to its parent; no runtime dependency or second merge
+algorithm is added. The private declaration reference is 168 lines. The
+791-line evaluation-schedule test family remains bounded, but declaration/link
+tests now form a clear subject for extraction before further module-graph growth.
+That extraction should be a separate passing checkpoint, not mixed with import
+semantics. The existing 19-file compile-directory review still applies.
+
+Validation: full repository verification passes with 1,853 core tests (61
+ignored), 22 native tests (3 ignored), four WASM adapter tests and 18 worker
+tests. Strict Clippy, formatting, documentation, Markdown links, unsafe-surface
+and pinned-corpus gates pass, alongside the official WASM target and diff checks.
+The unchanged manual `variable40` replay passes both profiles again. The full
+OASIS denominator was not rerun for this test-only include tranche; the previous
+modern 2,500 / 3,173 and strict 2,497 / 3,173 measurements remain the latest
+accounting. No production support, corpus gain or performance claim is made.
+
+## Import composition and winning constructor plans (2026-10-14)
+
+First, a behavior-preserving checkpoint extracted the existing single-import
+composition into `merge_single_imported_program`: the normal compiler still
+supplies the same compiled principal, imported program and diagnostic locations.
+Precedence rebasing, output/definition merging, root-template handling and
+validation stay in that owner. Declaration/link tests moved from the schedule
+file into the private `declaration_linking` subject. All 1,853 core tests passed
+before the reference gained import behavior; no assertion or fixture changed
+in that structural checkpoint.
+
+The private reference then gained one explicitly supplied import. It validates
+import order, lowers both modules, calls that same composition owner, and selects
+each constructor body using the winning binding's name and resolved precedence.
+This deliberately bounded graph has levels 0 and -1. It does not select bodies
+by insertion order, URI spelling or equal source spans. Losing bodies are dropped;
+neither source-derived state nor new acquisition authority is introduced.
+
+Three tests cover qualified-name override, named-template override, a surviving
+imported global reading the principal's winning value, strict/modern text and
+COW/complete-clone parity. Overridden terminating constructors/templates never
+execute. Imported failures retain their instruction resource; recursive cycles
+unwind and repeated reads reuse the failure. Late imports retain `XTSE0200`.
+Wrong-kind, multiple and nested dependencies remain explicitly guarded.
+
+This is not a general graph linker or a decision about static errors in
+overridden declarations. Both bodies are lowered; these tests use statically
+valid losing bodies and prove only that their dynamic failures do not execute.
+Transitive/mixed graphs, broader value kinds and public/production integration
+remain separate gates. No resolver ADR is selected by these tests.
+
+ADR-0004: the module-composition owner is 1,817 lines and retains one existing
+linking responsibility; extraction adds no alternate precedence implementation.
+The private reference is 214 lines. The schedule file shrank from 791 to 404
+lines; declaration/link evidence now has its own 536-line module. The reference
+directory retains 15 direct files and gains a named subdirectory rather than
+another flat sibling. Dependency direction stays test driver -> compiler plans
+-> shared runtime; neither compiler nor runtime imports the test driver.
+
+Validation: full verification passes with 1,856 core tests (61 ignored), 22
+native tests (3 ignored), four WASM adapter tests and 18 worker tests. Formatting,
+strict Clippy, documentation, links, unsafe-surface and pinned-corpus gates pass;
+the official WASM check and diff checks pass. The manual unchanged `variable40`
+replay passes both profiles after extraction and import integration. Fresh full
+OASIS measurements conserve modern 2,500 / 3,173 exact (14 mismatches) and strict
+2,497 / 3,173 (17 mismatches), with 423 expected-error credits each. No new corpus
+credit, production demand admission or performance claim is made.
+
+## Edition obligations checkpoint (2026-10-14)
+
+The scheduling probes do not select a standards edition. In particular,
+ADR-0023's preprocessing profile is not an evaluation-strategy switch.
+
+- Legacy: global constructors start at the source root with a singleton current
+  node list. Referenced globals precede their consumers; circular definitions
+  are errors. These are the obligations exercised by the reference's root and
+  dependency tests. Section 11.4 alone does not establish a blanket permission
+  to suppress every unused failing definition; do not import modern error
+  latitude into a strict legacy claim without further review.
+  [XSLT 1.0 section 11.4](https://www.w3.org/TR/1999/REC-xslt-19991116#top-level-variables).
+- Modern: the global context item is distinct from initial match selection.
+  Available global focus has position/size one; absent focus must not silently
+  become the principal root. Library-package global focus is absent. The
+  current legacy driver does not prove these broader invocation modes.
+  [XSLT 3.0 initialization](https://www.w3.org/TR/xslt-30/#initiating).
+- Modern dynamic-error reporting need not evaluate otherwise unused constructs;
+  a false conditional must not evaluate its body. Therefore eager/demand
+  equality on unused failures is not a universal correctness oracle. Errors
+  initializing globals are not caught merely by wrapping a reference in
+  `xsl:try`. The reference has no catch integration and earns no such claim.
+  [XSLT 3.0 error handling](https://www.w3.org/TR/xslt-30/#error-handling),
+  [initialization](https://www.w3.org/TR/xslt-30/#initiating).
+
+Implementation consequence: one demand owner can serve different entry-context
+and initialization policies, but this is a candidate, not an accepted decision.
+Keep the current root-only experiment explicitly legacy-scoped. A production
+proposal must separately choose unused-binding initialization, diagnostic codes,
+message observations and control charging; the reference's `FXAR0030` is not a
+selected standards circularity diagnostic. Static reachability remains an
+unimplemented alternative, not something the eager schedule has benchmarked.
+
+## Same-owner schedule cost probe (2026-10-14)
+
+`declaration_linking/schedule_cost.rs` adds one ignored release-mode measurement,
+not another conformance case. Run it explicitly:
+
+```text
+cargo test --release -p fastxslt --all-features demand_declaration_schedule_cost_probe -- --ignored --nocapture
+```
+
+Three actual-declaration fixtures use one constructor, all sixteen constructors,
+or one of sixteen constructors. Every constructor makes `<box>payload</box>`;
+the principal template reads the selected values. Both lanes use the same demand
+owner and shared executor. Lane zero reads on demand; lane one first requests
+every binding in declaration order. Each invocation checks output, exact total
+evaluation count and empty evaluation stack.
+
+Compilation/preparation are outside timing. Fresh control/resolver construction,
+constructor-plan-map cloning, execution, string result checking and teardown are
+inside both lanes. Each fixture warms each lane for 100 ms, then alternates lane
+order over seven 100 ms windows. Report per-window mean time per invocation,
+not request latency percentiles. This is one-machine exploratory attribution,
+without steady-state publication qualification or allocator measurement.
+
+Crucially, the private reference clones all constructor plans even when demand
+skips their execution. These observations cannot isolate cell/read-hook overhead,
+compare against the production completed-globals initializer, or establish a
+host-visible speedup. The first exploratory run overlapped verification and is
+excluded from timing evidence. Static reachability is not implemented here.
+
+Two subsequent release runs, with repository verification finished, produced
+these median window means in microseconds per invocation:
+
+| Actual constructors used/declared | Demand run 1 / 2 | Eager run 1 / 2 |
+| --- | --- | --- |
+| 1 / 1 | 3.011 / 3.361 | 3.013 / 3.244 |
+| 16 / 16 | 35.682 / 34.108 | 33.335 / 33.407 |
+| 1 / 16 | 9.840 / 8.024 | 41.377 / 30.128 |
+
+The all-used fixtures show no demand throughput advantage. Avoiding fifteen
+unused constructors reduces time in both runs, but magnitude is unstable and
+does not settle the permitted evaluation policy. Individual window means span
+2.885–6.747 us for the one-constructor fixture across lanes/runs. No process
+isolation, CPU attribution or statistical publication gate was used; do not
+turn these observations into a production speed ratio. The 1/16 demand cost
+also exposes the reference's all-plan cloning/setup overhead relative to 1/1.
+
+Deterministic XPath-operation charges are demand/eager **1/2**, **16/32**, and
+**1/17**, respectively. The extra eager requests are real reference read charges;
+they are not a proposed production charging policy. Unused-work savings do not
+authorize suppressing errors under a standards edition whose policy is unsettled.
+
+ADR-0004: the measurement has a named private owner under declaration/linking
+evidence; no new flat sibling is added to the 15-file reference directory.
+No production implementation, public contract or corpus accounting changes.
+
+Validation: full `scripts/verify.ps1` passes with 1,856 core tests and 62 ignored
+tests, plus 22 native, four WASM adapter and 18 worker tests. Official WASM check
+passes. Both final manual release runs pass every semantic/count/cleanup check.
+The existing 119 regular reference tests and unchanged-corpus replay remain
+separate from this new ignored measurement. OASIS was not rerun for this
+test-only timing/documentation tranche; prior exact counts remain the checkpoint.
+
+## Ordinary-global production control (2026-10-14)
+
+The next private probe, `declaration_linking/production_cost.rs`, compares the
+unchanged production initializer with demand and eager-through-demand using the
+same normally compiled XSLT 1.0 program. Its globals select `/r/b`; no placeholder
+declarations, constructor map, alternate compiler, or supplied parameters are
+used. Fixtures cover zero globals, one read of one global, 64 reads of one
+global, all sixteen globals, and one of sixteen globals.
+
+All lanes return ordinary semantic result-node vectors. The demand lane invokes
+the shared sequence executor directly, not the helper that constructs a
+temporary result tree and then stringifies it. Preparation/compilation stay
+outside timing; fresh invocation state, ordinary control, execution, semantic
+result comparison and destruction stay inside. Production still performs its
+normal entry dispatch/global initialization; the reference installs its private
+hooks and resolver. These are whole-lane differences, not an isolated estimate
+of an `Arc`, cell, lookup or callback.
+
+The no-global fixture is a reference-plumbing control, not a reason to install
+demand hooks in production programs that need none. This is a normally supported
+source-node global workload, not coverage of all atomic/typed global kinds or a
+production implementation of general constructors. No unsafe, acquisition or
+compiled-state ownership change is involved.
+
+```text
+cargo test --release -p fastxslt --all-features ordinary_global_production_cost_probe -- --ignored --nocapture
+```
+
+Each lane warms for 100 ms. Six 100 ms measurement windows rotate all three
+lanes: zero is production, one demand, two eager-through-demand. Output reports
+window-mean time, median/min/max and XPath-operation charge. It does not report
+latency percentiles or claim a host benchmark. The regular semantic-parity test
+runs all five fixtures through all three lanes without asserting wall time.
+
+Three manual release executions passed. Run two's captured console excerpt was
+truncated for two cells, so the complete run-one/run-three summaries are retained
+below rather than inventing those missing values. Run two's visible 0/0, 16/16
+and 16/1 cells agree directionally. Values are median window means in us:
+
+| Globals / reads | Production run 1 / 3 | Demand run 1 / 3 | Eager-demand run 1 / 3 |
+| --- | --- | --- | --- |
+| 0 / 0 | 0.570 / 0.502 | 0.753 / 0.673 | 0.740 / 0.683 |
+| 1 / 1 | 1.632 / 1.130 | 1.999 / 1.432 | 1.976 / 1.482 |
+| 1 / 64 | 8.852 / 6.175 | 11.308 / 8.819 | 11.058 / 8.731 |
+| 16 / 16 | 12.788 / 9.072 | 14.348 / 10.286 | 15.346 / 10.403 |
+| 16 / 1 | 10.140 / 7.695 | 2.744 / 1.809 | 12.319 / 8.317 |
+
+This rejects treating the test reference as a drop-in performance improvement.
+All-used demand is slower in these complete runs, while the no-global control
+exposes reference setup cost. Wall time drifts materially between runs; there is
+no publication-quality ratio or measured causal attribution to individual data
+structures. Reference-only evaluation/stack assertions also remain inside timing.
+
+Production reports zero XPath-operation charges for these simple paths/reads;
+that is only this counter, not zero execution work. Demand reports 0, 1, 64, 16,
+1 across the fixtures, and eager-demand 0, 2, 65, 32, 17. Node/text domains still
+apply. Do not silently change existing budgets by substituting these counters.
+
+Recommendation for a later ADR: select a semantic resolution owner, not the
+test driver's physical representation. Completed-value reads and no-global
+programs need a cheap path; general constructors must retain one authoritative
+resolution meaning rather than adding a second evaluator. Stable binding slots
+or pre-resolved reads are candidates for later measurement, not selected here.
+Avoiding unused work is separately contingent on initialization/error policy.
+
+Validation: full verification passes with 1,857 core tests (63 ignored), 22
+native tests, four WASM adapter tests and 18 worker tests; official WASM check
+passes. The regular reference count is now 120. This tranche changes only
+test code and documentation; no production admission, OASIS replay or corpus
+gain is claimed. The two small cost modules remain under the named private
+declaration/linking evidence directory, without growing the flat reference root.
+
+## Bounded static-admission comparison (2026-10-14)
+
+`declaration_linking/static_admission.rs` supplies the previously missing static
+candidate rather than calling eager-through-demand a static analysis. It walks
+already compiled constructor instructions and selected named-template bodies,
+collects resolved global-binding edges, and produces a dependency-first order.
+It never evaluates XPath or implements template dispatch. Execution still uses
+the same ordinary executor and reference owner. Each scheduled constructor is
+checked to evaluate only its own cell: its dependencies must already be complete,
+and no unplanned nested evaluation may occur.
+
+This first candidate admits only text, direct legacy global string reads and
+argument-free calls to parameter-free named templates. It caps globals and named
+templates at 32 each, call-stack depth at 32 and instruction visits at the caller's
+explicit experiment limit. These are experiment limits, not host defaults or
+production compilation-budget accounting. Parameters, conditional instructions,
+local bindings, dynamic dispatch and every unknown instruction shape fail closed.
+An analysis refusal is not a standards invalid-input or circularity diagnostic.
+
+Five regular tests establish:
+
+- Forward dependencies through two named calls are ordered before execution;
+  demand and the static schedule produce the same output using one executor.
+- Qualified-name aliases retain the shared compiler's binding identity.
+- Shared import winners determine both constructor and template dependencies;
+  losing bodies cannot introduce false edges or cycles, under both preprocessing
+  profiles.
+- Conditional self-reads, unselected-mode self-reads and local shadowing are
+  refused by this static subset while the demand reference executes correctly.
+- Direct global cycles, recursive named calls and exhausted analysis limits have
+  distinct private refusal reasons; exact/one-less visits and 32/33 definition
+  caps are pinned. Supplied-parameter semantics are not guessed by the analyzer.
+
+The manual unchanged `variable40` replay additionally requires this analyzer to
+refuse the constructor while the demand reference produces the archived XML
+comparison. No fixture bytes or expected outputs change.
+
+Conclusion: static admission has demonstrated a useful bounded subset, but that
+subset does not cover the motivating dispatch. This does **not** prove that a
+more sophisticated mode/condition-aware static analysis is impossible. Expanding
+it would add another analysis subsystem before establishing additional consumer
+value. It is not a prerequisite to selecting the runtime ownership boundary.
+
+### Accepted decision boundary
+
+The proposal was accepted with modifications as
+[ADR-0024](../ADR/ADR-0024-invocation-owned-global-resolution-with-shared-execution.md).
+Static analysis is explicitly admission/scheduling only, not dependency semantics.
+Specialized initializers are proven optimizations of the same binding semantics,
+with shared-execution fallback when eligibility is unproved. If that fallback is
+not admitted, the operation stays explicitly unsupported.
+
+The selected direction is one invocation-owned
+global resolver with shared-executor constructors, immutable completed values,
+bounded active/failed state and no recursive mutable borrow. Static dependency
+ordering may seed or schedule that same owner where proved; it must not become
+an alternate global evaluator. Do not select the current callback/name-scan test
+driver as the production representation, given the ordinary-global cost result.
+
+For the first integration, preserve eager initialization of the
+admitted global set: request each binding through
+the same owner, letting recursive reads resolve actual dependencies. This avoids
+requiring unused-error suppression merely to admit `variable40`. This does not
+promise declaration-order side effects or prove all future legacy/modern
+scheduling cases. Broader modern global-context support remains separate.
+
+Acceptance authorizes implementation direction, not automatic support for
+every global kind, graph, diagnostic attachment or modern context mode. Retain
+the existing unsupported boundary until each production slice passes parity,
+control/provenance, lifetime, corpus and performance gates. No runtime change or
+coverage credit follows from acceptance alone.
+
+Validation: five new static-admission tests pass; the full verification script
+passes with 1,862 core tests (63 ignored), 22 native tests, four WASM adapter
+tests and 18 worker tests. The official WASM check passes. Manual unchanged
+`variable40` replay passes both profiles with the new static-refusal assertion.
+The static candidate is a cohesive 263-line private test module under the
+four-file declaration/linking directory; no production layer imports it.
+The prior full OASIS counts remain the checkpoint; this test-only tranche does
+not rerun the full corpus or claim a pass increase.
+
+## Production initialization decomposition checkpoint (2026-10-14)
+
+Before adding the ADR-0024 resolver, the existing global-initialization routines
+were extracted unchanged from `runtime_context.rs` into the private
+`runtime_context/global_initialization.rs`. The parent falls from 2,571 to 1,763
+lines; the new owner is 836 lines. This addresses ADR-0004 responsibility pressure
+before further semantic expansion, rather than mixing extraction with resolver
+behavior changes.
+
+The child owns existing initializer dispatch and publication. Lexical frames,
+temporary-tree types and helpers shared with ordinary execution remain in the
+parent. Existing callers retain the same private entry through a re-export;
+the extraction introduces no public API, resolver state, alternate executor or
+resource authority. A whitespace-normalized comparison confirms the moved
+function bodies are unchanged apart from the entry visibility and one relative
+module path. The runtime-context directory has five direct files; no additional
+folder decomposition is warranted at this checkpoint.
+
+Validation: the full `scripts/verify.ps1` gate passed, including formatting,
+Clippy, workspace tests, documentation, Markdown links and pinned conformance
+checks. The official `wasm32-unknown-unknown` adapter check passed. The manual
+unchanged `variable40` reference replay still agrees under both profiles; this
+remains experimental and earns no production credit. Fresh full OASIS replays
+retain modern **2,500 / 3,173** exact comparisons and 14 mismatches, and strict
+**2,497 / 3,173** exact comparisons and 17 mismatches, with 423 expected-error
+credits in each profile. Original expectations remain unchanged.
+
+This completes the structural checkpoint only. Invocation-owned production
+resolution, shared-constructor admission and production `variable40` remain the
+next implementation work; the test-only callback/name-scan reference is not
+promoted wholesale.
+
+## Owned initializer publication checkpoint (2026-10-14)
+
+The production specialized initializers now return one private owned
+`InitializedGlobal` value instead of mutating completed-global maps while
+evaluating. Empty, atomic, principal-source selection, temporary-tree and literal
+document results move into the existing kind-specific maps at a single
+publication point. Supplied atomic parameters use that same publication point.
+The transient return value is not a second cache and adds no value-map clone,
+new reference-counted wrapper, authority or public representation.
+
+This removes mutable completed-map access from initializer evaluation, a
+prerequisite for recursive resolution. It does not yet remove all immutable
+dependency-map access or introduce resolver cells. Existing eager order,
+source-owner retention, parameter validation, alias eligibility, failure codes,
+message timing and work charges are preserved. A failed initializer returns no
+publishable value; messages already emitted before failure remain observable.
+No new cancellation point or work unit is selected in this refactor.
+
+Five production-handoff tests pin movement into each completed value kind,
+temporary/document identity, immutable dependency reads without map cloning,
+failure without partial publication, exact/one-less retention and cancellation,
+supplied-parameter override, unused default failure and principal-owner retention.
+The initializer owner is now 803 lines; its focused test sibling is 199 lines.
+The runtime-context directory remains below the density-review threshold.
+
+Full repository verification and the official WASM check pass: 1,867 core tests,
+22 native tests, four WASM tests and 18 worker tests pass. Fresh OASIS replays
+remain modern **2,500 / 3,173** with 14 mismatches and strict **2,497 / 3,173**
+with 17 mismatches; each retains 423 expected-error credits. These are regression
+results, not new corpus credit or performance evidence.
+
+Next, connect authoritative binding state and recursive reads without retaining
+map borrows across shared execution. Preserve completed-read fast paths and
+parameter precedence. Compiler admission of general constructors, runtime
+circularity/provenance integration and production `variable40` remain pending.
+
+## Resolve-before-borrow initializer reads (2026-10-14)
+
+Production initializer dependencies now pass through a narrow private
+`GlobalInitializerReads::with_completed` boundary. A resolving implementation
+can finish evaluation before lending the completed maps to a non-recursive
+conversion callback. The callback returns an owned value, not a borrowed map
+entry. Existing production calls still use `RuntimeGlobals` directly: this is
+statically dispatched plumbing, with no new trait object, map clone, name index,
+state allocation or work charge. It is not a public provider interface.
+
+Alias, variable-rooted source paths, concatenation, temporary text parts and
+conditional-text reads use the boundary at their actual read sites. In
+particular, a source-path precondition still fails before requesting a dependency;
+messages preceding a text-part read remain before recursive initialization.
+Dependencies are not speculatively evaluated at initializer entry.
+
+Five additional handoff tests use a bounded, acyclic test driver around the
+actual production initializer evaluator. They prove recursive entry with no
+completed-map borrow held, message ordering, repeated-read single evaluation,
+source/alias/concat/temporary value parity, identical work charges against the
+completed-map reference, failure reuse without partial publication, precondition
+ordering and nested cancellation cleanup. The handoff suite now has ten tests.
+This driver is not a production state machine, cycle implementation or unwind
+contract. Those remain obligations of the authoritative production resolver.
+
+The production initializer module is 835 lines and its focused tests 475 lines;
+both remain cohesive below the source-size review threshold. Ordinary completed
+reads and eager scheduling are unchanged. General shared-constructor admission
+and production `variable40` are still unsupported; no corpus credit is earned.
+
+Validation passes: full repository gates (1,872 core tests, 22 native, four WASM
+and 18 worker), official WASM target check, Markdown links and diff checks.
+Fresh OASIS replays retain modern 2,500 exact / 14 mismatches and strict 2,497
+exact / 17 mismatches out of 3,173, with 423 expected-error credits each.
+
+## Production specialized-initializer owner (2026-10-14)
+
+`materialize_global_defaults` now runs the existing eager schedule through the
+private `GlobalInitialization` owner. All existing specialized initializers use
+that owner through the resolve-before-borrow boundary. Completed values remain
+in one `RuntimeGlobals` store, moved out when initialization finishes; ordinary
+principal execution still reads the completed store directly. No-global programs
+retain an early return without constructing the resolver.
+
+The owner tracks active linked binding ordinals in a fixed 128-entry stack,
+avoiding a per-binding state-vector allocation or second value map. Completed
+reads check the existing maps; only an unresolved read searches linked binding
+declarations for its ordinal. This is not the reference driver's per-read name
+scan, but unresolved lookup remains a cost/accounting review point before broad
+constructor admission. A recursive unresolved entry charges one XPath operation
+before entering; already ordered eager initialization and completed reads retain
+their previous work charges. The depth ceiling is a private stack-safety bound,
+not a host deployment quota or an XSLT semantic limit.
+
+Active re-entry reports `XTDE0640`; depth exhaustion reports `FXRT0003` with the
+limit category. The first initialization failure aborts the phase and is retained
+once, rather than cloning a diagnostic into every dependent binding. Already
+completed values are not partially overwritten; repeated failed initialization
+does not replay messages. A drop guard clears active markers during success,
+error, cancellation and unwinding. An unwound owner is poisoned and cannot resume;
+this neither catches engine panics nor promises recovery from process abort.
+
+Eight production-owner tests join the ten handoff tests. They cover recursive
+read/message order, eager unused evaluation, repeated reuse, supplied-parameter
+default suppression, runtime cycle re-entry, stable failure/no replay, 128/129
+depth boundaries, exact/one-less recursive work, cancellation, unwind poisoning
+and ordered source-value/work parity. Recursive ordering and cycles are exercised
+with deliberately assembled/reordered private plans: these tests do not claim
+that compiler admission has widened. Existing compilation still performs its
+previous bounded static ordering/validation.
+
+The state owner is a separate cohesive 235-line private module, rather than
+growing initializer semantics or the runtime-context parent. Production general
+constructor plans, shared-executor reads during initialization, declaration and
+read-edge provenance, broader owned values and cost gates remain outstanding.
+In particular, this checkpoint does not admit `variable40` or select new profile
+semantics. The original reference remains available as a differential oracle.
+
+Validation passes: formatting, Clippy, 1,880 core tests (63 ignored), 22 native
+tests, four WASM tests, 18 worker tests, documentation, pinned corpus checks,
+Markdown links, diff checks and the official WASM target. Fresh full OASIS
+replays remain modern **2,500 / 3,173** with 14 mismatches and strict
+**2,497 / 3,173** with 17 mismatches; each retains 423 expected-error credits.
+
+One post-integration release rerun of `ordinary_global_production_cost_probe`
+also passes semantic checks. Production-lane medians for global/read counts
+0/0, 1/1, 1/64, 16/16 and 16/1 are respectively **587.1, 1,162.9, 6,054.8,
+9,339.3 and 7,629.4 ns**. Production XPath-operation counts remain zero for
+these already ordered source-path fixtures (not zero total work). The probe
+uses the previously documented warm-up and six rotated 100 ms windows. This
+single rerun is not a controlled before/after comparison, a convergence result
+or host-performance evidence; the cost gate for broader constructor integration
+remains open.
+
 ## Required follow-up
 
+### Bounded production constructor checkpoint (2026-10-15)
+
+The ordinary compiler now retains a private shared constructor for eligible
+legacy global content. The invocation owner supplies a borrowed initialization
+context to the ordinary sequence executor, with no completed-map borrow across
+recursive calls and no second value cache. Legacy string reads return through
+that owner; root focus and lexical state are freshly established per initializer.
+The existing eager schedule, supplied-parameter override and resource authority
+are unchanged. Caller multiple-match policy is carried into initialization.
+
+Admission deliberately remains narrower than the reference. Module merges,
+template parameters, unproved match patterns and namespace-alias/attribute-set
+rewriting are rejected. Executed instructions and value consumers must be on the
+connected slice; unconnected reads cannot silently consult the empty completed
+map used by the constructor executor. New modern global contexts remain denied.
+Static admission checks are conservative unsupported boundaries, not cycle
+predictions. Actual re-entry is resolved by the invocation owner.
+
+Nine production constructor tests cover forward named/matched reads, repeated
+messages, singleton root focus, caller-local isolation, cycles, terminating
+failure/reuse, cancellation, exact/one-less instruction and result node/text
+charges, parameter override, host match policy and module/context/consumer
+guards. Shared-cycle failures retain the constructor declaration location;
+instruction failures retain their own locations. General bounded secondary
+dependency context is still pending.
+
+Secondary-document string reads during constructor initialization also remain
+explicitly unsupported, rather than being mislabeled as unbound variables.
+
+The ordinary-global release control was rerun after executor integration:
+production median ns for `(globals, reads)` **(0,0), (1,1), (1,64), (16,16),
+(16,1)** were **475.5, 1,166.9, 6,375.0, 9,591.1, 8,226.9**. The same semantic
+checks and zero XPath-operation counts hold in that production lane. This is
+one noisy six-window rerun, not a paired before/after, convergence result or
+host regression conclusion; the broader performance gate stays open.
+
+The manual unchanged `variable40` test now checks both production and the safe
+reference. Full archive replays conserve all 3,173 cases, with **14 modern / 17
+strict mismatches** and **423 expected-error credits** unchanged. The only exact
+gain is `Lotus/variable_variable40#1`. No archived output, resource authority,
+public facade or eager/lazy policy changed.
+
+ADR-0004 review: compiler admission and executor eligibility live in separate
+small private responsibility modules; the existing executor gains only an
+initialization guard and borrowed context. Initialization remains its own owner.
+This is not a new execution backend. The runtime-context directory currently has
+ten files, still in ADR-0004's ordinary band. An initialization cluster is visible
+for future directory review, without moving unrelated temporary/source owners.
+
+Validation: all `scripts/verify.ps1` gates pass, including **1,889 core tests**
+(63 manual probes ignored), native 22, WASM adapter 4 and worker 18 tests,
+Clippy, formatting, documentation, pinned inventories and 1,991 Markdown files.
+The official `wasm32-unknown-unknown` check and `git diff --check` also pass.
+Cargo reports its existing incremental hard-link fallback to copying; no gate
+was suppressed for that environmental warning.
+
+Reproduction: `scripts/measure-oasis-xslt10.ps1`, the same command with
+`-PreprocessingProfile strict-xslt10`, and the manual
+`demand_declaration_reference_replays_local_variable40` test with the local
+OASIS root supplied. Production admission does not close broader value-kind,
+module-linking, provenance or host-performance gates below.
+
+### Source-controlled production branches (2026-10-15)
+
+The constructor guard now admits `if`/`choose` with constant, source-path
+existence/string conditions and `not`/`and`/`or` combinations. This is an
+eligibility check, not a second boolean evaluator. Conditions, short-circuiting,
+template dispatch and branch bodies remain in the existing shared executor.
+Global-valued conditions still fail as unsupported instead of reading the
+constructor's empty completed-map placeholder. No global predicate conversion
+semantics are inferred from the legacy string-value read bridge.
+
+Seven production tests extend the previous nine:
+
+- A source-controlled dependency that would form a cycle is not read on the
+  untaken branch; taking it reports actual `XTDE0640` re-entry. Later eager
+  initialization still evaluates the formerly unused binding after its
+  dependency completes.
+- Named and mode-selected matched dispatch preserve source conditions and
+  avoid executing unsupported instructions in an untaken body.
+- A global-valued condition remains visibly unsupported.
+- Exact/one-less XPath visit budgets and cancellation prevent partial
+  publication, clear active state and reuse the original failure.
+- Eight concurrent invocations of one compiled program retain distinct source
+  values and completed stores.
+- Ordinary template execution and global-constructor execution agree under
+  both modern and strict preprocessing views, including comment-separated text.
+- Production effective whitespace views govern conditions, and the completed
+  semantic result survives dropping the compiled program and source.
+
+These are focused/golden regressions, not additional standards-suite credit.
+Module linking, broader match/read consumers, full dependency provenance and
+host performance remain separate gates. This slice adds no new owner, cache,
+authority or public contract, and does not require another architecture decision.
+
+Both complete OASIS replays remain **2,501 modern / 2,498 strict**, with 14/17
+mismatches and 423 expected-error credits unchanged. Repository validation
+passes with **1,896 core tests** (63 ignored), native 22, WASM adapter 4 and
+worker 18, plus the official WASM target check and clean diff checks. No upstream
+fixture or expected result was edited. The next read-integration slice should
+address global-valued predicates explicitly, including node-set comparison and
+effective-boolean distinctions, before relaxing the current guard.
+
+### Production effective-boolean reads (2026-10-15)
+
+Direct global variable conditions now request resolution before borrowing the
+completed value. A single private completed-value helper serves both ordinary
+execution and initialization, retaining typed atomic conversion, node-set
+nonemptiness, true result-tree fragments and false empty sequences. There is no
+conversion through string truthiness and no second evaluator or value cache.
+Existing predicate work charging remains at the shared boolean evaluator;
+unresolved recursive entries retain the resolver's additional charge.
+
+Five focused tests cover seven value-shape cases, forward reads, actual versus
+short-circuited cycles, local shadowing, unchanged eager completion, supplied
+parameter overrides, exact/one-less operation budgets, cancellation cleanup and
+stable failure reuse. Global string/numeric comparisons remain unsupported in
+constructor conditions: a first-node string read cannot stand in for existential
+node-set comparison. Secondary-document boolean reads also retain an explicit
+unsupported boundary. No module or public-contract expansion is selected.
+
+Validation passes: **1,901 core tests** (63 manual probes ignored), native 22,
+WASM adapter 4 and worker 18; full formatting/Clippy/documentation/link and pinned
+conformance gates; official WASM target and diff checks. Complete OASIS replays
+remain **2,501 modern / 2,498 strict**, 14/17 mismatches and 423 expected-error
+credits. The focused tests establish the new reader semantics, not a corpus
+percentage increase or a host-performance claim.
+
+### Production string-literal comparisons (2026-10-15)
+
+The next bounded reader resolves a global before comparing it with a string
+literal. Principal-source selections reuse the ordinary charged string-value
+scan, without cloning the completed store or reducing a node set to its first
+node. Equality and inequality are independently existential; a mixed set can
+satisfy both and an empty set satisfies neither. Strings and result-tree
+fragments retain the existing scalar conversion. No recursive evaluation occurs
+while the completed-store read borrow is held.
+
+Five new focused tests and the updated former refusal test prove forward reads,
+later-node matches, both source orders, empty sets, ordinary-executor parity for
+strings/source sets/empty and nonempty fragments, local shadowing, re-entry
+cycles, stable failure reuse, exact/one-less node-visit limits and cancellation
+without partial publication. Non-string typed scalars are explicitly refused
+for both local and global bindings during initialization: this slice must not
+turn typed equality into lexical equality. Numeric, variable-pair and secondary
+document comparisons remain separate integration gates.
+
+Validation: **1,906 core tests**, 63 ignored probes, native 22, WASM adapter 4,
+worker 18; repository gates and official WASM target pass. Full OASIS profiles
+remain **2,501 modern / 2,498 strict** with 14/17 mismatches and 423 expected-error
+credits. This tranche adds reader parity, not a new conformance percentage.
+The focused production test unit is now 897 lines; keep the next extraction
+review on the comparison/control responsibility seam before further growth.
+
+### Production numeric-literal relations (2026-10-15)
+
+Relational conditions against numeric literals now request forward global
+resolution before borrowing completed values. Ordinary and initialization reads
+share a single controlled source string-value traversal; the existing numeric
+predicate still owns conversion, relational operators and NaN behavior. There
+is no new expression interpreter, completed-value cache or node-set-to-first-node
+shortcut. Numeric-literal equality and variable-pair comparisons are not newly
+admitted by this condition guard.
+
+The admitted scalar forms are string/untyped, integer and decimal values, plus
+temporary-tree strings. Boolean, float/double and other unproved typed operands
+remain explicitly unsupported during initialization rather than inheriting
+lexical conversions without parity evidence. Decimal parameter values are tested;
+this does not admit decimal global-declaration syntax that the existing compiler
+still rejects. Secondary documents remain guarded.
+
+Seven production tests cover all four relation operators, reversed operands,
+later-node matches, empty/all-NaN/mixed selections, ordinary-executor parity,
+actual cycles and local shadowing, supplied parameters suppressing terminating
+defaults, eight concurrent independent invocations, and exact/one-less
+`XdmStringValueNode` limits plus cancellation after source selection is cached.
+The budget oracle measures initialization separately from a subsequent read of
+the completed result: read failure after publication must not be mislabeled as
+partial constructor publication. Failed scan paths preserve the completed source
+binding, clear the active marker and do not publish the dependent constructor.
+
+ADR-0004 checkpoint: the 897-line constructor test unit now delegates comparison
+reader/parity/control evidence to a private child. The parent is 704 lines and
+the comparison child approximately 450 lines; runtime-context direct file count
+stays ten. This is a test responsibility split only, not another runtime owner,
+public module or execution path. Runtime resolution remains one invocation owner.
+
+Validation passes with **1,913 core tests** and 63 ignored probes, native 22,
+WASM adapter 4 and worker 18, repository verification and the official WASM target.
+Unchanged OASIS replays conserve **2,501 modern / 2,498 strict**, 14/17 mismatches
+and 423 expected-error credits. This is additional production-reader parity,
+not a new corpus gain or a host-performance claim.
+
+### Production typed pair equality (2026-10-15)
+
+Legacy variable-pair equality conditions now resolve each global into the ordinary
+equality evaluator's private owned operand. The resolver still owns binding state;
+the comparison evaluator owns transient string/node-set/number/boolean/fragment
+operands. The left operand survives recursive right-side initialization without
+a completed-map borrow, a new global cache or a second equality implementation.
+Source-string collection is shared with ordinary execution and retains its node,
+string-value and retained-text charges; pair work keeps its existing operation
+charges. Explicit `string()` retains first-node conversion, not existential
+comparison semantics.
+
+Nine tests cover ten ordinary-versus-constructor type combinations, node-set
+nonemptiness versus boolean precedence, numeric versus string precedence, empty
+fragments, explicit conversions, local shadowing, nested right-side resolution,
+message-once behavior and actual-cycle cleanup. Supplied parameter checks include
+decimal, boolean, infinity and NaN, with extended dates remaining unsupported.
+Eight concurrent sources remain isolated. Exact/one-less and cancellation checks
+cover XDM node buffers, source string-value traversal, retained text bytes and
+XPath pair work, preserving completed operands without publishing a failed
+dependent constructor.
+
+The first test attempt also exposed a pre-existing compiler boundary: conditional
+`$left != $right` is unsupported, although value expressions have a distinct
+inequality path. That syntax remains explicitly refused. Tests use actual pair
+equality and logical `not(...)`; no node-set inequality is implemented as negated
+equality. Pair relational conditions and secondary-document operands remain
+outside this tranche. No public representation or wider module admission follows.
+
+The comparison evidence has a private 361-line pair-equality child; existing
+constructor and literal-comparison units retain their named responsibilities.
+Full verification passes with **1,922 core tests**, 63 ignored probes, native 22,
+WASM adapter 4 and worker 18, plus the official WASM target. Both OASIS profiles
+conserve **2,501 modern / 2,498 strict**, 14/17 mismatches and 423 expected-error
+credits. This is production integration evidence, not a corpus-percentage gain.
+
+### Production typed pair relations (2026-10-15)
+
+Legacy variable-pair relational conditions now resolve global operands through
+the same invocation owner. The existing numeric-pair evaluator retains operation
+semantics; atomic conversion and controlled source-to-numeric-buffer construction
+are shared between ordinary execution and completed-global reads. Each operand
+is owned before the next can recursively initialize. No resolver borrow crosses
+that recursion, no additional completed-value cache is created, and source
+selection is not reduced to a first-node scalar.
+
+Seven tests cover fourteen ordinary-versus-constructor combinations across all
+four operators, empty/all-NaN selections, later-node witnesses and boolean/node-
+set conversion in both operand orders. Further evidence pins recursive right-
+side construction with message-once behavior, local shadowing versus actual
+cycles, supplied parameter suppression of defaults, typed infinity/NaN/decimal
+values versus untyped numeric strings, and explicit refusal of extended date
+operands. Exact/one-less and cancellation checks preserve completed inputs while
+preventing dependent publication across numeric buffers, string-value traversal
+and pair-operation work. Eight concurrent sources remain isolated. Effective
+whitespace views determine numeric source values, and the completed semantic
+result survives release of source and stylesheet owners.
+
+This does not admit conditional pair `!=`, secondary-document operands, modern
+comparison contexts or the separately guarded scalar forms of numeric-literal
+conditions. The private relational test child groups this evidence alongside
+pair equality without expanding the flat runtime-context directory.
+
+Validation passes with **1,929 core tests**, 63 ignored probes, native 22,
+WASM adapter 4 and worker 18; full repository verification and the official WASM
+target. Both full OASIS replays retain **2,501 modern / 2,498 strict**, 14/17
+mismatches and 423 expected-error credits. No upstream fixture, public boundary,
+initialization policy or performance claim changes in this tranche.
+
+## Production comparison output and specialization fallback (2026-10-15)
+
+Shared constructors now admit boolean/comparison `value-of` output through the
+already-connected ordinary demand readers. This includes effective booleans,
+boolean/string/numeric literal comparisons and typed variable-pair equality and
+inequality. Inequality remains existential and is not implemented as negated
+equality. No second evaluator or completed-global store is introduced.
+
+Eight focused tests cover ordinary-execution parity, mixed/empty node sets,
+empty result trees, typed refusal, local shadowing, cycles, supplied parameter
+precedence, concurrent isolation, and exact/one-less budgets plus cancellation
+before publication across five charged domains. Compiler tests found that
+initializer specializations treated whole expressions beginning with `$` as
+bare names, or rejected non-path selections before shared compilation. Those
+optimizations now decline ineligible selections; shared compilation still
+rejects malformed references. Bare-variable specialization remains intact.
+
+The full verification passes with **1,937 core tests**, 63 ignored probes,
+native 22, WASM adapter 4 and worker 18; the official WASM target also checks.
+Both complete OASIS profiles remain **2,501 modern / 2,498 strict**, with 14/17
+mismatches and 423 expected-error credits. No fixture or coverage credit changed.
+Broader instruction readers, secondary-document comparisons, unproved scalar
+kinds and module-graph admission remain guarded; this is not AR completion.
+
+## Production string consumers, source iteration and constant attributes (2026-10-15)
+
+Three further bounded admission slices reuse existing execution, without adding
+another evaluator or changing the global initialization schedule:
+
+- String normalization, character length, substring/before/after/starts-with and
+  literal/variable `contains` use the connected legacy string reader. Eight tests
+  cover ordinary parity, Unicode, first-node conversion, empty/typed/fragment
+  values, recursive right-operand initialization, once-only messages, cycles,
+  shadowing, parameter overrides, concurrent isolation, effective whitespace,
+  result lifetime and exact/one-less controls across four charged domains.
+- Unsorted principal-source location-path `for-each` uses the ordinary selector
+  and frame/focus construction. Seven tests cover empty/nested selections,
+  normalized duplicate paths, position/size, fresh root entry for recursive
+  globals, lexical COW isolation, concurrent sources, effective whitespace,
+  result lifetime and partial-result cleanup. Result-node/text-byte, traversal
+  and instruction budgets are tested at exact and one-less limits with real
+  charge-point cancellation. Empty iteration does not invent a dependency cycle.
+- Literal result elements admit constant text-valued attributes. Three tests
+  cover ordinary output parity, qualified names, Unicode, escaped braces,
+  result lifetime and result-node/text-body/temporary-XDM charge boundaries.
+  These preserve the existing accounting units; text-byte charges are not
+  advertised as total attribute-memory accounting.
+
+The tests assert shared-constructor admission where a static initializer could
+otherwise bypass the path under test. Dynamic/computed attributes, attribute
+sets, sorted or variable-selected iteration, secondary documents, numeric
+conversion and broader expression consumers remain guarded. The ordinary
+compiler still rejects the tested string-length multiplication form; it is not
+silently enabled by runtime eligibility. Tests are grouped in private named
+children of `global_constructor_tests`; the runtime owner is unchanged and no
+flat runtime-context directory growth is needed (ADR-0004).
+
+Validation: full repository gates and official WASM check; **1,955 core tests**,
+63 ignored probes, native 22, WASM adapter 4 and worker 18. Complete OASIS
+profiles retain **2,501 modern / 2,498 strict**, 14/17 mismatches and 423
+expected-error credits. No new corpus credit, fixture edit, public surface or
+performance claim accompanies these integration slices.
+The release-mode `shared_constructor_` selection also passes all **76 tests**;
+this is correctness validation, not a timing measurement.
+
+## Production variable-valued literal attributes (2026-10-15)
+
+Exact `{$variable}` literal-result attributes now use the already-connected
+ordinary legacy string reader during shared-constructor execution. This changes
+eligibility, not conversion or ownership: no second evaluator, completed store,
+map borrow across recursion or new materialization path is introduced.
+
+Seven additional tests prove ordinary-versus-constructor parity for typed
+atomics, first/empty source-node selections and temporary fragments; result
+lifetime; recursive forward reads and once-only messages; caller-local isolation;
+local shadowing and cycles; concurrent supplied-parameter overrides; and effective
+whitespace-view strings. Diagnostic spans distinguish an attribute read failure
+from a terminating dependency's original message. Repeated failure reads do not
+replay messages or publish a partial constructor. Exact/one-less result-node,
+temporary-XDM, string-traversal and XPath-operation charges plus deterministic
+cancellation retain ordinary control semantics.
+
+Focus-based and computed attributes remain runtime-guarded, attribute sets remain
+outside constructor admission, and composed forms are not implied by this slice.
+The tests remain in the cohesive private literal-attribute child; no runtime
+owner or cross-layer dependency changes (ADR-0004 / ADR-0024).
+
+Full verification passes with **1,962 core tests**, 63 ignored probes, native 22,
+WASM adapter 4 and worker 18, plus the official WASM target. Full OASIS profiles
+remain **2,501 modern / 2,498 strict**, 14/17 mismatches and 423 expected-error
+credits. No fixture, public contract, corpus credit or performance claim changes.
+
+## Production focus-based literal attributes (2026-10-15)
+
+Shared constructors now admit literal-attribute projections of position, size,
+lexical name, local name, context string value and already-admitted source
+attributes. These execute through the existing result builder, with no new
+focus owner, global reader or initializer path. A recursively initialized global
+starts at its own principal effective root/singleton, not the reading loop's
+focus. Computed attributes, attribute sets and other AVT forms remain guarded.
+The existing compiler refusal of qualified `{@p:a}` is preserved rather than
+being treated as implicit permission to broaden attribute syntax.
+
+Five focused tests compare ordinary and constructor output, qualified element
+names versus local names, missing attributes, Unicode payloads, iteration focus,
+root focus inside a recursive dependency, once-only evaluation, whitespace views,
+concurrent source isolation and results outliving compiled/source owners. Exact
+and one-less result-node, temporary-XDM, traversal, string-value and instruction
+budgets plus charge-point cancellation prevent partial publication. Tests live
+in a named private attribute-focus child; the guard remains eligibility only.
+
+Full verification passes with **1,967 core tests**, 63 ignored probes, native 22,
+WASM adapter 4 and worker 18, plus the official WASM target. Complete OASIS
+profiles retain **2,501 modern / 2,498 strict**, 14/17 mismatches and 423
+expected-error credits. No new fixture, public surface or performance claim.
+
+## Production comments and static-target processing instructions (2026-10-15)
+
+The shared constructor guard now admits comments and static-target PIs,
+including legacy bodies executed through the ordinary sequence executor.
+Nested instructions retain their own admission checks; dynamic PI targets and
+unproved body operations remain unsupported. No alternate constructor evaluator
+or public surface is introduced.
+
+Five focused tests establish ordinary/global output parity (including Unicode,
+comment double/trailing hyphens and PI terminator recovery), result serialization
+after compiled/source owners are dropped, forward dependency evaluation once,
+comment/PI exclusion from document string value, direct circularity without
+publication or restart, and explicit unsupported target/body cleanup.
+Result-node, result-text-byte, XDM-node and instruction domains each pass exact,
+one-less and active cancellation checks before global publication.
+
+Full verification passes with **1,972 core tests**, 63 ignored probes, native 22,
+WASM adapter 4 and worker 18 tests. The official WASM target check passes.
+Complete OASIS replay remains **2,501 modern / 2,498 strict exact**, with
+14 / 17 mismatches and 423 expected-error credits respectively. This is shared
+constructor integration evidence, not additional corpus credit. The manual
+`variable40` reference replay now explicitly requires its existing `workbench`
+comparator feature so default-feature test compilation does not refer to an
+absent module.
+
+## Production principal-source copying (2026-10-15)
+
+Current-node, child-element and location-path copy instructions now pass the
+shared constructor guard and use the ordinary effective-document copier.
+No resolver reader, secondary resource access or alternative copy engine is
+introduced. Variable/document/ancestor-specialized copies remain guarded;
+existing unsupported tests now use those still-unadmitted forms.
+
+Four focused tests compare ordinary and global construction across document,
+element, text, comment, PI and attribute selections, missing selections and
+namespace fixup. They also cover iteration focus, strip/preserve views and
+inherited `xml:space`, nested global root focus with one-time dependency messages,
+and serialization after source/compiled owners are dropped. Result-node,
+result-text-byte, XDM-node, XPath-node-visit and instruction budgets pass exact,
+one-less and active cancellation checks without partial publication.
+
+All 97 shared-constructor tests pass. Full verification passes with **1,976 core
+tests**, 63 ignored probes, native 22, WASM adapter 4 and worker 18 tests; the
+official WASM target builds. Complete OASIS remains **2,501 modern / 2,498 strict
+exact**, 14 / 17 mismatches and 423 expected-error credits. No new corpus credit
+is claimed. The replay reports no `FXRT1004` execution frontier, so further guard
+expansion should follow a demonstrated compiled consumer or independently
+classified compilation blocker rather than assuming every admission earns cases.
+
+Completed bounded evidence is not the same as production completion:
+
+- [x] Safe demand owner, shared-executor constructor reference and bounded
+  failure/control/lifetime experiments, including original declaration linking.
+- [x] Unchanged `variable40` reference replay and conserved full OASIS profiles
+  at the preceding semantic checkpoint.
+- [x] Same-owner constructor scheduling cost and same-program ordinary
+  source-node global production control; repeated runs expose reference overhead.
+- [x] Repository and official WASM validation of the current reference.
+- [x] Implement and compare a bounded static-admission subset through the shared
+  executor, including dynamic-case refusal rather than invented dependency cycles.
+
+Remaining decision/integration gates:
+
 - [ ] Pin legacy and modern global-context/dependency obligations independently.
-- [ ] Review compilation/runtime responsibility pressure and name one private
+- [x] Review compilation/runtime responsibility pressure and name one private
   owner for evaluation state; no broad mutable executor context as an extraction.
-- [ ] Compare static admission with a safe invocation demand reference, both
-  invoking the existing sequence/template executor.
+- [x] Select ownership and initial eager initialization in ADR-0024, accepted
+  with the static-analysis and specialized-path modifications. Broader static
+  reachability remains optional deferred analysis.
 - [ ] Prove root focus, position/size, built-in/matched/named templates, modes,
   lexical shadowing and absence of an inherited current matched rule.
 - [ ] Prove forward dependencies through templates, conditional dependencies,
@@ -1214,13 +2371,17 @@ production integration is inferred from these reference tests.
   concurrent invocation isolation and generation lifetime behavior.
 - [ ] Charge evaluation stack/work and result-to-temporary retention; test exact
   and one-less limits, cancellation, failure provenance and no partial publication.
-- [ ] Preserve global declaration/read-edge provenance and define bounded cycle
-  context; current instruction failures are conserved, but global declaration
-  locations and structured related locations are not yet represented.
-- [ ] Replay unchanged `variable40` and related cases independently, then both
-  full OASIS profiles and representative modern cases; no archived output edits.
-- [ ] Run full repository and official WASM gates; measure ordinary-global and
-  constructor-heavy regression cost before recommending an ADR.
+- [ ] Finish global declaration/read-edge provenance and bounded cycle-context
+  integration: test-only declaration metadata, captured failure context and
+  selected read sites are represented and evidenced above; remaining readers
+  and the production diagnostic attachment contract are still unresolved.
+- [x] Replay unchanged `variable40` through production and both full OASIS
+  profiles, plus the pinned modern regression tests; no archived output edits.
+- [ ] Classify related constructor cases independently before extending the
+  admitted value, instruction, match or module surface.
+- [ ] Validate the chosen production integration against these cost controls,
+  broader global value kinds and host-visible regression gates; the reference
+  measurements do not complete that obligation.
 
 ## Reopening triggers
 
@@ -1229,6 +2390,11 @@ resource capability or execution strategy. Public facade, cross-document ranking
 DTD acquisition, parallel global evaluation and host scheduling remain separate.
 
 ## Review history
+
+- 2026-10-14 -- Maintainer accepted with modifications; numbered ADR-0024.
+  Static analysis cannot define dependency/circularity semantics; specialized
+  initializers must prove parity and fall back to shared execution. Production
+  integration is authorized but not completed; exact corpus counts unchanged.
 
 - 2026-10-10 -- Opened after ordinary OASIS frontier inspection identified the
   completed-globals/shared-executor seam. No engine implementation or policy

@@ -6,8 +6,8 @@ standards scope are decided.
 
 ## Current critical path
 
-The current OASIS checkpoint is 2,500 / 3,173 exact comparisons (78.79%);
-80% requires another 39 exact cases. Resume the ranked ordinary frontier,
+The current OASIS checkpoint is 2,501 / 3,173 exact comparisons (78.82%);
+80% requires another 38 exact cases. Resume the ranked ordinary frontier,
 without implicitly opening secondary-document DTDs, cross-document value
 identity, namespace-valued variables, or legacy namespace-copy recovery.
 
@@ -31,18 +31,122 @@ The investigation now opens
 [AR-0030](../Architectural%20Reviews/AR-0030-invocation-owned-global-constructor-evaluation.md):
 globals currently materialize before shared execution and expose only completed
 values. Transitive reads through dispatched templates require a deliberate
-dependency/evaluation owner. Keep the existing unsupported boundary while the
-review compares static admission with safe invocation-owned demand resolution.
-The reference now has 102 focused/golden tests. Compiled legacy string-value
+dependency/evaluation owner. ADR-0024 now selects invocation-owned resolution;
+keep the existing unsupported boundary until production integration passes.
+The reference now has 125 focused/golden tests plus a manual unchanged-corpus
+replay. Edition review now separates legacy root-focus obligations from modern
+global-context and unused-error latitude; preprocessing does not choose the
+evaluation schedule. A manual release probe compares eager/demand scheduling
+through the same actual-declaration reference, not the production initializer;
+an additional same-program production control now isolates ordinary source-node
+globals and repeated reads. Neither is a production demand implementation or
+host-performance claim. The ordinary control finds reference overhead when all
+globals are used and savings when fifteen unused globals are skipped; preserve
+cheap completed-value reads and separate schedule policy from representation.
+The bounded static candidate now orders straight-line named calls and shared
+import winners, but refuses dynamic dispatch, conditionals and local bindings.
+It is useful evidence, not a replacement for the demand owner.
+[ADR-0024](../ADR/ADR-0024-invocation-owned-global-resolution-with-shared-execution.md)
+is accepted with initial eager scheduling, non-semantic static analysis and
+proven specialized-path parity/fallback. The first production slice is authorized:
+checkpoint decomposition, integrate the shared owner, then make unchanged
+`variable40` earn its pass through the real path. Reference code is not promoted
+wholesale; production parity, diagnostics, controls and cost gates remain.
+Production initialization now runs through one invocation-owned resolver for
+the existing specialized defaults. Owned-value publication and resolve-before-
+borrow reads retain one completed store; bounded active ordinals, a single
+retained failure and unwind poisoning govern recursive entry. Eight owner tests
+join ten handoff tests. Eager scheduling and existing completed-read work charges
+remain; unresolved recursive entry adds explicit work charging. The 2026-10-15
+bounded shared-constructor slice now admits unchanged `variable40` through the
+production compiler/runtime. Full modern and strict replays give **2,501** and
+**2,498** exact comparisons respectively, with unchanged 14/17 mismatches and
+423 expected-error credits. Nine focused constructor tests pin recursive reads,
+fresh root focus, local isolation, control/retention boundaries, failure reuse,
+host match policy and explicit admission guards. Module graphs, template
+parameters, broader match/value consumers and bounded read-edge provenance
+remain integration work; the safe reference remains available. Cost comparison
+remains a gate rather than an assumed improvement.
+The next production slice admits bounded source-controlled `if`/`choose` through
+the same boolean/sequence executor. Seven additional tests pin actual versus
+untaken dependency cycles, unchanged eager scheduling, modes, concurrent source
+isolation, effective whitespace views, result lifetime, both preprocessing
+profiles and exact/one-less control boundaries. Global-valued conditions remain
+unsupported until their readers are connected; no corpus gain is inferred from
+these hand-authored regressions.
+Fresh full replays conserve 2,501 modern / 2,498 strict exact comparisons and
+14/17 mismatches. Repository validation passes with 1,896 core tests and the
+official WASM target. Next connect global-valued predicate readers without
+collapsing node-set comparison or effective-boolean semantics into strings.
+Direct global effective-boolean conditions are now connected through the same
+resolver and the ordinary completed-value helper. Five further tests cover typed
+truth values, empty/nonempty node-sets, empty result trees, short-circuited cycles,
+local shadowing, parameter overrides and exact/one-less work/cancellation.
+String-literal equality/inequality now resolve forward global reads and share the
+ordinary charged existential node-set scan. Five additional tests cover mixed
+and empty sets, scalar/fragment parity, shadowing, cycles, controls and explicit
+typed-scalar refusal. Numeric-literal relations now use the same charged source
+scan and ordinary numeric predicate, with seven tests for later-node/NaN behavior,
+ordinary-execution parity, shadowing/cycles, parameter overrides, concurrent
+isolation and exact/one-less cached-scan accounting/cancellation. Legacy variable-
+pair equality now materializes owned operands through the existing typed evaluator;
+nine tests cover scalar precedence, fragment/explicit-string distinctions, recursive
+right-side evaluation, shadowing, supplied types, concurrency and four budget domains.
+Legacy pair relations now reuse owned typed numeric operands, with seven tests
+covering ordinary parity, boolean/node-set conversion, recursive right-side reads,
+special numeric values, three budget domains, whitespace views and concurrency.
+Pair inequality conditions, secondary documents and unproved numeric-literal
+scalar kinds remain guarded. Comparison tests have private subject modules.
+Boolean/comparison `value-of` output now shares those demand readers, including
+independent pair inequality. Eight tests cover parity, controls, cycles, supplied
+parameters, concurrency and specialization fallback. Non-bare-variable and
+non-path selections now reach shared compilation instead of being rejected by
+initializer optimizations. Other unproved reader/instruction guards remain.
+String normalization/length/substring/contains now reuse the same string reader;
+unsorted principal-source iteration uses ordinary focus and frame isolation;
+constant literal-result attributes use the existing result builder. Eighteen
+additional tests cover these slices, including Unicode, effective views, owner
+lifetime, recursive dependencies, concurrency, budget failures and cancellation.
+Exact variable-valued literal attributes now also use the connected reader;
+seven tests pin value-kind parity, recursive reads, shadowing, cycles, diagnostic
+spans, controls, concurrent parameter overrides and effective views.
+Focus-based literal attributes now share ordinary position/size, name, string
+and source-attribute projection; five tests pin iteration/root focus, effective
+views, concurrency, retained results and five charged control domains.
+Comments and static-target processing instructions now use shared body execution;
+five tests pin ordinary-output parity, owned results, forward reads, cycles,
+unsupported guards and exact/one-less budgets plus cancellation.
+Other dynamic attributes, dynamic PI targets, sorted/variable-selected iteration
+and unproved readers remain guarded. Principal-source current-node, child-element
+and location-path copies now use the ordinary effective-source copier; four tests
+pin mixed nodes/namespaces, iteration and root focus, whitespace views, result
+ownership and five control domains. Variable/document/ancestor copies remain
+guarded. Validation now passes with 1,976 core tests and WASM; complete OASIS profiles
+remain 2,501 / 2,498 exact, with no new mismatches or expected-error credit changes.
+Compiled legacy string-value
 reads can demand evaluation through the shared executor, including dispatched
 and conditional dependencies, cycle cleanup, root focus, local shadowing,
 qualified names, linked module precedence, supplied parameters, exact/one-less
 retention, cancellation and owner/concurrent-invocation isolation. Owned tree and
 source values now survive outstanding borrows during recursive demand evaluation;
 effective-view parity and release are proved. Foreign-focus `copy-of` retains its
-explicit `FXRT1017` guard. Named-template
-bodies still stand in for constructor plans; production reads and `variable40`
-remain unchanged and no corpus pass is credited. Modern `string($first)` is still
+explicit `FXRT1017` guard. Actual global declaration children now lower through
+the existing sequence compiler and execute in the reference, with profile-text,
+forward-dispatch, failure, cycle and exact-budget/cancellation checks. The
+surrounding declarations/linkage still use an explicit placeholder scaffold;
+older named-template bodies remain controls. A newer single-module lane now
+compiles original declarations through shared validation and linking, without
+that separate scaffold. Unchanged `variable40` passes the existing OASIS XML
+comparator in this private lane under both profiles; production still rejects
+it, so no corpus pass is credited. One explicitly supplied include now uses the
+shared module linker before validating constructor calls; cross-module ownership,
+cycles, failures and profile text remain pinned. Empty/select/typed defaults,
+transitive/mixed graphs, namespace aliases and attribute sets remain guarded.
+One supplied import now reuses an extracted shared composition owner; constructor
+bodies follow the winning resolved declaration, with override, profile, failure,
+cycle and import-order checks. No new precedence algorithm or resource acquisition
+is introduced.
+Modern `string($first)` is still
 explicitly compiler-unsupported. Eager-versus-demand schedule probes now pin
 unused terminating failures, additional work costs, supplied-default pruning and
 untaken mode cycles through one evaluator; this is not static reachability analysis.
@@ -51,8 +155,16 @@ recursive structure, local shadowing, result lifetime, work parity and distinct
 constructor/consumer failures are pinned. Other typed consumers remain pending.
 Direct effective-boolean reads now use those same test-only cells: empty trees
 remain true, source sets use nonemptiness, and local shadowing, short-circuiting,
-cycle/failure reuse and cached-read controls are pinned. Their read-edge locations
-remain explicitly unknown; no production boolean or global admission changes.
+cycle/failure reuse and cached-read controls are pinned. Direct compiled boolean
+conditions now preserve their `if`/`when` read-edge locations through nested logic
+and closing cycles; unmigrated locationless consumers remain explicitly unknown.
+No production boolean or global admission changes are selected.
+Boolean `value-of` consumers now forward their actual instruction read site,
+including admitted boolean comparisons and two-variable `and`; failure reuse
+and short-circuit tests keep primary diagnostics and skipped reads distinct.
+Admitted string-literal comparisons now retain instruction read sites in
+conditions and value-of, including typed source handoff and mixed copy cycles;
+unmigrated comparison consumers still report unknown sites explicitly.
 A differential source-sequence comparison probe exposed first-node scalarization;
 the test bridge now hands a retained owner and full selection to the existing
 string comparator, preserving empty/local shadowing, failure cleanup and the
@@ -113,8 +225,12 @@ Failed cells capture their active path before unwind; this is not yet a complete
 causal/cycle trace or a production diagnostic policy.
 An opt-in first-cycle observation now captures the closing read before unwind;
 it is separate from failed-cell context and does not select production attachment.
-Next compare admission strategies and finish
-value-kind/context/diagnostic integration before recommending a resolver ADR.
+The shared import-composition and declaration/link-test extractions have passing
+structural checkpoints. Next assess transitive/mixed graphs and resolve edition-specific
+schedule policy; measure ordinary-global and constructor-heavy cost before
+recommending a resolver ADR. The AR now separates proven reference ownership
+from these remaining gates. No approval is needed for private experiments;
+production resolver selection still requires an accepted decision.
 Qualified global document paths, composed match predicates and dynamic numeric
 formatting are the other recorded candidates, each with downstream gaps rather
 than an assumed pass count. Existing ISO-2022-JP and archival indentation

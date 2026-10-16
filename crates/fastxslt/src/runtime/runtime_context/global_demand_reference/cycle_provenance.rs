@@ -57,9 +57,9 @@ fn demand_cycle_observation_includes_closing_typed_read_and_owns_metadata() {
 }
 
 #[test]
-fn demand_mixed_cycle_observation_does_not_invent_string_locations() {
+fn demand_mixed_cycle_observation_preserves_string_literal_condition_site() {
     let mut control = InvocationControl::unbounded();
-    let (driver, _) = driver(
+    let (driver, xml) = driver(
         r#"
       <xsl:template match="/"><xsl:copy-of select="$first"/></xsl:template>
       <xsl:template name="first_constructor"><xsl:if test="$second = 'x'">unused</xsl:if></xsl:template>
@@ -71,7 +71,9 @@ fn demand_mixed_cycle_observation_does_not_invent_string_locations() {
     let observed = driver.provenance.first_cycle.get().unwrap();
     assert_eq!(observed.dependencies.len(), 3);
     assert!(observed.dependencies[0].read.is_some());
-    assert!(observed.dependencies[1].read.is_none());
+    assert!(
+        xml[observed.dependencies[1].read.as_ref().unwrap().span.clone()].starts_with("<xsl:if")
+    );
     assert!(observed.dependencies[2].read.is_some());
 }
 

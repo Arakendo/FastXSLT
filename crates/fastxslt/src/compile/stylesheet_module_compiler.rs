@@ -101,7 +101,7 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
     Ok(program)
 }
 
-fn merge_included_program(
+pub(super) fn merge_included_program(
     program: &mut StylesheetProgram,
     mut included_program: StylesheetProgram,
     location: &SourceLocation,
@@ -197,6 +197,11 @@ fn ensure_same_preprocessing(
     dependency: &StylesheetProgram,
     location: &SourceLocation,
 ) -> Result<(), CompileFailure> {
+    if principal.global_bindings.iter().chain(&dependency.global_bindings).any(|binding| {
+        matches!(binding.default, crate::xslt::golden_semantics_experiment::GlobalBindingDefault::SharedConstructor { .. })
+    }) {
+        return Err(unsupported("FXST1015", "shared global constructor module linking is not yet admitted", location));
+    }
     if principal.preprocessing != dependency.preprocessing {
         return Err(unsupported(
             "FXST1058",
@@ -978,7 +983,7 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
 pub(crate) fn compile_stylesheet_with_single_imported_program_at_in_context(
     principal: &Document,
     principal_root: NodeId,
-    mut imported_program: StylesheetProgram,
+    imported_program: StylesheetProgram,
     context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
     let import_declarations = import_nodes_at(principal, principal_root)?;
@@ -995,25 +1000,31 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at_in_context(
         &import_declarations,
     )?;
     principal_program = context.qualify_module(principal_program);
-    ensure_same_preprocessing(
-        &principal_program,
-        &imported_program,
+    merge_single_imported_program(
+        principal_program,
+        imported_program,
         principal.location(import_declarations[0]),
-    )?;
-    rebase_imported_program(
-        &mut imported_program,
-        -1,
         principal.location(principal_root),
-    )?;
+    )
+}
+
+pub(super) fn merge_single_imported_program(
+    mut principal_program: StylesheetProgram,
+    mut imported_program: StylesheetProgram,
+    import_location: &SourceLocation,
+    principal_location: &SourceLocation,
+) -> Result<StylesheetProgram, CompileFailure> {
+    ensure_same_preprocessing(&principal_program, &imported_program, import_location)?;
+    rebase_imported_program(&mut imported_program, -1, principal_location)?;
     merge_attribute_set_declarations(
         &mut principal_program,
         &mut imported_program,
-        principal.location(principal_root),
+        principal_location,
     );
     merge_imported_output(
         &mut principal_program,
         &imported_program,
-        principal.location(principal_root),
+        principal_location,
     )?;
 
     materialize_principal_root_template(&mut principal_program);

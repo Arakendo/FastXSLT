@@ -413,6 +413,7 @@ fn execute_for_each_literal_document_root<'a>(
         .as_ref()
         .unwrap_or(dynamic.document.as_ref());
     let external_inputs = SequenceInputs {
+        initializing_globals: inputs.initializing_globals,
         program: inputs.program,
         source: Some(document),
         request_id: inputs.request_id,

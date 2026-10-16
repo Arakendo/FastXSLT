@@ -1945,7 +1945,7 @@ fn print_ranked(label: &str, values: &BTreeMap<String, usize>) {
     }
 }
 
-fn xml_equivalent(
+pub(super) fn xml_equivalent(
     actual: &str,
     expected: &[u8],
     preserve_whitespace_only_text: bool,

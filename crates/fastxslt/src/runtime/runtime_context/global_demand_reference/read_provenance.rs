@@ -141,9 +141,9 @@ fn demand_read_sites_follow_recursive_copies_without_relabeling_origin() {
 }
 
 #[test]
-fn demand_boolean_string_read_location_stays_unknown() {
+fn demand_boolean_string_literal_read_retains_condition_location() {
     let mut control = InvocationControl::unbounded();
-    let (driver, _) = super::failure_observations::driver(
+    let (driver, xml) = super::failure_observations::driver(
         r#"
       <xsl:template match="/"><xsl:if test="$first = 'x'">unused</xsl:if></xsl:template>
       <xsl:template name="first_constructor"><xsl:message terminate="yes">failure</xsl:message></xsl:template>"#,
@@ -156,7 +156,9 @@ fn demand_boolean_string_read_location_stays_unknown() {
         .failed_context(0, &[], 0, &mut control)
         .unwrap();
     assert_eq!(context.dependencies.len(), 1);
-    assert!(context.dependencies[0].read.is_none());
+    assert!(
+        xml[context.dependencies[0].read.as_ref().unwrap().span.clone()].starts_with("<xsl:if")
+    );
     assert!(driver.provenance.path.borrow().is_empty());
 }
 

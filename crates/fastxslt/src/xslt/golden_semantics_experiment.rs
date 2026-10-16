@@ -181,6 +181,10 @@ pub(crate) struct GlobalBinding {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum GlobalBindingDefault {
+    SharedConstructor {
+        body: Box<[Instruction]>,
+        location: SourceLocation,
+    },
     EmptySequence,
     Text(String),
     Atomic(AtomicValue),

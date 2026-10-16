@@ -410,6 +410,7 @@ fn execute_program_with_parameters_using(
         parameters,
         request_id,
         &GlobalDocumentContext {
+            multiple_match_policy,
             resource_snapshot,
             denied_resources,
             dynamic_documents: &dynamic_documents,
@@ -417,6 +418,7 @@ fn execute_program_with_parameters_using(
         control,
     )?;
     let inputs = SequenceInputs {
+        initializing_globals: None,
         program,
         source: Some(source),
         request_id,
@@ -520,6 +522,7 @@ fn execute_initial_mode(
         parameters,
         request_id,
         &GlobalDocumentContext {
+            multiple_match_policy,
             resource_snapshot: None,
             denied_resources: None,
             dynamic_documents: &dynamic_documents,
@@ -527,6 +530,7 @@ fn execute_initial_mode(
         control,
     )?;
     let inputs = SequenceInputs {
+        initializing_globals: None,
         program,
         source: Some(source),
         request_id,
@@ -678,6 +682,7 @@ fn execute_initial_template_with_optional_source(
         parameters,
         request_id,
         &GlobalDocumentContext {
+            multiple_match_policy,
             resource_snapshot: None,
             denied_resources: None,
             dynamic_documents: &dynamic_documents,
@@ -685,6 +690,7 @@ fn execute_initial_template_with_optional_source(
         control,
     )?;
     let inputs = SequenceInputs {
+        initializing_globals: None,
         program,
         source,
         request_id,
@@ -843,6 +849,9 @@ fn execute_sequence(
     }
     for instruction in instructions {
         charge_xslt_instruction(control, inputs.request_id)?;
+        if let Some(owner) = inputs.initializing_globals {
+            owner.validate_constructor_instruction(instruction)?;
+        }
         execute_instruction(
             inputs,
             instruction,
@@ -3465,6 +3474,7 @@ fn external_document_inputs<'a>(
     document: &'a Document,
 ) -> SequenceInputs<'a> {
     SequenceInputs {
+        initializing_globals: inputs.initializing_globals,
         program: inputs.program,
         source: Some(document),
         request_id: inputs.request_id,
@@ -3506,6 +3516,7 @@ fn execute_apply_literal_document_root(
         .as_ref()
         .unwrap_or(dynamic.document.as_ref());
     let external_inputs = SequenceInputs {
+        initializing_globals: inputs.initializing_globals,
         program: inputs.program,
         source: Some(document),
         request_id: inputs.request_id,
@@ -4083,6 +4094,33 @@ fn evaluate_boolean_at(
         return value_evaluator::xslt10_variable_string_length_boolean(
             inputs,
             variable,
+            variables,
+            control,
+            #[cfg(test)]
+            location,
+        );
+    }
+    if let BooleanExpression::VariableEffectiveBooleanValue(variable) = expression {
+        return evaluate_variable_effective_boolean_value_at(
+            inputs,
+            variable,
+            variables,
+            control,
+            #[cfg(test)]
+            location,
+        );
+    }
+    if let BooleanExpression::Xslt10VariableStringLiteralEquals {
+        variable,
+        literal,
+        equal,
+    } = expression
+    {
+        return value_evaluator::evaluate_xslt10_variable_string_comparison_at(
+            inputs,
+            variable,
+            literal,
+            *equal,
             variables,
             control,
             #[cfg(test)]
@@ -5263,6 +5301,23 @@ fn evaluate_variable_effective_boolean_value(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    evaluate_variable_effective_boolean_value_at(
+        inputs,
+        variable,
+        variables,
+        control,
+        #[cfg(test)]
+        None,
+    )
+}
+
+fn evaluate_variable_effective_boolean_value_at(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&SourceLocation>,
+) -> Result<bool, ExecutionFailure> {
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -5270,9 +5325,15 @@ fn evaluate_variable_effective_boolean_value(
         return atomic_effective_boolean_value(value, inputs.request_id);
     }
     if variables.allows_global_fallback(variable)
-        && let Some(value) = inputs.globals.atomics.get(variable)
+        && let Some(owner) = inputs.initializing_globals
     {
-        return atomic_effective_boolean_value(value, inputs.request_id);
+        return owner.read_effective_boolean(variable, control);
+    }
+    if variables.allows_global_fallback(variable)
+        && let Some(value) =
+            runtime_context::completed_global_boolean(inputs.globals, variable, inputs.request_id)?
+    {
+        return Ok(value);
     }
     if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
         return Ok(!nodes.is_empty());
@@ -5280,23 +5341,8 @@ fn evaluate_variable_effective_boolean_value(
     if let Some(values) = variables.detached_source_node_strings(variable) {
         return Ok(!values.is_empty());
     }
-    if variables.allows_global_fallback(variable)
-        && let Some(nodes) = inputs.globals.nodes.get(variable)
-    {
-        return Ok(!nodes.is_empty());
-    }
     if variables.temporary_trees.contains_key(variable) {
         return Ok(true);
-    }
-    if variables.allows_global_fallback(variable)
-        && inputs.globals.temporary_trees.contains_key(variable)
-    {
-        return Ok(true);
-    }
-    if variables.allows_global_fallback(variable)
-        && inputs.globals.empty_sequences.contains(variable)
-    {
-        return Ok(false);
     }
     if let Some(values) = variables.atomic_sequences.get(variable) {
         return match values.as_slice() {
@@ -5308,7 +5354,7 @@ fn evaluate_variable_effective_boolean_value(
     #[cfg(test)]
     if variables.allows_global_fallback(variable)
         && let Some(reader) = &inputs.globals.demand_boolean_reference
-        && let Some(value) = reader.read(variable, control)?
+        && let Some(value) = reader.read(variable, location, control)?
     {
         return Ok(value);
     }

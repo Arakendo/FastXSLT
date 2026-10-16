@@ -5,7 +5,7 @@ use super::{
     RuntimeVariables, SequenceInputs, WorkDomain, control_failure, failure,
 };
 
-enum Operand {
+pub(in crate::runtime) enum Operand {
     Boolean(bool),
     Number(f64),
     String(String),
@@ -150,20 +150,29 @@ fn source_strings(
         return Ok(None);
     };
     let source = super::required_comparison_source(inputs)?;
+    collect_source_strings(source, nodes, inputs.request_id, control).map(Some)
+}
+
+fn collect_source_strings(
+    source: &crate::xdm::owned_tree_experiment::Document,
+    nodes: &[crate::xdm::owned_tree_experiment::NodeId],
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<String>, ExecutionFailure> {
     control
         .charge(WorkDomain::XdmNode, nodes.len())
-        .map_err(|error| control_failure(error, inputs.request_id))?;
+        .map_err(|error| control_failure(error, request_id))?;
     let mut values = Vec::with_capacity(nodes.len());
     for node in nodes {
         let value = source
             .string_value_controlled(*node, control)
-            .map_err(|error| control_failure(error, inputs.request_id))?;
+            .map_err(|error| control_failure(error, request_id))?;
         control
             .charge(WorkDomain::ResultTextByte, value.len())
-            .map_err(|error| control_failure(error, inputs.request_id))?;
+            .map_err(|error| control_failure(error, request_id))?;
         values.push(value);
     }
-    Ok(Some(values))
+    Ok(values)
 }
 
 fn operand(
@@ -175,6 +184,11 @@ fn operand(
     if explicit_string {
         return super::variable_string_value(inputs, name, variables, control).map(Operand::String);
     }
+    if variables.allows_global_fallback(name)
+        && let Some(owner) = inputs.initializing_globals
+    {
+        return owner.read_equality_operand(name, control);
+    }
     if let Some(values) = source_strings(inputs, name, variables, control)? {
         return Ok(Operand::Nodes(values));
     }
@@ -184,7 +198,7 @@ fn operand(
             .then(|| inputs.globals.atomics.get(name))
             .flatten()
     }) {
-        return atomic(inputs, value);
+        return atomic(inputs.request_id, value);
     }
     // The existing guarded reader accepts temporary trees, including demand
     // reference values, but never scalarizes unresolved source selections.
@@ -192,7 +206,50 @@ fn operand(
         .map(Operand::Temporary)
 }
 
-fn atomic(inputs: &SequenceInputs<'_>, value: &AtomicValue) -> Result<Operand, ExecutionFailure> {
+/// Materialize one owned comparison operand; never invoke recursive execution
+/// while borrowing a completed global store.
+pub(in crate::runtime) fn completed_operand(
+    globals: &super::runtime_context::RuntimeGlobals,
+    source: Option<&crate::xdm::owned_tree_experiment::Document>,
+    name: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Operand, ExecutionFailure> {
+    if let Some(nodes) = globals.nodes.get(name) {
+        let source = source.ok_or_else(|| {
+            failure(
+                "FXRT1004",
+                FailureCategory::Unsupported,
+                Some(request_id),
+                "global equality requires a principal source",
+            )
+        })?;
+        return collect_source_strings(source, nodes, request_id, control).map(Operand::Nodes);
+    }
+    if let Some(value) = globals.atomics.get(name) {
+        return atomic(request_id, value);
+    }
+    if let Some(tree) = globals.temporary_trees.get(name) {
+        return super::runtime_context::temporary_tree_string_value(tree, request_id, control)
+            .map(Operand::Temporary);
+    }
+    if globals.literal_documents.contains_key(name) || globals.empty_sequences.contains(name) {
+        return Err(failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "this global value kind is outside admitted constructor equality",
+        ));
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(request_id),
+        format!("unbound global comparison operand: ${name}"),
+    ))
+}
+
+fn atomic(request_id: &str, value: &AtomicValue) -> Result<Operand, ExecutionFailure> {
     Ok(match value.atomic_type() {
         BuiltinAtomicType::Boolean => Operand::Boolean(matches!(value.lexical(), "true" | "1")),
         BuiltinAtomicType::Integer
@@ -210,7 +267,7 @@ fn atomic(inputs: &SequenceInputs<'_>, value: &AtomicValue) -> Result<Operand, E
             return Err(failure(
                 "FXRT1015",
                 FailureCategory::Unsupported,
-                Some(inputs.request_id),
+                Some(request_id),
                 "extended atomic types are outside legacy scalar equality",
             ));
         }

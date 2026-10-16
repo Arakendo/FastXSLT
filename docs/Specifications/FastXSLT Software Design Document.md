@@ -666,8 +666,122 @@ non-terminating `xsl:message` alongside its admitted text and source-value
 parts. Compilation retains the message as an invocation-time side effect;
 execution charges its instruction, ephemeral result node, and text bytes
 before recording it, and contributes no message content to the temporary tree.
-Dynamic or terminating messages and general instruction or template execution
-during global construction remain unsupported.
+General instruction/template execution is admitted only through the bounded
+ADR-0024 shared-constructor slice below; it does not extend this specialization
+into a second interpreter.
+
+[ADR-0024](../ADR/ADR-0024-invocation-owned-global-resolution-with-shared-execution.md)
+selects one invocation-owned authoritative global resolver and shared-executor
+constructors, with eager initialization as the initial production schedule.
+Compiled initializer plans remain immutable and source-independent; supplied,
+active, completed and failed binding state belongs to the invocation. No mutable
+binding borrow may span recursive execution. Static analysis is admission or
+scheduling only and cannot fabricate executed dependencies or circularity.
+Specialized initializer paths must prove the same identity, context, ownership,
+parameter, failure/message and control/accounting semantics, falling back to
+shared execution when eligibility is unproved. Unadmitted fallback remains
+unsupported. Implementation and corpus credit remain separately gated; this
+decision does not select lazy omission, a public value type or the test driver's
+physical representation.
+
+The current production integration applies that owner to the already admitted
+specialized global defaults. Evaluation returns an owned value before publication
+into the existing completed-kind maps. Dependency reads resolve before borrowing
+those maps; recursive entry uses linked binding ordinals, a private 128-frame
+stack-safety ceiling (`FXRT0003` on exhaustion), and `XTDE0640` for active re-entry.
+An unresolved recursive entry charges one XPath operation; the existing eager
+schedule and completed reads retain their charges. The first initialization
+failure aborts the phase and is retained once, with no restart or diagnostic
+copy per dependent binding. Unwinding clears active markers and poisons the owner;
+it is not an engine panic-recovery API. The compiler's currently admitted static
+ordering/validation remains unchanged for previously admitted defaults.
+
+A bounded legacy global content initializer now compiles through the ordinary
+sequence compiler and executes through the shared template executor. It enters
+at the principal effective-document root with singleton focus and fresh lexical
+state. Legacy string reads resolve through the same initialization owner before
+borrowing completed values; constructor results become owned temporary trees
+only after charged construction and materialization succeed. Named/matched
+dispatch, static local atomics, simple source paths, text and message operations
+are guarded by explicit eligibility. Caller multiple-match policy is preserved.
+Unsorted `for-each` over principal-source location paths now uses the ordinary
+selection, focus and lexical-frame machinery. Iteration focus does not become
+the entry focus of a recursively initialized global. Sorting, variable-selected
+sequences and secondary-document iteration remain outside constructor admission.
+Literal result elements may carry constant text-valued or exact variable-valued
+attributes through the ordinary result builder and temporary-tree materializer.
+Exact `{$variable}` values use the connected legacy string reader, including
+forward global resolution and lexical shadowing. Dependency failures retain
+their originating location; an otherwise unlocated read failure receives the
+attribute location. Literal attributes may also use the ordinary position/size,
+lexical/local name, context string and admitted source-attribute projections.
+They observe the current principal-source execution focus; recursive global
+initialization still enters at its own root/singleton focus. Compiler restrictions
+on source-attribute syntax remain unchanged. Other dynamic forms, computed
+attributes and attribute sets remain guarded.
+Comments and processing instructions with static targets may execute inside
+shared global constructors. Legacy dynamic bodies use the ordinary sequence
+executor and its existing comment/PI content recovery; each nested instruction
+still passes constructor eligibility. Connected reads can resolve forward
+globals without retaining a completed-store borrow. Temporary-tree materialization
+owns the resulting comment/PI payload, and document string values exclude it.
+Dynamic PI targets remain outside this constructor slice.
+Principal-source current-node, child-element and location-path `xsl:copy-of`
+instructions may use the ordinary effective-document copier during global
+construction. Copied names, namespaces, attributes and child payload become
+result-owned before temporary-tree publication. Iteration uses its current
+source focus; recursively demanded globals still enter at the principal root.
+Variable, secondary-document and ancestor-specialized copies remain guarded.
+Source-controlled `xsl:if` and `xsl:choose` may use admitted constant, path
+existence/string tests and their logical combinations. Their conditions and
+short-circuit behavior execute through the ordinary boolean evaluator; only
+the taken body can demand a global dependency. This does not enable conditions
+that read globals through still-unconnected value consumers. Direct `$variable`
+effective-boolean conditions now resolve through the invocation owner and reuse
+the ordinary completed-value boolean rules: atomics retain typed conversion,
+node-sets test nonemptiness and temporary result trees remain true even with empty
+string values. Logical short-circuiting can avoid a dependency read without
+changing the eager schedule. String-literal equality and inequality can resolve
+global string, principal-source node-set and temporary-tree values. Node sets
+reuse the ordinary controlled existential scan: equality and inequality can both
+be true, and both are false for an empty set. Local shadowing is preserved.
+Numeric-literal relations also resolve forward globals, reusing the ordinary
+numeric predicate and controlled existential source scan. Their admitted scalar
+forms are strings/untyped values, integers, decimals and temporary-tree strings;
+empty node sets and NaN comparisons remain false. Boolean and floating typed
+scalars still retain numeric-literal initialization guards. Legacy variable-pair
+equality uses the existing typed comparison evaluator: each resolved operand is
+owned before the next global can initialize, preserving scalar precedence,
+existential node-set equality and the distinction between temporary fragments
+and explicit `string()` conversion. This admits pair `=` conditions and their
+logical negation, not conditional pair `!=`. Legacy pair relational conditions
+also reuse the ordinary evaluator's owned numeric operands. Typed booleans retain
+whole-set conversion when paired with node sets, typed numbers retain infinity
+and NaN, and strings retain the ordinary string-to-number grammar. The left
+numeric operand is owned before right-side recursive resolution starts; source
+buffers and pair comparisons keep their existing charges.
+Secondary-document comparisons and boolean reads remain unsupported.
+Boolean/comparison `value-of` output can use these same demand readers, including
+variable-pair equality and inequality through the ordinary typed evaluator.
+Inequality remains its own existential comparison, not negated equality.
+Legacy variable string normalization, character length, substring functions and
+literal/variable `contains` also reuse the connected ordinary string reader.
+Operands are owned before another dependency resolves; first-node conversion,
+Unicode character counting, empty values and temporary-tree string values retain
+ordinary execution semantics. This does not admit multiplication around string
+length, numeric conversion or node navigation merely because they read a variable.
+Specialized global initializers decline non-bare-variable/non-path selections
+so shared expression compilation owns their validity; this does not widen the
+guarded scalar kinds or admit other instruction consumers.
+String-literal comparison still refuses non-string typed scalars.
+Eager evaluation
+of remaining globals after the current constructor is unchanged.
+Unwired instruction consumers fail as unsupported rather than reading an empty
+completed store. Module graphs, template parameters, unproved match patterns,
+namespace-alias/attribute-set rewriting and broader modern contexts remain
+outside this initial admission. Originating instruction diagnostics survive;
+shared-constructor circularity identifies the declaration. General read-edge
+and bounded secondary dependency context remain separate integration work.
 
 Named-template declarations and `xsl:call-template` instructions use the same
 expanded QName identity. Unprefixed names remain in no namespace; prefixed

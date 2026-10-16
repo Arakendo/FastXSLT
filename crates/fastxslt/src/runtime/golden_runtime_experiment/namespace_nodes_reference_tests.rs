@@ -273,6 +273,7 @@ fn selected_namespace_sizes_reuse_charged_runtime_focus_comparisons() {
     let globals = RuntimeGlobals::default();
     let dynamic_documents = RefCell::default();
     let inputs = SequenceInputs {
+        initializing_globals: None,
         program: &program,
         source: None,
         request_id: "namespace-focus",

@@ -30,8 +30,11 @@ type StringReader = dyn Fn(
     &mut InvocationControl,
 ) -> Result<Option<String>, super::ExecutionFailure>;
 
-type BooleanReader =
-    dyn Fn(&str, &mut InvocationControl) -> Result<Option<bool>, super::ExecutionFailure>;
+type BooleanReader = dyn Fn(
+    &str,
+    Option<&crate::xdm::owned_tree_experiment::SourceLocation>,
+    &mut InvocationControl,
+) -> Result<Option<bool>, super::ExecutionFailure>;
 
 pub(in crate::runtime::golden_runtime_experiment) struct BooleanReadHook(
     std::rc::Rc<BooleanReader>,
@@ -39,7 +42,11 @@ pub(in crate::runtime::golden_runtime_experiment) struct BooleanReadHook(
 
 impl BooleanReadHook {
     fn new(
-        reader: impl Fn(&str, &mut InvocationControl) -> Result<Option<bool>, super::ExecutionFailure>
+        reader: impl Fn(
+            &str,
+            Option<&crate::xdm::owned_tree_experiment::SourceLocation>,
+            &mut InvocationControl,
+        ) -> Result<Option<bool>, super::ExecutionFailure>
         + 'static,
     ) -> Self {
         Self(std::rc::Rc::new(reader))
@@ -48,9 +55,10 @@ impl BooleanReadHook {
     pub(in crate::runtime) fn read(
         &self,
         name: &str,
+        location: Option<&crate::xdm::owned_tree_experiment::SourceLocation>,
         control: &mut InvocationControl,
     ) -> Result<Option<bool>, super::ExecutionFailure> {
-        (self.0)(name, control)
+        (self.0)(name, location, control)
     }
 }
 
@@ -448,6 +456,7 @@ mod tests {
         let globals = RuntimeGlobals::default();
         let dynamic_documents = RefCell::default();
         let inputs = SequenceInputs {
+            initializing_globals: None,
             program: &program,
             source: Some(&source),
             request_id: "demand-reference",

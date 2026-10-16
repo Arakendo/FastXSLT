@@ -108,6 +108,32 @@ pub(super) fn xslt10_number_lexical(value: &str) -> String {
     xslt10_compatibility::number_lexical(value)
 }
 
+pub(super) use xslt10_compatibility::source_string_comparison;
+pub(super) use xslt10_compatibility::{EqualityOperand, completed_equality_operand};
+pub(super) use xslt10_compatibility::{NumericPairOperand, completed_numeric_pair_operand};
+pub(super) use xslt10_compatibility::{numeric_initializer_scalar, source_value_predicate};
+
+pub(super) fn evaluate_xslt10_variable_string_comparison_at(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    literal: &str,
+    equal: bool,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&SourceLocation>,
+) -> Result<bool, ExecutionFailure> {
+    xslt10_compatibility::variable_string_comparison_at(
+        inputs,
+        variable,
+        literal,
+        equal,
+        variables,
+        control,
+        #[cfg(test)]
+        location,
+    )
+}
+
 pub(super) fn xslt10_path_string_predicate(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
@@ -919,8 +945,13 @@ pub(super) fn execute_value_of(
             append_empty_location_path(inputs, path, context, result, control)?;
         }
         ValueExpression::VariableEffectiveBooleanValue(variable) => {
-            let value = super::evaluate_variable_effective_boolean_value(
-                inputs, variable, variables, control,
+            let value = super::evaluate_variable_effective_boolean_value_at(
+                inputs,
+                variable,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
             )?;
             append_boolean(inputs, value, result, control)?;
         }
@@ -955,10 +986,23 @@ pub(super) fn execute_value_of(
             append_boolean(inputs, actual.lexical() == value, result, control)?;
         }
         ValueExpression::Xslt10VariableBooleanAnd { left, right } => {
-            let left =
-                super::evaluate_variable_effective_boolean_value(inputs, left, variables, control)?;
+            let left = super::evaluate_variable_effective_boolean_value_at(
+                inputs,
+                left,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
+            )?;
             let value = if left {
-                super::evaluate_variable_effective_boolean_value(inputs, right, variables, control)?
+                super::evaluate_variable_effective_boolean_value_at(
+                    inputs,
+                    right,
+                    variables,
+                    control,
+                    #[cfg(test)]
+                    read_location,
+                )?
             } else {
                 false
             };
@@ -1148,8 +1192,13 @@ pub(super) fn execute_value_of(
             value,
             equal,
         } => {
-            let actual = super::evaluate_variable_effective_boolean_value(
-                inputs, variable, variables, control,
+            let actual = super::evaluate_variable_effective_boolean_value_at(
+                inputs,
+                variable,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
             )?;
             append_boolean(inputs, (actual == *value) == *equal, result, control)?;
         }
@@ -1159,8 +1208,15 @@ pub(super) fn execute_value_of(
             equal,
             negate,
         } => {
-            let matches = xslt10_compatibility::variable_string_comparison(
-                inputs, variable, value, *equal, variables, control,
+            let matches = xslt10_compatibility::variable_string_comparison_at(
+                inputs,
+                variable,
+                value,
+                *equal,
+                variables,
+                control,
+                #[cfg(test)]
+                read_location,
             )?;
             append_boolean(inputs, matches != *negate, result, control)?;
         }

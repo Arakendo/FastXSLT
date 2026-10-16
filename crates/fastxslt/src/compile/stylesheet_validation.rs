@@ -6,6 +6,16 @@ use super::{CompileFailure, invalid};
 pub(super) fn validate_named_template_references(
     program: &StylesheetProgram,
 ) -> Result<(), CompileFailure> {
+    super::global_constructor_admission::validate_program(program)?;
+    for binding in &program.global_bindings {
+        if let crate::xslt::golden_semantics_experiment::GlobalBindingDefault::SharedConstructor {
+            body,
+            ..
+        } = &binding.default
+        {
+            validate_named_calls(program, body)?;
+        }
+    }
     if let Some(root) = &program.root_template {
         validate_named_calls(program, &root.body)?;
     }
@@ -18,7 +28,7 @@ pub(super) fn validate_named_template_references(
     Ok(())
 }
 
-fn validate_named_calls(
+pub(super) fn validate_named_calls(
     program: &StylesheetProgram,
     instructions: &[Instruction],
 ) -> Result<(), CompileFailure> {

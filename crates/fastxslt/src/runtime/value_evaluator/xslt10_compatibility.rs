@@ -3,10 +3,16 @@
 #[path = "xslt10_compatibility/numeric_pairs.rs"]
 mod numeric_pairs;
 pub(super) use numeric_pairs::compare as variable_numeric_pair_relation;
+pub(in crate::runtime) use numeric_pairs::{
+    Operand as NumericPairOperand, completed_operand as completed_numeric_pair_operand,
+};
 
 #[path = "xslt10_compatibility/variable_equality.rs"]
 mod variable_equality;
 pub(super) use variable_equality::compare as variable_scalar_equality;
+pub(in crate::runtime) use variable_equality::{
+    Operand as EqualityOperand, completed_operand as completed_equality_operand,
+};
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -73,6 +79,11 @@ fn variable_string_value_for(
 ) -> Result<String, ExecutionFailure> {
     if let Some(value) = variables.atomics.get(name) {
         return Ok(value.lexical().to_owned());
+    }
+    if variables.allows_global_fallback(name)
+        && let Some(owner) = inputs.initializing_globals
+    {
+        return owner.read_legacy_string(name, control);
     }
     if variables.allows_global_fallback(name)
         && let Some(value) = inputs.globals.atomics.get(name)
@@ -303,29 +314,70 @@ pub(super) fn variable_string_comparison(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    variable_string_comparison_at(
+        inputs,
+        name,
+        expected,
+        equal,
+        variables,
+        control,
+        #[cfg(test)]
+        None,
+    )
+}
+
+pub(super) fn variable_string_comparison_at(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    expected: &str,
+    equal: bool,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    #[cfg(test)] location: Option<&crate::xdm::owned_tree_experiment::SourceLocation>,
+) -> Result<bool, ExecutionFailure> {
+    if inputs.initializing_globals.is_some()
+        && let Some(value) = variables.atomics.get(name)
+        && !matches!(
+            value.atomic_type(),
+            BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic
+        )
+    {
+        return Err(failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "typed scalar comparisons during global construction are not yet admitted",
+        ));
+    }
     #[cfg(test)]
     if variables.allows_global_fallback(name)
         && let Some(reader) = &inputs.globals.demand_source_reference
-        && let Some((owner, nodes)) = reader.read(name, control)?
+        && let Some((owner, nodes)) = reader.read_at(name, location, control)?
     {
         let mut frame = variables.clone();
         frame.bind_retained_source_nodes(name.to_owned(), owner, nodes);
-        return variable_string_comparison(inputs, name, expected, equal, &frame, control);
+        return variable_string_comparison_at(
+            inputs, name, expected, equal, &frame, control, location,
+        );
     }
     if let Some(values) = variables.detached_source_node_strings(name) {
         return Ok(values.iter().any(|actual| (actual == expected) == equal));
     }
+    if variables.allows_global_fallback(name)
+        && let Some(owner) = inputs.initializing_globals
+    {
+        return owner.read_string_comparison(name, expected, equal, control);
+    }
     if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         let source = required_comparison_source(inputs)?;
-        for node in nodes {
-            let actual = source
-                .string_value_controlled(*node, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            if (actual == expected) == equal {
-                return Ok(true);
-            }
-        }
-        return Ok(false);
+        return source_string_comparison(
+            source,
+            nodes,
+            expected,
+            equal,
+            inputs.request_id,
+            control,
+        );
     }
     let actual = variable_string_value_for(
         inputs,
@@ -333,11 +385,45 @@ pub(super) fn variable_string_comparison(
         variables,
         control,
         #[cfg(test)]
-        None,
+        location,
         #[cfg(test)]
         true,
     )?;
     Ok((actual == expected) == equal)
+}
+
+/// Equality and inequality are independently existential for `XPath` 1.0 node sets.
+/// Keep initialization and ordinary execution on the same charged traversal.
+pub(in crate::runtime) fn source_string_comparison(
+    source: &Document,
+    nodes: &[NodeId],
+    expected: &str,
+    equal: bool,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    source_value_predicate(source, nodes, request_id, control, &|actual| {
+        (actual == expected) == equal
+    })
+}
+
+/// Shared charged traversal; the caller supplies only the scalar comparison.
+pub(in crate::runtime) fn source_value_predicate(
+    source: &Document,
+    nodes: &[NodeId],
+    request_id: &str,
+    control: &mut InvocationControl,
+    matches: &impl Fn(&str) -> bool,
+) -> Result<bool, ExecutionFailure> {
+    for node in nodes {
+        let actual = source
+            .string_value_controlled(*node, control)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches(&actual) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub(super) fn variable_number_comparison(
@@ -375,6 +461,17 @@ fn variable_numeric_predicate(
     control: &mut InvocationControl,
     matches: &impl Fn(&str) -> bool,
 ) -> Result<bool, ExecutionFailure> {
+    if inputs.initializing_globals.is_some()
+        && let Some(value) = variables.atomics.get(name)
+        && !numeric_initializer_scalar(value)
+    {
+        return Err(failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "this typed scalar numeric comparison during global construction is not yet admitted",
+        ));
+    }
     #[cfg(test)]
     if variables.allows_global_fallback(name)
         && let Some(reader) = &inputs.globals.demand_source_reference
@@ -387,17 +484,14 @@ fn variable_numeric_predicate(
     if let Some(values) = variables.detached_source_node_strings(name) {
         return Ok(values.iter().any(|actual| matches(actual)));
     }
+    if variables.allows_global_fallback(name)
+        && let Some(owner) = inputs.initializing_globals
+    {
+        return owner.read_numeric_predicate(name, control, matches);
+    }
     if let Some(nodes) = variables.source_nodes_in_context(inputs, name)? {
         let source = required_comparison_source(inputs)?;
-        for node in nodes {
-            let actual = source
-                .string_value_controlled(*node, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            if matches(&actual) {
-                return Ok(true);
-            }
-        }
-        return Ok(false);
+        return source_value_predicate(source, nodes, inputs.request_id, control, matches);
     }
     let actual = variable_string_value_for(
         inputs,
@@ -410,6 +504,16 @@ fn variable_numeric_predicate(
         true,
     )?;
     Ok(matches(&actual))
+}
+
+pub(in crate::runtime) fn numeric_initializer_scalar(value: &AtomicValue) -> bool {
+    matches!(
+        value.atomic_type(),
+        BuiltinAtomicType::String
+            | BuiltinAtomicType::UntypedAtomic
+            | BuiltinAtomicType::Integer
+            | BuiltinAtomicType::Decimal
+    )
 }
 
 fn required_comparison_source<'a>(

@@ -46,6 +46,10 @@ mod variable_filtered_path_compiler;
 #[path = "xslt10_global_constructor_compiler.rs"]
 mod xslt10_global_constructor_compiler;
 
+#[cfg(test)]
+#[path = "global_constructor_reference.rs"]
+pub(crate) mod global_constructor_reference;
+
 pub(crate) use stylesheet_module_compiler::{
     StylesheetDependencyKind, compile_stylesheet_with_import_and_include,
     compile_stylesheet_with_imported_and_included_programs_at,
@@ -99,6 +103,17 @@ pub(crate) struct CompileFailure {
 pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgram, CompileFailure> {
     let root = document_element(document)?;
     compile_stylesheet_at(document, root)
+}
+
+/// AR-0030 body-lowering probe only. This is not global declaration admission,
+/// module linking, or a second sequence compiler. The caller supplies the
+/// effective stylesheet document selected by its compilation profile.
+#[cfg(test)]
+pub(crate) fn compile_global_constructor_reference(
+    document: &Document,
+    declaration: NodeId,
+) -> Result<Vec<Instruction>, CompileFailure> {
+    instruction_compiler::compile_sequence(document, declaration)
 }
 
 pub(crate) fn compile_stylesheet_at(
@@ -1091,6 +1106,27 @@ fn compile_global_binding(
     element: NodeId,
     kind: GlobalBindingKind,
 ) -> Result<GlobalBinding, CompileFailure> {
+    compile_global_binding_with(
+        document,
+        element,
+        kind,
+        global_constructor_admission::compile_default,
+    )
+}
+
+#[path = "global_constructor_admission.rs"]
+mod global_constructor_admission;
+
+fn compile_global_binding_with(
+    document: &Document,
+    element: NodeId,
+    kind: GlobalBindingKind,
+    compile_default: impl FnOnce(
+        &Document,
+        NodeId,
+        &str,
+    ) -> Result<GlobalBindingDefault, CompileFailure>,
+) -> Result<GlobalBinding, CompileFailure> {
     let label = match kind {
         GlobalBindingKind::Variable => "xsl:variable",
         GlobalBindingKind::Parameter => "xsl:param",
@@ -1129,7 +1165,7 @@ fn compile_global_binding(
             document.location(element),
         ));
     }
-    let default = compile_global_default(document, element, label)?;
+    let default = compile_default(document, element, label)?;
     Ok(GlobalBinding {
         #[cfg(test)]
         declaration_reference: document.location(element).clone(),
@@ -1476,13 +1512,11 @@ fn compile_xslt10_named_template_text_global(
     let Some(variable) = select.strip_prefix('$') else {
         return Ok(None);
     };
-    let variable = normalize_variable_qname(document, *value_of, variable).map_err(|_| {
-        invalid(
-            "FXXP0002",
-            format!("invalid variable reference: {select}"),
-            document.location(*value_of),
-        )
-    })?;
+    // A leading '$' does not make the entire expression a bare variable.
+    // Decline this optimization; the shared expression compiler owns validity.
+    let Ok(variable) = normalize_variable_qname(document, *value_of, variable) else {
+        return Ok(None);
+    };
     Ok(Some(GlobalBindingDefault::Xslt10TemporaryTextParts(vec![
         Xslt10TemporaryTextPart::Variable(variable),
     ])))
@@ -1560,13 +1594,9 @@ fn compile_xslt10_temporary_text_parts(
         if let Some(value) = xpath_string_literal(select) {
             parts.push(Xslt10TemporaryTextPart::Text(value.to_owned()));
         } else if let Some(variable) = select.strip_prefix('$') {
-            let variable = normalize_variable_qname(document, child, variable).map_err(|_| {
-                invalid(
-                    "FXXP0002",
-                    format!("invalid variable reference: {select}"),
-                    document.location(child),
-                )
-            })?;
+            let Ok(variable) = normalize_variable_qname(document, child, variable) else {
+                return Ok(None);
+            };
             if let Some(value) = locals.get(&variable) {
                 parts.push(Xslt10TemporaryTextPart::Text(value.clone()));
             } else {
@@ -2070,9 +2100,13 @@ fn compile_xslt10_temporary_value(
     ensure_only_attributes(document, constructor, &["select"], "xsl:value-of")?;
     ensure_no_meaningful_children(document, constructor, "xsl:value-of")?;
     let select = required_attribute(document, constructor, None, "select")?;
+    // This specialization owns location paths only. Other expressions must
+    // reach the shared compiler, which owns their validity and semantics.
+    let Ok(path) = parse_location_path(select, document.location(constructor).clone()) else {
+        return Ok(None);
+    };
     Ok(Some(GlobalBindingDefault::Xslt10TemporarySourceString(
-        parse_location_path(select, document.location(constructor).clone())
-            .map_err(map_path_failure)?,
+        path,
     )))
 }
 
