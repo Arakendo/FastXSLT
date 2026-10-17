@@ -3,8 +3,8 @@
 use super::{
     CompileFailure, Document, MatchPattern, MatchedTemplate, NamedTemplate, NodeId, Template,
     TemplatePriority, compile_matched_template, compile_matched_templates, compile_named_template,
-    compile_template, effective_default_mode, invalid, is_xslt_element,
-    normalize_named_template_name, optional_attribute, required_attribute, unsupported,
+    effective_default_mode, invalid, is_xslt_element, normalize_named_template_name,
+    optional_attribute, required_attribute, unsupported,
 };
 
 pub(super) fn compile_top_level_template(
@@ -14,6 +14,7 @@ pub(super) fn compile_top_level_template(
     root_template_modes: &mut Vec<String>,
     matched_templates: &mut Vec<MatchedTemplate>,
     named_templates: &mut Vec<NamedTemplate>,
+    lower_root_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
 ) -> Result<(), CompileFailure> {
     if let Some(name) = optional_attribute(document, element, None, "name") {
         if optional_attribute(document, element, None, "match").is_none()
@@ -88,7 +89,7 @@ pub(super) fn compile_top_level_template(
             return Ok(());
         }
         root_template_modes.clear();
-        *root_template = Some(compile_template(document, element)?);
+        *root_template = Some(lower_root_template(document, element)?);
         return Ok(());
     }
 

@@ -242,6 +242,22 @@ fn expanded_name<'a>(
     Some((Some(namespace), local))
 }
 
+// AR-0031: reuse lexical/QName mechanics without reusing declaration-derived
+// processor policy. None means unproved/outside the probe, not unavailable.
+#[cfg(test)]
+pub(super) fn fold_with_policy_for_test(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    policy: impl FnOnce(&str, Option<&str>, &str) -> Option<StaticIntrospectionValue>,
+) -> Option<StaticIntrospectionValue> {
+    let (function, argument) = parse_call(expression.trim())?;
+    let lexical = xpath_string_literal(argument.trim())?;
+    let (namespace, local) =
+        expanded_name(document, element, lexical, function == "element-available")?;
+    policy(function, namespace.as_deref(), local)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{StaticIntrospectionValue, fold, numeric_literal_argument_type_error};

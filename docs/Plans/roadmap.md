@@ -11,6 +11,15 @@ The current OASIS checkpoint is 2,501 / 3,173 exact comparisons (78.82%);
 without implicitly opening secondary-document DTDs, cross-document value
 identity, namespace-valued variables, or legacy namespace-copy recovery.
 
+[AR-0031](../Architectural%20Reviews/AR-0031-compilation-scoped-processor-edition-profiles.md)
+is closed through accepted [ADR-0025](../ADR/ADR-0025-compilation-graph-scoped-processor-edition-policy.md)
+after 50 focused probes and the semantic audit. Implement graph-scoped processor
+ownership separately from ADR-0023 preprocessing and local version context.
+Local scope, expression error timing, capability/introspection, full artifact
+qualification and profile-labelled replay remain integration gates. No production
+profile or new corpus credit is selected; unrelated breadth work and AR-0030
+integration remain available.
+
 The [XML indentation frontier check](../Evidence/oasis-xslt10-xml-indentation-frontier-2026-10-10.md)
 retains bounded formatting of element/comment/PI sequences, but rejects a
 comment-only candidate that gained one archival comparison outside the selected

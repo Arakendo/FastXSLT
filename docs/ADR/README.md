@@ -109,3 +109,8 @@ but supersede a materially changed decision instead of rewriting its history.
   initialized. Static analysis is admission/scheduling only; specialized paths
   must preserve the same semantics and fall back when eligibility is unproved.
   Production integration remains gated independently.
+- [ADR-0025: Compilation Graph Scoped Processor Edition Policy](ADR-0025-compilation-graph-scoped-processor-edition-policy.md)
+  -- Accepted; one immutable graph policy owns processor semantics independently
+  of preprocessing and local declared versions. Recognition, compatibility, error
+  timing, introspection and artifact qualification use the shared compiler/runtime.
+  Production support remains gated by executable validation.

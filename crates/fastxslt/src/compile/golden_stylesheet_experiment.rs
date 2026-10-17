@@ -156,14 +156,28 @@ pub(super) fn compile_stylesheet_excluding_unvalidated(
     compile_stylesheet_at_excluding_unvalidated(document, root, excluded_top_level)
 }
 
-#[allow(
-    clippy::too_many_lines,
-    reason = "single-document top-level composition remains one cohesive compiler responsibility"
-)]
 pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     document: &Document,
     root: NodeId,
     excluded_top_level: &[NodeId],
+) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_at_excluding_with_root_lowerer(
+        document,
+        root,
+        excluded_top_level,
+        &mut compile_template,
+    )
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "single-document top-level composition remains one cohesive compiler responsibility"
+)]
+fn compile_stylesheet_at_excluding_with_root_lowerer(
+    document: &Document,
+    root: NodeId,
+    excluded_top_level: &[NodeId],
+    lower_root_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
 ) -> Result<StylesheetProgram, CompileFailure> {
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
@@ -268,6 +282,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                     &mut root_template_modes,
                     &mut matched_templates,
                     &mut named_templates,
+                    lower_root_template,
                 )?;
             }
             (Some(XSLT_NAMESPACE), "mode") => {
@@ -2299,6 +2314,23 @@ fn compile_template_modes_for_rule(
 }
 
 fn compile_template(document: &Document, element: NodeId) -> Result<Template, CompileFailure> {
+    compile_template_with_body(
+        document,
+        element,
+        &mut compile_sequence_excluding_with_bindings,
+    )
+}
+
+fn compile_template_with_body(
+    document: &Document,
+    element: NodeId,
+    lower_body: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &[NodeId],
+        &[String],
+    ) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<Template, CompileFailure> {
     ensure_only_attributes(
         document,
         element,
@@ -2384,12 +2416,7 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
         .collect::<Vec<_>>();
     Ok(Template {
         parameters,
-        body: compile_sequence_excluding_with_bindings(
-            document,
-            element,
-            &parameter_nodes,
-            &parameter_bindings,
-        )?,
+        body: lower_body(document, element, &parameter_nodes, &parameter_bindings)?,
         location: document.location(element).clone(),
     })
 }

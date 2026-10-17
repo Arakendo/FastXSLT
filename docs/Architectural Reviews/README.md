@@ -48,6 +48,11 @@ accepted contracts do not require an AR.
 Copy [TEMPLATE.md](TEMPLATE.md), use the next unused independent sequence number,
 and add the record to this index. Never reuse a retired number.
 
+- [AR-0031: Compilation Scoped Processor Edition Profiles](AR-0031-compilation-scoped-processor-edition-profiles.md)
+  -- Accepted through [ADR-0025](../ADR/ADR-0025-compilation-graph-scoped-processor-edition-policy.md);
+  graph-scoped processor policy is separate from declared versions and ADR-0023
+  preprocessing. Production integration remains gated; no conformance credit.
+
 - [AR-0001: Initial Standards Profile and Conformance Baseline](AR-0001-initial-standards-profile.md)
   -- Accepted through ADR-0007; modern reference editions guide a staged,
   explicitly incomplete profile without creating a broad conformance claim.

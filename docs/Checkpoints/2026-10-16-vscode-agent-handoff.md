@@ -8,6 +8,64 @@ until an architectural decision, genuine blocker, or useful validated checkpoint
 requires returning to the maintainer. Do not stop after each tiny edit merely to
 ask whether to continue. Do not weaken semantics or controls to reach 80%.
 
+The processor-edition seam was investigated on 2026-10-16. The catalog
+inventory, implementation-owner map, standards matrix, and bounded private
+experiment proposal are recorded in [processor-edition seam investigation](../Evidence/processor-edition-seam-investigation-2026-10-16.md).
+The ownership direction is now accepted in
+[ADR-0025](../ADR/ADR-0025-compilation-graph-scoped-processor-edition-policy.md),
+closing AR-0031. Production behavior remains unchanged: implementation must
+satisfy the ADR's gates for local scope, error timing, recognition/capability,
+introspection, artifact qualification and profile-labelled corpus replay.
+The test-only reference is not promoted by acceptance. No public selector,
+default change or additional conformance credit is authorized.
+
+A subsequent maintainer-authorized [bounded instruction probe](../Evidence/ar-0031-bounded-instruction-probe-2026-10-16.md)
+adds test-only edition/version witnesses, now with 50 focused checks, nested
+fallback propagation through shared callback seams, and a bounded introspection
+policy callback reusing existing QName parsing. A test context composes the
+existing preprocessing view with edition-aware nested lowering and preserves
+preprocessing cancellation. Constant-test and bounded boolean-availability
+`xsl:if` / `xsl:choose` now propagate edition through the shared conditional owner; unproved
+availability is refused rather than borrowed from production folding. Other
+expressions remain guarded.
+Parameter-free template lowering now returns a complete ordinary template via
+shared metadata/body assembly; parameter defaults are refused before re-entry.
+A subsequent original-module entry point compiles exactly one parameter-free
+root template via shared top-level routing/finalization, without a shell. It
+admits only four exact version spellings. Other declarations and graph assembly
+remain refused; this is not a general processor profile.
+A separate supplied include-chain probe now carries one edition through at most
+four already-parsed modules using existing include composition. Non-leaf modules
+contain one include only; exact logical href matching is not resource resolution.
+Mixed declarations, provenance and shared preprocessing controls are tested;
+imports/general graphs and compiled-artifact profile reuse remain open.
+Artifact tests now cover concurrent compilation/reuse after parsed modules are
+dropped, failed recompilation and changed bytes under the same logical URI.
+Existing mixed-preset linking rejects preprocessing-stamp mismatches; do not
+mistake that for a processor-edition stamp or general reusable-module contract.
+A private two-module qualified-leaf candidate now checks edition and preprocessing
+independently, with cross-combinations used only as differential controls. It
+accepts compiler-created leaves, not raw-program relabeling; the mechanism remains
+experimental and is not a production artifact format or cache/reuse contract.
+The qualified candidate now retains the original profile across intermediate
+includes up to four modules, with transitive repeated-identity rejection and
+differential program/preprocessing-work equality against the document-chain
+reference. A single-import-only parent route now uses the existing import
+composer, with nested precedence/provenance and preprocessing parity tests.
+Competing rules, apply-imports and branching graphs remain outside the experiment.
+Production semantics are
+unchanged. General-container/local-version propagation, integrated capability
+reporting and graph integration remain unproved; hypothetical version witnesses
+are not conformance claims or selected production reporting. Do not mistake the
+probe for a selected or complete processor profile.
+
+Latest semantic audit corrects the modern no-fallback case to static refusal;
+earlier shared legacy/modern deferral evidence is superseded. Both local-version
+attribute forms are guarded pending edition-specific integration. The evidence
+now includes a maintainer decision checkpoint: review the graph-policy ownership
+direction rather than extending graph probes indefinitely. Local scope,
+expression-error timing and typed truthful introspection remain explicit gates.
+
 **Architecture review authority stays with the maintainer and this conversation.**
 The VS Code agent must not create, draft, amend, accept, supersede or close ARs
 or ADRs. Read existing records as constraints. If work exposes an architectural

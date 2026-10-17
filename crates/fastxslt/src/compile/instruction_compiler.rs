@@ -64,11 +64,11 @@ use crate::xpath::string_length_experiment::{
     StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
 };
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, ChooseBranch, ComputedAttribute, DocumentBaseReference,
-    DynamicNamespaceValue, ElementConstructorOrigin, FocusEqualityOperand, Instruction,
-    LiteralAttributeValue, NestedDocumentReferences, SequenceItemExpression, SortCaseOrder,
-    SortDataType, SortKey, SortLanguage, SortOrder, SortSelect, StringComparison, TemplateArgument,
-    ValueExpression, Xslt10ConcatPart,
+    BooleanExpression, ComputedAttribute, DocumentBaseReference, DynamicNamespaceValue,
+    ElementConstructorOrigin, FocusEqualityOperand, Instruction, LiteralAttributeValue,
+    NestedDocumentReferences, SequenceItemExpression, SortCaseOrder, SortDataType, SortKey,
+    SortLanguage, SortOrder, SortSelect, StringComparison, TemplateArgument, ValueExpression,
+    Xslt10ConcatPart,
 };
 
 #[path = "instruction_compiler/bound_variable_path_compiler.rs"]
@@ -87,6 +87,11 @@ mod boolean_expression_compiler;
 mod composed_string_compiler;
 #[path = "instruction_compiler/conditional_expression_compiler.rs"]
 mod conditional_expression_compiler;
+#[path = "instruction_compiler/conditional_instruction_compiler.rs"]
+mod conditional_instruction_compiler;
+use conditional_instruction_compiler::compile_if;
+#[cfg(test)]
+use conditional_instruction_compiler::compile_if_with_lowerers;
 #[path = "instruction_compiler/sort_compiler.rs"]
 mod sort_compiler;
 pub(super) use sort_compiler::compile_sort_keys;
@@ -221,6 +226,27 @@ pub(super) fn compile_sequence_excluding_with_bindings(
     excluded: &[NodeId],
     initial_local_bindings: &[String],
 ) -> Result<Vec<Instruction>, CompileFailure> {
+    compile_sequence_with_element_lowerer(
+        document,
+        parent,
+        excluded,
+        initial_local_bindings,
+        &mut compile_sequence_element,
+    )
+}
+
+fn compile_sequence_with_element_lowerer(
+    document: &Document,
+    parent: NodeId,
+    excluded: &[NodeId],
+    initial_local_bindings: &[String],
+    lower_element: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &mut Vec<String>,
+        &mut Vec<Instruction>,
+    ) -> Result<(), CompileFailure>,
+) -> Result<Vec<Instruction>, CompileFailure> {
     let mut instructions = Vec::new();
     let mut local_variables = initial_local_bindings.to_vec();
     let preserve_whitespace = effective_xml_space_preserved(document, parent)?;
@@ -247,7 +273,7 @@ pub(super) fn compile_sequence_excluding_with_bindings(
             }
             NodeKind::Comment | NodeKind::ProcessingInstruction => {}
             NodeKind::Element => {
-                compile_sequence_element(document, child, &mut local_variables, &mut instructions)?;
+                lower_element(document, child, &mut local_variables, &mut instructions)?;
             }
             NodeKind::Document | NodeKind::Attribute => {
                 return Err(invalid(
@@ -324,6 +350,10 @@ fn compile_sequence_element_with_literal_compiler<E: From<CompileFailure>>(
 #[cfg(test)]
 #[path = "instruction_compiler/stylesheet_content_reference.rs"]
 mod stylesheet_content_reference;
+
+#[cfg(test)]
+#[path = "instruction_compiler/processor_edition_reference.rs"]
+mod processor_edition_reference;
 
 fn is_xslt10_template_element(local_name: &str) -> bool {
     matches!(
@@ -418,6 +448,15 @@ fn compile_xslt10_forward_compatible_instruction(
     element: NodeId,
     local_name: &str,
 ) -> Result<Vec<Instruction>, CompileFailure> {
+    compile_forward_fallbacks_with_body(document, element, local_name, &mut compile_sequence)
+}
+
+fn compile_forward_fallbacks_with_body(
+    document: &Document,
+    element: NodeId,
+    local_name: &str,
+    lower_body: &mut impl FnMut(&Document, NodeId) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<Vec<Instruction>, CompileFailure> {
     let fallbacks = meaningful_children(document, element)
         .into_iter()
         .filter(|child| is_xslt_element(document, *child, "fallback"))
@@ -432,7 +471,7 @@ fn compile_xslt10_forward_compatible_instruction(
     let mut instructions = Vec::new();
     for fallback in fallbacks {
         ensure_fallback_attributes(document, fallback)?;
-        instructions.extend(compile_sequence(document, fallback)?);
+        instructions.extend(lower_body(document, fallback)?);
     }
     Ok(instructions)
 }
@@ -3122,71 +3161,11 @@ fn compile_sequence_nodes(
     })
 }
 
-fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(
-        document,
-        element,
-        &["test", "default-mode", "xpath-default-namespace"],
-        "xsl:if",
-    )?;
-    let location = document.location(element).clone();
-    let expression = required_conditional_test(document, element)?;
-    Ok(Instruction::If {
-        test: compile_boolean_test(document, element, expression, &location)?,
-        body: compile_sequence(document, element)?,
-        location,
-    })
-}
-
 pub(super) fn compile_choose(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
-    ensure_choose_attributes(document, element)?;
-    let children = meaningful_children(document, element);
-    validate_choose_structure(document, element, &children)?;
-    let mut branches = Vec::new();
-    let mut otherwise = None;
-    for child in children {
-        if is_xslt_element(document, child, "when") {
-            ensure_only_attributes(
-                document,
-                child,
-                &["test", "xpath-default-namespace"],
-                "xsl:when",
-            )?;
-            let expression = required_conditional_test(document, child)?;
-            let test = compile_boolean_test(document, child, expression, document.location(child))?;
-            let body = if is_forward_compatible_processing(document, child)
-                && matches!(test, BooleanExpression::Constant(false))
-            {
-                Vec::new()
-            } else {
-                compile_sequence(document, child)?
-            };
-            branches.push(ChooseBranch {
-                #[cfg(test)]
-                condition_reference: document.location(child).clone(),
-                test,
-                body,
-            });
-        } else if is_xslt_element(document, child, "otherwise") {
-            ensure_only_attributes(
-                document,
-                child,
-                &["xpath-default-namespace"],
-                "xsl:otherwise",
-            )?;
-            otherwise = Some(compile_sequence(document, child)?);
-        } else {
-            unreachable!("validate_choose_structure rejects other children")
-        }
-    }
-    Ok(Instruction::Choose {
-        branches,
-        otherwise: otherwise.unwrap_or_default(),
-        location: document.location(element).clone(),
-    })
+    conditional_instruction_compiler::compile_choose(document, element)
 }
 
 fn compile_boolean_test(
@@ -3229,43 +3208,6 @@ fn is_forward_compatible_processing(document: &Document, element: NodeId) -> boo
     false
 }
 
-fn ensure_choose_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
-    const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
-    for attribute in document.attributes(element) {
-        let name = document
-            .name(*attribute)
-            .expect("attribute nodes have expanded names");
-        if name.namespace.is_none() && name.local == "xpath-default-namespace" {
-            continue;
-        }
-        if name.namespace.is_none() && name.local == "default-collation" {
-            continue;
-        }
-        if name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space" {
-            match document.value(*attribute).unwrap_or_default() {
-                "default" | "preserve" => continue,
-                _ => {
-                    return Err(invalid(
-                        "XTSE0020",
-                        "xml:space must be 'default' or 'preserve'",
-                        document.location(*attribute),
-                    ));
-                }
-            }
-        }
-        return Err(unsupported(
-            "FXST1009",
-            format!(
-                "unsupported attribute on xsl:choose: {{{}}}{}",
-                name.namespace.as_deref().unwrap_or(""),
-                name.local
-            ),
-            document.location(*attribute),
-        ));
-    }
-    Ok(())
-}
-
 fn effective_string_comparison(
     document: &Document,
     element: NodeId,
@@ -3292,61 +3234,6 @@ fn effective_string_comparison(
         current = document.parent(node);
     }
     Ok(StringComparison::Codepoint)
-}
-
-fn validate_choose_structure(
-    document: &Document,
-    element: NodeId,
-    children: &[NodeId],
-) -> Result<(), CompileFailure> {
-    let mut when_count = 0_usize;
-    let mut saw_otherwise = false;
-    for child in children {
-        if is_xslt_element(document, *child, "when") {
-            if saw_otherwise {
-                return Err(invalid(
-                    "XTSE0010",
-                    "xsl:when cannot follow xsl:otherwise",
-                    document.location(*child),
-                ));
-            }
-            required_conditional_test(document, *child)?;
-            when_count += 1;
-        } else if is_xslt_element(document, *child, "otherwise") {
-            if saw_otherwise {
-                return Err(invalid(
-                    "XTSE0010",
-                    "xsl:choose permits at most one xsl:otherwise",
-                    document.location(*child),
-                ));
-            }
-            saw_otherwise = true;
-        } else {
-            return Err(invalid(
-                "XTSE0010",
-                "xsl:choose permits only xsl:when and xsl:otherwise children",
-                document.location(*child),
-            ));
-        }
-    }
-    if when_count == 0 {
-        return Err(invalid(
-            "XTSE0010",
-            "xsl:choose requires at least one xsl:when",
-            document.location(element),
-        ));
-    }
-    Ok(())
-}
-
-fn required_conditional_test(document: &Document, element: NodeId) -> Result<&str, CompileFailure> {
-    optional_attribute(document, element, None, "test").ok_or_else(|| {
-        invalid(
-            "XTSE0010",
-            "xsl:if and xsl:when require a test attribute",
-            document.location(element),
-        )
-    })
 }
 
 fn xpath_string_literal(expression: &str) -> Option<&str> {

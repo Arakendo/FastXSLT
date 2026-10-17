@@ -551,6 +551,18 @@ rule after return. Continuation failures preserve the invoking instruction's
 location when no more specific location is available. This does not select a
 public rule carrier or admit unsupported namespace/atomic iteration bodies.
 
+[ADR-0025](../ADR/ADR-0025-compilation-graph-scoped-processor-edition-policy.md)
+selects one immutable compilation-graph processor-edition policy, independent
+of preprocessing and locally declared stylesheet versions. The selected
+processor interprets declarations and governs recognition, compatibility, error
+timing, availability/introspection and processor-version reporting through the
+shared compiler/runtime. Implementation knowledge, edition recognition and
+actual capability remain distinct; missing implementation does not manufacture
+fallback eligibility. Compiled artifacts retain processor and preprocessing
+qualification and reject incompatible composition rather than relabeling.
+Production integration remains gated by the ADR's executable requirements;
+acceptance selects no public profile API, default or conformance claim.
+
 [ADR-0023](../ADR/ADR-0023-compilation-scoped-stylesheet-preprocessing-profiles.md)
 selects explicit strict-XSLT-1.0 and modern stylesheet-preprocessing profiles
 once at the compilation-graph boundary. Include/import modules and embedded or
