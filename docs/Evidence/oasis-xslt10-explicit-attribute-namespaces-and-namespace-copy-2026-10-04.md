@@ -95,3 +95,53 @@ Clippy, tests, documentation, conformance inventories, unsafe-surface checks,
 and local Markdown links pass. The official `wasm32-unknown-unknown` adapter
 passes its all-features check. No performance improvement or broad XSLT 1.0
 conformance claim is made.
+
+## 2026-10-17: literal-document namespace copying
+
+Unchanged `Microsoft/Namespace_XPath_CopyNamespaceNodeToOutput#1` first failed
+compilation on `document('')/xsl:stylesheet/namespace::xsl`. The admitted legacy
+slice now composes existing literal-document owner selection with qualified
+namespace selection and the existing namespace copy instruction. It adds no
+runtime evaluator, resource acquisition path, node representation or retained
+namespace-variable support. The source document's namespace cannot impersonate
+the selected secondary owner's binding.
+
+Eligibility requires a single literal document reference, no second base
+argument, an admitted ordinary owner path and a terminal admitted namespace
+selection. Modern document expressions and mixed namespace/tree unions remain
+guarded. Both generated loops retain the original copy instruction location.
+Document resolution, effective whitespace, owner lifetime, namespace attachment
+and control charging remain with their existing shared runtime owners under
+ADR-0021/ADR-0022. No cross-document ordering or legacy namespace conflict
+recovery is selected.
+
+Focused regressions cover secondary versus principal bindings, shadowing,
+namespace predicates, empty owner/namespace selections and self-stylesheet
+selection with a qualified owner name. They exercise both principal whitespace
+representations and complete/COW lexical frames, exact and one-less navigation
+and copied-byte limits, cancellation, denied resources and reuse after failure.
+Empty selections do not invent copied-byte charges. Four concurrent invocations
+produce results that still serialize after the program, source and sealed
+snapshot are dropped.
+
+The unchanged case now executes and produces the expected namespace attachment,
+but remains an exact-output mismatch: the archive contains a newline inside the
+otherwise empty `test` element. The current serializer produces no text there.
+The comparator and archived expectation are unchanged; this is an execution
+gain, **not an exact pass**. Modern exact coverage remains 2,502 / 3,173 (78.85%),
+strict-preprocessing exact coverage remains 2,499. Mismatches become 15 / 18,
+initialized cases 2,704 and successful executions 2,655. Expected-error credits
+remain 423 with 3 infrastructure exclusions. The conserved ordinary frontier
+moves from 93 phase failures to 92, with the one case moving to mismatches.
+
+This removes a concrete document/namespace composition blocker. The next slice
+should return to another reproduced failure rather than extending namespace
+copying or changing empty-element indentation to chase this archival output.
+The private namespace compiler owns lowering; existing copy regressions own
+validation. No new sibling module, runtime branch or public contract is added.
+
+Validation passes with 2,068 core tests (64 ignored), 22 native (3 ignored),
+4 WASM and 18 worker tests. Formatting, strict Clippy, documentation, 1,998
+Markdown files' local links, pinned corpus integrity and official WASM target
+checks pass. Modern and strict full replays conserve the totals above.
+`git diff --check` passes. No timing or throughput improvement is claimed.

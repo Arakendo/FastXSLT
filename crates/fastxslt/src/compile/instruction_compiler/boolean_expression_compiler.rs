@@ -61,7 +61,9 @@ pub(super) fn compile(
     {
         return Ok(value);
     }
-    if let Some(identity) = compile_identity_test(parsed, location)? {
+    if let Some(identity) =
+        compile_identity_test(document, element, parsed, location, xslt10_compatibility)?
+    {
         return Ok(identity);
     }
     if let Some(contains) = compile_string_contains(
@@ -855,9 +857,19 @@ fn path_comparison_parts(
 }
 
 fn compile_identity_test(
+    document: &Document,
+    element: NodeId,
     expression: &str,
     location: &SourceLocation,
+    xslt10_compatibility: bool,
 ) -> Result<Option<BooleanExpression>, CompileFailure> {
+    if xslt10_compatibility
+        && let Some(value) = super::generated_source_identity_compiler::compile_comparison(
+            document, element, expression, location,
+        )?
+    {
+        return Ok(Some(value));
+    }
     if let Some((left, right)) = parse_document_root_identity_test(expression) {
         return Ok(Some(BooleanExpression::DocumentRootIdentityEqual {
             left: DocumentRootReference {

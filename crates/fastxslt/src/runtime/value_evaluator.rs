@@ -10,7 +10,7 @@ use literal_document_value_evaluator::append_xslt10_literal_document_path;
 #[path = "value_evaluator/composed_string_evaluator.rs"]
 mod composed_string_evaluator;
 #[path = "value_evaluator/generated_identity_evaluator.rs"]
-mod generated_identity_evaluator;
+pub(super) mod generated_identity_evaluator;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
@@ -700,6 +700,12 @@ pub(super) fn execute_value_of(
         ValueExpression::RootVariable(name) => {
             append_root_variable_string(inputs, name, variables, result, control)?;
         }
+        ValueExpression::GeneratedSourceIdentity(operand) => {
+            let value = generated_identity_evaluator::source_value(
+                inputs, context, operand, variables, control,
+            )?;
+            append_text(result, &value, inputs.request_id, control)?;
+        }
         ValueExpression::GeneratedNodeIdentity(path) => {
             append_generated_node_identity(inputs, path, context, result, control)?;
         }
@@ -1176,6 +1182,16 @@ pub(super) fn execute_value_of(
             )?;
         }
         ValueExpression::Xslt10Concat(expression) => {
+            if execution.temporary_focus.is_some()
+                && let Some(lookup) = expression.parts.iter().find_map(|part| match part {
+                    crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::CurrentVariableLookup(lookup) => Some(lookup),
+                    _ => None,
+                })
+            {
+                return Err(failure_at("FXRT0007", FailureCategory::Unsupported,
+                    Some(inputs.request_id), lookup.outer_attribute.location.clone(),
+                    "current-variable lookup requires ordinary source focus"));
+            }
             let value = xslt10_compatibility::concat_value_at(
                 inputs,
                 context,
@@ -2299,7 +2315,7 @@ fn append_generated_root_identity(
     };
     append_text(
         result,
-        &super::runtime_context::source_node_identity(root),
+        &super::runtime_context::source_node_identity_in_context(inputs, source, root, control)?,
         inputs.request_id,
         control,
     )
@@ -2313,13 +2329,15 @@ fn append_generated_node_identity(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
-    if let Some(identity) = super::runtime_context::source_node_identity_for_path(
+    if let Some(node) = super::runtime_context::source_node_for_identity_path(
         source,
         context,
         path,
         inputs.request_id,
         control,
     )? {
+        let identity =
+            super::runtime_context::source_node_identity_in_context(inputs, source, node, control)?;
         append_text(result, &identity, inputs.request_id, control)?;
     }
     Ok(())

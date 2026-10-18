@@ -35,6 +35,7 @@ mod retention;
 pub(crate) struct StylesheetProgram {
     // Compilation provenance, not local version compatibility or host policy.
     pub(crate) preprocessing: StylesheetPreprocessingStamp,
+    pub(crate) processor: ProcessorPolicyStamp,
     pub(crate) declared_version: String,
     pub(crate) default_initial_mode: Option<String>,
     pub(crate) source_whitespace: SourceWhitespacePolicy,
@@ -55,6 +56,18 @@ pub(crate) struct StylesheetProgram {
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
+}
+
+/// ADR-0025 artifact qualification. The existing declaration-driven compiler is
+/// not relabeled as a coherent modern or legacy processor by adding this field.
+/// Selected reference stamps are test-only until compilation policy is integrated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProcessorPolicyStamp {
+    DeclarationDrivenBaseline,
+    #[cfg(test)]
+    Xslt10Reference,
+    #[cfg(test)]
+    ModernReference,
 }
 
 /// Private completed-artifact confinement. Reference stages remain distinct
@@ -198,6 +211,10 @@ pub(crate) enum GlobalBindingDefault {
     Xslt10NumberLocationPath(LocationPath),
     SourceNodeIdentity(LocationPath),
     Xslt10LiteralDocument(DocumentRootReference),
+    Xslt10LiteralDocumentPath {
+        reference: DocumentRootReference,
+        path: LocationPath,
+    },
     Variable(String),
     SourceVariablePath {
         variable: String,
@@ -939,6 +956,7 @@ pub(crate) enum Instruction {
     Xslt10LiteralDocumentVariable {
         name: String,
         select: DocumentRootReference,
+        path: Option<LocationPath>,
         location: SourceLocation,
     },
     SourceNodeVariable {
@@ -1402,7 +1420,28 @@ pub(crate) enum Xslt10GeneratedIdentitySelection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GeneratedSourceIdentity {
+    pub(crate) selection: GeneratedSourceSelection,
+    pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum GeneratedSourceSelection {
+    Path(LocationPath),
+    Variable(String),
+    LiteralDocument {
+        reference: DocumentRootReference,
+        path: LocationPath,
+    },
+    ReferencedDocuments {
+        references: LocationPath,
+        path: LocationPath,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
+    GeneratedSourceIdentity(Box<GeneratedSourceIdentity>),
     LiteralString(String),
     NamespacePathScalar {
         path: crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath,
@@ -1814,6 +1853,7 @@ pub(crate) enum Xslt10AvtPart {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Xslt10ConcatPart {
+    CurrentVariableLookup(Box<CurrentVariableLookup>),
     Literal(String),
     Variable(String),
     VariablePosition {
@@ -1828,6 +1868,17 @@ pub(crate) enum Xslt10ConcatPart {
     QualifiedGeneratedIdentity(
         crate::xpath::path_experiment::qualified_nodes::QualifiedLocationPath,
     ),
+}
+
+/// Attribute equality against the expression's outer current node, followed
+/// by an attribute selection in the retained variable's effective document.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CurrentVariableLookup {
+    pub(crate) variable: String,
+    pub(crate) candidates: LocationPath,
+    pub(crate) candidate_attribute: LocationPath,
+    pub(crate) outer_attribute: LocationPath,
+    pub(crate) result_attribute: LocationPath,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1903,6 +1954,11 @@ pub(crate) enum StringComparison {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum BooleanExpression {
+    GeneratedSourceIdentityComparison {
+        left: Box<GeneratedSourceIdentity>,
+        right: Box<GeneratedSourceIdentity>,
+        equal: bool,
+    },
     Xslt10PathStringPredicate(Box<Xslt10PathStringFunction>),
     VariableEqualsInteger(EqualityTest),
     VariableEqualsEmptySequence(String),

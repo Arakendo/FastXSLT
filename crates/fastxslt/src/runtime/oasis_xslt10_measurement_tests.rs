@@ -202,6 +202,19 @@ impl Measurement {
         *self.counters.entry(key.into()).or_default() += amount;
     }
 
+    fn expected_initialization_failure(&mut self, identity: &str, failure: &WorkbenchFailure) {
+        // Adapter admission has not reached XML/XSLT validation. In particular,
+        // duplicate role identities cannot satisfy an archival expected error.
+        if matches!(failure.code.as_str(), "FXWB0001" | "FXWB0002") {
+            self.increment("expected-error-infrastructure-excluded");
+            self.infrastructure_cases
+                .push(format!("resource-admission/{}/{identity}", failure.code));
+        } else {
+            self.increment("expected-error-observed-during-initialization");
+            self.increment("expected-error-credit");
+        }
+    }
+
     fn initialization_failure(
         &mut self,
         identity: &str,
@@ -470,11 +483,7 @@ fn measures_local_oasis_xslt10_compatibility() {
             continue;
         }
 
-        let source_identity = format!(
-            "{}source/{}",
-            logical_case_base(&case),
-            case.principal_source
-        );
+        let source_identity = principal_source_identity(&case);
         let stylesheet_identity = logical_identity(&case, &case.principal_stylesheet);
         let reviewed_external_subset =
             reviewed_external_source_subset(&case, &source_identity, &source);
@@ -526,10 +535,10 @@ fn measures_local_oasis_xslt10_compatibility() {
                 dependencies: resources,
                 denied_identities: Vec::new(),
             };
-            ExperimentalEngine::new_with_preprocessing_probe(
+            ExperimentalEngine::new_with_corpus_resources(
                 source_identity.clone(),
                 source,
-                stylesheet_identity,
+                &stylesheet_identity,
                 stylesheet,
                 stylesheet_resources,
                 measurement_limits(),
@@ -584,8 +593,7 @@ fn measures_local_oasis_xslt10_compatibility() {
                     case.operation == "execution-error",
                 );
                 if case.operation == "execution-error" {
-                    measurement.increment("expected-error-observed-during-initialization");
-                    measurement.increment("expected-error-credit");
+                    measurement.expected_initialization_failure(&case.identity, &failure);
                 }
                 continue;
             }
@@ -941,40 +949,28 @@ fn measures_local_oasis_xslt10_compatibility() {
 fn reviewed_source_document_resources(case: &LegacyCase) -> Vec<WorkbenchResource> {
     let resources: &[(&str, &str)] = match case.identity.as_str() {
         "Lotus/mdocs_mdocs02#1" => &[
-            ("mdocs02a.xml", "source/mdocs02a.xml"),
-            ("mdocs02b.xml", "source/mdocs02b.xml"),
+            ("mdocs02a.xml", "mdocs02a.xml"),
+            ("mdocs02b.xml", "mdocs02b.xml"),
         ],
-        "Lotus/mdocs_mdocs03#1" => &[("mdocs03a.xml", "source/mdocs03a.xml")],
-        "Lotus/mdocs_mdocs15#1" => &[("mdocs15a.xml", "source/mdocs15a.xml")],
+        "Lotus/mdocs_mdocs03#1" => &[("mdocs03a.xml", "mdocs03a.xml")],
+        "Lotus/mdocs_mdocs15#1" => &[("mdocs15a.xml", "mdocs15a.xml")],
         "Lotus/mdocs_mdocs04#1" | "Lotus/mdocs_mdocs08#1" => &[
-            ("mdocs04a.xml", "source/mdocs04a.xml"),
-            ("mdocs04b.xml", "source/mdocs04b.xml"),
+            ("mdocs04a.xml", "mdocs04a.xml"),
+            ("mdocs04b.xml", "mdocs04b.xml"),
         ],
-        "Lotus/mdocs_mdocs05#1" => &[("compu.xml", "source/compu.xml")],
+        "Lotus/mdocs_mdocs05#1" => &[("compu.xml", "compu.xml")],
         "Lotus/mdocs_mdocs06#1"
         | "Lotus/mdocs_mdocs07#1"
         | "Microsoft/XSLTFunctions_DocumentInUnionWithDuplicateNodes#1" => &[
-            ("mdocs04a.xml", "source/mdocs04a.xml"),
-            ("mdocs04b.xml", "source/mdocs04b.xml"),
-            ("mdocs06a.xml", "source/mdocs06a.xml"),
-            ("mdocs06b.xml", "source/mdocs06b.xml"),
+            ("mdocs04a.xml", "mdocs04a.xml"),
+            ("mdocs04b.xml", "mdocs04b.xml"),
+            ("mdocs06a.xml", "mdocs06a.xml"),
+            ("mdocs06b.xml", "mdocs06b.xml"),
         ],
         "Lotus/mdocs_mdocs18#1" => &[
-            ("mdwords-a.xml", "source/mdwords-a.xml"),
-            ("mdwords-b.xml", "source/mdwords-b.xml"),
+            ("mdwords-a.xml", "mdwords-a.xml"),
+            ("mdwords-b.xml", "mdwords-b.xml"),
         ],
-        // The catalog makes select68.xml the principal input under the
-        // harness's source/ identity, while document('select68.xml') resolves
-        // beside the stylesheet. Admit the same reviewed bytes under that
-        // distinct logical identity; resolution itself remains engine-owned.
-        "Lotus/select_select68#1" => &[("select68.xml", "select68.xml")],
-        // As above, select59's literal reference uses the stylesheet-relative
-        // identity, not the principal input's source/ identity. This explicit
-        // import mapping grants no runtime filesystem fallback.
-        "Lotus/select_select59#1" => &[("select59.xml", "select59.xml")],
-        // select71 likewise references the unchanged principal fixture beside
-        // its stylesheet; admit bytes explicitly, not ambient file authority.
-        "Lotus/select_select71#1" => &[("select71.xml", "select71.xml")],
         "Lotus/reluri_reluri10#1" => &[(
             "level1/level2/level3/xreluri09a.xml",
             "level1/level2/level3/xreluri09a.xml",
@@ -1410,6 +1406,11 @@ fn logical_identity(case: &LegacyCase, file: &str) -> String {
             identity
         },
     )
+}
+
+fn principal_source_identity(case: &LegacyCase) -> String {
+    // A catalog role does not create an extra directory or resource identity.
+    logical_identity(case, &case.principal_source)
 }
 
 fn reviewed_external_source_subset(
@@ -1945,7 +1946,7 @@ fn print_ranked(label: &str, values: &BTreeMap<String, usize>) {
     }
 }
 
-pub(super) fn xml_equivalent(
+pub(crate) fn xml_equivalent(
     actual: &str,
     expected: &[u8],
     preserve_whitespace_only_text: bool,
@@ -2847,6 +2848,58 @@ fn standard_frontiers_exclude_expected_error_cases_in_both_phases() {
 }
 
 #[test]
+fn expected_errors_do_not_credit_resource_admission_failures() {
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"/></xsl:stylesheet>"#;
+    let failure = ExperimentalEngine::new(
+        "urn:shared-role",
+        stylesheet.to_vec(),
+        "urn:shared-role",
+        stylesheet.to_vec(),
+        WorkbenchLimits::default(),
+    )
+    .err()
+    .expect("strict resource admission rejects a duplicate identity");
+    assert_eq!(failure.code, "FXWB0002");
+    let mut measurement = Measurement::default();
+    measurement.expected_initialization_failure("duplicate-role", &failure);
+    let mut overflow = failure.clone();
+    overflow.code = "FXWB0001".to_owned();
+    overflow.detail = "arbitrary display text".to_owned();
+    measurement.expected_initialization_failure("overflow", &overflow);
+    assert_eq!(
+        measurement.counters["expected-error-infrastructure-excluded"],
+        2
+    );
+    assert!(!measurement.counters.contains_key("expected-error-credit"));
+    assert!(
+        !measurement
+            .counters
+            .contains_key("expected-error-observed-during-initialization")
+    );
+    assert_eq!(
+        measurement.infrastructure_cases,
+        [
+            "resource-admission/FXWB0002/duplicate-role",
+            "resource-admission/FXWB0001/overflow"
+        ]
+    );
+    let mut semantic = failure;
+    semantic.code = "XTSE0010".to_owned();
+    semantic.category = "invalid".to_owned();
+    measurement.expected_initialization_failure("semantic", &semantic);
+    assert_eq!(measurement.counters["expected-error-credit"], 1);
+    assert_eq!(
+        measurement.counters["expected-error-observed-during-initialization"],
+        1
+    );
+    assert_eq!(
+        measurement.counters["expected-error-credit"]
+            + measurement.counters["expected-error-infrastructure-excluded"],
+        3
+    );
+}
+
+#[test]
 fn splits_unsupported_xslt_attributes_by_instruction_and_expanded_name() {
     let failure = WorkbenchFailure {
         code: "FXST1009".to_owned(),
@@ -2999,6 +3052,37 @@ fn oasis_supplemental_stylesheet_identity_normalizes_parent_segments() {
     assert_eq!(
         logical_identity(&case, "output_#_sign.xsl"),
         "https://oasis.invalid/Lotus_impincl_impincl04_1/output_%23_sign.xsl"
+    );
+}
+
+#[test]
+fn oasis_reviewed_identity_case_preserves_catalog_sibling_bases() {
+    let mut case = LegacyCase {
+        identity: "Lotus/idkey_idkey51#1".to_owned(),
+        id: "idkey_idkey51".to_owned(),
+        category: "XSLT-Result-Tree".to_owned(),
+        operation: "standard".to_owned(),
+        directory: PathBuf::new(),
+        reference_directory: PathBuf::new(),
+        principal_source: "idkey51.xml".to_owned(),
+        principal_stylesheet: "idkey51.xsl".to_owned(),
+        supplemental_stylesheets: Vec::new(),
+        supplemental_data: Vec::new(),
+        output_file: None,
+        output_compare: None,
+    };
+    let source = principal_source_identity(&case);
+    let style = logical_identity(&case, &case.principal_stylesheet);
+    for reference in ["idkey49a.xml", "idkey49c.xml"] {
+        assert_eq!(
+            crate::resources::resolve_reference(&source, reference).unwrap(),
+            crate::resources::resolve_reference(&style, reference).unwrap()
+        );
+    }
+    case.identity = "Lotus/idkey_idkey52#1".to_owned();
+    assert_eq!(
+        principal_source_identity(&case),
+        logical_identity(&case, &case.principal_source)
     );
 }
 

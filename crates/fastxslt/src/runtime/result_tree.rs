@@ -794,7 +794,7 @@ fn materialize_context_identity_avt(
     context: &AttributeContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
-    let Some((_, node)) = context.source_focus else {
+    let Some((source, node)) = context.source_focus else {
         return Err(failure_at(
             "FXRT1001",
             FailureCategory::Unsupported,
@@ -806,7 +806,12 @@ fn materialize_context_identity_avt(
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, context.request_id))?;
-    let identity = super::runtime_context::source_node_identity(node);
+    let identity = super::runtime_context::source_node_identity_in_context(
+        context.inputs,
+        source,
+        node,
+        control,
+    )?;
     let mut value = String::with_capacity(prefix.len() + identity.len() + suffix.len());
     value.push_str(prefix);
     value.push_str(&identity);
@@ -822,7 +827,7 @@ fn materialize_generated_key_identity_avt(
     context: &AttributeContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
-    let node = context.source_focus.map(|(_, node)| node).ok_or_else(|| {
+    let (source, node) = context.source_focus.ok_or_else(|| {
         failure_at(
             "XPDY0002",
             FailureCategory::Invalid,
@@ -841,7 +846,12 @@ fn materialize_generated_key_identity_avt(
     let mut value = String::with_capacity(prefix.len() + suffix.len() + 24);
     value.push_str(prefix);
     if let Some(node) = selected.first() {
-        value.push_str(&super::runtime_context::source_node_identity(*node));
+        value.push_str(&super::runtime_context::source_node_identity_in_context(
+            context.inputs,
+            source,
+            *node,
+            control,
+        )?);
     }
     value.push_str(suffix);
     Ok(value)

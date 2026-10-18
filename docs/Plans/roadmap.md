@@ -6,10 +6,72 @@ standards scope are decided.
 
 ## Current critical path
 
-The current OASIS checkpoint is 2,501 / 3,173 exact comparisons (78.82%);
-80% requires another 38 exact cases. Resume the ranked ordinary frontier,
+The current OASIS checkpoint is 2,502 / 3,173 exact comparisons (78.85%);
+80% requires another 37 exact cases. Resume the ranked ordinary frontier,
 without implicitly opening secondary-document DTDs, cross-document value
-identity, namespace-valued variables, or legacy namespace-copy recovery.
+ordering, namespace-valued variables, or legacy namespace-copy recovery.
+
+The [local literal-document path slice](../Evidence/oasis-xslt10-literal-document-path-binding-2026-10-17.md)
+now preserves effective owners through bound selections and generated-ID
+operands. `idkey51` compares exactly after shared identity integration and a
+reviewed harness correction preserving its archival sibling-resource bases.
+Reassess the next failing case before widening consumers. The ordinary frontier has
+no remaining `FXST1015` cases; do not repeat global-constructor guard expansion
+without a new failing case.
+
+The follow-up found and closed a generated-ID eligibility bypass: older value,
+concat and attribute routes could label a secondary document root with the same
+principal-local ID. After pinning the refusal, ordinary value, concat and
+attribute routes now share an origin-qualified formatter, with positive reuse,
+collision and control tests. Namespace/filtered-union secondary identities stay
+guarded. Direct document-path and retained-variable operands now pass the whole
+`idkey51` case. Audit remaining synthetic source-base mappings separately; do
+not confuse resource aliases with document identity.
+
+The general source-base correction now preserves catalog-relative identities
+through a test-only resource-versus-role import plan. Identical roles share one
+admitted resource only when identity and bytes both match; conflicting bytes
+remain rejected. Obsolete synthetic source aliases are removed, and the ordinary
+adapter's strict duplicate admission remains unchanged. The retained reporting
+guard prevents admission failures from earning expected-error credit. This
+removes the earlier seven duplicate-admission sites without new corpus credit;
+resume ordinary semantic breadth rather than extending the importer.
+
+Global-document investigation also closed a compiler panic on a malformed
+single-quote argument and prevented compound arguments from being treated as
+literal URI bytes. Shared call parsing now owns that admission. The sorting
+case's global document **path** now retains its effective owner through the
+shared charged selector under ADR-0022/ADR-0024. A bounded typed current-attribute
+lookup now serves both sorting and concat; text-constructed globals also compare
+as strings in the existing selection predicate. The sorting case executes with
+the expected values/order but remains an archival indentation mismatch. Resume
+another ordinary frontier case; do not relax comparison. Dependent global reads
+of selected secondary nodes remain explicitly unsupported. No new exact credit.
+
+The [2026-10-16 refreshed ledger](../Evidence/processor-edition-seam-investigation-2026-10-16.md#post-acceptance-corpus-checkpoint--2026-10-16)
+separates 423 expected-error credits from exact output matches. After this slice,
+the other 248 entries comprise 91 ordinary phase failures, 16 mismatches, 10 comparison gaps,
+123 policy/reference exclusions and 8 expected-error infrastructure/expectation
+exclusions. These are not all missing engine features or a conformance percentage.
+The [literal-document namespace copy integration](../Evidence/oasis-xslt10-explicit-attribute-namespaces-and-namespace-copy-2026-10-04.md#2026-10-17-literal-document-namespace-copying)
+now executes `Namespace_XPath_CopyNamespaceNodeToOutput` through shared owner
+switching and namespace attachment. It remains an archival empty-element
+indentation mismatch; exact counts do not increase. Do not widen namespace
+copy recovery or relax comparison for that case.
+All seven ordinary fallback cases now compare in the private ADR-0025 lane,
+without baseline credit. Missing direct fallback (`91825`) fails when reached;
+unbound reads (`91822`) and invalid top-level placement (`91826`) now fail
+compilation with source provenance. The ten-case integration replay is complete
+for this bounded slice. Legacy literal-result local-version scope now propagates
+without changing processor identity. Legacy Number validation now admits zero,
+fractions and values outside the original four witnesses at root/local scope
+([evidence](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md));
+modern literal-result local version now controls the admitted value-of conversion
+with nested/sibling restoration. Modern value-of also applies its own local
+version to itself without leaking to siblings. Static computed-element containers
+now propagate modern local versions with nested/sibling restoration. Other instruction-local declarations, general modern
+lexical forms and other unpropagated semantics remain guarded before promotion;
+do not expand the reference without a named risk.
 
 [AR-0031](../Architectural%20Reviews/AR-0031-compilation-scoped-processor-edition-profiles.md)
 is closed through accepted [ADR-0025](../ADR/ADR-0025-compilation-graph-scoped-processor-edition-policy.md)
@@ -19,6 +81,41 @@ Local scope, expression error timing, capability/introspection, full artifact
 qualification and profile-labelled replay remain integration gates. No production
 profile or new corpus credit is selected; unrelated breadth work and AR-0030
 integration remain available.
+
+ADR-0025's first integration slice retains processor qualification on the shared
+program and rejects incompatible include/import composition independently of
+preprocessing. Existing compilation is labeled declaration-driven baseline;
+selected processor stamps remain reference-only. The wrapper-bypass regression
+checks the actual linking boundary. Policy-aware declaration/sequence lowering
+is now exercised below; no corpus gain is claimed for this prerequisite.
+
+Matched-template routing now propagates the lowering callback beyond the root
+fast path. A private policy-aware slice executes unchanged `91818` and passes
+the existing XML comparator; explicit value-of mode also pins first-text-node
+1.0 conversion. This is not baseline credit or production profile promotion.
+The follow-up admits attribute-literal match predicates, simple child paths and
+static computed-element content through shared owners. Unchanged `91818`,
+`91819`, `91820`, `91823` and `91824` compare successfully in the private lane.
+Text-content local-variable construction and bound reads now also pass `91821`,
+with lexical visibility propagated through fallback and constructors. Standalone
+fallback (`91817`) now lowers to no work; sibling fallback does not rescue a
+missing child fallback (`91825`). Unbound simple reads now fail compilation
+outside the mandatory forward-compatible deferral categories. Top-level fallback
+is invalid in declared 1.0 and ignored under the selected legacy processor's
+future-version rules. The catalog's coarse error labels do not replace actual
+phase observations. Literal-result `xsl:version` can now enable/disable legacy
+forward processing with nested restoration; it cannot change processor identity,
+preprocessing or value-conversion mode. The shared compiler now accepts an
+explicit version-validation callback while preserving ordinary validation.
+Legacy forward-mode value-of now defers typed syntax failures for bounded simple
+paths until reached, preserving static unbound-variable errors and unsupported
+general expressions. Direct wrong-arity system-property calls with no arguments
+or only literal-string arguments now have selected static/deferred timing.
+Next address nested/short-circuited call timing beyond these whole-expression
+slices. General-expression and introspection gates still prevent
+claiming this bounded lane is production-ready.
+Named/default/global/module routes, dynamic constructors and general expression
+compatibility remain guarded.
 
 The [XML indentation frontier check](../Evidence/oasis-xslt10-xml-indentation-frontier-2026-10-10.md)
 retains bounded formatting of element/comment/PI sequences, but rejects a

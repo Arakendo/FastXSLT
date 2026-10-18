@@ -54,7 +54,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ValueCompatibilityMode {
+pub(super) enum ValueCompatibilityMode {
     Modern,
     Xslt10,
 }
@@ -101,10 +101,6 @@ impl ValueStaticContext {
     }
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "the ordered typed expression-family dispatch is one cohesive responsibility"
-)]
 pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression(
     document: &Document,
     element: NodeId,
@@ -112,6 +108,37 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     location: &SourceLocation,
 ) -> Result<ValueExpression, CompileFailure> {
     let static_context = ValueStaticContext::for_element(document, element);
+    compile_value_expression_with_mode(
+        document,
+        element,
+        expression,
+        location,
+        static_context.compatibility,
+    )
+}
+
+#[expect(
+    clippy::too_many_lines,
+    reason = "the ordered typed expression-family dispatch is one cohesive responsibility"
+)]
+pub(super) fn compile_value_expression_with_mode(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+    compatibility: ValueCompatibilityMode,
+) -> Result<ValueExpression, CompileFailure> {
+    let static_context = ValueStaticContext { compatibility };
+    if compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(argument) = generated_node_argument(expression)
+        && super::generated_source_identity_compiler::is_owned_operand(argument)
+    {
+        return super::generated_source_identity_compiler::compile(
+            document, element, argument, location,
+        )
+        .map(Box::new)
+        .map(ValueExpression::GeneratedSourceIdentity);
+    }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(value) = grouped_path_union_compiler::compile_grouped_variable(
             document, element, expression, location,

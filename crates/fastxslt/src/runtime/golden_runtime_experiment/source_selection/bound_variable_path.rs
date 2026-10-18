@@ -12,6 +12,97 @@ use crate::xslt::golden_semantics_experiment::Instruction;
 
 type RetainedPathSelection = (Arc<Document>, Vec<NodeId>);
 
+pub(super) fn current_lookup_value(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    lookup: &crate::xslt::golden_semantics_experiment::CurrentVariableLookup,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let (source, current) = super::required_source_context(inputs, context)?;
+    let outer =
+        evaluate_location_path_controlled(source, current, &lookup.outer_attribute, control)
+            .map_err(|error| control_failure(error, inputs.request_id))?;
+    let outer_value = outer
+        .first()
+        .map(|node| source.string_value_controlled(*node, control))
+        .transpose()
+        .map_err(|error| control_failure(error, inputs.request_id))?;
+    let Some((owner, candidates)) = select(
+        inputs,
+        &lookup.variable,
+        &BoundVariablePath::Path(lookup.candidates.clone()),
+        variables,
+        control,
+    )?
+    else {
+        return Err(failure(
+            "FXRT1017",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "current-node lookup requires a retained source selection",
+        ));
+    };
+    for candidate in candidates {
+        let attributes = evaluate_location_path_controlled(
+            &owner,
+            candidate,
+            &lookup.candidate_attribute,
+            control,
+        )
+        .map_err(|error| control_failure(error, inputs.request_id))?;
+        let value = attributes
+            .first()
+            .map(|node| owner.string_value_controlled(*node, control))
+            .transpose()
+            .map_err(|error| control_failure(error, inputs.request_id))?;
+        if outer_value.is_none() || value != outer_value {
+            continue;
+        }
+        let result =
+            evaluate_location_path_controlled(&owner, candidate, &lookup.result_attribute, control)
+                .map_err(|error| control_failure(error, inputs.request_id))?;
+        if let Some(node) = result.first() {
+            return owner
+                .string_value_controlled(*node, control)
+                .map_err(|error| control_failure(error, inputs.request_id));
+        }
+    }
+    Ok(String::new())
+}
+
+pub(super) fn select_document_path(
+    inputs: &SequenceInputs<'_>,
+    document: &Arc<Document>,
+    path: &LocationPath,
+    control: &mut InvocationControl,
+) -> Result<RetainedPathSelection, ExecutionFailure> {
+    let owner = effective_document_owner(inputs, document, control)?;
+    let nodes = select_path(inputs, &owner, &[owner.document_node()], path, control)?;
+    Ok((owner, nodes))
+}
+
+fn effective_document_owner(
+    inputs: &SequenceInputs<'_>,
+    document: &Arc<Document>,
+    control: &mut InvocationControl,
+) -> Result<Arc<Document>, ExecutionFailure> {
+    let effective = derive_effective_source(
+        &inputs.program.source_whitespace,
+        document,
+        WhitespaceRepresentation::VisibilityView,
+        inputs.request_id,
+        control,
+    )?;
+    if let Some(effective) = effective {
+        effective
+            .retain_effective_owner(control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))
+    } else {
+        Ok(document.clone())
+    }
+}
+
 pub(super) fn bind(
     inputs: &SequenceInputs<'_>,
     instruction: &Instruction,
@@ -94,20 +185,7 @@ pub(super) fn select(
             charge_retention(inputs, nodes.len(), control)?;
             (owner.clone(), nodes.clone())
         } else if let Some(dynamic) = variables.literal_document(inputs.globals, variable) {
-            let effective = derive_effective_source(
-                &inputs.program.source_whitespace,
-                &dynamic.document,
-                WhitespaceRepresentation::VisibilityView,
-                inputs.request_id,
-                control,
-            )?;
-            let owner = if let Some(effective) = effective {
-                effective
-                    .retain_effective_owner(control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?
-            } else {
-                dynamic.document.clone()
-            };
+            let owner = effective_document_owner(inputs, &dynamic.document, control)?;
             charge_retention(inputs, 1, control)?;
             let root = owner.document_node();
             (owner, vec![root])

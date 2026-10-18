@@ -9,10 +9,42 @@ use crate::xslt::golden_semantics_experiment::NamespaceScalarKind;
 use crate::xslt::golden_semantics_experiment::SortSelect;
 
 pub(super) fn compile_copy_of(
+    document: &Document,
+    element: NodeId,
     select: &str,
-    location: &super::SourceLocation,
     recover_unattached_attributes: bool,
 ) -> Result<Instruction, CompileFailure> {
+    let location = document.location(element);
+    if recover_unattached_attributes
+        && let Some((argument, base, tail)) = super::parse_document_call(select.trim())
+        && base.is_none()
+        && let Some(reference) = super::xpath_string_literal(argument.trim())
+        && let Some((owners, terminal)) = tail.split_once("/namespace::")
+        && !owners.is_empty()
+    {
+        let path = super::parse_copy_of_literal_document_path(document, element, owners)?;
+        let copy = compile_copy_of(
+            document,
+            element,
+            &format!("namespace::{terminal}"),
+            recover_unattached_attributes,
+        )?;
+        // The outer selection establishes the effective document owner. The
+        // inner namespace selection and copy retain their shared semantics.
+        return Ok(Instruction::ForEachNodes {
+            select: ApplySelection::LiteralDocumentPath {
+                reference: crate::xslt::golden_semantics_experiment::DocumentRootReference {
+                    base: location.resource.clone(),
+                    reference: reference.to_owned(),
+                    descendant_name: None,
+                },
+                path,
+            },
+            sorts: Vec::new(),
+            body: vec![copy],
+            location: location.clone(),
+        });
+    }
     let path = crate::xpath::path_experiment::qualified_nodes::parse(select, location.clone())
         .map_err(map_path_failure)?;
     if !matches!(
@@ -95,7 +127,7 @@ pub(super) fn compile_scalar(
 
 // Only a top-level comparison of two complete generate-id calls is admitted.
 // Quotes and nested path predicates must not be mistaken for its operator.
-fn generated_identity_operands(expression: &str) -> Option<(&str, &str, bool)> {
+pub(super) fn generated_identity_operands(expression: &str) -> Option<(&str, &str, bool)> {
     fn argument(call: &str) -> Option<&str> {
         call.trim()
             .strip_prefix("generate-id(")?

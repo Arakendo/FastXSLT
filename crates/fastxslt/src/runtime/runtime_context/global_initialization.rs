@@ -38,6 +38,7 @@ enum InitializedGlobal {
     Empty,
     Atomic(AtomicValue),
     SourceNodes(Vec<NodeId>),
+    RetainedSource(super::RetainedSourceSelection),
     TemporaryTree(TemporaryTree),
     LiteralDocument(super::super::dynamic_document::DynamicDocument),
 }
@@ -45,6 +46,9 @@ enum InitializedGlobal {
 impl InitializedGlobal {
     fn publish(self, globals: &mut RuntimeGlobals, name: &str) {
         match self {
+            Self::RetainedSource(value) => {
+                globals.retained_sources.insert(name.to_owned(), value);
+            }
             Self::Empty => {
                 globals.empty_sequences.insert(name.to_owned());
             }
@@ -154,7 +158,8 @@ fn materialize_global_default(
         GlobalBindingDefault::SourceNodeIdentity(path) => {
             materialize_source_node_identity(path, source, request_id, control)
         }
-        GlobalBindingDefault::Xslt10LiteralDocument(_) => unreachable!(),
+        GlobalBindingDefault::Xslt10LiteralDocument(_)
+        | GlobalBindingDefault::Xslt10LiteralDocumentPath { .. } => unreachable!(),
         GlobalBindingDefault::Variable(name) => {
             materialize_global_alias(globals, name, request_id, control)
         }
@@ -307,7 +312,8 @@ fn materialize_global_xslt10_concat(
                     globals, name, source, request_id, control,
                 )?);
             }
-            Xslt10ConcatPart::VariablePosition { .. }
+            Xslt10ConcatPart::CurrentVariableLookup(_)
+            | Xslt10ConcatPart::VariablePosition { .. }
             | Xslt10ConcatPart::Path(_)
             | Xslt10ConcatPart::GeneratedNodeIdentity(_)
             | Xslt10ConcatPart::QualifiedGeneratedIdentity(_)

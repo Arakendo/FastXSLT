@@ -14,7 +14,7 @@ pub(super) fn compile_top_level_template(
     root_template_modes: &mut Vec<String>,
     matched_templates: &mut Vec<MatchedTemplate>,
     named_templates: &mut Vec<NamedTemplate>,
-    lower_root_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
+    lower_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
 ) -> Result<(), CompileFailure> {
     if let Some(name) = optional_attribute(document, element, None, "name") {
         if optional_attribute(document, element, None, "match").is_none()
@@ -54,7 +54,8 @@ pub(super) fn compile_top_level_template(
             || has_competing_default
             || requires_current_rule(document, element)
         {
-            let matched_template = compile_matched_template(document, element, pattern)?;
+            let matched_template =
+                compile_matched_template(document, element, pattern, lower_template)?;
             let competes_with_default = matched_template.modes.is_empty()
                 || matched_template
                     .modes
@@ -89,11 +90,16 @@ pub(super) fn compile_top_level_template(
             return Ok(());
         }
         root_template_modes.clear();
-        *root_template = Some(lower_root_template(document, element)?);
+        *root_template = Some(lower_template(document, element)?);
         return Ok(());
     }
 
-    matched_templates.extend(compile_matched_templates(document, element, pattern)?);
+    matched_templates.extend(compile_matched_templates(
+        document,
+        element,
+        pattern,
+        lower_template,
+    )?);
     Ok(())
 }
 

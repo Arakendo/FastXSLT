@@ -18,6 +18,69 @@ const LIMITS: ParseLimits = ParseLimits {
     max_depth: 32,
 };
 
+#[test]
+fn global_document_calls_do_not_treat_expression_syntax_as_uri_bytes() {
+    for select in [
+        "document(')",
+        "document('a.xml', 'b.xml')",
+        "document('a.xml' + 'b.xml')",
+    ] {
+        let xml = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="d" select="{select}"/><xsl:template match="/"/></xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet("urn:global-document:syntax", xml.as_bytes());
+        let failure = compile_stylesheet(&document).expect_err(select);
+        assert_eq!(failure.location.resource, "urn:global-document:syntax");
+    }
+}
+
+#[test]
+fn global_document_literal_admission_preserves_quotes_and_uri_punctuation() {
+    for (select, expected) in [
+        ("document('')", ""),
+        ("document( 'a,b(1).xml' )", "a,b(1).xml"),
+        ("document(\"a'b.xml\")", "a'b.xml"),
+        ("document('a\"b.xml')", "a\"b.xml"),
+        ("document('référence.xml')", "référence.xml"),
+    ] {
+        let select = select.replace('"', "&quot;");
+        let xml = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="d" select="{select}"/><xsl:template match="/"/></xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet("urn:global-document:literal", xml.as_bytes());
+        let program = compile_stylesheet(&document).unwrap();
+        let GlobalBindingDefault::Xslt10LiteralDocument(reference) =
+            &program.global_bindings[0].default
+        else {
+            panic!("literal document plan expected")
+        };
+        assert_eq!(reference.reference, expected);
+        assert_eq!(reference.base, "urn:global-document:literal");
+    }
+}
+
+#[test]
+fn shared_literal_document_parser_distinguishes_arguments_and_trailing_paths() {
+    use super::instruction_compiler::parse_literal_document_call;
+    assert_eq!(
+        parse_literal_document_call("document('a,b.xml', /r)/n"),
+        Some(("a,b.xml", Some(" /r"), "/n"))
+    );
+    for expression in [
+        "document(')",
+        "document('a' + 'b')",
+        "document('a''b')",
+        "document()",
+        "document('unterminated)",
+    ] {
+        assert_eq!(
+            parse_literal_document_call(expression),
+            None,
+            "{expression}"
+        );
+    }
+}
+
 fn parse_stylesheet(resource: &str, bytes: &[u8]) -> Document {
     let parsed = parse_document(resource, bytes, LIMITS).expect("stylesheet XML should parse");
     Document::from_parsed(parsed).expect("stylesheet XDM should build")

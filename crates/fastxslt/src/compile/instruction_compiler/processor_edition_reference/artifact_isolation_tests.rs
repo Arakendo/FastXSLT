@@ -144,9 +144,19 @@ fn processor_edition_reference_existing_linker_refuses_mixed_preprocessing_artif
             &mut InvocationControl::unbounded(),
         )
         .unwrap();
-        let foreign = lower_module(&leaf, dependency, &mut InvocationControl::unbounded()).unwrap();
+        let foreign_profile = match dependency {
+            Edition::Legacy => StylesheetPreprocessingProfile::StrictXslt10,
+            Edition::Modern => StylesheetPreprocessingProfile::Modern,
+        };
+        let foreign = lower_module_with_preprocessing(
+            &leaf,
+            caller,
+            foreign_profile,
+            &mut InvocationControl::unbounded(),
+        )
+        .unwrap();
         let failure = compiler::stylesheet_module_compiler::compile_stylesheet_with_included_programs_at_in_context(
-            &view, root, vec![foreign], StylesheetCompilationContext::for_reference(profile, true),
+            &view, root, vec![foreign], compilation_context(caller, profile),
         ).unwrap_err();
         assert_eq!(failure.code, "FXST1058");
         assert_eq!(failure.category, CompileCategory::Unsupported);
@@ -155,6 +165,5 @@ fn processor_edition_reference_existing_linker_refuses_mixed_preprocessing_artif
             *principal.location(meaningful_children(&principal, root)[0])
         );
     }
-    // This checks preprocessing only. It is not a processor-edition stamp and
-    // must not be used as proof of safe arbitrary cross-profile artifact reuse.
+    // Hold processor identity constant so preprocessing rejection is independent.
 }

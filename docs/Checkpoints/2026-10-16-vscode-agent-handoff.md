@@ -19,6 +19,48 @@ introspection, artifact qualification and profile-labelled corpus replay.
 The test-only reference is not promoted by acceptance. No public selector,
 default change or additional conformance credit is authorized.
 
+The first ADR-0025 integration slice now retains processor qualification on the
+shared program and checks it at include/import composition, independently of
+preprocessing. Production compilation remains explicitly declaration-driven
+baseline; selected stamps are reference-only. Do not mistake the stamp for
+policy-aware lowering. Next connect the actual compiler policy for `91818`, not
+another outer-wrapper probe. See the latest integration section in the bounded
+instruction evidence for scope and validation.
+
+Follow-up: the shared callback now reaches matched and union rules; private
+integration executes unchanged `91818` successfully with the existing XML
+comparator and explicit 1.0 path-value conversion. Baseline counts do not gain
+credit. The next tranche now passes `91819`, `91820`, `91823` and `91824` too:
+shared attribute-literal match patterns, child-path conversion and static
+computed-element body propagation. `91821` now passes too, using shared static
+text-tree construction with an explicit compatibility mode and bound local
+reads across fallback/constructor bodies. Standalone fallback (`91817`) now
+compares too. Missing direct fallback (`91825`) compiles and fails when reached;
+an unselected matched rule remains harmless. `91822` and `91826` now report
+Invalid compilation outcomes with provenance, rather than unsupported guards.
+The ten-case private replay is seven XML comparisons, one execution failure,
+two compilation failures. Legacy literal-result `xsl:version` scope now
+propagates under the fixed processor policy, with nested and sibling restoration.
+Legacy Number values, including zero and fractions, now work at root/local
+scope through a shared compiler validation callback. Ordinary positive-decimal
+validation remains unchanged. Modern literal-result local declarations now
+select admitted value-of conversion with nested/sibling restoration; root 1.0
+inherits backwards conversion without changing processor identity. Modern
+value-of now applies its own unqualified version to itself and restores siblings;
+static computed-element containers propagate local versions into their bodies.
+Other instruction-local declarations and broader modern lexical rules remain guarded; general
+expression deferral remains incomplete. Bounded malformed simple paths now defer
+in legacy forward-mode value-of only, with dormant/reached/reuse coverage;
+direct wrong-arity system-property calls with no/literal-string arguments now
+have selected timing too. Nested calls and modern forward-mode errors remain
+guarded. Retain
+guards on unpropagated paths; no new architectural decision is needed for this
+in-scope propagation work.
+
+ADR-0004 review split the 1,048-line matched integration into a 453-line
+implementation and a 577-line private child regression module. Retain one
+integration owner and avoid a second evaluator.
+
 A subsequent maintainer-authorized [bounded instruction probe](../Evidence/ar-0031-bounded-instruction-probe-2026-10-16.md)
 adds test-only edition/version witnesses, now with 50 focused checks, nested
 fallback propagation through shared callback seams, and a bounded introspection
@@ -217,11 +259,104 @@ regression obligations are still incomplete. AR-0030 is **not closed**.
 
 ## Next work sequence
 
+Current superseding checkpoint, 2026-10-17: `idkey51` now compares exactly.
+Typed document-path/retained-variable generated-ID operands share sealed
+resolution, effective owners and the origin-qualified formatter. Multiple
+distinct document arguments remain unsupported pending ordering semantics.
+The harness also corrects this case's artificial `source/` base to preserve
+the actual archival sibling layout; this is recorded separately from engine
+support in the evidence below. No fixture or expected output changed.
+
+Full replays: **2,502 / 3,173 modern exact (78.85%)**, **2,499 strict exact**;
+14/17 mismatches and 423 expected-error credits remain unchanged. Modern 80%
+needs 37 more cases. Full verification passes with 2,063 core tests, plus
+22 native, 4 WASM and 18 worker tests. Work is uncommitted. Resume a newly
+reproduced ordinary failure, or audit the remaining synthetic source-base
+mappings as a separate harness task; do not reopen the completed `idkey51`
+dependency chain. No AR decision is needed for that investigation.
+
+The entries below retain the preceding dependency-chain history:
+
+Subsequent source-base audit: a general catalog-relative mapping was tested and
+withdrawn. It caused seven duplicate resource admissions: ordinary `idkey04`,
+`select59`, `select68`, `select71`, `Text__91137`, and expected-error
+`Elements__89172` / `Sorting__91703`. The expected-error path incorrectly
+credited the latter two despite never reaching semantic validation. The retained
+reporting fix classifies `FXWB0001` / `FXWB0002` as infrastructure and preserves
+one visible disposition per case. No general mapping or adapter change remains.
+See the evidence's source-base audit section for that withdrawn attempt.
+
+Follow-up supersedes the import blocker: a test-only corpus constructor now
+imports unique logical resources separately from their source/stylesheet/data
+roles. Repeated identity requires equal bytes; distinct identities never merge
+because their bytes match. Shared compilation/preparation consumes the sealed
+snapshot through the same composition helper as ordinary construction. The
+ordinary adapter and core builder still reject duplicate identities. Principal
+sources now use catalog-relative bases across the suite; synthetic source aliases
+and the idkey51-only mapping are removed. Modern replay retains 2,502 exact,
+14 mismatches, 423 expected-error credits and 3 infrastructure exclusions.
+Strict replay retains 2,499 exact and 17 mismatches with the same error totals.
+Full verification passes with 2,066 core, 22 native, 4 WASM and 18 worker tests;
+the official WASM target check also passes. This is harness fidelity, not a new
+semantic pass. Resume the ordinary frontier;
+do not continue importer expansion without a newly reproduced defect.
+
+Next validated semantic slice: literal `document()` owner paths followed by
+terminal namespace selections now lower through the existing document switch,
+qualified selection and namespace copy. The unchanged
+`Namespace_XPath_CopyNamespaceNodeToOutput` executes with the correct binding,
+but its archived empty-element newline remains a mismatch. Exact counts stay
+2,502 modern / 2,499 strict; mismatches are now 15 / 18, initialized 2,704,
+executed 2,655 and ordinary phase failures 92. No comparison relaxation,
+namespace variable support, cross-document ranking or recovery policy is added.
+See the namespace-copy evidence's 2026-10-17 follow-up. Resume another failing
+case rather than widening this completed slice without new pressure.
+
+Global-document follow-up: the malformed `document(')` global initializer
+reproduced a compiler slice panic. Global literal admission now delegates to
+the shared call parser and complete literal check; compound arguments cannot
+become URI text. Three focused regressions cover refusal, provenance and valid
+punctuation/quote preservation. The next slice now stores global selected nodes
+with their retained effective owner, reusing the local document-path selector.
+Focused regressions cover wrong principal IDs, aliases, identity, boolean/empty
+selection, iteration, denial, cancellation, exact budgets and failure reuse.
+Dependent initializer reads stay explicitly unsupported (`FXRT1004`), and
+principal-only comparison consumers retain their owner guard. Full verification
+passes with 2,073 core tests (64 ignored), 22 native, 4 WASM and 18 worker tests.
+The follow-up adds a bounded typed current-attribute lookup shared by sort and
+concat. A result-tree-fragment global now participates as a string in the existing
+node-set selection comparison. The sorting case executes with the expected
+values/order but differs from archival indentation. Resume another ordinary
+failure: 91 phase failures and 16 modern mismatches; no comparator relaxation.
+Modern/strict exact counts remain 2,502 / 2,499 of 3,173.
+
+2026-10-17 breadth refresh: no ordinary `FXST1015` frontier remains. The
+[local document-path binding tranche](../Evidence/oasis-xslt10-literal-document-path-binding-2026-10-17.md)
+removes `idkey51`'s first variable-selection blocker but exposes generated-ID
+comparison across literal/source-derived document selections (`FXXP1002`).
+Coverage stays 2,501 / 3,173. Preserve that guarded boundary and assess the whole
+case's dependencies before implementing further fragments.
+
+The follow-up reproduced distinct principal/secondary roots emitting the same
+generated ID through older value routes. Those routes now share the existing
+principal-origin eligibility guard (`FXRT0007`), with three compiled regressions.
+Full verification passes (2,057 core tests); the full OASIS replay remains
+2,501 exact. Integrate generated-ID ownership consistently across value,
+concat, attribute and retained-variable consumers before removing that guard.
+
+The next tranche positively integrates ordinary secondary-focus generated IDs
+through a shared origin-qualified formatter, including value/root, concat,
+context/key attribute and root-versus-variable routes. Root spelling agrees
+with the existing dynamic-root consumer; principal spelling stays unchanged.
+Namespace/filtered-union secondary routes remain guarded. Direct document-path
+and retained-variable operands still need compiler/consumer integration for
+`idkey51`; the formatter alone does not credit that case.
+
 1. Inspect current status and reproduce a full modern frontier with detailed
    compile failures. Start with:
 
    ```powershell
-   ./scripts/measure-oasis-xslt10.ps1 -TraceFrontier FXST1015
+   ./scripts/measure-oasis-xslt10.ps1 -TraceFrontier '/'
    ```
 
    `TraceFrontier` is a substring filter on the frontier label. Detailed rows

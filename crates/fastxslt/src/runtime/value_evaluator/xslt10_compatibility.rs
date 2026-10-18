@@ -1140,6 +1140,11 @@ pub(super) fn concat_value_at(
     let mut result = String::new();
     for part in &expression.parts {
         match part {
+            Xslt10ConcatPart::CurrentVariableLookup(lookup) => {
+                result.push_str(&super::super::bound_variable_path::current_lookup_value(
+                    inputs, context, lookup, variables, control,
+                )?);
+            }
             Xslt10ConcatPart::Literal(value) => result.push_str(value),
             Xslt10ConcatPart::Variable(name) => {
                 let value = variable_string_value_at(
@@ -1201,7 +1206,9 @@ pub(super) fn concat_value_at(
                     .map_err(|failure| control_failure(failure, inputs.request_id))?;
                 // XPath 1.0 node-set conversion selects the first node in document order.
                 if let Some(node) = nodes.first() {
-                    result.push_str(&runtime_context::source_node_identity(*node));
+                    result.push_str(&runtime_context::source_node_identity_in_context(
+                        inputs, source, *node, control,
+                    )?);
                 }
             }
             Xslt10ConcatPart::QualifiedGeneratedIdentity(path) => {

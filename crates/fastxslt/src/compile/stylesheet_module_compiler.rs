@@ -106,7 +106,7 @@ pub(super) fn merge_included_program(
     mut included_program: StylesheetProgram,
     location: &SourceLocation,
 ) -> Result<(), CompileFailure> {
-    ensure_same_preprocessing(program, &included_program, location)?;
+    ensure_same_compilation_policy(program, &included_program, location)?;
     merge_attribute_set_declarations(program, &mut included_program, location);
     if program.root_template.is_some() && included_program.root_template.is_some() {
         materialize_root_template_in_declaration_order(program);
@@ -192,7 +192,7 @@ pub(super) fn merge_included_program(
     Ok(())
 }
 
-fn ensure_same_preprocessing(
+fn ensure_same_compilation_policy(
     principal: &StylesheetProgram,
     dependency: &StylesheetProgram,
     location: &SourceLocation,
@@ -201,6 +201,13 @@ fn ensure_same_preprocessing(
         matches!(binding.default, crate::xslt::golden_semantics_experiment::GlobalBindingDefault::SharedConstructor { .. })
     }) {
         return Err(unsupported("FXST1015", "shared global constructor module linking is not yet admitted", location));
+    }
+    if principal.processor != dependency.processor {
+        return Err(unsupported(
+            "FXST1058",
+            "compiled stylesheet reuse requires the same processor policy and stage",
+            location,
+        ));
     }
     if principal.preprocessing != dependency.preprocessing {
         return Err(unsupported(
@@ -646,8 +653,8 @@ fn compose_imported_and_included_programs(
     let mut program =
         compile_stylesheet_at_excluding_unvalidated(principal, principal_root, &dependencies)?;
     program = context.qualify_module(program);
-    ensure_same_preprocessing(&program, &imported_program, principal.location(import))?;
-    ensure_same_preprocessing(&program, &included_program, principal.location(include))?;
+    ensure_same_compilation_policy(&program, &imported_program, principal.location(import))?;
+    ensure_same_compilation_policy(&program, &included_program, principal.location(include))?;
     let included_minimum_precedence = included_program
         .matched_templates
         .iter()
@@ -884,7 +891,7 @@ pub(crate) fn compile_stylesheet_with_imported_programs_at_in_context(
     principal_program = context.qualify_module(principal_program);
     let mut imported_programs = imported_programs;
     for (program, declaration) in imported_programs.iter().zip(&import_declarations) {
-        ensure_same_preprocessing(
+        ensure_same_compilation_policy(
             &principal_program,
             program,
             principal.location(*declaration),
@@ -1014,7 +1021,7 @@ pub(super) fn merge_single_imported_program(
     import_location: &SourceLocation,
     principal_location: &SourceLocation,
 ) -> Result<StylesheetProgram, CompileFailure> {
-    ensure_same_preprocessing(&principal_program, &imported_program, import_location)?;
+    ensure_same_compilation_policy(&principal_program, &imported_program, import_location)?;
     rebase_imported_program(&mut imported_program, -1, principal_location)?;
     merge_attribute_set_declarations(
         &mut principal_program,
@@ -1523,6 +1530,7 @@ pub(super) fn compile_simplified_stylesheet_at(
         location: document.location(root).clone(),
     };
     Ok(StylesheetProgram {
+        processor: crate::xslt::golden_semantics_experiment::ProcessorPolicyStamp::DeclarationDrivenBaseline,
         preprocessing:
             crate::xslt::golden_semantics_experiment::StylesheetPreprocessingStamp::ModernBaseline,
         declared_version: declared_version.to_owned(),

@@ -169,6 +169,37 @@ contract.
 
 ## Validation
 
+### Corpus campaign discipline
+
+- Start each breadth slice from a reproducible failing corpus case or a named
+  consumer. Rank shared blockers by affected cases, dependencies and risk; case
+  yield is an estimate until unchanged fixtures are replayed.
+- Prefer the smallest complete production slice under accepted decisions, with
+  focused semantic/control regressions and prompt corpus replay. Do not widen
+  every guarded instruction merely because the reference makes it possible.
+- Bound architectural experiments by the unresolved question and explicit exit
+  criteria. Once ownership is sufficiently evidenced, request a decision rather
+  than adding graph permutations or adjacent features without a new risk to test.
+  Acceptance does not waive implementation, security or validation gates.
+- If a tranche gains no corpus cases, record the concrete blocker it removed or
+  risk it resolved, then reassess the next failing case before extending it.
+  Regression tests are valuable but are not substitutes for corpus progress.
+- Report exact-output matches, expected-error credits, mismatches, unsupported
+  behavior, unavailable resources and harness limitations separately. State the
+  denominator and processor/preprocessing profile; do not describe the complement
+  of exact-output coverage as all missing engine functionality or sum unlike
+  evidence into a conformance percentage.
+- Preserve original expectations and accounting. Percentage targets never
+  authorize fixture-specific behavior, relaxed controls, hidden exclusions or
+  per-case profile selection. Maintain concise current next steps; put detailed
+  completed experiment history in evidence records rather than growing the plan.
+
+Follow ADR-0025 for processor-edition integration: graph-scoped immutable policy
+is distinct from preprocessing and local version declarations. Implementation
+knowledge, edition recognition and actual capability must not impersonate one
+another. Accepted ownership does not promote the test-only reference or choose
+production defaults/public profile APIs.
+
 Run these gates after Rust changes:
 
 ```text

@@ -161,7 +161,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     root: NodeId,
     excluded_top_level: &[NodeId],
 ) -> Result<StylesheetProgram, CompileFailure> {
-    compile_stylesheet_at_excluding_with_root_lowerer(
+    compile_stylesheet_at_excluding_with_template_lowerer(
         document,
         root,
         excluded_top_level,
@@ -173,15 +173,35 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     clippy::too_many_lines,
     reason = "single-document top-level composition remains one cohesive compiler responsibility"
 )]
-fn compile_stylesheet_at_excluding_with_root_lowerer(
+fn compile_stylesheet_at_excluding_with_template_lowerer(
     document: &Document,
     root: NodeId,
     excluded_top_level: &[NodeId],
-    lower_root_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
+    lower_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
+) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_with_validation_and_template_lowerer(
+        document,
+        root,
+        excluded_top_level,
+        &mut validate_declared_version,
+        lower_template,
+    )
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "single-document top-level composition remains one cohesive compiler responsibility"
+)]
+fn compile_stylesheet_with_validation_and_template_lowerer(
+    document: &Document,
+    root: NodeId,
+    excluded_top_level: &[NodeId],
+    validate_version: &mut impl FnMut(&Document, NodeId, &str) -> Result<(), CompileFailure>,
+    lower_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
 ) -> Result<StylesheetProgram, CompileFailure> {
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
-    validate_declared_version(document, root, &declared_version)?;
+    validate_version(document, root, &declared_version)?;
     validate_stylesheet_root_controls(document, root)?;
     let default_initial_mode = optional_attribute(document, root, None, "default-mode")
         .map(str::trim)
@@ -282,7 +302,7 @@ fn compile_stylesheet_at_excluding_with_root_lowerer(
                     &mut root_template_modes,
                     &mut matched_templates,
                     &mut named_templates,
-                    lower_root_template,
+                    lower_template,
                 )?;
             }
             (Some(XSLT_NAMESPACE), "mode") => {
@@ -379,6 +399,7 @@ fn compile_stylesheet_at_excluding_with_root_lowerer(
 
     let output_same_precedence_properties = output_specified_properties.clone();
     let mut program = StylesheetProgram {
+        processor: crate::xslt::golden_semantics_experiment::ProcessorPolicyStamp::DeclarationDrivenBaseline,
         preprocessing:
             crate::xslt::golden_semantics_experiment::StylesheetPreprocessingStamp::ModernBaseline,
         declared_version,
@@ -992,7 +1013,8 @@ fn global_dependencies(default: &GlobalBindingDefault) -> impl Iterator<Item = &
                 | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::QualifiedGeneratedIdentity(_)
                 | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::PathSubstring(_)
                 | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::ComposedString(_)
-                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::SumPath(_) => None,
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::SumPath(_)
+                | crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::CurrentVariableLookup(_) => None,
             }));
         }
         GlobalBindingDefault::Xslt10TemporaryTextParts(parts) => {
@@ -1240,10 +1262,10 @@ fn compile_global_default(
             Ok(count)
         } else if let Some(number) = compile_xslt10_number_path_global(document, element, select)? {
             Ok(number)
-        } else if let Some(reference) =
-            compile_xslt10_literal_document_global(document, element, select)
+        } else if let Some(value) =
+            compile_xslt10_literal_document_global(document, element, select)?
         {
-            Ok(GlobalBindingDefault::Xslt10LiteralDocument(reference))
+            Ok(value)
         } else if let Some(path) = select
             .strip_prefix("generate-id(")
             .and_then(|path| path.strip_suffix(')'))
@@ -1293,25 +1315,33 @@ fn compile_xslt10_literal_document_global(
     document: &Document,
     element: NodeId,
     expression: &str,
-) -> Option<crate::xslt::golden_semantics_experiment::DocumentRootReference> {
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
     if !instruction_compiler::uses_xslt10_compatibility(document, element) {
-        return None;
+        return Ok(None);
     }
-    let expression = expression.trim();
-    let argument = expression.strip_prefix("document(")?.strip_suffix(')')?;
-    let argument = argument.trim();
-    let quote = argument.as_bytes().first().copied()?;
-    if !matches!(quote, b'\'' | b'"') || argument.as_bytes().last().copied() != Some(quote) {
-        return None;
+    let Some((reference, None, tail)) =
+        instruction_compiler::parse_literal_document_call(expression.trim())
+    else {
+        return Ok(None);
+    };
+    if !tail.trim().is_empty() && !tail.starts_with('/') {
+        return Ok(None);
     }
-    let reference = &argument[1..argument.len() - 1];
-    Some(
-        crate::xslt::golden_semantics_experiment::DocumentRootReference {
-            base: document.location(element).resource.clone(),
-            reference: reference.to_owned(),
-            descendant_name: None,
-        },
-    )
+    let reference = crate::xslt::golden_semantics_experiment::DocumentRootReference {
+        base: document.location(element).resource.clone(),
+        reference: reference.to_owned(),
+        descendant_name: None,
+    };
+    Ok(Some(if tail.trim().is_empty() {
+        GlobalBindingDefault::Xslt10LiteralDocument(reference)
+    } else {
+        GlobalBindingDefault::Xslt10LiteralDocumentPath {
+            reference,
+            path: instruction_compiler::parse_copy_of_literal_document_path(
+                document, element, tail,
+            )?,
+        }
+    }))
 }
 
 fn compile_xslt10_global_concat(
@@ -2226,6 +2256,7 @@ fn compile_matched_template(
     document: &Document,
     element: NodeId,
     pattern: &str,
+    lower_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
 ) -> Result<MatchedTemplate, CompileFailure> {
     let (pattern, priority) = compile_match_pattern(document, element, pattern)?;
     Ok(MatchedTemplate {
@@ -2234,7 +2265,7 @@ fn compile_matched_template(
         apply_imports_min_precedence: 0,
         priority,
         modes: compile_template_modes_for_rule(document, element)?,
-        template: compile_template(document, element)?,
+        template: lower_template(document, element)?,
     })
 }
 
@@ -2242,13 +2273,15 @@ fn compile_matched_templates(
     document: &Document,
     element: NodeId,
     lexical_pattern: &str,
+    lower_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
 ) -> Result<Vec<MatchedTemplate>, CompileFailure> {
     let normalized_pattern = strip_outer_pattern_parentheses(lexical_pattern);
     let Some(alternatives) = instruction_compiler::split_top_level_union(normalized_pattern) else {
-        return compile_matched_template(document, element, lexical_pattern).map(|rule| vec![rule]);
+        return compile_matched_template(document, element, lexical_pattern, lower_template)
+            .map(|rule| vec![rule]);
     };
     if template_pattern_compiler::is_homogeneous_qualified_path_union(normalized_pattern) {
-        return compile_matched_template(document, element, normalized_pattern)
+        return compile_matched_template(document, element, normalized_pattern, lower_template)
             .map(|rule| vec![rule]);
     }
     let patterns = alternatives
@@ -2272,12 +2305,12 @@ fn compile_matched_templates(
                 apply_imports_min_precedence: 0,
                 priority,
                 modes: compile_template_modes_for_rule(document, element)?,
-                template: compile_template(document, element)?,
+                template: lower_template(document, element)?,
             }]);
         }
     }
     let modes = compile_template_modes_for_rule(document, element)?;
-    let template = compile_template(document, element)?;
+    let template = lower_template(document, element)?;
     Ok(patterns
         .into_iter()
         .map(|(pattern, priority)| MatchedTemplate {

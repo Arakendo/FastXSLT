@@ -8,7 +8,7 @@ use super::{
     workbench_stylesheet_compile_limits,
 };
 use crate::execution_control_experiment::{CancellationToken, InvocationControl};
-use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::resources::{ResourceLimits, ResourceSetBuilder, ResourceSnapshot};
 use crate::runtime::golden_runtime_experiment::compile_resource_with_preprocessing_control;
 #[cfg(test)]
 use crate::runtime::prepared_input_experiment::PreparationCapacity;
@@ -222,11 +222,6 @@ impl ExperimentalEngine {
     ) -> Result<Self, WorkbenchFailure> {
         let source_id = source_id.into();
         let stylesheet_id = stylesheet_id.into();
-        let denied_resources = stylesheet_resources
-            .denied_identities
-            .iter()
-            .cloned()
-            .collect();
         let entry_limit = stylesheet_resources
             .dependencies
             .len()
@@ -271,6 +266,25 @@ impl ExperimentalEngine {
                 })?;
         }
         let snapshot = resources.seal();
+        Self::from_admitted_resources(
+            source_id,
+            &stylesheet_id,
+            snapshot,
+            stylesheet_resources.denied_identities,
+            limits,
+            dtd_limits,
+        )
+    }
+
+    fn from_admitted_resources(
+        source_id: String,
+        stylesheet_id: &str,
+        snapshot: ResourceSnapshot,
+        denied_identities: Vec<String>,
+        limits: WorkbenchLimits,
+        dtd_limits: &ConstructionOptions,
+    ) -> Result<Self, WorkbenchFailure> {
+        let denied_resources = denied_identities.iter().cloned().collect();
         let compile_limits = workbench_stylesheet_compile_limits(
             limits,
             dtd_limits.stylesheet,
@@ -288,8 +302,8 @@ impl ExperimentalEngine {
             InvocationControl::new(CancellationToken::new(), work_limits(limits));
         let program = compile_resource_with_preprocessing_control(
             &snapshot,
-            &stylesheet_id,
-            stylesheet_resources.denied_identities,
+            stylesheet_id,
+            denied_identities,
             compile_limits,
             &mut preprocessing_control,
         )
@@ -326,3 +340,6 @@ impl ExperimentalEngine {
 
 #[cfg(test)]
 mod capacity_tests;
+
+#[cfg(test)]
+mod corpus_resources;

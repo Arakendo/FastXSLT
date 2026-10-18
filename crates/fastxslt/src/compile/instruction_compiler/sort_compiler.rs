@@ -83,6 +83,15 @@ fn compile_sort_select(
     location: &SourceLocation,
 ) -> Result<SortSelect, CompileFailure> {
     if xslt10_compatibility
+        && let Some(lookup) = super::bound_variable_path_compiler::compile_current_lookup(
+            document, sort, select, location,
+        )?
+    {
+        return Ok(SortSelect::Xslt10Concat(Box::new(crate::xslt::golden_semantics_experiment::Xslt10ConcatExpression {
+            parts: vec![crate::xslt::golden_semantics_experiment::Xslt10ConcatPart::CurrentVariableLookup(Box::new(lookup))],
+        })));
+    }
+    if xslt10_compatibility
         && let Some(expression) =
             value_expression_compiler::compile_xslt10_concat(document, sort, select, location)?
     {

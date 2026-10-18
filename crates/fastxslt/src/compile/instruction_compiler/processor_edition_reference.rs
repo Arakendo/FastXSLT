@@ -6,10 +6,28 @@
 use super::*;
 use crate::compile::golden_stylesheet_experiment as compiler;
 
+#[path = "processor_edition_reference/matched_integration.rs"]
+mod matched_integration;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Edition {
     Legacy,
     Modern,
+}
+
+fn compilation_context(
+    edition: Edition,
+    preprocessing: StylesheetPreprocessingProfile,
+) -> compiler::stylesheet_preprocessing::StylesheetCompilationContext {
+    use crate::xslt::golden_semantics_experiment::ProcessorPolicyStamp;
+    compiler::stylesheet_preprocessing::StylesheetCompilationContext::for_reference(
+        preprocessing,
+        true,
+    )
+    .with_processor_reference(match edition {
+        Edition::Legacy => ProcessorPolicyStamp::Xslt10Reference,
+        Edition::Modern => ProcessorPolicyStamp::ModernReference,
+    })
 }
 
 #[derive(Clone, Copy)]
@@ -48,9 +66,7 @@ fn lower_module_with_preprocessing(
     crate::xslt::golden_semantics_experiment::StylesheetProgram,
     compiler::stylesheet_preprocessing::StrictPreprocessingFailure,
 > {
-    use compiler::stylesheet_preprocessing::{
-        StylesheetCompilationContext, stylesheet_visibility_view,
-    };
+    use compiler::stylesheet_preprocessing::stylesheet_visibility_view;
     let root = compiler::document_element(document)?;
     let version = module_version(document, root)?;
     let children = meaningful_children(document, root);
@@ -74,7 +90,7 @@ fn lower_module_with_preprocessing(
     }
     require_probe_attribute_set(document, *template, "match")?;
     let view = stylesheet_visibility_view(document, root, preprocessing, control)?;
-    let mut program = compiler::compile_stylesheet_at_excluding_with_root_lowerer(
+    let mut program = compiler::compile_stylesheet_at_excluding_with_template_lowerer(
         &view,
         root,
         &[],
@@ -84,7 +100,7 @@ fn lower_module_with_preprocessing(
     compiler::finalize_attribute_sets(&mut program)?;
     compiler::finalize_character_maps(&mut program)?;
     compiler::validate_named_template_references(&program)?;
-    Ok(StylesheetCompilationContext::for_reference(preprocessing, true).qualify_module(program))
+    Ok(compilation_context(edition, preprocessing).qualify_module(program))
 }
 
 // Probe eligibility is not stylesheet compatibility validation: even attributes
@@ -110,7 +126,17 @@ fn require_probe_attribute_set(
 fn module_version(document: &Document, root: NodeId) -> Result<DeclaredVersion, CompileFailure> {
     compiler::require_stylesheet_root(document, root)?;
     require_probe_attribute_set(document, root, "version")?;
-    match compiler::required_attribute(document, root, None, "version")? {
+    probe_declared_version(
+        compiler::required_attribute(document, root, None, "version")?,
+        document.location(root),
+    )
+}
+
+fn probe_declared_version(
+    lexical: &str,
+    location: &SourceLocation,
+) -> Result<DeclaredVersion, CompileFailure> {
+    match lexical {
         "1.0" => Ok(DeclaredVersion::One),
         "2.0" => Ok(DeclaredVersion::Two),
         "3.0" => Ok(DeclaredVersion::Three),
@@ -118,7 +144,7 @@ fn module_version(document: &Document, root: NodeId) -> Result<DeclaredVersion, 
         _ => Err(unsupported(
             "FXAR0031",
             "version lexical form outside module probe",
-            document.location(root),
+            location,
         )),
     }
 }

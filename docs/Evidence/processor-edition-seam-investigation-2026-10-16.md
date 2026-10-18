@@ -8,6 +8,70 @@ Corpus: locally acquired OASIS XSLT/XPath Conformance Test Suite CD04; archive S
 
 ## Scope and evidence limits
 
+The original investigation below is historical. The following post-acceptance
+replay updates the observed baseline without changing engine behavior.
+
+### Post-acceptance corpus checkpoint — 2026-10-16
+
+After ADR-0025 acceptance, fresh release-mode full replays preserve modern
+2,501 exact / 14 mismatches and strict-preprocessing 2,498 exact / 17 mismatches,
+with 423 expected-error credits in each lane. Strict preprocessing still does
+not implement the accepted processor policy. All 3,173 cases remain accounted.
+
+The modern remainder beyond exact matches and expected-error credits reconciles
+as follows; categories are existing harness dispositions, not new exclusions:
+
+| Disposition | Cases |
+| --- | ---: |
+| Ordinary initialization failures | 83 |
+| Ordinary execution failures | 11 |
+| Output mismatches | 14 |
+| Unsupported XML comparator | 4 |
+| Non-XML comparison not credited | 6 |
+| Host parser policy exclusions | 24 |
+| Host collation policy exclusions | 5 |
+| Serialization layout policy exclusions | 18 |
+| XSLT 1.0 discretionary policy exclusions | 5 |
+| Legacy processor profile exclusion | 1 |
+| Unusable reference results | 70 |
+| Expected-error infrastructure exclusions | 3 |
+| Unusable error expectations | 5 |
+| **Total outside the two credit categories** | **249** |
+
+Thus `2501 + 423 + 249 = 3173`. This is a ledger reconciliation, not 92.15%
+conformance. The 94 ordinary phase failures include invalid inputs, missing
+dependencies and deliberate boundaries as well as implementable gaps. Neither
+94 nor 249 is a promised pass tranche. The output-exact percentage must not be
+extrapolated as if all 672 remaining entries wanted successful output.
+
+The fresh fallback trace reproduces initialization `FXST1006` at `xsl:foo` for
+all six ordinary version-2.0 cases (91818–91821, 91823–91824). The expected-error
+91822/91825 cases currently fail at the same unsupported boundary; their existing
+error credit does not prove edition-correct error phase. 91817 executes and
+91826 still rejects top-level fallback. Those controls must remain visible.
+
+Next implementation target: make explicit processor policy reach the actual
+compilation entry and shared sequence lowering for this family, with coherent
+preprocessing and qualified artifacts. Do not just widen the version interval
+or promote the limited reference callback. Start with 91818, then replay the
+full ten-case family and both baselines as integration gates permit. Six ordinary
+cases are a measured affected cluster, not a predicted gain or enough to reach
+80%. Local scope, error timing and introspection must remain coherent under
+ADR-0025; no public selector or production default change is implied.
+
+Reproduction (all completed successfully):
+
+```powershell
+./scripts/measure-oasis-xslt10.ps1 -TraceCase 'Fallback__' -TraceFrontier '/'
+./scripts/measure-oasis-xslt10.ps1
+./scripts/measure-oasis-xslt10.ps1 -PreprocessingProfile strict-xslt10
+```
+
+This checkpoint and contributor-guidance update change no Rust or upstream
+fixtures. No new corpus credit is claimed.
+
+### Original investigation scope
+
 This investigation reads the proposed review, handoff, unchanged catalog and
 stylesheets, implementation owners, and prior evidence. It does not run tests
 or a corpus replay. It changes no production behavior, fixture, AR/ADR, or

@@ -79,6 +79,7 @@ impl<'a> GlobalInitialization<'a> {
             || values.temporary_trees.contains_key(name)
             || values.empty_sequences.contains(name)
             || values.literal_documents.contains_key(name)
+            || values.retained_sources.contains_key(name)
     }
 
     fn resolve_index(
@@ -199,9 +200,45 @@ impl<'a> GlobalInitialization<'a> {
             constructor::execute(self, body, location, control)
         } else if let GlobalBindingDefault::Xslt10LiteralDocument(reference) = &binding.default {
             materialize_global_literal_document(reference, self.request_id, self.documents, control)
+        } else if let GlobalBindingDefault::Xslt10LiteralDocumentPath { reference, path } =
+            &binding.default
+        {
+            self.materialize_document_path(reference, path, control)
         } else {
             materialize_global_default(self, binding, self.source, self.request_id, control)
         }
+    }
+
+    fn materialize_document_path(
+        &self,
+        reference: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
+        path: &crate::xpath::path_experiment::LocationPath,
+        control: &mut InvocationControl,
+    ) -> Result<InitializedGlobal, ExecutionFailure> {
+        use super::super::{RetainedSourceSelection, SequenceInputs};
+        use crate::runtime::golden_runtime_experiment::{bound_variable_path, dynamic_document};
+        let empty = RuntimeGlobals::default();
+        let inputs = SequenceInputs {
+            initializing_globals: None,
+            program: self.program,
+            source: self.source,
+            request_id: self.request_id,
+            globals: &empty,
+            multiple_match_policy: self.documents.multiple_match_policy,
+            document_rooted_matches: RefCell::default(),
+            key_indexes: RefCell::default(),
+            complete_atomic_frame_clones: false,
+            resource_snapshot: self.documents.resource_snapshot,
+            denied_resources: self.documents.denied_resources,
+            dynamic_documents: self.documents.dynamic_documents,
+        };
+        let document = dynamic_document::prepare_document(&inputs, reference, control)?;
+        let (owner, nodes) =
+            bound_variable_path::select_document_path(&inputs, &document.document, path, control)?;
+        Ok(InitializedGlobal::RetainedSource(RetainedSourceSelection {
+            owner,
+            nodes,
+        }))
     }
 
     pub(in crate::runtime) fn validate_constructor_instruction(
@@ -370,7 +407,16 @@ impl GlobalInitializerReads for GlobalInitialization<'_> {
         {
             self.resolve_index(index, control)?;
         }
-        read(&self.completed.borrow(), control)
+        let completed = self.completed.borrow();
+        if completed.retained_sources.contains_key(name) {
+            return Err(failure(
+                "FXRT1004",
+                FailureCategory::Unsupported,
+                Some(self.request_id),
+                "secondary selected-node reads during global initialization are not yet admitted",
+            ));
+        }
+        read(&completed, control)
     }
 }
 

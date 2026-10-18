@@ -15,12 +15,38 @@ pub(super) fn compile_static_computed_element(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
+    compile_computed_element_with_body(document, element, &mut compile_sequence_excluding)
+}
+
+pub(super) fn compile_computed_element_with_body(
+    document: &Document,
+    element: NodeId,
+    lower_body: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &[NodeId],
+    ) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(
         document,
         element,
         &["name", "namespace", "use-attribute-sets"],
         "xsl:element",
     )?;
+    compile_computed_element_after_attribute_validation(document, element, lower_body)
+}
+
+// Edition-aware callers validate attributes before entering the shared
+// constructor. This does not alter ordinary compilation's attribute rules.
+pub(super) fn compile_computed_element_after_attribute_validation(
+    document: &Document,
+    element: NodeId,
+    lower_body: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &[NodeId],
+    ) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
     let name = required_attribute(document, element, None, "name")?;
     let namespace = optional_attribute(document, element, None, "namespace");
     let namespace_override = compile_dynamic_element_namespace(document, element, namespace)?;
@@ -29,7 +55,7 @@ pub(super) fn compile_static_computed_element(
             attribute_set_names,
             computed_attributes,
             body,
-        } = compile_computed_element_content(document, element)?;
+        } = compile_computed_element_content(document, element, lower_body)?;
         return Ok(Instruction::ContextNameElement {
             xslt10_compatibility: uses_xslt10_compatibility(document, element),
             namespace_override,
@@ -47,7 +73,7 @@ pub(super) fn compile_static_computed_element(
             attribute_set_names,
             computed_attributes,
             body,
-        } = compile_computed_element_content(document, element)?;
+        } = compile_computed_element_content(document, element, lower_body)?;
         return Ok(Instruction::DynamicNameElement {
             xslt10_compatibility: true,
             name,
@@ -64,7 +90,7 @@ pub(super) fn compile_static_computed_element(
             attribute_set_names,
             computed_attributes,
             body,
-        } = compile_computed_element_content(document, element)?;
+        } = compile_computed_element_content(document, element, lower_body)?;
         return Ok(Instruction::DynamicNameElement {
             xslt10_compatibility: uses_xslt10_compatibility(document, element),
             name: DynamicElementName::Literal(name.to_owned()),
@@ -95,7 +121,7 @@ pub(super) fn compile_static_computed_element(
         attributes: Vec::new(),
         attribute_set_names,
         computed_attributes,
-        body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
+        body: lower_body(document, element, &computed_attribute_nodes)?,
         location: document.location(element).clone(),
     })
 }
@@ -103,11 +129,16 @@ pub(super) fn compile_static_computed_element(
 fn compile_computed_element_content(
     document: &Document,
     element: NodeId,
+    lower_body: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &[NodeId],
+    ) -> Result<Vec<Instruction>, CompileFailure>,
 ) -> Result<ComputedElementContent, CompileFailure> {
     let (computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
     let attribute_set_names = compile_attribute_set_use_names(document, element, None)?;
-    let body = compile_sequence_excluding(document, element, &computed_attribute_nodes)?;
+    let body = lower_body(document, element, &computed_attribute_nodes)?;
     Ok(ComputedElementContent {
         attribute_set_names,
         computed_attributes,

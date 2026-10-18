@@ -77,6 +77,8 @@ mod bound_variable_path_compiler;
 mod computed_attribute_compiler;
 #[path = "instruction_compiler/computed_element_compiler.rs"]
 mod computed_element_compiler;
+#[path = "instruction_compiler/generated_source_identity_compiler.rs"]
+mod generated_source_identity_compiler;
 use computed_element_compiler::compile_static_computed_element;
 #[path = "instruction_compiler/namespace_focus_compiler.rs"]
 mod namespace_focus_compiler;
@@ -964,8 +966,9 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     let recover_unattached_attributes = uses_xslt10_compatibility(document, element);
     if crate::xpath::path_experiment::qualified_nodes::recognizes_namespace_axis(select) {
         return namespace_focus_compiler::compile_copy_of(
+            document,
+            element,
             select,
-            document.location(element),
             recover_unattached_attributes,
         );
     }
@@ -1313,14 +1316,9 @@ fn compile_copy_of_literal_document(
     }))
 }
 
-fn parse_literal_document_call(expression: &str) -> Option<(&str, Option<&str>, &str)> {
+pub(super) fn parse_literal_document_call(expression: &str) -> Option<(&str, Option<&str>, &str)> {
     let (argument, base, tail) = parse_document_call(expression)?;
-    let argument = argument.trim();
-    let quote = *argument.as_bytes().first()?;
-    if !matches!(quote, b'\'' | b'"') || argument.as_bytes().last() != Some(&quote) {
-        return None;
-    }
-    Some((&argument[1..argument.len() - 1], base, tail))
+    Some((xpath_string_literal(argument.trim())?, base, tail))
 }
 
 fn parse_document_call(expression: &str) -> Option<(&str, Option<&str>, &str)> {
@@ -1384,7 +1382,7 @@ fn compile_document_base_reference(
         .map_err(map_path_failure)
 }
 
-fn parse_copy_of_literal_document_path(
+pub(super) fn parse_copy_of_literal_document_path(
     document: &Document,
     element: NodeId,
     expression: &str,
@@ -2292,6 +2290,19 @@ pub(super) fn parse_template_modes(
 }
 
 fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    compile_value_of_with_expression_lowerer(document, element, &mut compile_value_expression)
+}
+
+fn compile_value_of_with_expression_lowerer(
+    document: &Document,
+    element: NodeId,
+    lower_expression: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &str,
+        &SourceLocation,
+    ) -> Result<ValueExpression, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(
         document,
         element,
@@ -2303,6 +2314,21 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         ],
         "xsl:value-of",
     )?;
+    compile_value_of_after_attribute_validation(document, element, lower_expression)
+}
+
+// Callers own edition-specific attribute validation; construction and expression
+// lowering remain shared. Ordinary compilation uses the validator above.
+fn compile_value_of_after_attribute_validation(
+    document: &Document,
+    element: NodeId,
+    lower_expression: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &str,
+        &SourceLocation,
+    ) -> Result<ValueExpression, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
     let disable_output_escaping =
         match optional_attribute(document, element, None, "disable-output-escaping") {
             None | Some("no") => false,
@@ -2325,7 +2351,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
-    let select = compile_value_expression(document, element, expression, &location)?;
+    let select = lower_expression(document, element, expression, &location)?;
     let separator = optional_attribute(document, element, None, "separator")
         .unwrap_or(" ")
         .to_owned();
@@ -2443,7 +2469,7 @@ fn compile_select_variable(
         });
     }
     if let Some(variable) =
-        compile_xslt10_literal_document_variable(document, element, &name, expression, &location)
+        compile_xslt10_literal_document_variable(document, element, &name, expression, &location)?
     {
         return Ok(variable);
     }
@@ -2477,22 +2503,32 @@ fn compile_xslt10_literal_document_variable(
     name: &str,
     expression: &str,
     location: &SourceLocation,
-) -> Option<Instruction> {
+) -> Result<Option<Instruction>, CompileFailure> {
     if !uses_xslt10_compatibility(document, element) {
-        return None;
+        return Ok(None);
     }
-    let (reference, None, "") = parse_literal_document_call(expression.trim())? else {
-        return None;
+    let Some((reference, None, tail)) = parse_literal_document_call(expression.trim()) else {
+        return Ok(None);
     };
-    Some(Instruction::Xslt10LiteralDocumentVariable {
+    let path = if tail.is_empty() {
+        None
+    } else if tail.starts_with('/') {
+        Some(parse_copy_of_literal_document_path(
+            document, element, tail,
+        )?)
+    } else {
+        return Ok(None);
+    };
+    Ok(Some(Instruction::Xslt10LiteralDocumentVariable {
         name: name.to_owned(),
         select: crate::xslt::golden_semantics_experiment::DocumentRootReference {
             base: location.resource.clone(),
             reference: reference.to_owned(),
             descendant_name: None,
         },
+        path,
         location: location.clone(),
-    })
+    }))
 }
 
 fn compile_xslt10_numeric_literal_variable(
@@ -2758,13 +2794,27 @@ fn compile_xslt10_text_tree_variable(
     name: &str,
     location: &SourceLocation,
 ) -> Result<Option<Instruction>, CompileFailure> {
-    if optional_attribute(document, element, None, "as").is_some()
-        || !uses_xslt10_compatibility(document, element)
-    {
+    compile_text_tree_variable_with_mode(
+        document,
+        element,
+        name,
+        location,
+        uses_xslt10_compatibility(document, element),
+    )
+}
+
+fn compile_text_tree_variable_with_mode(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    location: &SourceLocation,
+    xslt10: bool,
+) -> Result<Option<Instruction>, CompileFailure> {
+    if optional_attribute(document, element, None, "as").is_some() || !xslt10 {
         return Ok(None);
     }
     Ok(
-        compile_xslt10_static_text_tree(document, element)?.map(|value| {
+        compile_static_text_tree_with_mode(document, element, xslt10)?.map(|value| {
             Instruction::Xslt10TextTreeVariable {
                 name: name.to_owned(),
                 value,
@@ -2778,7 +2828,19 @@ pub(super) fn compile_xslt10_static_text_tree(
     document: &Document,
     element: NodeId,
 ) -> Result<Option<String>, CompileFailure> {
-    if !uses_xslt10_compatibility(document, element) {
+    compile_static_text_tree_with_mode(
+        document,
+        element,
+        uses_xslt10_compatibility(document, element),
+    )
+}
+
+fn compile_static_text_tree_with_mode(
+    document: &Document,
+    element: NodeId,
+    xslt10: bool,
+) -> Result<Option<String>, CompileFailure> {
+    if !xslt10 {
         return Ok(None);
     }
     let children = super::stylesheet_preprocessing::constructor_children(document, element)?;

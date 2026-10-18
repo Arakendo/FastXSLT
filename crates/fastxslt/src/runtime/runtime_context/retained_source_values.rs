@@ -62,6 +62,9 @@ impl RuntimeVariables {
         if !self.allows_global_fallback(name) {
             return None;
         }
+        if let Some(value) = globals.retained_sources.get(name) {
+            return Some((&value.owner, &value.nodes));
+        }
         Some((globals.principal_owner.as_ref()?, globals.nodes.get(name)?))
     }
 

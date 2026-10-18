@@ -87,14 +87,14 @@ impl CompiledModule {
             .into());
         }
         let view = stylesheet_visibility_view(principal, root, expected.preprocessing, control)?;
-        let context = StylesheetCompilationContext::for_reference(expected.preprocessing, true);
+        let context = compilation_context(expected.edition, expected.preprocessing);
         let program = if is_import {
             compiler::stylesheet_module_compiler::compile_stylesheet_with_single_imported_program_at_in_context(
                 &view, root, self.program, context,
             )?
         } else {
             compiler::stylesheet_module_compiler::compile_stylesheet_with_included_programs_at_in_context(
-            &view, root, vec![self.program], StylesheetCompilationContext::for_reference(expected.preprocessing, true),
+            &view, root, vec![self.program], context,
             )?
         };
         let mut module_identities = self.module_identities;

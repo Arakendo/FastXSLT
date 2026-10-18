@@ -31,6 +31,22 @@ fn generated_identity_selection_owned(
     }
 }
 
+fn generated_source_identity_owned(value: &super::GeneratedSourceIdentity) -> usize {
+    use super::GeneratedSourceSelection as Selection;
+    size_of_val(value)
+        + location_owned(&value.location)
+        + match &value.selection {
+            Selection::Path(path) => path.known_owned_capacity_bytes(),
+            Selection::Variable(name) => name.capacity(),
+            Selection::LiteralDocument { reference, path } => {
+                document_root_reference_owned(reference) + path.known_owned_capacity_bytes()
+            }
+            Selection::ReferencedDocuments { references, path } => {
+                path_pair_owned(references, path)
+            }
+        }
+}
+
 impl StylesheetProgram {
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
         self.declared_version.capacity()
@@ -247,6 +263,9 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             | GlobalBindingDefault::Xslt10ForEachText(path) => path.known_owned_capacity_bytes(),
             GlobalBindingDefault::Xslt10LiteralDocument(reference) => {
                 document_root_reference_owned(reference)
+            }
+            GlobalBindingDefault::Xslt10LiteralDocumentPath { reference, path } => {
+                document_root_reference_owned(reference) + path.known_owned_capacity_bytes()
             }
             GlobalBindingDefault::TemporaryTree(nodes) => vec_owned(nodes, constructed_node_owned),
             GlobalBindingDefault::TemporaryText(value)
@@ -766,8 +785,16 @@ fn instruction_owned(value: &Instruction) -> usize {
         Instruction::Xslt10LiteralDocumentVariable {
             name,
             select,
+            path,
             location,
-        } => name.capacity() + document_root_reference_owned(select) + location_owned(location),
+        } => {
+            name.capacity()
+                + document_root_reference_owned(select)
+                + path
+                    .as_ref()
+                    .map_or(0, LocationPath::known_owned_capacity_bytes)
+                + location_owned(location)
+        }
         instruction @ (Instruction::SourceNodeVariable { .. }
         | Instruction::Xslt10SourceNodesAttributeEqualsCurrentName { .. }
         | Instruction::SourceVariablePathVariable { .. }
@@ -1730,6 +1757,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
             variable,
             descendant_local,
         } => variable.capacity() + descendant_local.as_ref().map_or(0, String::capacity),
+        ValueExpression::GeneratedSourceIdentity(value) => generated_source_identity_owned(value),
         ValueExpression::GeneratedDocumentRootIdentity(reference) => {
             document_root_reference_owned(reference)
         }
@@ -1827,6 +1855,7 @@ fn sequence_item_owned(value: &SequenceItemExpression) -> usize {
 
 fn boolean_expression_owned(value: &BooleanExpression) -> usize {
     match value {
+        BooleanExpression::GeneratedSourceIdentityComparison { left, right, .. } => generated_source_identity_owned(left) + generated_source_identity_owned(right),
         BooleanExpression::Xslt10PathStringPredicate(value) => size_of_val(value.as_ref()) + path_string_function_owned(value),
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
         BooleanExpression::VariableEqualsEmptySequence(variable)
@@ -2317,6 +2346,14 @@ fn xslt10_concat_owned(
     expression: &crate::xslt::golden_semantics_experiment::Xslt10ConcatExpression,
 ) -> usize {
     vec_owned(&expression.parts, |part| match part {
+        Xslt10ConcatPart::CurrentVariableLookup(value) => {
+            size_of_val(value.as_ref())
+                + value.variable.capacity()
+                + value.candidates.known_owned_capacity_bytes()
+                + value.candidate_attribute.known_owned_capacity_bytes()
+                + value.outer_attribute.known_owned_capacity_bytes()
+                + value.result_attribute.known_owned_capacity_bytes()
+        }
         Xslt10ConcatPart::Literal(value) | Xslt10ConcatPart::Variable(value) => value.capacity(),
         Xslt10ConcatPart::VariablePosition {
             variable,

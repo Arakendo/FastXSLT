@@ -88,6 +88,9 @@ pub(super) fn completed_global_boolean(
     if let Some(nodes) = globals.nodes.get(name) {
         return Ok(Some(!nodes.is_empty()));
     }
+    if let Some(selection) = globals.retained_sources.get(name) {
+        return Ok(Some(!selection.nodes.is_empty()));
+    }
     if globals.temporary_trees.contains_key(name) {
         return Ok(Some(true));
     }
@@ -116,6 +119,7 @@ pub(super) struct RuntimeGlobals {
     pub(super) nodes: BTreeMap<String, Vec<NodeId>>,
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
     pub(super) literal_documents: BTreeMap<String, DynamicDocument>,
+    retained_sources: BTreeMap<String, RetainedSourceSelection>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -906,6 +910,29 @@ pub(super) fn source_node_identity(node: NodeId) -> String {
     format!("fastxsltPrincipalN{}", node.index())
 }
 
+/// Format an ordinary node using its document origin, never its URI or address.
+/// Dynamic root spelling agrees with the existing document-root consumer.
+pub(super) fn source_node_identity_in_context(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    node: NodeId,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    for dynamic in inputs.dynamic_documents.borrow().values() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|error| control_failure(error, inputs.request_id))?;
+        if source.same_origin(&dynamic.document) {
+            return Ok(if node == source.document_node() {
+                format!("d{}", dynamic.identity)
+            } else {
+                format!("fastxsltDocument{}N{}", dynamic.identity, node.index())
+            });
+        }
+    }
+    Ok(source_node_identity(node))
+}
+
 pub(super) fn ensure_principal_identity_context(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
@@ -947,6 +974,19 @@ pub(super) fn source_node_identity_for_path(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Option<String>, ExecutionFailure> {
+    Ok(
+        source_node_for_identity_path(source, context, path, request_id, control)?
+            .map(source_node_identity),
+    )
+}
+
+pub(super) fn source_node_for_identity_path(
+    source: &Document,
+    context: NodeId,
+    path: &crate::xpath::path_experiment::LocationPath,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Option<NodeId>, ExecutionFailure> {
     let nodes = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, request_id))?;
     if nodes.len() > 1 {
@@ -957,7 +997,7 @@ pub(super) fn source_node_identity_for_path(
             "generate-id() requires a zero-or-one node argument",
         ));
     }
-    Ok(nodes.first().copied().map(source_node_identity))
+    Ok(nodes.first().copied())
 }
 
 pub(super) fn source_node_identities_equal(

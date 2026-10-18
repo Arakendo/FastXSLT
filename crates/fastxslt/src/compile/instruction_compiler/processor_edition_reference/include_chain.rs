@@ -69,7 +69,7 @@ fn lower_chain_at(
     // No principal instructions can enter the production lowerer: preflight
     // admits only the include declaration. Existing composition owns the merge.
     Ok(compiler::stylesheet_module_compiler::compile_stylesheet_with_included_programs_at_in_context(
-        &view, root, vec![included], StylesheetCompilationContext::for_reference(preprocessing, true),
+        &view, root, vec![included], compilation_context(edition, preprocessing),
     )?)
 }
 

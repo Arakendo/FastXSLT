@@ -1982,8 +1982,8 @@ fn execute_binding(
             let selected = key_lookup::select(inputs, select, execution.node, scope, control)?;
             scope.bind_source_nodes(name.clone(), selected);
         }
-        Instruction::Xslt10LiteralDocumentVariable { name, select, .. } => {
-            bind_literal_document_variable(inputs, name, select, scope, control)?;
+        instruction @ Instruction::Xslt10LiteralDocumentVariable { .. } => {
+            bind_literal_document_variable(inputs, instruction, scope, control)?;
         }
         Instruction::SourceNodeVariable { name, select, .. } => {
             bind_source_node_variable(inputs, execution, name, select, scope, control)?;
@@ -2034,12 +2034,23 @@ fn execute_binding(
 
 fn bind_literal_document_variable(
     inputs: &SequenceInputs<'_>,
-    name: &str,
-    select: &DocumentRootReference,
+    instruction: &Instruction,
     scope: &mut RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let Instruction::Xslt10LiteralDocumentVariable {
+        name, select, path, ..
+    } = instruction
+    else {
+        unreachable!("literal document binder receives a literal document binding")
+    };
     let document = dynamic_document::prepare_document(inputs, select, control)?;
+    if let Some(path) = path {
+        let (owner, nodes) =
+            bound_variable_path::select_document_path(inputs, &document.document, path, control)?;
+        scope.bind_retained_source_nodes(name.to_owned(), owner, nodes);
+        return Ok(());
+    }
     scope.bind_literal_document(name.to_owned(), document);
     Ok(())
 }
@@ -4387,6 +4398,11 @@ fn evaluate_ordinary_boolean(
 ) -> Result<bool, ExecutionFailure> {
     let context = node_focus.node;
     match expression {
+        BooleanExpression::GeneratedSourceIdentityComparison { left, right, equal } => {
+            value_evaluator::generated_identity_evaluator::compare(
+                inputs, context, left, right, *equal, variables, control,
+            )
+        }
         BooleanExpression::Constant(value) => Ok(*value),
         BooleanExpression::Xslt10PathStringPredicate(expression) => {
             boolean_focus::path_string_predicate(inputs, node_focus, expression, control)
@@ -5534,7 +5550,8 @@ fn evaluate_root_identity_equals_variable(
             format!("unbound variable: ${variable}"),
         )
     })?;
-    Ok(expected.lexical() == runtime_context::source_node_identity(root))
+    Ok(expected.lexical()
+        == runtime_context::source_node_identity_in_context(inputs, source, root, control)?)
 }
 
 fn execute_variable_binding(
@@ -6140,6 +6157,26 @@ fn select_xslt10_variable_node_set_comparison(
         .expect("node-set comparison selection requires a source");
     let candidates = evaluate_location_path_controlled(source, context, selection, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if let Some(tree) = variables.temporary_tree(inputs.globals, variable) {
+        let value = runtime_context::temporary_tree_string_value(tree, inputs.request_id, control)?;
+        let mut selected = Vec::new();
+        for candidate in candidates {
+            let compared =
+                evaluate_location_path_controlled(source, candidate, comparison, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            if value_evaluator::source_string_comparison(
+                source,
+                &compared,
+                &value,
+                true,
+                inputs.request_id,
+                control,
+            )? {
+                selected.push(candidate);
+            }
+        }
+        return Ok(selected);
+    }
     let variable_nodes = variables
         .source_nodes_in_context(inputs, variable)?
         .ok_or_else(|| {

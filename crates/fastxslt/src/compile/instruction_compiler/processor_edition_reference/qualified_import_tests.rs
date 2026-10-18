@@ -3,6 +3,78 @@ use super::*;
 use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_for_test;
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
+#[test]
+fn processor_edition_reference_shared_linker_preserves_or_rejects_processor_stamp() {
+    use crate::xslt::golden_semantics_experiment::ProcessorPolicyStamp;
+    // Deliberately bypass CompiledModule: the real program/linker must retain
+    // qualification after the experiment's outer wrapper has been removed.
+    let leaf = module(
+        "urn:leaf",
+        "2.0",
+        r#"<xsl:template match="/"><xsl:text>ok</xsl:text></xsl:template>"#,
+    );
+    let preprocessing = StylesheetPreprocessingProfile::Modern;
+    for edge in ["include", "import"] {
+        let principal = module(
+            "urn:principal",
+            "2.0",
+            &format!(r#"<xsl:{edge} href="urn:leaf"/>"#),
+        );
+        let root = compiler::document_element(&principal).unwrap();
+        let location = principal.location(meaningful_children(&principal, root)[0]);
+        for caller in [None, Some(Edition::Legacy), Some(Edition::Modern)] {
+            for owner in [None, Some(Edition::Legacy), Some(Edition::Modern)] {
+                let context = caller.map_or_else(
+                    || StylesheetCompilationContext::for_reference(preprocessing, true),
+                    |edition| compilation_context(edition, preprocessing),
+                );
+                let dependency = match owner {
+                    Some(edition) => lower_module_with_preprocessing(
+                        &leaf,
+                        edition,
+                        preprocessing,
+                        &mut InvocationControl::unbounded(),
+                    )
+                    .unwrap(),
+                    None => StylesheetCompilationContext::for_reference(preprocessing, true)
+                        .qualify_module(compiler::compile_stylesheet(&leaf).unwrap()),
+                };
+                let retained_stamp = dependency.processor;
+                let linked = if edge == "include" {
+                    compiler::stylesheet_module_compiler::compile_stylesheet_with_included_programs_at_in_context(
+                        &principal, root, vec![dependency], context,
+                    )
+                } else {
+                    compiler::stylesheet_module_compiler::compile_stylesheet_with_single_imported_program_at_in_context(
+                        &principal, root, dependency, context,
+                    )
+                };
+                if caller == owner {
+                    let program = linked.unwrap();
+                    assert_eq!(program.processor, retained_stamp);
+                    if caller.is_none() {
+                        assert_eq!(
+                            program.processor,
+                            ProcessorPolicyStamp::DeclarationDrivenBaseline
+                        );
+                    }
+                    assert!(
+                        execute_compiled_stylesheet_for_test(&program, &principal, "qualified")
+                            .unwrap()
+                            .ends_with("ok")
+                    );
+                } else {
+                    let failure = linked.unwrap_err();
+                    assert_eq!(failure.code, "FXST1058");
+                    assert_eq!(failure.category, CompileCategory::Unsupported);
+                    assert_eq!(failure.location, *location);
+                    assert!(failure.detail.contains("processor policy"));
+                }
+            }
+        }
+    }
+}
+
 fn module(identity: &str, version: &str, body: &str) -> Document {
     let xml = format!(
         r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="{version}">{body}</xsl:stylesheet>"#
@@ -105,7 +177,7 @@ fn processor_edition_reference_single_import_matches_existing_composition() {
             stylesheet_visibility_view(&principal, root, preprocessing, &mut reference_control)
                 .unwrap();
         let reference = compiler::stylesheet_module_compiler::compile_stylesheet_with_single_imported_program_at_in_context(
-            &view, root, dependency, StylesheetCompilationContext::for_reference(preprocessing, true),
+            &view, root, dependency, compilation_context(edition, preprocessing),
         ).unwrap();
         assert_eq!(actual.program, reference);
         assert_eq!(

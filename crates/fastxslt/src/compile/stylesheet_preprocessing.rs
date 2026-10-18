@@ -8,7 +8,9 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, is_xml_whitespace_only};
 
 use super::{CompileFailure, invalid, optional_attribute};
-use crate::xslt::golden_semantics_experiment::{StylesheetPreprocessingStamp, StylesheetProgram};
+use crate::xslt::golden_semantics_experiment::{
+    ProcessorPolicyStamp, StylesheetPreprocessingStamp, StylesheetProgram,
+};
 
 #[cfg(test)]
 #[path = "stylesheet_preprocessing/canonical_content.rs"]
@@ -21,15 +23,23 @@ pub(crate) enum StylesheetPreprocessingProfile {
     StrictXslt10,
 }
 
-/// Compiler-owned provenance for modules in one already-preprocessed graph.
-/// This token does not apply whitespace rules, validate a view, infer a version,
-/// or authorize resource access. The graph owner supplies effective documents.
+/// Compiler-owned qualification for modules in one already-preprocessed graph.
+/// Processor and preprocessing stamps are independent fields, not inferred from
+/// one another. This token does not implement either policy, validate a view,
+/// infer a declared version or authorize resource access. The graph owner
+/// supplies effective documents and the compiler must apply its selected policy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct StylesheetCompilationContext(StylesheetPreprocessingStamp);
+pub(crate) struct StylesheetCompilationContext {
+    preprocessing: StylesheetPreprocessingStamp,
+    processor: ProcessorPolicyStamp,
+}
 
 impl StylesheetCompilationContext {
     pub(crate) const fn baseline() -> Self {
-        Self(StylesheetPreprocessingStamp::ModernBaseline)
+        Self {
+            preprocessing: StylesheetPreprocessingStamp::ModernBaseline,
+            processor: ProcessorPolicyStamp::DeclarationDrivenBaseline,
+        }
     }
 
     #[cfg(test)]
@@ -37,19 +47,38 @@ impl StylesheetCompilationContext {
         profile: StylesheetPreprocessingProfile,
         modern_reference: bool,
     ) -> Self {
-        match profile {
+        let preprocessing = match profile {
             StylesheetPreprocessingProfile::StrictXslt10 => {
-                Self(StylesheetPreprocessingStamp::StrictXslt10Reference)
+                StylesheetPreprocessingStamp::StrictXslt10Reference
             }
             StylesheetPreprocessingProfile::Modern if modern_reference => {
-                Self(StylesheetPreprocessingStamp::ModernReference)
+                StylesheetPreprocessingStamp::ModernReference
             }
-            StylesheetPreprocessingProfile::Modern => Self::baseline(),
+            StylesheetPreprocessingProfile::Modern => StylesheetPreprocessingStamp::ModernBaseline,
+        };
+        Self {
+            preprocessing,
+            ..Self::baseline()
         }
     }
 
+    /// Only a compiler that actually applies the selected reference policy may
+    /// use this context. This is not a public relabel operation on artifacts.
+    #[cfg(test)]
+    pub(crate) const fn with_processor_reference(
+        mut self,
+        processor: ProcessorPolicyStamp,
+    ) -> Self {
+        self.processor = processor;
+        self
+    }
+
+    /// Finish a newly compiled module under the caller's actual context. Do not
+    /// use this on an imported reusable artifact: composition checks its retained
+    /// qualification without rewriting it.
     pub(crate) fn qualify_module(self, mut program: StylesheetProgram) -> StylesheetProgram {
-        program.preprocessing = self.0;
+        program.preprocessing = self.preprocessing;
+        program.processor = self.processor;
         program
     }
 }

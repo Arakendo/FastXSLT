@@ -128,11 +128,8 @@ fn processor_edition_reference_module_matches_shared_program_and_preprocessing()
             &mut InvocationControl::unbounded(),
         )
         .unwrap();
-        let expected = stylesheet_preprocessing::StylesheetCompilationContext::for_reference(
-            preprocessing,
-            true,
-        )
-        .qualify_module(compile_stylesheet(&view).unwrap());
+        let expected = compilation_context(edition, preprocessing)
+            .qualify_module(compile_stylesheet(&view).unwrap());
         let actual = lower_module(&document, edition, &mut InvocationControl::unbounded()).unwrap();
         assert_eq!(actual, expected);
         assert_eq!(

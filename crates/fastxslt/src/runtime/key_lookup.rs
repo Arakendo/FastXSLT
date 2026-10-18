@@ -668,7 +668,8 @@ fn evaluate_key_concat(
             | Xslt10ConcatPart::QualifiedGeneratedIdentity(_)
             | Xslt10ConcatPart::PathSubstring(_)
             | Xslt10ConcatPart::ComposedString(_)
-            | Xslt10ConcatPart::SumPath(_) => {
+            | Xslt10ConcatPart::SumPath(_)
+            | Xslt10ConcatPart::CurrentVariableLookup(_) => {
                 unreachable!("key concat compiler admits only literal and path parts")
             }
         }

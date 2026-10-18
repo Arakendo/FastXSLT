@@ -662,3 +662,269 @@ formatting, Clippy, documentation, Markdown links and conformance checks.
 The official `wasm32-unknown-unknown` adapter build check and `git diff --check`
 also pass. No OASIS replay or new conformance credit is claimed; this tranche
 changes the test-only reference and records the decision checkpoint.
+
+## ADR-0025 integration: shared artifact qualification
+
+The first integration slice closes a prerequisite found while tracing `91818`:
+processor identity previously survived only in the experiment's outer wrapper.
+The shared `StylesheetProgram` retained preprocessing but no processor stamp,
+so removing the wrapper lost a required qualification dimension.
+
+The shared artifact now retains independent processor and preprocessing stamps.
+Ordinary and simplified production compilation explicitly use
+`DeclarationDrivenBaseline`; they are not falsely labeled as complete modern
+or strict processor-policy implementations. Selected processor-reference stamps
+remain test-only. The existing compilation context carries the independent
+fields; it does not infer processor choice from preprocessing or declarations.
+
+Shared include/import composition rejects incompatible processor stamps with
+`FXST1058` at the dependency declaration, independently of its existing
+preprocessing check. Imported artifacts retain their qualification; the context's
+completion helper is for newly compiled modules, not relabeling reusable input.
+This is not complete policy propagation through instruction compilation.
+
+One regression bypasses the candidate `CompiledModule` wrapper entirely and
+passes ordinary shared programs into the include/import linkers. It holds
+preprocessing constant and tests baseline, legacy-reference and modern-reference
+compatibility, exact rejection provenance, same-policy retention and execution.
+The existing preprocessing rejection test now holds processor identity constant,
+so neither dimension can conceal a missing check in the other.
+
+ADR-0004: this adds a scalar qualification dimension to existing artifact,
+context and composition owners; no new registry, cache, compiler traversal or
+module family is introduced. It does not promote the bounded reference, change
+production defaults or alter XML acquisition authority.
+
+Next: carry the selected policy into real declaration/sequence compilation for
+the unchanged fallback family, starting with `91818`. This prerequisite earns
+no corpus case; do not add more wrapper experiments instead of that integration.
+
+Validation: full `scripts/verify.ps1`, official WASM check, formatting, Markdown
+links and diff checks pass. The added shared-linker regression joins the existing
+50 reference probes. Fresh release replays retain modern 2,501 exact / 14
+mismatches and strict-preprocessing 2,498 exact / 17 mismatches, with 423
+expected-error credits each and the unchanged 3,173 denominator.
+
+Concrete next call-path constraint: `91818` uses a matched `title` template and
+an empty `text()` template, not the reference's sole direct-root template.
+Policy must therefore reach matched-template body lowering and nested fallback
+`value-of`/literal-result compilation; extending the root-only callback cannot
+complete this case. Its original stylesheet remains unchanged in the workbench.
+
+## ADR-0025 integration: matched-template fallback consumer
+
+The shared declaration compiler now propagates its template-lowering callback
+through ordinary matched rules, root rules and union alternatives, rather than
+only the direct-root fast path. Baseline callers supply the same existing
+template compiler. Named-template bodies/defaults are not yet policy-integrated;
+the private integration entry explicitly refuses them, globals and module edges.
+
+The private integration lane lowers matched bodies through the existing sequence,
+fallback, value-of, literal-result and runtime owners. It retains qualification
+from the preceding slice. Local-version controls, attribute expressions,
+computed constructors, general expressions and complex match patterns remain
+guarded. The supported test entry is still not a production processor profile.
+
+This exposed another real seam: value-of conversion previously derived its mode
+from the declared version. Shared expression compilation now has an explicit
+conversion-mode entry; baseline callers retain ancestry-derived behavior, while
+the integration lane supplies the selected processor's mode for its admitted
+`text()` expression. A split-text source proves the 1.0 lane uses the first text
+node rather than silently applying modern multi-node value-of conversion.
+General expression compatibility/introspection remains open.
+
+The original `Microsoft/Fallback__91818#1` stylesheet, source and expected output
+now compare successfully in a manual private integration replay. A first raw-
+string assertion reported the equivalent `<br></br>` versus `<br />` serialization
+and terminal newline. The final assertion uses the existing OASIS XML comparator
+matching the catalog's `compare="XML"`; neither fixture nor serializer changed.
+The comparator is shared crate-internally only in tests. This is **not** a new
+baseline corpus credit: ordinary modern and strict-preprocessing entry points
+have not selected processor policy.
+
+Three normal regressions cover actual matched dispatch, split-text conversion,
+unsupported propagation routes, union routing, preprocessing cancellation and
+fresh reuse. The unchanged corpus replay is an ignored test requiring the
+separately acquired suite:
+
+```powershell
+$env:FASTXSLT_OASIS_XSLT10_ROOT = 'F:\LocalSource\FastXSLT\.workbench\oasis-xslt10\extracted-full\testsuite\TESTS'
+cargo test -p fastxslt --all-features processor_policy_ -- --include-ignored --nocapture
+```
+
+Next consumer is `91819`: its match predicate, `title/text()` operand and
+`xsl:element` body must receive the same policy before the sibling case can be
+admitted. Do not remove the guards merely because `91818` now compares. No
+additional architectural decision is requested by this slice.
+
+Validation: all four `processor_policy_` tests pass when the manual corpus test
+is explicitly included. Full verification passes with 2,030 core tests and 64
+ignored, native 22, WASM adapter 4 and worker 18. A final Clippy rerun, official
+WASM build check, Markdown links and diff checks also pass. Fresh full release
+replays conserve modern 2,501 / 14 mismatches and strict-preprocessing 2,498 /
+17 mismatches, with 423 expected-error credits each. The separate successful
+`91818` integration replay is not added to those baseline numerators.
+
+## Computed-content and predicate integration — 2026-10-17
+
+The next named consumer, `91819`, now passes its unchanged XML comparison in
+the private legacy-processor/strict-preprocessing lane. Shared pattern lowering
+admits its attribute-literal predicate; explicit value conversion admits simple
+child paths; the existing computed-element compiler accepts a body-lowering
+callback. Baseline callers supply the original sequence compiler. No separate
+constructor or runtime was added, and dynamic names, namespace overrides and
+computed attributes remain guarded in the policy lane.
+
+A focused authored regression combines matching/nonmatching attributes, nested
+fallback inside a computed element, multiple fallback order, and multiple text
+nodes under a child path. It verifies first-node 1.0 conversion and rejects the
+same unknown instruction in the modern lane. Guard tests include dynamic names,
+namespace overrides, computed attributes, introspection in computed content and
+modern document-node pattern syntax. Computed eligibility is a separate helper
+after Clippy identified sequence-dispatch size pressure.
+
+All five focused tests pass, including the manual replay of original `91818`,
+`91819`, `91820`, `91823` and `91824`. The latter siblings need no additional
+lowering. These are private integration observations, not five baseline credits.
+The next concrete blocker is `91821`: lexical variable construction before the
+unknown instruction and a variable read inside fallback. General expression
+error timing, local-version scope and profile promotion remain separate gates.
+
+Validation: `scripts/verify.ps1` passes (2,031 core tests, 64 ignored; native
+22, WASM adapter 4, worker 18), as does the official WASM target check. Fresh
+full release replays retain modern 2,501/3,173 exact with 14 mismatches and
+strict-preprocessing 2,498/3,173 with 17 mismatches; each retains 423 separate
+expected-error credits. No production default or corpus numerator changed.
+
+## Local text-variable integration — 2026-10-17
+
+`91821` now passes unchanged in the private legacy-processor/strict-preprocessing
+lane. The shared static text-tree compiler has an explicit compatibility-mode
+entry; baseline callers retain declaration-derived behavior. The integration
+lane selects legacy text-tree construction, carries lexical bindings through
+fallback/literal/computed bodies, and uses the existing legacy variable-string
+conversion. It does not reinterpret the variable as a modern atomic string or
+introduce another runtime.
+
+The slice admits only text-content locals and bound simple variable reads.
+Select-based and dynamic content variables, unbound reads, general expression
+error timing and local-version changes remain guarded. Regressions exercise
+multiple text pieces, nested reads, sibling fallback isolation, non-leakage from
+child constructors, duplicate bindings, repeated matched invocations and compiled
+reuse. All seven focused tests pass, including the six original ordinary family
+cases (`91818`–`91821`, `91823`, `91824`). No baseline corpus credit is added.
+
+Next boundary: standalone fallback (`91817`), then independently classify
+unbound reads (`91822`), reached missing fallback (`91825`) and invalid top-level
+placement (`91826`). Guard rejection is not an expected-error conformance credit.
+
+Validation: full repository verification passes with 2,033 core tests (64
+ignored), native 22, WASM adapter 4 and worker 18. The extended manual test
+classifies all ten family members: six XML comparisons pass, four remain
+Unsupported. Final focused tests, Clippy and official WASM check pass. Fresh
+full release replays conserve modern 2,501 exact / 14 mismatches and strict
+preprocessing 2,498 exact / 17 mismatches out of 3,173, with 423 separate
+expected-error credits in each lane. Production profile selection is unchanged.
+
+## Standalone fallback and missing-child timing — 2026-10-17
+
+The private legacy policy lane now implements ordinary, attribute-free
+`xsl:fallback` as a no-op. Parent-driven fallback continues through the existing
+shared fallback-content lowerer. This follows
+[XSLT 1.0 section 15](https://www.w3.org/TR/1999/REC-xslt-19991116#fallback)
+and does not widen attribute or local-version handling. Tests pin no output and
+no lexical binding from standalone fallback content under declared 1.0 and 2.0.
+
+Original `91817` now compares with its unchanged expectation, so all seven
+ordinary family cases compare in the private lane. Removing that guard also
+lets original `91825` reach the existing missing-fallback failure: a sibling
+fallback is not a child fallback. Compilation succeeds; execution reports the
+existing `XTDE1450` diagnostic with stylesheet provenance. This reused code is
+not claimed to be an XSLT 1.0 standardized error QName. A focused regression
+checks that an unselected matched rule does not fail, reaching it does fail,
+and reuse with an unselected source remains successful afterward.
+
+Family classification is now seven unchanged XML comparisons, one reached
+execution failure, and two explicitly unsupported integration shapes (`91822`
+unbound read, `91826` top-level placement). These observations do not add to
+either baseline numerator or authorize general expression error deferral.
+
+Validation: nine focused tests (including the manual family replay) pass.
+Full verification passes: 2,035 core tests, 64 ignored; native 22, WASM adapter
+4, worker 18; Clippy, docs, Markdown links and conformance checks pass. The
+official WASM build check passes. Fresh full release replays retain modern
+2,501/3,173 exact (14 mismatches), strict preprocessing 2,498/3,173 exact
+(17 mismatches), and 423 separate expected-error credits per lane.
+
+## Unbound reads and top-level placement — 2026-10-17
+
+The last two guarded family members now have explicit invalid-input outcomes.
+`91822` fails compilation on the unbound simple variable reference with
+`XPST0008`; `91826` fails compilation on the invalid top-level fallback with
+`FXST1002`. Both retain original resource/span provenance. These codes are
+implementation diagnostics, not claims that XSLT 1.0 defines error QNames.
+
+[XPath 1.0 section 3.1](https://www.w3.org/TR/1999/REC-xpath-19991116/#section-Basics)
+defines an unbound variable reference as an error.
+[XSLT 1.0 section 2.5](https://www.w3.org/TR/1999/REC-xslt-19991116#forwards)
+requires deferral for specified expression grammar and function errors, not
+blanket deferral of every compilation error. This slice diagnoses simple unbound
+names statically because its complete visible binding set is known: globals,
+parameters and module graphs remain excluded. It does not prescribe all 1.0
+processors' error phases or establish general expression timing.
+
+Top-level fallback is rejected under the legacy processor's declared 1.0
+context. A declared 2.0 control excludes that top-level node and its content
+before shared module lowering, as required by forward-compatible processing.
+The modern top-level route remains guarded; this is not a new production default.
+
+Eleven focused tests pass, including all ten unchanged corpus-family members:
+seven XML comparisons, one reached execution failure, two compilation failures.
+The catalog labels the last three as execution-error cases; this evidence keeps
+actual phase separate rather than claiming exact phase parity from a coarse
+expected-error credit. Tests pin earlier/sibling/child scope failures, unbound
+reads in unselected templates, and ignored future-version top-level content.
+Next integration gate is local-version scope under one graph processor policy;
+general expression deferral and public/profile promotion remain unearned.
+
+Validation: full verification passes (2,037 core tests, 64 ignored; native 22,
+WASM adapter 4, worker 18), including Clippy, docs, links and conformance checks.
+The official WASM target check passes. Fresh full release baselines remain
+modern 2,501/3,173 exact with 14 mismatches, strict preprocessing 2,498/3,173
+with 17 mismatches, and 423 separate expected-error credits each. No private
+family observation is added to these counts.
+
+## Legacy literal-result local-version scope — 2026-10-17
+
+The matched integration lane now interprets `xsl:version` on literal-result
+elements under the selected legacy processor. Scope is passed by value into
+recursive body compilation: local 1.0 disables forward-compatible processing,
+local 2.0 re-enables it, and leaving a subtree restores its parent's context.
+This follows [XSLT 1.0 section 2.5](https://www.w3.org/TR/1999/REC-xslt-19991116#forwards).
+Processor qualification, preprocessing selection and legacy value conversion
+remain unchanged. Shared literal-result construction consumes the control
+attribute without serializing it as a result attribute.
+
+The existing bounded version-witness parser is reused for module and local
+contexts. This does not yet admit arbitrary numeric spellings, local version
+attributes on XSLT instructions, or modern local-version semantics; those
+routes remain guarded. Attribute expressions and other literal control
+attributes are not widened by this change.
+
+Regressions pin root-1.0/local-2.0 enablement, root-2.0/local-1.0 disablement,
+nested re-enablement, restoration to strict and future siblings, modern-policy
+refusal, and a known-newer `xsl:sequence` remaining unknown to the selected 1.0
+processor. A split-text operand still uses first-node 1.0 conversion inside the
+local 2.0 subtree. An initial overly broad test assertion matched the XML
+declaration's `version` attribute; it was corrected to test `xsl:version` instead.
+The exact result suffix already pins the literal-result structure.
+
+No new corpus credit is claimed. This tranche resolves local scope propagation
+risk under ADR-0025, not the remaining lexical, modern-edition, general-expression
+or introspection gates. The unchanged ten-case family replay remains the oracle.
+
+Validation: all thirteen focused tests pass, including the manual family replay.
+Full verification passes with 2,039 core tests (64 ignored), native 22, WASM
+adapter 4 and worker 18; official WASM check also passes. Fresh release replays
+retain modern 2,501/3,173 exact with 14 mismatches and strict preprocessing
+2,498/3,173 with 17 mismatches, plus 423 separate expected-error credits each.

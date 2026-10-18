@@ -106,6 +106,14 @@ fn compile_path_operand(
     argument: &str,
     location: &SourceLocation,
 ) -> Result<Xslt10ConcatPart, CompileFailure> {
+    if (super::super::is_xslt_element(document, element, "value-of")
+        || super::super::is_xslt_element(document, element, "sort"))
+        && let Some(lookup) = super::super::bound_variable_path_compiler::compile_current_lookup(
+            document, element, argument, location,
+        )?
+    {
+        return Ok(Xslt10ConcatPart::CurrentVariableLookup(Box::new(lookup)));
+    }
     let mut path = parse_location_path(argument, location.clone()).map_err(map_path_failure)?;
     if let Some(namespace) = effective_xpath_default_namespace(document, element) {
         for step in &mut path.steps {
