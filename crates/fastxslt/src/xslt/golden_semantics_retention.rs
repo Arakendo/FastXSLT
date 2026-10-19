@@ -1565,7 +1565,8 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
             left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
         }
         ValueExpression::Xslt10KeyLookup(lookup)
-        | ValueExpression::Xslt10CountKeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
+        | ValueExpression::Xslt10CountKeyLookup(lookup)
+        | ValueExpression::Xslt10SumKeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
         ValueExpression::LocationPath(path)
         | ValueExpression::Xslt10FirstNodeLocationPath(path)
         | ValueExpression::Xslt10CurrentPredicatePath(path)
@@ -1661,14 +1662,18 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::Xslt10DescendantChildVariablePositionPath { path, variable } => {
             path.known_owned_capacity_bytes() + variable.capacity()
         }
-        ValueExpression::Xslt10GroupedVariablePositionPath {
+        ValueExpression::Xslt10GroupedPositionPath {
             selection,
-            variable,
+            position,
             suffix,
         } => {
-            selection.known_owned_capacity_bytes()
-                + variable.capacity()
-                + suffix.known_owned_capacity_bytes()
+            use super::Xslt10PositionOperand;
+            let capacity = match position {
+                Xslt10PositionOperand::Variable(value) | Xslt10PositionOperand::Literal(value) => {
+                    value.capacity()
+                }
+            };
+            selection.known_owned_capacity_bytes() + capacity + suffix.known_owned_capacity_bytes()
         }
         ValueExpression::Xslt10GeneratedUnionPosition(select) => {
             size_of_val(select.as_ref())
@@ -1786,6 +1791,18 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::Xslt10NumberOfFormatNumber(expression) => {
             size_of::<FormatNumberExpression>() + expression.known_owned_capacity_bytes()
         }
+        ValueExpression::Xslt10FormattedKeySum(value) => {
+            size_of_val(value.as_ref())
+                + xslt10_key_lookup_owned(&value.lookup)
+                + value
+                    .translation
+                    .as_ref()
+                    .map_or(0, |(search, replacement)| {
+                        search.capacity() + replacement.capacity()
+                    })
+                + size_of::<FormatNumberExpression>()
+                + value.format.known_owned_capacity_bytes()
+        }
         ValueExpression::Castable(expression) => {
             size_of::<CastableExpression>() + expression.known_owned_capacity_bytes()
         }
@@ -1902,6 +1919,8 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         }
         string @ (BooleanExpression::Xslt10ContextNodeSetEqualsVariable { .. }
         | BooleanExpression::ContextStringContains { .. }
+        | BooleanExpression::Xslt10DeferredFailure { .. }
+        | BooleanExpression::Xslt10ContextPositionModuloVariable { .. }
         | BooleanExpression::Xslt10ConcatContains { .. }) => boolean_string_owned(string),
         BooleanExpression::Xslt10AncestorFilter(filter) => {
             size_of_val(filter.as_ref())
@@ -1937,9 +1956,6 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         | BooleanExpression::ContextFocusCompares { location, .. }
         | BooleanExpression::ContextPositionModuloEquals { location, .. } => {
             location_owned(location)
-        }
-        BooleanExpression::Xslt10ContextPositionModuloVariable { divisor, location } => {
-            divisor.capacity() + location_owned(location)
         }
         BooleanExpression::Or { left, right } | BooleanExpression::And { left, right } => {
             boolean_expression_owned(left) + boolean_expression_owned(right)
@@ -1979,7 +1995,16 @@ fn path_string_function_owned(
 
 fn boolean_string_owned(value: &BooleanExpression) -> usize {
     match value {
-        BooleanExpression::Xslt10ContextNodeSetEqualsVariable { variable, location }
+        BooleanExpression::Xslt10DeferredFailure {
+            detail: variable,
+            location,
+            ..
+        }
+        | BooleanExpression::Xslt10ContextPositionModuloVariable {
+            divisor: variable,
+            location,
+        }
+        | BooleanExpression::Xslt10ContextNodeSetEqualsVariable { variable, location }
         | BooleanExpression::ContextStringContains {
             value: variable,
             location,

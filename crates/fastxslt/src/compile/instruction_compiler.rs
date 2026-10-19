@@ -507,6 +507,18 @@ fn ensure_fallback_attributes(document: &Document, fallback: NodeId) -> Result<(
         let name = document
             .name(*attribute)
             .expect("attribute nodes have expanded names");
+        if name.namespace.as_deref() == Some("http://www.w3.org/XML/1998/namespace")
+            && name.local == "space"
+        {
+            if matches!(document.value(*attribute), Some("default" | "preserve")) {
+                continue;
+            }
+            return Err(invalid(
+                "XTSE0020",
+                "xml:space must be 'default' or 'preserve'",
+                document.location(*attribute),
+            ));
+        }
         if uses_xslt10_compatibility(document, fallback)
             && name.namespace.as_deref() == Some(XSLT_NAMESPACE)
             && name.local == "exclude-result-prefixes"
@@ -1752,16 +1764,23 @@ pub(super) fn compile_text(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
-    let value = compile_text_value(document, element)?;
-    Ok(Instruction::Text {
-        value,
-        disable_output_escaping: optional_attribute(
-            document,
-            element,
-            None,
-            "disable-output-escaping",
-        ) == Some("yes")
+    validate_text_value_attributes(document, element, false)?;
+    compile_text_after_attribute_validation(
+        document,
+        element,
+        optional_attribute(document, element, None, "disable-output-escaping") == Some("yes")
             && uses_xslt10_compatibility(document, element),
+    )
+}
+
+fn compile_text_after_attribute_validation(
+    document: &Document,
+    element: NodeId,
+    disable_output_escaping: bool,
+) -> Result<Instruction, CompileFailure> {
+    Ok(Instruction::Text {
+        value: compile_text_content(document, element)?,
+        disable_output_escaping,
         location: document.location(element).clone(),
     })
 }
@@ -1778,6 +1797,15 @@ fn compile_text_value_with_ignored_escaping(
     element: NodeId,
     ignore_disable_output_escaping: bool,
 ) -> Result<String, CompileFailure> {
+    validate_text_value_attributes(document, element, ignore_disable_output_escaping)?;
+    compile_text_content(document, element)
+}
+
+fn validate_text_value_attributes(
+    document: &Document,
+    element: NodeId,
+    ignore_disable_output_escaping: bool,
+) -> Result<(), CompileFailure> {
     ensure_text_attributes(document, element)?;
     match optional_attribute(document, element, None, "disable-output-escaping") {
         Some("yes") if !ignore_disable_output_escaping => {}
@@ -1790,6 +1818,10 @@ fn compile_text_value_with_ignored_escaping(
             ));
         }
     }
+    Ok(())
+}
+
+fn compile_text_content(document: &Document, element: NodeId) -> Result<String, CompileFailure> {
     let mut value = String::new();
     for child in document.children(element).iter().copied() {
         match document.kind(child) {
@@ -2314,6 +2346,25 @@ fn compile_value_of_with_expression_lowerer(
         ],
         "xsl:value-of",
     )?;
+    if (uses_xslt10_compatibility(document, element)
+        || uses_xslt10_forward_compatible_processing(document, element))
+        && let Some((function, code)) =
+            xslt10_static_introspection_compiler::numeric_literal_qname_error(required_attribute(
+                document, element, None, "select",
+            )?)
+    {
+        // This entire select is one effect-free numeric-literal call. Validate
+        // instruction structure/options normally before retaining its dynamic
+        // QName failure. This is not catch-and-defer of an arbitrary expression.
+        compile_value_of_after_attribute_validation(document, element, &mut |_, _, _, _| {
+            Ok(ValueExpression::LiteralString(String::new()))
+        })?;
+        return Ok(Instruction::Xslt10DeferredFailure {
+            code,
+            detail: format!("{function} argument converts to a string that is not a valid QName"),
+            location: document.location(element).clone(),
+        });
+    }
     compile_value_of_after_attribute_validation(document, element, lower_expression)
 }
 

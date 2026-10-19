@@ -203,16 +203,20 @@ pub(crate) fn execute_compiled_stylesheet_for_test(
     request_id: &str,
 ) -> Result<String, String> {
     let mut control = InvocationControl::unbounded();
-    let result = execute_program(program, source, request_id, &mut control)
+    execute_compiled_stylesheet_controlled_for_test(program, source, request_id, &mut control)
+}
+
+#[cfg(test)]
+pub(crate) fn execute_compiled_stylesheet_controlled_for_test(
+    program: &StylesheetProgram,
+    source: &Document,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, String> {
+    let result = execute_program(program, source, request_id, control)
         .map_err(|failure| format!("{failure:?}"))?;
-    serialize_xml(
-        &result,
-        &program.output,
-        request_id,
-        64 * 1024,
-        &mut control,
-    )
-    .map_err(|failure| format!("{failure:?}"))
+    serialize_xml(&result, &program.output, request_id, 64 * 1024, control)
+        .map_err(|failure| format!("{failure:?}"))
 }
 
 #[cfg(test)]
@@ -4086,6 +4090,17 @@ fn evaluate_boolean_at(
     control: &mut InvocationControl,
     #[cfg(test)] location: Option<&SourceLocation>,
 ) -> Result<bool, ExecutionFailure> {
+    if let BooleanExpression::Xslt10DeferredFailure {
+        code,
+        detail,
+        location,
+    } = expression
+    {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        return Err(execute_deferred_failure(inputs, code, detail, location));
+    }
     if matches!(
         expression,
         BooleanExpression::Not(_) | BooleanExpression::And { .. } | BooleanExpression::Or { .. }
@@ -4431,26 +4446,16 @@ fn evaluate_ordinary_boolean(
             evaluate_context_string_length(inputs, context, *expected, control)
         }
         position @ (BooleanExpression::ContextPositionNotEqualSize(_)
-        | BooleanExpression::ContextPositionModuloEquals { .. }) => {
+        | BooleanExpression::ContextPositionModuloEquals { .. }
+        | BooleanExpression::ContextFocusEquals { .. }
+        | BooleanExpression::ContextFocusCompares { .. }) => {
             evaluate_context_position_boolean(inputs, position, focus, control)
         }
-        BooleanExpression::ContextFocusEquals {
-            left,
-            right,
-            location,
-        } => evaluate_context_focus_equality(inputs, focus, *left, *right, location, control),
-        BooleanExpression::ContextFocusCompares {
-            left,
-            operator,
-            right,
-            location,
-        } => evaluate_context_focus_comparison(
-            inputs, focus, *left, *operator, *right, location, control,
-        ),
         BooleanExpression::ContextLanguageMatches(language) => {
             evaluate_context_language_matches(inputs, context, language, control)
         }
-        BooleanExpression::Or { .. }
+        BooleanExpression::Xslt10DeferredFailure { .. }
+        | BooleanExpression::Or { .. }
         | BooleanExpression::And { .. }
         | BooleanExpression::Not(_)
         | BooleanExpression::NodeIdentityEqual { .. }
@@ -5050,6 +5055,19 @@ fn evaluate_context_position_boolean(
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     match expression {
+        BooleanExpression::ContextFocusEquals {
+            left,
+            right,
+            location,
+        } => evaluate_context_focus_equality(inputs, focus, *left, *right, location, control),
+        BooleanExpression::ContextFocusCompares {
+            left,
+            operator,
+            right,
+            location,
+        } => evaluate_context_focus_comparison(
+            inputs, focus, *left, *operator, *right, location, control,
+        ),
         BooleanExpression::ContextPositionNotEqualSize(location) => {
             evaluate_context_position_not_equal_size(inputs, focus, location, control)
         }

@@ -6,6 +6,12 @@ mod path_unions;
 #[path = "golden_runtime_tests/composed_contains.rs"]
 mod composed_contains;
 
+#[path = "golden_runtime_tests/deferred_boolean.rs"]
+mod deferred_boolean;
+
+#[path = "golden_runtime_tests/numeric_composition.rs"]
+mod numeric_composition;
+
 #[path = "golden_runtime_tests/concat_sort.rs"]
 mod concat_sort;
 

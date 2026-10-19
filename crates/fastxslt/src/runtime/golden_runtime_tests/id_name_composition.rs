@@ -62,6 +62,39 @@ fn run(
 }
 
 #[test]
+fn xslt10_identity_function_availability_matches_executable_capability() {
+    let style = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:p" xmlns:msxsl="urn:schemas-microsoft-com:xslt"><xsl:output method="text"/><xsl:key name="k" match="p:item" use="@key"/><xsl:template match="/"><xsl:value-of select="function-available('id')"/>|<xsl:value-of select="function-available('key')"/>|<xsl:value-of select="function-available('generate-id')"/>|<xsl:if test="function-available('id')"><xsl:value-of select="name(id('alpha'))"/></xsl:if>|<xsl:if test="function-available('key')"><xsl:value-of select="count(key('k','alpha'))"/></xsl:if>|<xsl:if test="function-available('generate-id')"><xsl:value-of select="generate-id(r)"/></xsl:if>|<xsl:value-of xmlns="urn:default" select="function-available('id')"/>|<xsl:value-of select="function-available('p:id')"/>|<xsl:value-of select="function-available('xsl:key')"/>|<xsl:value-of select="function-available('msxsl:node-set')"/>|<xsl:value-of select="function-available('unparsed-entity-uri')"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 8192, 8192));
+    resources
+        .admit("urn:availability:style", style.to_vec())
+        .unwrap();
+    let program = compile_resource(&resources.seal(), "urn:availability:style").unwrap();
+    let source = source();
+    let mut first = None;
+    for representation in [
+        WhitespaceRepresentation::VisibilityView,
+        WhitespaceRepresentation::CompleteReference,
+    ] {
+        let actual = run(
+            &program,
+            &source,
+            representation,
+            &mut InvocationControl::unbounded(),
+        )
+        .unwrap();
+        let fields = actual.split('|').collect::<Vec<_>>();
+        assert_eq!(&fields[..5], &["true", "true", "true", "p:item", "1"]);
+        assert!(!fields[5].is_empty(), "advertised generate-id must execute");
+        assert_eq!(&fields[6..], &["true", "false", "false", "false", "false"]);
+        if let Some(expected) = &first {
+            assert_eq!(&actual, expected);
+        } else {
+            first = Some(actual);
+        }
+    }
+}
+
+#[test]
 fn xslt10_id_names_use_first_typed_id_and_effective_source_navigation() {
     let program = compile(BODY, "1.0").unwrap();
     let source = source();

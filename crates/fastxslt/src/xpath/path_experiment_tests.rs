@@ -17,6 +17,38 @@ fn location() -> SourceLocation {
 }
 
 #[test]
+fn qualified_function_calls_are_not_misdiagnosed_as_child_qnames() {
+    for expression in [
+        "ext:node-set($tree)",
+        "alias:node-set ($tree)/child",
+        "ext:other('https://example.invalid/a:b')",
+    ] {
+        let failure = parse_qualified_child_path(expression, location(), |_| {
+            Some("urn:example:extension".to_owned())
+        })
+        .expect_err("a path selector must not admit extension calls");
+        assert!(
+            matches!(failure, PathFailure::Unsupported { location: actual, .. }
+            if actual == location())
+        );
+    }
+    let unbound = parse_qualified_child_path("missing:call()", location(), |_| None)
+        .expect_err("function prefixes still require a static binding");
+    assert!(matches!(unbound, PathFailure::Invalid {
+        standard_code: "XPST0081", location: actual, ..
+    } if actual == location()));
+    let malformed = parse_qualified_child_path("a:b:c()", location(), |_| Some("urn:x".into()))
+        .expect_err("an invalid function QName must not become unsupported capability");
+    assert!(matches!(
+        malformed,
+        PathFailure::Invalid {
+            standard_code: "XPST0003",
+            ..
+        }
+    ));
+}
+
+#[test]
 fn qualified_child_steps_match_expanded_names() {
     let parsed = parse_document(
         "memory:source.xml",
@@ -2094,9 +2126,16 @@ fn path_boolean_predicate_compares_parent_attributes_with_string_literals() {
 
 #[test]
 fn path_boolean_predicate_compares_dynamic_node_sets_and_positional_children() {
-    assert!(super::path_boolean_predicate::parse("author[last-name][2] = 'Kimball'").is_some());
+    assert!(
+        super::path_boolean_predicate::parse(
+            "author[last-name][2] = 'Kimball'",
+            &location(),
+            false
+        )
+        .is_some()
+    );
     assert!(super::path_boolean_predicate::parse(
-        "book[author[last-name][2] = 'Kimball'] or @specialty='novel' and (not(book[title[1]='Unknown']) or book[title[1]='Book 1'])"
+        "book[author[last-name][2] = 'Kimball'] or @specialty='novel' and (not(book[title[1]='Unknown']) or book[title[1]='Book 1'])", &location(), false
     )
     .is_some());
     let parsed = parse_document(

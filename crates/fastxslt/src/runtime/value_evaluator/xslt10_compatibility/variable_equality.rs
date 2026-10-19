@@ -14,7 +14,7 @@ pub(in crate::runtime) enum Operand {
 }
 
 impl Operand {
-    fn boolean(&self) -> bool {
+    pub(super) fn boolean(&self) -> bool {
         match self {
             Self::Boolean(value) => *value,
             Self::Number(value) => *value != 0.0 && !value.is_nan(),

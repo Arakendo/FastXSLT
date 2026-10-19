@@ -9,6 +9,7 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum PathBooleanPredicate {
+    ComposedString(super::composed_string_predicate::Comparison),
     Present(String),
     Equals {
         name: String,
@@ -147,6 +148,7 @@ impl EvaluationFocus {
 impl PathBooleanPredicate {
     pub(super) fn known_owned_capacity_bytes(&self) -> usize {
         match self {
+            Self::ComposedString(comparison) => comparison.capacity(),
             Self::Present(name)
             | Self::ChildElementCountEquals { name, .. }
             | Self::AttributeStringLengthEquals { name, .. }
@@ -254,13 +256,23 @@ pub(super) fn promote_outer_attribute_marker(predicate: &mut PathBooleanPredicat
     }
 }
 
-pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
+pub(super) fn parse(
+    predicate: &str,
+    location: &super::SourceLocation,
+    xslt10: bool,
+) -> Option<PathBooleanPredicate> {
     let predicate = strip_outer_parentheses(predicate.trim());
-    if let Some(composed) = parse_boolean_composition(predicate) {
+    if let Some(composed) = parse_boolean_composition(predicate, location, xslt10) {
         return Some(composed);
     }
     parse_scalar_predicate(predicate)
-        .or_else(|| parse_navigation_predicate(predicate))
+        .or_else(|| parse_navigation_predicate(predicate, location, xslt10))
+        .or_else(|| {
+            xslt10
+                .then(|| super::composed_string_predicate::parse(predicate, location))
+                .flatten()
+                .map(PathBooleanPredicate::ComposedString)
+        })
         .or_else(|| {
             predicate
                 .strip_prefix('@')
@@ -329,7 +341,11 @@ fn parse_scalar_predicate(predicate: &str) -> Option<PathBooleanPredicate> {
     None
 }
 
-fn parse_navigation_predicate(predicate: &str) -> Option<PathBooleanPredicate> {
+fn parse_navigation_predicate(
+    predicate: &str,
+    location: &super::SourceLocation,
+    xslt10: bool,
+) -> Option<PathBooleanPredicate> {
     if let Some((name, value)) = parse_child_element_integer_equality(predicate) {
         return Some(PathBooleanPredicate::ChildElementIntegerEquals { name, value });
     }
@@ -380,29 +396,35 @@ fn parse_navigation_predicate(predicate: &str) -> Option<PathBooleanPredicate> {
     if let Some((name, nested)) = parse_nested_child_predicate(predicate) {
         return Some(PathBooleanPredicate::ChildElementPredicate {
             name: name.to_owned(),
-            predicate: Box::new(parse(nested)?),
+            predicate: Box::new(parse(nested, location, xslt10)?),
         });
     }
     None
 }
 
-fn parse_boolean_composition(predicate: &str) -> Option<PathBooleanPredicate> {
+fn parse_boolean_composition(
+    predicate: &str,
+    location: &super::SourceLocation,
+    xslt10: bool,
+) -> Option<PathBooleanPredicate> {
     if let Some((left, right)) = split_top_level_predicate_operator(predicate, " or ") {
         return Some(PathBooleanPredicate::Or(
-            Box::new(parse(left)?),
-            Box::new(parse(right)?),
+            Box::new(parse(left, location, xslt10)?),
+            Box::new(parse(right, location, xslt10)?),
         ));
     }
     if let Some((left, right)) = split_top_level_predicate_operator(predicate, " and ") {
         return Some(PathBooleanPredicate::And(
-            Box::new(parse(left)?),
-            Box::new(parse(right)?),
+            Box::new(parse(left, location, xslt10)?),
+            Box::new(parse(right, location, xslt10)?),
         ));
     }
     let operand = predicate
         .strip_prefix("not(")
         .and_then(|value| value.strip_suffix(')'))?;
-    Some(PathBooleanPredicate::Not(Box::new(parse(operand)?)))
+    Some(PathBooleanPredicate::Not(Box::new(parse(
+        operand, location, xslt10,
+    )?)))
 }
 
 pub(super) fn recognizes_child_path_string_comparison(predicate: &str) -> bool {
@@ -531,6 +553,9 @@ fn evaluate_atomic(
         return result;
     }
     match predicate {
+        PathBooleanPredicate::ComposedString(comparison) => {
+            comparison.evaluate(document, node, control)
+        }
         PathBooleanPredicate::ContextStringEquals(value) => {
             context_string_equals(document, node, value, control)
         }

@@ -2,6 +2,9 @@
 
 use std::sync::Arc;
 
+#[path = "formatted_key_sum_compiler.rs"]
+mod formatted_key_sum_compiler;
+
 #[path = "literal_document_value_compiler.rs"]
 mod literal_document_value_compiler;
 
@@ -212,20 +215,6 @@ pub(super) fn compile_value_expression_with_mode(
                 crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
             ))),
         });
-    }
-    if super::uses_xslt10_forward_compatible_processing(document, element)
-        && let Some(function) =
-            super::xslt10_static_introspection_compiler::numeric_literal_argument_type_error(
-                expression,
-            )
-    {
-        return Err(invalid(
-            "XPTY0004",
-            format!(
-                "{function} requires a string argument in XSLT 1.x forward-compatible processing"
-            ),
-            location,
-        ));
     }
     if let Some(literal) = crate::xpath::static_string_experiment::fold_concat_literals(expression)
     {
@@ -461,12 +450,12 @@ pub(super) fn compile_value_expression_with_mode(
         });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
-        && let Some((selection, variable, suffix)) =
-            compile_xslt10_grouped_variable_position_path(document, element, expression, location)?
+        && let Some((selection, position, suffix)) =
+            compile_xslt10_grouped_position_path(document, element, expression, location)?
     {
-        return Ok(ValueExpression::Xslt10GroupedVariablePositionPath {
+        return Ok(ValueExpression::Xslt10GroupedPositionPath {
             selection,
-            variable,
+            position,
             suffix,
         });
     }
@@ -529,6 +518,16 @@ pub(super) fn compile_value_expression_with_mode(
         && let Some(variable) = parse_xslt10_variable_conversion(expression, "sum")
     {
         return Ok(ValueExpression::Xslt10VariableSum(variable.to_owned()));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(argument) = expression
+            .trim()
+            .strip_prefix("sum(")
+            .and_then(|s| s.strip_suffix(')'))
+        && argument.trim_start().starts_with("key(")
+    {
+        return compile_xslt10_literal_key_lookup(document, element, argument.trim(), location)
+            .map(|lookup| ValueExpression::Xslt10SumKeyLookup(Box::new(lookup)));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(path) = compile_xslt10_sum_path(document, element, expression, location)?
@@ -856,6 +855,12 @@ pub(super) fn compile_value_expression_with_mode(
             })?,
         ))
     } else if expression.trim_start().starts_with("format-number(") {
+        if static_context.compatibility == ValueCompatibilityMode::Xslt10
+            && let Some(value) =
+                formatted_key_sum_compiler::compile(document, element, expression, location)?
+        {
+            return Ok(value);
+        }
         ValueExpression::FormatNumber(compile_format_number(
             document,
             element,
@@ -1550,17 +1555,27 @@ fn compile_xslt10_descendant_child_variable_position_path(
     Ok(Some((path, variable.to_owned())))
 }
 
-fn compile_xslt10_grouped_variable_position_path(
+fn compile_xslt10_grouped_position_path(
     document: &Document,
     element: NodeId,
     expression: &str,
     location: &SourceLocation,
-) -> Result<Option<(LocationPath, String, LocationPath)>, CompileFailure> {
+) -> Result<
+    Option<(
+        LocationPath,
+        crate::xslt::golden_semantics_experiment::Xslt10PositionOperand,
+        LocationPath,
+    )>,
+    CompileFailure,
+> {
+    use crate::xslt::golden_semantics_experiment::Xslt10PositionOperand;
     let expression = expression.trim();
     let Some(selection_end) = matching_outer_parenthesis(expression) else {
         return Ok(None);
     };
-    let selection = expression[1..selection_end].trim();
+    let selection = crate::xpath::path_experiment::strip_enclosing_path_parentheses(
+        expression[1..selection_end].trim(),
+    );
     let remainder = expression[selection_end + 1..].trim();
     let Some((predicate, suffix)) = remainder
         .strip_prefix('[')
@@ -1568,13 +1583,18 @@ fn compile_xslt10_grouped_variable_position_path(
     else {
         return Ok(None);
     };
-    let Some(variable) = predicate.trim().strip_prefix('$') else {
+    let position = if let Some(variable) = predicate.trim().strip_prefix('$') {
+        Xslt10PositionOperand::Variable(normalize_variable_qname(document, element, variable)?)
+    } else if crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(predicate)
+        .is_some()
+    {
+        Xslt10PositionOperand::Literal(predicate.trim().to_owned())
+    } else {
         return Ok(None);
     };
-    if selection.is_empty() || suffix.trim().is_empty() {
+    if selection.is_empty() || suffix.trim().is_empty() || suffix.trim_start().starts_with('/') {
         return Ok(None);
     }
-    let variable = normalize_variable_qname(document, element, variable)?;
     let mut selection =
         parse_location_path(selection, location.clone()).map_err(map_path_failure)?;
     let mut suffix =
@@ -1583,7 +1603,7 @@ fn compile_xslt10_grouped_variable_position_path(
         apply_default_namespace(&mut selection, namespace);
         apply_default_namespace(&mut suffix, namespace);
     }
-    Ok(Some((selection, variable, suffix)))
+    Ok(Some((selection, position, suffix)))
 }
 
 fn matching_outer_parenthesis(expression: &str) -> Option<usize> {

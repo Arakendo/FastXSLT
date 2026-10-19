@@ -66,13 +66,59 @@ pub(super) struct OutputDeclaration {
     pub(super) location: SourceLocation,
 }
 
+/// A projection of the caller's compilation policy for Boolean output values.
+/// No declared-version rewriting, source mutation or public profile selector.
+#[derive(Clone, Copy)]
+pub(super) struct OutputBooleanPolicy {
+    modern_aliases: bool,
+    ignore_invalid_optional: bool,
+    ignore_invalid_omit_declaration: bool,
+}
+
+impl OutputBooleanPolicy {
+    fn baseline(declared_version: &str) -> Self {
+        Self {
+            modern_aliases: declared_version == "3.0",
+            ignore_invalid_optional: is_xslt10_forward_compatible_version(declared_version),
+            ignore_invalid_omit_declaration: false,
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) const fn selected_legacy(forward: bool) -> Self {
+        Self {
+            modern_aliases: false,
+            ignore_invalid_optional: forward,
+            ignore_invalid_omit_declaration: forward,
+        }
+    }
+}
+
 pub(super) fn compile_output(
     document: &Document,
     element: NodeId,
     declared_version: &str,
     allow_superseded_xslt10_extension_method: bool,
 ) -> Result<OutputDeclaration, CompileFailure> {
-    ensure_output_attributes(document, element)?;
+    compile_output_with_boolean_policy(
+        document,
+        element,
+        declared_version,
+        allow_superseded_xslt10_extension_method,
+        OutputBooleanPolicy::baseline(declared_version),
+        &mut ensure_output_attributes,
+    )
+}
+
+pub(super) fn compile_output_with_boolean_policy(
+    document: &Document,
+    element: NodeId,
+    declared_version: &str,
+    allow_superseded_xslt10_extension_method: bool,
+    policy: OutputBooleanPolicy,
+    validate_attributes: &mut impl FnMut(&Document, NodeId) -> Result<(), CompileFailure>,
+) -> Result<OutputDeclaration, CompileFailure> {
+    validate_attributes(document, element)?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
     let name = optional_attribute(document, element, None, "name")
         .map(|value| compile_expanded_qname(document, element, value, "xsl:output name"))
@@ -81,48 +127,38 @@ pub(super) fn compile_output(
     let method =
         compile_output_method(document, element, allow_superseded_xslt10_extension_method)?;
     let encoding = compile_output_encoding(document, element);
-    let omit_xml_declaration = optional_attribute(document, element, None, "omit-xml-declaration")
-        .map(|value| {
-            parse_output_boolean(
-                value,
-                "omit-xml-declaration",
-                declared_version,
-                document.location(element),
-            )
-        })
-        .transpose()?
-        .unwrap_or(false);
-    let indent = compile_output_boolean_attribute(document, element, "indent", declared_version)?;
+    let omit_value = compile_output_boolean_attribute(
+        document,
+        element,
+        "omit-xml-declaration",
+        OutputBooleanPolicy {
+            ignore_invalid_optional: policy.ignore_invalid_omit_declaration,
+            ..policy
+        },
+    )?;
+    let omit_xml_declaration = omit_value.unwrap_or(false);
+    let indent = compile_output_boolean_attribute(document, element, "indent", policy)?;
     let include_content_type = optional_attribute(document, element, None, "include-content-type")
         .map(|value| {
             parse_output_boolean(
                 value,
                 "include-content-type",
-                declared_version,
+                policy,
                 document.location(element),
             )
         })
         .transpose()?;
     let escape_uri_attributes =
-        compile_bounded_escape_uri_attributes(document, element, method, declared_version)?;
+        compile_bounded_escape_uri_attributes(document, element, method, policy)?;
     let byte_order_mark = optional_attribute(document, element, None, "byte-order-mark")
         .map(|value| {
-            parse_output_boolean(
-                value,
-                "byte-order-mark",
-                declared_version,
-                document.location(element),
-            )
+            parse_output_boolean(value, "byte-order-mark", policy, document.location(element))
         })
         .transpose()?;
     let normalization_form = optional_attribute(document, element, None, "normalization-form");
     let character_map_names = compile_character_map_names(document, element, method)?;
-    let undeclare_prefixes = compile_output_boolean_attribute(
-        document,
-        element,
-        "undeclare-prefixes",
-        declared_version,
-    )?;
+    let undeclare_prefixes =
+        compile_output_boolean_attribute(document, element, "undeclare-prefixes", policy)?;
     let standalone = compile_standalone(document, element, declared_version, omit_xml_declaration)?;
     let doctype_system = optional_attribute(document, element, None, "doctype-system");
     let doctype_public = optional_attribute(document, element, None, "doctype-public");
@@ -153,7 +189,18 @@ pub(super) fn compile_output(
         omit_xml_declaration,
         indent,
     };
-    let specified = compile_specified_properties(document, element);
+    let mut specified = compile_specified_properties(document, element);
+    // These optional booleans can be ignored by forward-compatible validation.
+    // Their lexical presence must not survive as a merge-conflict declaration.
+    for (property, value) in [
+        ("indent", settings.indent),
+        ("undeclare-prefixes", settings.undeclare_prefixes),
+        ("omit-xml-declaration", omit_value),
+    ] {
+        if value.is_none() {
+            specified.remove(property);
+        }
+    }
     Ok(OutputDeclaration {
         name,
         settings,
@@ -229,6 +276,7 @@ fn compile_specified_properties(document: &Document, element: NodeId) -> BTreeSe
         .iter()
         .filter_map(|attribute| document.name(*attribute))
         .filter(|name| name.namespace.is_none() && name.local != "name")
+        .filter(|name| is_known_output_attribute(&name.local))
         .map(|name| name.local.clone())
         .collect()
 }
@@ -336,11 +384,15 @@ fn ensure_output_attributes(document: &Document, element: NodeId) -> Result<(), 
     Ok(())
 }
 
+pub(super) fn is_known_output_attribute(local: &str) -> bool {
+    OUTPUT_ATTRIBUTES.contains(&local)
+}
+
 fn compile_bounded_escape_uri_attributes(
     document: &Document,
     element: NodeId,
     method: Option<&str>,
-    declared_version: &str,
+    policy: OutputBooleanPolicy,
 ) -> Result<Option<bool>, CompileFailure> {
     let Some(value) = optional_attribute(document, element, None, "escape-uri-attributes") else {
         return Ok(None);
@@ -348,7 +400,7 @@ fn compile_bounded_escape_uri_attributes(
     let enabled = parse_output_boolean(
         value,
         "escape-uri-attributes",
-        declared_version,
+        policy,
         document.location(element),
     )?;
     if !matches!(method, Some("xml" | "xhtml" | "html")) {
@@ -476,19 +528,14 @@ fn compile_output_boolean_attribute(
     document: &Document,
     element: NodeId,
     local_name: &str,
-    declared_version: &str,
+    policy: OutputBooleanPolicy,
 ) -> Result<Option<bool>, CompileFailure> {
     let Some(value) = optional_attribute(document, element, None, local_name) else {
         return Ok(None);
     };
-    match parse_output_boolean(
-        value,
-        local_name,
-        declared_version,
-        document.location(element),
-    ) {
+    match parse_output_boolean(value, local_name, policy, document.location(element)) {
         Ok(value) => Ok(Some(value)),
-        Err(_) if is_xslt10_forward_compatible_version(declared_version) => Ok(None),
+        Err(_) if policy.ignore_invalid_optional => Ok(None),
         Err(failure) => Err(failure),
     }
 }
@@ -685,13 +732,13 @@ fn parse_standalone(
 fn parse_output_boolean(
     value: &str,
     attribute: &str,
-    declared_version: &str,
+    policy: OutputBooleanPolicy,
     location: &SourceLocation,
 ) -> Result<bool, CompileFailure> {
     match value {
         "yes" => Ok(true),
         "no" => Ok(false),
-        _ if declared_version == "3.0" => match value.trim() {
+        _ if policy.modern_aliases => match value.trim() {
             "true" | "1" => Ok(true),
             "false" | "0" => Ok(false),
             _ => Err(invalid(
@@ -705,5 +752,119 @@ fn parse_output_boolean(
             format!("{attribute} must be 'yes' or 'no'"),
             location,
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compile::golden_stylesheet_experiment::{CompileCategory, compile_stylesheet};
+    use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+
+    fn compile(
+        version: &str,
+        outputs: &str,
+    ) -> Result<crate::xslt::golden_semantics_experiment::StylesheetProgram, CompileFailure> {
+        let xml = format!(
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="{version}">{outputs}<xsl:template match="/"><out><child/></out></xsl:template></xsl:stylesheet>"#
+        );
+        let document = Document::from_parsed(
+            parse_document(
+                "urn:output-merge",
+                xml.as_bytes(),
+                ParseLimits {
+                    max_events: 256,
+                    max_depth: 32,
+                },
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        compile_stylesheet(&document)
+    }
+
+    #[test]
+    fn ignored_output_boolean_does_not_create_a_merge_conflict() {
+        for property in ["indent", "undeclare-prefixes"] {
+            for value in ["yes", "no"] {
+                for invalid_first in [false, true] {
+                    let valid = format!(r#"<xsl:output {property}="{value}"/>"#);
+                    let ignored = format!(r#"<xsl:output {property}="sure"/>"#);
+                    let outputs = if invalid_first {
+                        format!("{ignored}{valid}")
+                    } else {
+                        format!("{valid}{ignored}")
+                    };
+                    let program = compile("1.5", &outputs).unwrap();
+                    let actual = if property == "indent" {
+                        program.output.indent
+                    } else {
+                        program.output.undeclare_prefixes
+                    };
+                    assert_eq!(actual, Some(value == "yes"));
+                    if property == "indent" {
+                        use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_for_test as execute;
+                        let source = Document::from_parsed(
+                            parse_document(
+                                "urn:source",
+                                b"<r/>",
+                                ParseLimits {
+                                    max_events: 16,
+                                    max_depth: 4,
+                                },
+                            )
+                            .unwrap(),
+                        )
+                        .unwrap();
+                        let reference = compile("1.5", &valid).unwrap();
+                        assert_eq!(
+                            execute(&program, &source, "merged").unwrap(),
+                            execute(&reference, &source, "reference").unwrap()
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn ignored_output_boolean_is_not_a_specified_property() {
+        let program = compile(
+            "1.5",
+            r#"<xsl:output indent="sure" undeclare-prefixes="sure"/>"#,
+        )
+        .unwrap();
+        assert_eq!(program.output.indent, None);
+        assert_eq!(program.output.undeclare_prefixes, None);
+        for property in ["indent", "undeclare-prefixes"] {
+            assert!(
+                !program
+                    .output_specified_properties
+                    .iter()
+                    .any(|p| p == property)
+            );
+            assert!(
+                !program
+                    .output_same_precedence_properties
+                    .iter()
+                    .any(|p| p == property)
+            );
+        }
+    }
+
+    #[test]
+    fn output_boolean_merge_keeps_actual_conflicts_and_invalid_nonforward_values() {
+        let failure = compile(
+            "1.5",
+            r#"<xsl:output indent="yes"/><xsl:output indent="no"/>"#,
+        )
+        .unwrap_err();
+        assert_eq!(failure.code, "FXST1018");
+        for version in ["1.0", "2.0", "3.0"] {
+            let failure = compile(version, r#"<xsl:output indent="sure"/>"#).unwrap_err();
+            assert_eq!(failure.category, CompileCategory::Invalid);
+            assert_eq!(failure.code, "XTSE0020");
+            assert_eq!(failure.location.resource, "urn:output-merge");
+        }
     }
 }

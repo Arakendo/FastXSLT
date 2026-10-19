@@ -6,10 +6,102 @@ standards scope are decided.
 
 ## Current critical path
 
-The current OASIS checkpoint is 2,502 / 3,173 exact comparisons (78.85%);
-80% requires another 37 exact cases. Resume the ranked ordinary frontier,
+The current OASIS checkpoint is 2,503 / 3,173 exact comparisons (78.88%);
+80% requires another 36 exact cases. Resume the ranked ordinary frontier,
 without implicitly opening secondary-document DTDs, cross-document value
 ordering, namespace-valued variables, or legacy namespace-copy recovery.
+Shared key-sum, conversion and formatting composition is implemented; detailed
+completed slices remain in the [numeric campaign evidence](../Evidence/oasis-xslt10-literal-document-path-binding-2026-10-17.md).
+The [extension-boundary reassessment](../Evidence/oasis-xslt10-literal-document-path-binding-2026-10-17.md#2026-10-18-numeric-campaign-extension-boundary)
+parks `PerfRepro2` at unsupported Microsoft `node-set()`, not missing arithmetic.
+Do not bypass that extension boundary to chase the percentage. Resume accepted
+ADR-0025 processor-profile integration below; no additional exact pass is credited.
+
+`Microsoft/Miscellaneous__84475` now passes unchanged through bounded composed
+string predicates and shared attribute/element match dispatch. Strict
+preprocessing also gains one, reaching 2,500 exact; expected-error credits remain
+separate. Ordinary failures now total 90: 23 unsupported, 63 invalid and 4
+missing-resource. The new first-node conversions stay legacy-compatible only. See the
+[whole-case evidence and limits](../Evidence/oasis-xslt10-literal-document-path-binding-2026-10-17.md#2026-10-18-composed-string-predicates-miscellaneous-84475).
+ADR-0025's bounded Boolean call-timing slice now uses the shared short-circuit
+evaluator: skipped zero-argument calls remain skipped, reached calls fail with
+provenance, and non-forward contexts retain static failure. See the
+[call-boundary evidence](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md#2026-10-18-boolean-call-boundary-timing).
+The [conditional integration checkpoint](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md#2026-10-18-conditional-execution-under-selected-processor-policy)
+now routes bounded `if`/`choose` through the shared compiler/runtime, preserving
+static lexical checks and deferred call timing. The
+[numeric-argument correction](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md#2026-10-18-numeric-argument-conversion-and-qname-failure-timing)
+now distinguishes XPath 1.0 conversion from QName validation and replays
+`91855`/`91856` in the selected lane. General dynamic arguments, modern typed
+calls and capability/introspection reconciliation remain open;
+the [identity-function availability correction](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md#2026-10-18-identity-function-capability-reconciliation)
+now makes baseline `function-available()` agree with executable `id`, `key` and
+`generate-id` support. The [instruction-availability correction](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md#2026-10-18-message-and-fallback-availability-reconciliation)
+also reconciles implemented `xsl:message` and `xsl:fallback`. Both corpus counts remain unchanged; this does not
+promote the selected-profile reference or settle its reporting values.
+Static lexical checks now remain eager across skipped Boolean operands, while
+bound local values reuse the shared typed evaluator (see the
+[lexical-read checkpoint](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md#2026-10-18-static-lexical-reads-inside-deferred-call-expressions)).
+Do not widen the bounded grammar without a specific remaining risk or promote
+the reference as a completed processor profile. This needs implementation,
+not a new ownership decision.
+
+The [selected top-level recognition checkpoint](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md#2026-10-18-selected-top-level-declaration-recognition)
+now replays `ForwardComp` 91837–91840 unchanged in the private legacy lane.
+Unknown/newer top-level declarations are ignored before shared lowering;
+recognized 1.0 declarations are not mistaken for unknown merely because their
+policy integration is unfinished. Production defaults and corpus numerators
+remain unchanged. Next integrate a named declaration/call boundary under the
+selected policy, rather than extending literal-call probes without a trigger.
+The [output merge correction](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md#2026-10-18-ignored-output-boolean-merge-metadata)
+also prevents already-ignored optional Boolean values from creating false
+declaration conflicts. It changes merge metadata, not the admitted profile or
+the broader attribute-recovery rules needed by `bvt033`.
+
+The [declaration-policy checkpoint](../Evidence/adr-0025-version-spelling-checkpoint-2026-10-17.md#2026-10-18-selected-declaration-attributes-and-complete-forwardcomp-replay)
+now replays the complete unchanged Microsoft ForwardComp catalog in the private
+selected-1.0/strict lane: 13 exact outputs and 5 expected errors across 18 cases.
+Template/output unknown attributes and optional output Booleans use selected
+policy through shared owners. This earns no baseline percentage credit.
+Next propagate a named remaining declaration owner; `bvt033` still spans several
+unintegrated declaration and error-timing families, not just output Booleans.
+Its text-instruction attribute slice now also uses selected policy and the shared
+text constructor, with local-scope and control parity. The original fragment is
+evidenced separately; the complete `bvt033` case remains uncredited.
+
+The [next-case/comparator reassessment](../Evidence/oasis-xslt10-literal-document-path-binding-2026-10-17.md#2026-10-18-next-case-and-comparator-reassessment)
+confirms that `Bug76984` needs deferred cross-document ranking and the four XML
+comparator gaps do not justify guessed encodings or reconstructed expectations.
+Current modern accounting reconciles as **2,503 exact + 423 expected-error
+credits + 247 other dispositions = 3,173**. The 247 are 90 ordinary failures,
+16 mismatches, 10 comparison gaps, 123 policy/reference exclusions and 8
+expected-error infrastructure/expectation exclusions—not 247 missing features.
+
+The post-commit frontier audit at `8924ba5d` reports 23 unsupported, 64 invalid
+and 4 missing-resource ordinary failures—not 91 independent missing features.
+Next prioritize accepted ADR-0025 integration or shared composed numeric/key/
+temporary-value expressions. Whole-case checks reject isolated first-error
+patches for `PerfRepro2`, document unions and unparsed entities; see the
+[frontier reassessment](../Evidence/oasis-xslt10-literal-document-path-binding-2026-10-17.md#post-commit-whole-frontier-reassessment).
+No remaining count is permission to weaken validation or archival comparison.
+
+`bvt023` now compares exactly in the private selected-legacy lane: grouped
+constant-position paths such as `(//author)[1]/last-name` reuse the shared
+grouped-selection/suffix evaluator. Literal bindings and fallback whitespace
+also compose successfully. This supersedes the prior negative frontier, but
+does not promote a processor profile or increase the baseline numerator.
+Resume another named failing case or the remaining ADR-0025 integration gates;
+do not keep widening this positional slice without a new failing case.
+The typed-variable follow-up fixes string/boolean/node-set predicates being
+misread as numeric positions, with multi-context suffix/control regressions;
+both corpus numerators remain unchanged. Global-constructor admission is unchanged.
+
+The 2026-10-18 diagnostic follow-up correctly refuses qualified function calls
+instead of calling them malformed child QNames. `bvt052` remains unsupported;
+that checkpoint had 24 unsupported, 63 invalid and 4 missing-resource ordinary failures.
+Both corpus profiles retain their exact counts. Do not revisit the eleven
+ISO-2022-JP failures as a wiring fix: their decoder-compatibility boundary was
+reconfirmed, with no permissive policy selected.
 
 The [local literal-document path slice](../Evidence/oasis-xslt10-literal-document-path-binding-2026-10-17.md)
 now preserves effective owners through bound selections and generated-ID
@@ -49,8 +141,8 @@ another ordinary frontier case; do not relax comparison. Dependent global reads
 of selected secondary nodes remain explicitly unsupported. No new exact credit.
 
 The [2026-10-16 refreshed ledger](../Evidence/processor-edition-seam-investigation-2026-10-16.md#post-acceptance-corpus-checkpoint--2026-10-16)
-separates 423 expected-error credits from exact output matches. After this slice,
-the other 248 entries comprise 91 ordinary phase failures, 16 mismatches, 10 comparison gaps,
+separates 423 expected-error credits from exact output matches. Before `84475`,
+the other 248 entries comprised 91 ordinary phase failures, 16 mismatches, 10 comparison gaps,
 123 policy/reference exclusions and 8 expected-error infrastructure/expectation
 exclusions. These are not all missing engine features or a conformance percentage.
 The [literal-document namespace copy integration](../Evidence/oasis-xslt10-explicit-attribute-namespaces-and-namespace-copy-2026-10-04.md#2026-10-17-literal-document-namespace-copying)
@@ -111,8 +203,9 @@ Legacy forward-mode value-of now defers typed syntax failures for bounded simple
 paths until reached, preserving static unbound-variable errors and unsupported
 general expressions. Direct wrong-arity system-property calls with no arguments
 or only literal-string arguments now have selected static/deferred timing.
-Next address nested/short-circuited call timing beyond these whole-expression
-slices. General-expression and introspection gates still prevent
+The bounded Boolean composition follow-up now proves skipped/reached call timing
+beyond those whole-expression slices. General argument evaluation and
+introspection gates still prevent
 claiming this bounded lane is production-ready.
 Named/default/global/module routes, dynamic constructors and general expression
 compatibility remain guarded.

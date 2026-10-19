@@ -199,6 +199,33 @@ fn compile_stylesheet_with_validation_and_template_lowerer(
     validate_version: &mut impl FnMut(&Document, NodeId, &str) -> Result<(), CompileFailure>,
     lower_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_with_declaration_lowerers(
+        document,
+        root,
+        excluded_top_level,
+        validate_version,
+        lower_template,
+        &mut compile_output,
+    )
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "shared single-document declaration composition"
+)]
+fn compile_stylesheet_with_declaration_lowerers(
+    document: &Document,
+    root: NodeId,
+    excluded_top_level: &[NodeId],
+    validate_version: &mut impl FnMut(&Document, NodeId, &str) -> Result<(), CompileFailure>,
+    lower_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
+    lower_output: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &str,
+        bool,
+    ) -> Result<output_compiler::OutputDeclaration, CompileFailure>,
+) -> Result<StylesheetProgram, CompileFailure> {
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
     validate_version(document, root, &declared_version)?;
@@ -263,7 +290,7 @@ fn compile_stylesheet_with_validation_and_template_lowerer(
                                     },
                                 )
                         });
-                let declaration = compile_output(
+                let declaration = lower_output(
                     document,
                     child,
                     &declared_version,
@@ -2364,20 +2391,41 @@ fn compile_template_with_body(
         &[String],
     ) -> Result<Vec<Instruction>, CompileFailure>,
 ) -> Result<Template, CompileFailure> {
-    ensure_only_attributes(
+    compile_template_with_body_and_validation(
         document,
         element,
-        &[
-            "name",
-            "match",
-            "mode",
-            "priority",
-            "xpath-default-namespace",
-            "default-mode",
-            "exclude-result-prefixes",
-        ],
-        "xsl:template",
-    )?;
+        &mut |document, element| {
+            ensure_only_attributes(
+                document,
+                element,
+                &[
+                    "name",
+                    "match",
+                    "mode",
+                    "priority",
+                    "xpath-default-namespace",
+                    "default-mode",
+                    "exclude-result-prefixes",
+                ],
+                "xsl:template",
+            )
+        },
+        lower_body,
+    )
+}
+
+fn compile_template_with_body_and_validation(
+    document: &Document,
+    element: NodeId,
+    validate_attributes: &mut impl FnMut(&Document, NodeId) -> Result<(), CompileFailure>,
+    lower_body: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &[NodeId],
+        &[String],
+    ) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<Template, CompileFailure> {
+    validate_attributes(document, element)?;
     let mut parameters = Vec::new();
     let mut parameter_nodes = Vec::new();
     let mut body_started = false;

@@ -24,8 +24,8 @@ use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_control
 use crate::xslt::golden_semantics_experiment::{
     Xslt10ComposedPathTranslate, Xslt10ConcatExpression, Xslt10ConcatPart,
     Xslt10NormalizedVariableTranslate, Xslt10PathStringFunction, Xslt10PathStringFunctionKind,
-    Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand,
-    Xslt10VariableStringFunction, Xslt10VariableSubstring,
+    Xslt10PathSubstring, Xslt10PathTranslate, Xslt10PositionOperand, Xslt10StringOperand,
+    Xslt10TranslateOperand, Xslt10VariableStringFunction, Xslt10VariableSubstring,
 };
 
 use super::super::{
@@ -671,11 +671,11 @@ pub(super) fn append_descendant_child_variable_position_path(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(super) fn append_grouped_variable_position_path(
+pub(super) fn append_grouped_position_path(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     selection: &LocationPath,
-    variable: &str,
+    position: &Xslt10PositionOperand,
     suffix: &LocationPath,
     variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
@@ -684,33 +684,105 @@ pub(super) fn append_grouped_variable_position_path(
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, selection, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let position = variable_string_value(inputs, variable, variables, control)?;
+    let predicate = match position {
+        Xslt10PositionOperand::Variable(variable) => {
+            grouped_variable_predicate(inputs, variable, variables, control)?
+        }
+        Xslt10PositionOperand::Literal(value) => GroupedPredicate::Number(
+            crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(value)
+                .unwrap_or(f64::NAN),
+        ),
+    };
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let Some(position) =
-        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
-    else {
-        return Ok(());
+    // The value consumer needs only the first node in document order, but every
+    // surviving context must execute its suffix (including its control charges).
+    let contexts = match predicate {
+        GroupedPredicate::Number(position) => position
+            .to_string()
+            .parse::<usize>()
+            .ok()
+            .and_then(|position| position.checked_sub(1))
+            .and_then(|index| selected.get(index..=index))
+            .unwrap_or_default(),
+        GroupedPredicate::Boolean(true) => selected.as_slice(),
+        GroupedPredicate::Boolean(false) => &[],
     };
-    if !position.is_finite() || position < 1.0 || position.fract() != 0.0 {
-        return Ok(());
+    let mut first = None;
+    for node in contexts {
+        let nodes = evaluate_location_path_controlled(source, *node, suffix, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if let Some(node) = nodes.first().copied()
+            && first.is_none_or(|previous| {
+                source.document_order(node) < source.document_order(previous)
+            })
+        {
+            first = Some(node);
+        }
     }
-    let Ok(position) = position.to_string().parse::<usize>() else {
-        return Ok(());
-    };
-    let Some(node) = selected.get(position.saturating_sub(1)).copied() else {
-        return Ok(());
-    };
-    let selected = evaluate_location_path_controlled(source, node, suffix, control)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let Some(node) = selected.first().copied() else {
+    let Some(node) = first else {
         return Ok(());
     };
     let value = source
         .string_value_controlled(node, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     append_text(result, &value, inputs.request_id, control)
+}
+
+enum GroupedPredicate {
+    Number(f64),
+    Boolean(bool),
+}
+
+fn grouped_variable_predicate(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<GroupedPredicate, ExecutionFailure> {
+    if variables.allows_global_fallback(name)
+        && let Some(owner) = inputs.initializing_globals
+    {
+        let operand = owner.read_equality_operand(name, control)?;
+        return Ok(match operand {
+            EqualityOperand::Number(value) => GroupedPredicate::Number(value),
+            other => GroupedPredicate::Boolean(other.boolean()),
+        });
+    }
+    let atomic = variables
+        .atomics
+        .get(name)
+        .or_else(|| {
+            variables
+                .allows_global_fallback(name)
+                .then(|| inputs.globals.atomics.get(name))
+                .flatten()
+        })
+        .or_else(|| {
+            variables
+                .atomic_sequences
+                .get(name)
+                .and_then(|values| match values.as_slice() {
+                    [value] => Some(value),
+                    _ => None,
+                })
+        });
+    if let Some(value) = atomic
+        && matches!(
+            value.atomic_type(),
+            BuiltinAtomicType::Integer
+                | BuiltinAtomicType::Decimal
+                | BuiltinAtomicType::Float
+                | BuiltinAtomicType::Double
+        )
+    {
+        return Ok(GroupedPredicate::Number(
+            value.lexical().parse().unwrap_or(f64::NAN),
+        ));
+    }
+    super::super::evaluate_variable_effective_boolean_value(inputs, name, variables, control)
+        .map(GroupedPredicate::Boolean)
 }
 
 fn f64_lexical(value: f64) -> String {
@@ -917,7 +989,7 @@ pub(super) fn append_variable_sum(
     append_text(result, &value, inputs.request_id, control)
 }
 
-fn sum_nodes_lexical(
+pub(super) fn sum_nodes_lexical(
     inputs: &SequenceInputs<'_>,
     source: &Document,
     selected: &[NodeId],

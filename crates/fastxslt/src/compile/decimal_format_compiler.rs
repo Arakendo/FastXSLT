@@ -368,9 +368,13 @@ fn apply_value(
     value: &mut ValueExpression,
     declarations: &[DecimalFormatDefinition],
 ) -> Result<(), CompileFailure> {
-    if let ValueExpression::FormatNumber(expression)
-    | ValueExpression::Xslt10NumberOfFormatNumber(expression) = value
-    {
+    let format = match value {
+        ValueExpression::FormatNumber(expression)
+        | ValueExpression::Xslt10NumberOfFormatNumber(expression) => Some(expression),
+        ValueExpression::Xslt10FormattedKeySum(value) => Some(&mut value.format),
+        _ => None,
+    };
+    if let Some(expression) = format {
         if expression.requested_format_variable().is_some() {
             expression.set_dynamic_formats(
                 declarations

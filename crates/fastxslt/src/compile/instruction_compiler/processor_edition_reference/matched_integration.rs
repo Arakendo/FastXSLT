@@ -6,6 +6,12 @@ use crate::execution_control_experiment::InvocationControl;
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 use compiler::stylesheet_preprocessing::{StrictPreprocessingFailure, stylesheet_visibility_view};
 
+#[path = "boolean_call_timing.rs"]
+mod boolean_call_timing;
+
+#[path = "conditional_integration.rs"]
+mod conditional_integration;
+
 #[derive(Clone, Copy)]
 enum LocalVersion {
     LegacyNormal,
@@ -34,7 +40,7 @@ fn compile(
     // lowering route. Their integration is separate from matched body routing.
     for child in meaningful_children(document, root) {
         if is_xslt_element(document, child, "template") {
-            require_probe_attribute_set(document, child, "match")?;
+            validate_template_attributes(document, child, version)?;
             let pattern = required_attribute(document, child, None, "match")?;
             for part in pattern.split('|').map(str::trim) {
                 let (compiled, _) = compiler::compile_match_pattern(document, child, part)?;
@@ -45,23 +51,17 @@ fn compile(
                 }
             }
         } else if is_xslt_element(document, child, "output") {
-            for attr in document.attributes(child) {
-                let name = document.name(*attr).expect("attribute name");
-                if name.namespace.is_some()
-                    || !matches!(
-                        name.local.as_str(),
-                        "method" | "indent" | "omit-xml-declaration"
-                    )
-                {
-                    return Err(refusal(document, *attr).into());
-                }
-            }
-        } else if matches!(edition, Edition::Legacy) && is_xslt_element(document, child, "fallback")
+            validate_output_attributes(document, child, version)?;
+        } else if matches!(edition, Edition::Legacy)
+            && document.name(child).is_some_and(|name| {
+                name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                    && !is_legacy_top_level_declaration(&name.local)
+            })
         {
             if matches!(version, LocalVersion::LegacyNormal) {
                 return Err(invalid(
                     "FXST1002",
-                    "xsl:fallback is not an XSLT 1.0 top-level declaration",
+                    "element is not an XSLT 1.0 top-level declaration",
                     document.location(child),
                 )
                 .into());
@@ -76,7 +76,7 @@ fn compile(
         Edition::Modern => StylesheetPreprocessingProfile::Modern,
     };
     let view = stylesheet_visibility_view(document, root, preprocessing, control)?;
-    let program = compiler::compile_stylesheet_with_validation_and_template_lowerer(
+    let program = compiler::compile_stylesheet_with_declaration_lowerers(
         &view,
         root,
         &ignored_top_level,
@@ -91,9 +91,10 @@ fn compile(
             {
                 return Err(refusal(document, template));
             }
-            compiler::compile_template_with_body(
+            compiler::compile_template_with_body_and_validation(
                 document,
                 template,
+                &mut |document, element| validate_template_attributes(document, element, version),
                 &mut |document, parent, excluded, bindings| {
                     if !excluded.is_empty() || !bindings.is_empty() {
                         return Err(refusal(document, parent));
@@ -101,6 +102,9 @@ fn compile(
                     body(document, parent, edition, version, 0, &[])
                 },
             )
+        },
+        &mut |document, element, declared, superseded| {
+            lower_output_declaration(document, element, declared, superseded, version)
         },
     )?;
     let mut program = compilation_context(edition, preprocessing).qualify_module(program);
@@ -111,12 +115,153 @@ fn compile(
     Ok(program)
 }
 
+fn lower_output_declaration(
+    document: &Document,
+    element: NodeId,
+    declared: &str,
+    superseded: bool,
+    version: LocalVersion,
+) -> Result<compiler::output_compiler::OutputDeclaration, CompileFailure> {
+    match version {
+        LocalVersion::ModernWitness(_) => {
+            compiler::output_compiler::compile_output(document, element, declared, superseded)
+        }
+        LocalVersion::LegacyNormal | LocalVersion::LegacyForward => {
+            compiler::output_compiler::compile_output_with_boolean_policy(
+                document,
+                element,
+                declared,
+                superseded,
+                compiler::output_compiler::OutputBooleanPolicy::selected_legacy(matches!(
+                    version,
+                    LocalVersion::LegacyForward
+                )),
+                &mut |document, element| validate_output_attributes(document, element, version),
+            )
+        }
+    }
+}
+
+// XSLT 1.0 section 2.2 recognition, not the shared compiler's capability list.
+// Recognized but not yet policy-integrated declarations must still be refused;
+// newer declarations must not reach modern lowering through a legacy program.
+fn is_legacy_top_level_declaration(local: &str) -> bool {
+    matches!(
+        local,
+        "import"
+            | "include"
+            | "strip-space"
+            | "preserve-space"
+            | "output"
+            | "key"
+            | "decimal-format"
+            | "namespace-alias"
+            | "attribute-set"
+            | "variable"
+            | "param"
+            | "template"
+    )
+}
+
 fn refusal(document: &Document, node: NodeId) -> CompileFailure {
     unsupported(
         "FXAR0031",
         "processor policy not yet propagated to this compilation shape",
         document.location(node),
     )
+}
+
+fn validate_template_attributes(
+    document: &Document,
+    element: NodeId,
+    version: LocalVersion,
+) -> Result<(), CompileFailure> {
+    for attribute in document.attributes(element) {
+        let name = document.name(*attribute).expect("attribute name");
+        if name.namespace.is_some() {
+            return Err(refusal(document, *attribute));
+        }
+        if name.local == "match" {
+            continue;
+        }
+        // Shared declaration/static-context readers still consume these fields.
+        // Do not call them ignored until selected policy reaches those readers.
+        if matches!(
+            name.local.as_str(),
+            "name"
+                | "mode"
+                | "priority"
+                | "xpath-default-namespace"
+                | "default-mode"
+                | "default-collation"
+                | "exclude-result-prefixes"
+                | "version"
+        ) {
+            return Err(refusal(document, *attribute));
+        }
+        match version {
+            LocalVersion::LegacyForward => {}
+            LocalVersion::LegacyNormal => {
+                return Err(invalid(
+                    "XTSE0090",
+                    "unknown template attribute outside forward compatibility",
+                    document.location(*attribute),
+                ));
+            }
+            LocalVersion::ModernWitness(_) => return Err(refusal(document, *attribute)),
+        }
+    }
+    Ok(())
+}
+
+fn validate_output_attributes(
+    document: &Document,
+    element: NodeId,
+    version: LocalVersion,
+) -> Result<(), CompileFailure> {
+    for attr in document.attributes(element) {
+        let name = document.name(*attr).expect("attribute name");
+        if name.namespace.is_some() {
+            return Err(refusal(document, *attr));
+        }
+        if !matches!(
+            name.local.as_str(),
+            "method" | "indent" | "omit-xml-declaration" | "encoding"
+        ) {
+            if !compiler::output_compiler::is_known_output_attribute(&name.local) {
+                match version {
+                    LocalVersion::LegacyForward => continue,
+                    LocalVersion::LegacyNormal => {
+                        return Err(invalid(
+                            "XTSE0090",
+                            "unknown output attribute outside forward compatibility",
+                            document.location(*attr),
+                        ));
+                    }
+                    LocalVersion::ModernWitness(_) => {}
+                }
+            }
+            return Err(refusal(document, *attr));
+        }
+        if name.local == "encoding"
+            && !document
+                .value(*attr)
+                .is_some_and(|v| v.eq_ignore_ascii_case("UTF-8"))
+        {
+            return Err(refusal(document, *attr));
+        }
+        if matches!(
+            version,
+            LocalVersion::LegacyNormal | LocalVersion::LegacyForward
+        ) && name.local == "method"
+            && !document
+                .value(*attr)
+                .is_some_and(|value| matches!(value.trim(), "xml" | "html" | "text"))
+        {
+            return Err(refusal(document, *attr));
+        }
+    }
+    Ok(())
 }
 
 fn body(
@@ -176,16 +321,30 @@ fn body(
                 )?);
             } else {
                 match name.local.as_str() {
+                    "if" | "choose" => {
+                        out.push(conditional_integration::compile(
+                            document,
+                            child,
+                            edition,
+                            child_version,
+                            depth,
+                            bindings,
+                        )?);
+                        return Ok(());
+                    }
                     "fallback" if matches!(edition, Edition::Legacy) => {
                         // Section 15: ordinary instantiation is a no-op. Only
                         // the parent instruction's fallback path lowers content.
-                        // Attribute/local-version policy is not widened here.
-                        if !document.attributes(child).is_empty() {
-                            return Err(refusal(document, child));
-                        }
+                        // Use shared fallback attribute validation; local-version
+                        // declarations still pass through the guarded scope owner.
+                        ensure_fallback_attributes(document, child)?;
                         return Ok(());
                     }
-                    "text" | "value-of" => {}
+                    "text" => {
+                        out.push(selected_text(document, child, child_version)?);
+                        return Ok(());
+                    }
+                    "value-of" => {}
                     "element" => {
                         out.push(computed_element(
                             document, child, edition, version, depth, bindings,
@@ -193,28 +352,67 @@ fn body(
                         return Ok(());
                     }
                     "variable" if matches!(edition, Edition::Legacy) => {
-                        out.push(text_variable(document, child, bindings)?);
+                        out.push(local_variable(document, child, bindings)?);
                         return Ok(());
                     }
                     _ => return Err(refusal(document, child)),
                 }
-                if name.local == "value-of" {
-                    out.push(value_of(document, child, child_version, bindings)?);
-                } else {
-                    if !document.attributes(child).is_empty() {
-                        return Err(refusal(document, child));
-                    }
-                    out.push(compile_xslt_instruction(
-                        document,
-                        child,
-                        &name.local,
-                        bindings,
-                    )?);
-                }
+                out.push(value_of(document, child, child_version, bindings)?);
             }
             Ok(())
         },
     )
+}
+
+fn selected_text(
+    document: &Document,
+    element: NodeId,
+    version: LocalVersion,
+) -> Result<Instruction, CompileFailure> {
+    if matches!(version, LocalVersion::ModernWitness(_)) {
+        // Keep the preexisting modern witness narrow until its attribute scope
+        // is integrated, rather than borrowing legacy optional-attribute rules.
+        if !document.attributes(element).is_empty() {
+            return Err(refusal(document, element));
+        }
+        return compile_text(document, element);
+    }
+    for attribute in document.attributes(element) {
+        let name = document.name(*attribute).expect("attribute name");
+        if name.namespace.is_some()
+            || matches!(
+                name.local.as_str(),
+                "version"
+                    | "default-collation"
+                    | "xpath-default-namespace"
+                    | "default-mode"
+                    | "exclude-result-prefixes"
+            )
+        {
+            return Err(refusal(document, *attribute));
+        }
+        if name.local != "disable-output-escaping" && matches!(version, LocalVersion::LegacyNormal)
+        {
+            return Err(invalid(
+                "XTSE0090",
+                "unknown text attribute outside forward compatibility",
+                document.location(*attribute),
+            ));
+        }
+    }
+    let escaping = match optional_attribute(document, element, None, "disable-output-escaping") {
+        Some("yes") => true,
+        None | Some("no") => false,
+        Some(_) if matches!(version, LocalVersion::LegacyForward) => false,
+        Some(_) => {
+            return Err(invalid(
+                "XTSE0020",
+                "disable-output-escaping must be 'yes' or 'no'",
+                document.location(element),
+            ));
+        }
+    };
+    compile_text_after_attribute_validation(document, element, escaping)
 }
 
 // This bounded slice admits literal-result xsl:version scope under each policy.
@@ -323,15 +521,37 @@ fn computed_element(
     )
 }
 
-fn text_variable(
+fn local_variable(
     document: &Document,
     element: NodeId,
     bindings: &mut Vec<String>,
 ) -> Result<Instruction, CompileFailure> {
-    require_probe_attribute_set(document, element, "name")?;
+    for attribute in document.attributes(element) {
+        let name = document.name(*attribute).expect("attribute");
+        if name.namespace.is_some() || !matches!(name.local.as_str(), "name" | "select") {
+            return Err(refusal(document, *attribute));
+        }
+    }
     let name = compile_local_variable_name(document, element, document.location(element))?;
+    if bindings.contains(&name) {
+        return Err(invalid(
+            "FXST0017",
+            format!("duplicate local variable binding: ${name}"),
+            document.location(element),
+        ));
+    }
+    if let Some(select) = optional_attribute(document, element, None, "select") {
+        if xpath_string_literal(select.trim()).is_none() {
+            return Err(refusal(document, element));
+        }
+        ensure_no_meaningful_children(document, element, "xsl:variable")?;
+        let instruction = compile_static_atomic_variable(&name, select, document.location(element))
+            .expect("string literal passed shared eligibility");
+        bindings.push(name);
+        return Ok(instruction);
+    }
     // Only text constructors enter this slice; other local constructors and
-    // select expressions still require their own policy propagation.
+    // nonliteral select expressions still require their own policy propagation.
     for child in meaningful_children(document, element) {
         if has_local_version(document, child) {
             return Err(refusal(document, child));
@@ -345,13 +565,6 @@ fn text_variable(
         true,
     )?
     .ok_or_else(|| refusal(document, element))?;
-    if bindings.contains(&name) {
-        return Err(invalid(
-            "FXST0017",
-            format!("duplicate local variable binding: ${name}"),
-            document.location(element),
-        ));
-    }
     bindings.push(name);
     Ok(variable)
 }
@@ -376,6 +589,14 @@ fn value_of(
     if !admitted_value(expression) {
         if matches!(version, LocalVersion::ModernWitness(DeclaredVersion::Four)) {
             return Err(refusal(document, element));
+        }
+        if let Some(test) =
+            boolean_call_timing::compile(expression, version, document.location(element), bindings)?
+        {
+            return Ok(boolean_call_timing::text_result(
+                test,
+                document.location(element),
+            ));
         }
         if direct_literal_property_arity_error(expression) {
             let detail = "system-property requires exactly one argument";
@@ -455,12 +676,27 @@ fn value_of(
 fn admitted_value(path: &str) -> bool {
     path.strip_prefix('$').is_some_and(is_ascii_ncname)
         || path
+            .strip_prefix("(//")
+            .and_then(|tail| tail.split_once(")["))
+            .and_then(|(name, rest)| {
+                rest.split_once("]/")
+                    .map(|(position, suffix)| (name, position, suffix))
+            })
+            .is_some_and(|(name, position, suffix)| {
+                is_ascii_ncname(name)
+                    && is_ascii_ncname(suffix.trim())
+                    && crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                        position,
+                    )
+                    .is_some()
+            })
+        || path
             .split('/')
             .all(|step| step == "text()" || is_ascii_ncname(step))
 }
 
-// This entire select is one call with no argument evaluation effects. Do not
-// promote this instruction-level failure to nested/short-circuited calls.
+// One complete call whose arguments have no evaluation effects. Boolean
+// composition uses the same eligibility but puts failure at the call leaf.
 fn direct_literal_property_arity_error(expression: &str) -> bool {
     if !super::xslt10_static_introspection_compiler::system_property_arity_error(expression) {
         return false;
@@ -485,3 +721,6 @@ fn direct_literal_property_arity_error(expression: &str) -> bool {
 #[cfg(test)]
 #[path = "matched_integration_tests.rs"]
 mod tests;
+
+#[path = "top_level_integration_tests.rs"]
+mod top_level_tests;

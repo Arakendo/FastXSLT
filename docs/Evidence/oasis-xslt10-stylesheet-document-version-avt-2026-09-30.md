@@ -2,6 +2,20 @@
 
 Date: 2026-09-30
 
+## Current-status correction (2026-10-18)
+
+The historical exact-match statement below is not the current result.
+An unchanged full-corpus replay reports `Microsoft/Output__84025#1` as a
+mismatch. Its current actual output includes the principal stylesheet's comment,
+processing instruction, `p` element and included AVT test elements; the archive
+instead contains a materially different `element`/`empty` fragment. Both
+admitted stylesheet modules declare XML output, whereas the catalog purpose
+says text output. The static stylesheet-version AVT is evaluated, but that does
+not establish whole-case parity. The reason for the historical pass report has
+not been established; do not use it as current conformance evidence or change
+the reference to recover it. See the
+[current mismatch audit](oasis-xslt10-literal-document-path-binding-2026-10-17.md#2026-10-18-mismatch-and-numeric-composition-audit).
+
 ## Result
 
 The exact AVT expression `document('')/xsl:stylesheet/@version` is now folded

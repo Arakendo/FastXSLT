@@ -2984,6 +2984,34 @@ fn xslt10_variable_position_predicates_do_not_approximate_multi_step_focus() {
 }
 
 #[test]
+fn grouped_position_paths_do_not_reinterpret_descendant_suffixes() {
+    for position in ["1", "$p"] {
+        let xml = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:param name="p" select="1"/><xsl:template match="/"><xsl:value-of select="(//n)[{position}]//v"/></xsl:template></xsl:stylesheet>"#
+        );
+        let sheet = parse_stylesheet("urn:grouped-suffix-guard", xml.as_bytes());
+        let failure = compile_stylesheet(&sheet).expect_err("descendant suffix not a rooted path");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+        assert_eq!(failure.location.resource, "urn:grouped-suffix-guard");
+    }
+}
+
+#[test]
+fn qualified_extension_selection_reports_unsupported_with_provenance() {
+    for prefix in ["msxsl", "alias"] {
+        let xml = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:{prefix}="urn:schemas-microsoft-com:xslt"><xsl:variable name="tree"><item/></xsl:variable><xsl:template match="/"><xsl:apply-templates select="{prefix}:node-set($tree)" mode="fragment"/></xsl:template></xsl:stylesheet>"#
+        );
+        let stylesheet = parse_stylesheet("memory:extension-selection.xsl", xml.as_bytes());
+        let failure = compile_stylesheet(&stylesheet).expect_err("extension is not implemented");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+        assert_eq!(failure.code, "FXXP1001");
+        assert_eq!(failure.location.resource, "memory:extension-selection.xsl");
+        assert!(xml[failure.location.span].contains("xsl:apply-templates"));
+    }
+}
+
+#[test]
 fn xslt10_qualified_variable_path_rejects_unbound_prefix_with_provenance() {
     let stylesheet = parse_stylesheet(
         "memory:unbound-variable-path.xsl",
@@ -3998,15 +4026,32 @@ fn xslt10_forward_compatible_processing_defers_invalid_xpath_until_instantiation
     )));
 
     let stylesheet = parse_stylesheet(
-        "memory:forward-compatible-invalid-introspection-type.xsl",
+        "memory:forward-compatible-invalid-introspection-qname.xsl",
         br#"<xsl:stylesheet version="1.5" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="never"><xsl:value-of select="system-property(123)"/></xsl:template><xsl:template match="/"/></xsl:stylesheet>"#,
     );
     let program = compile_stylesheet(&stylesheet)
         .expect("an invalid introspection argument in a dormant template must be deferred");
     assert!(program.matched_templates.iter().any(|template| matches!(
         template.template.body.as_slice(),
-        [Instruction::Xslt10DeferredFailure { code, .. }] if *code == "XPTY0004"
+        [Instruction::Xslt10DeferredFailure { code, .. }] if *code == "XTDE1390"
     )));
+}
+
+#[test]
+fn numeric_introspection_failure_does_not_bypass_value_of_validation() {
+    for instruction in [
+        r#"<xsl:value-of select="system-property(123)" disable-output-escaping="invalid"/>"#,
+        r#"<xsl:value-of select="system-property(123)"><xsl:text>bad</xsl:text></xsl:value-of>"#,
+        r#"<xsl:value-of select="system-property(123)" unknown="bad"/>"#,
+    ] {
+        let bytes = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/">{instruction}</xsl:template></xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet("urn:numeric-validation", bytes.as_bytes());
+        let failure = compile_stylesheet(&document).unwrap_err();
+        assert_ne!(failure.code, "XTDE1390");
+        assert_eq!(failure.location.resource, "urn:numeric-validation");
+    }
 }
 
 #[test]

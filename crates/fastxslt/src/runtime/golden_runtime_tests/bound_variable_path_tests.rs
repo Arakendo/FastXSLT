@@ -62,6 +62,228 @@ fn selected_document_fixture_with_lookup(
 }
 
 #[test]
+fn grouped_variable_predicates_preserve_xpath10_types() {
+    for (binding, expected) in [
+        (r#"select="2""#, "B"),
+        (r#"select="'2'""#, "A"),
+        (r#"select="''""#, ""),
+        (r#"select="true()""#, "A"),
+        (r#"select="false()""#, ""),
+        (r#"select="/r/n""#, "A"),
+        (r#"select="/r/absent""#, ""),
+    ] {
+        for global in [false, true] {
+            // Local constant booleans currently enter through contains(); the
+            // global initializer also admits true()/false().
+            let binding = match (global, binding) {
+                (false, r#"select="true()""#) => r#"select="contains('a','a')""#,
+                (false, r#"select="false()""#) => r#"select="contains('a','b')""#,
+                _ => binding,
+            };
+            let declaration = format!(r#"<xsl:variable name="p" {binding}/>"#);
+            let body = format!(
+                r#"{}<out><xsl:value-of select="(//n)[$p]/v"/></out>"#,
+                if global { "" } else { &declaration }
+            );
+            let fixture = selected_document_fixture(
+                if global { &declaration } else { "" },
+                &body,
+                b"<r><n><v>A</v></n><n><v>B</v></n></r>",
+            );
+            for view in [
+                WhitespaceRepresentation::VisibilityView,
+                WhitespaceRepresentation::CompleteReference,
+            ] {
+                let actual =
+                    run(&fixture, view, None, &mut InvocationControl::unbounded()).unwrap();
+                assert_eq!(
+                    actual,
+                    format!("<out>{expected}</out>"),
+                    "{binding}, global={global}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn grouped_true_predicate_evaluates_all_suffix_contexts() {
+    for (source, suffix, expected) in [
+        ("<r><n/><n><v>B</v></n></r>", "v", "B"),
+        (
+            "<r><n id='first'><n id='second'/></n></r>",
+            "parent::*/@id",
+            "first",
+        ),
+    ] {
+        let fixture = generated_operand_fixture(
+            &format!(
+                r#"<xsl:variable name="p" select="contains('a','a')"/><out><xsl:value-of select="(//n)[$p]/{suffix}"/></out>"#
+            ),
+            source.as_bytes(),
+        );
+        assert_eq!(
+            run(
+                &fixture,
+                WhitespaceRepresentation::VisibilityView,
+                None,
+                &mut InvocationControl::unbounded()
+            )
+            .unwrap(),
+            format!("<out>{expected}</out>")
+        );
+    }
+}
+
+#[test]
+fn grouped_boolean_predicates_preserve_controls_and_constructor_guard() {
+    let guarded = selected_document_fixture(
+        r#"<xsl:variable name="p" select="'2'"/><xsl:variable name="answer"><xsl:value-of select="(//n)[$p]/v"/></xsl:variable>"#,
+        r#"<out><xsl:value-of select="$answer"/></out>"#,
+        b"<r><n/><n><v>B</v></n><n><v>C</v></n></r>",
+    );
+    let view = WhitespaceRepresentation::VisibilityView;
+    assert_eq!(
+        run(&guarded, view, None, &mut InvocationControl::unbounded())
+            .unwrap_err()
+            .code,
+        "FXRT1004"
+    );
+    let fixture = generated_operand_fixture(
+        r#"<xsl:variable name="p" select="'2'"/><out><xsl:value-of select="(//n)[$p]/v"/></out>"#,
+        b"<r><n/><n><v>B</v></n><n><v>C</v></n></r>",
+    );
+    let mut baseline = InvocationControl::unbounded();
+    assert_eq!(
+        run(&fixture, view, None, &mut baseline).unwrap(),
+        "<out>B</out>"
+    );
+    let visits = baseline.consumed(WorkDomain::XPathNodeVisit);
+    for limit in [visits - 1, visits] {
+        let mut control = InvocationControl::new(
+            CancellationToken::new(),
+            WorkLimits {
+                xpath_node_visits: limit,
+                ..WorkLimits::unbounded()
+            },
+        );
+        let outcome = run(&fixture, view, None, &mut control);
+        if limit == visits {
+            assert_eq!(outcome.unwrap(), "<out>B</out>");
+        } else {
+            assert_eq!(outcome.unwrap_err().code, "FXCT0002");
+        }
+    }
+    let mut cancelled =
+        InvocationControl::unbounded().cancelling_on_charge(WorkDomain::XPathNodeVisit, visits - 1);
+    assert_eq!(
+        run(&fixture, view, None, &mut cancelled).unwrap_err().code,
+        "FXCT0001"
+    );
+    assert_eq!(
+        run(&fixture, view, None, &mut InvocationControl::unbounded()).unwrap(),
+        "<out>B</out>"
+    );
+}
+
+#[test]
+fn grouped_literal_positions_share_variable_selection_and_controls() {
+    let source = b"<r><group><n><v>A</v><v>ignored</v></n><n><v>B</v></n></group><group><n><v>C</v></n></group></r>";
+    for (position, expected) in [
+        ("1", "A"),
+        ("2.0", "B"),
+        ("3", "C"),
+        ("0", ""),
+        ("-1", ""),
+        ("1.5", ""),
+        ("99", ""),
+    ] {
+        let literal = generated_operand_fixture(
+            &format!(r#"<xsl:value-of select="(//n)[{position}]/v"/>"#),
+            source,
+        );
+        let variable = generated_operand_fixture(
+            &format!(
+                r#"<xsl:variable name="p" select="{position}"/><xsl:value-of select="(//n)[$p]/v"/>"#
+            ),
+            source,
+        );
+        for view in [
+            WhitespaceRepresentation::VisibilityView,
+            WhitespaceRepresentation::CompleteReference,
+        ] {
+            let mut control = InvocationControl::unbounded();
+            assert_eq!(run(&literal, view, None, &mut control).unwrap(), expected);
+            assert_eq!(
+                run(&variable, view, None, &mut InvocationControl::unbounded()).unwrap(),
+                expected
+            );
+            let visits = control.consumed(WorkDomain::XPathNodeVisit);
+            for allowed in [visits - 1, visits] {
+                let mut limits = WorkLimits::unbounded();
+                limits.xpath_node_visits = allowed;
+                let outcome = run(
+                    &literal,
+                    view,
+                    None,
+                    &mut InvocationControl::new(CancellationToken::new(), limits),
+                );
+                if allowed == visits {
+                    assert_eq!(outcome.unwrap(), expected);
+                } else {
+                    assert_eq!(outcome.unwrap_err().code, "FXCT0002");
+                }
+            }
+            assert_eq!(
+                run(
+                    &literal,
+                    view,
+                    None,
+                    &mut InvocationControl::unbounded()
+                        .cancelling_on_charge(WorkDomain::XPathNodeVisit, 1)
+                )
+                .unwrap_err()
+                .code,
+                "FXCT0001"
+            );
+            assert_eq!(
+                run(&literal, view, None, &mut InvocationControl::unbounded()).unwrap(),
+                expected
+            );
+        }
+    }
+    let empty = generated_operand_fixture(r#"<xsl:value-of select="(//n)[1]/v"/>"#, b"<r/>");
+    assert_eq!(
+        run(
+            &empty,
+            WhitespaceRepresentation::VisibilityView,
+            None,
+            &mut InvocationControl::unbounded()
+        )
+        .unwrap(),
+        ""
+    );
+}
+
+#[test]
+fn grouped_literal_positions_preserve_nested_groups_and_reverse_axis_order() {
+    let fixture = generated_operand_fixture(
+        r#"<xsl:for-each select="r/outer/inner/n"><xsl:value-of select="(ancestor::*)[1]/@id"/><xsl:text>|</xsl:text><xsl:value-of select="((ancestor::*))[1]/@id"/></xsl:for-each>"#,
+        b"<r id='root'><outer id='outer'><inner id='inner'><n/></inner></outer></r>",
+    );
+    assert_eq!(
+        run(
+            &fixture,
+            WhitespaceRepresentation::VisibilityView,
+            None,
+            &mut InvocationControl::unbounded()
+        )
+        .unwrap(),
+        "root|root"
+    );
+}
+
+#[test]
 fn global_selected_document_values_retain_effective_owner() {
     let fixture = selected_document_fixture(
         r#"<xsl:variable name="v" select="document('a.xml')/r/n"/><xsl:variable name="empty" select="document('a.xml')/missing"/>"#,

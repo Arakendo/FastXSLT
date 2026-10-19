@@ -1,7 +1,7 @@
 //! Private template match-pattern normalization and priority compilation.
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
-use crate::xpath::path_experiment::{PathStep, parse_location_path, parse_qualified_child_path};
+use crate::xpath::path_experiment::{PathStep, parse_qualified_child_path};
 use crate::xslt::golden_semantics_experiment::{
     ChildPresenceTest, MatchNodeTest, MatchPattern, MatchStringPredicate, NamedSiblingBoundary,
     TemplatePriority,
@@ -22,6 +22,13 @@ pub(super) fn compile_match_pattern(
     element: NodeId,
     lexical_pattern: &str,
 ) -> Result<(MatchPattern, TemplatePriority), CompileFailure> {
+    let parse_location_path = |expression: &str, location| {
+        crate::xpath::path_experiment::parse_location_path_with_compatibility(
+            expression,
+            location,
+            super::instruction_compiler::uses_xslt10_compatibility(document, element),
+        )
+    };
     if super::instruction_compiler::uses_xslt10_compatibility(document, element) {
         if contains_outside_string_literals(lexical_pattern, "$") {
             return Err(invalid(
@@ -201,7 +208,10 @@ pub(super) fn compile_match_pattern(
                 && !predicate.contains('/')
                 && effective_xpath_default_namespace(document, element).is_none()
                 && parse_location_path(predicate, document.location(element).clone())
-                    .is_ok_and(|path| path.has_positional_child_string_predicate()) =>
+                    .is_ok_and(|path| {
+                        path.has_positional_child_string_predicate()
+                            || path.is_single_step_composed_string_match_path()
+                    }) =>
         {
             MatchPattern::Path(
                 parse_location_path(predicate, document.location(element).clone())

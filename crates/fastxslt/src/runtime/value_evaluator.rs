@@ -577,6 +577,58 @@ pub(super) fn execute_value_of(
                 super::key_lookup::select(inputs, lookup, context, variables, control)?.len();
             append_text(result, &count.to_string(), inputs.request_id, control)?;
         }
+        ValueExpression::Xslt10SumKeyLookup(lookup) => {
+            let (source, _) = required_source_context(inputs, context)?;
+            let selected = super::key_lookup::select(inputs, lookup, context, variables, control)?;
+            let value =
+                xslt10_compatibility::sum_nodes_lexical(inputs, source, &selected, control)?;
+            append_text(result, &value, inputs.request_id, control)?;
+        }
+        ValueExpression::Xslt10FormattedKeySum(value) => {
+            let (source, _) = required_source_context(inputs, context)?;
+            let selected =
+                super::key_lookup::select(inputs, &value.lookup, context, variables, control)?;
+            let mut number =
+                xslt10_compatibility::sum_nodes_lexical(inputs, source, &selected, control)?;
+            if let Some((search, replacement)) = &value.translation {
+                let work = number.chars().count().saturating_mul(
+                    search
+                        .chars()
+                        .count()
+                        .saturating_add(replacement.chars().count())
+                        .saturating_add(1),
+                );
+                control
+                    .charge(WorkDomain::XPathOperation, work)
+                    .and_then(|()| {
+                        control.charge(WorkDomain::ResultTextByte, number.len().saturating_mul(4))
+                    })
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                number = crate::xpath::static_string_experiment::evaluate_translate(
+                    &number,
+                    search,
+                    replacement,
+                );
+            }
+            if value.string_coercion {
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .and_then(|()| {
+                        control.charge(WorkDomain::ResultTextByte, number.len().saturating_mul(4))
+                    })
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                number = xslt10_compatibility::number_lexical(&number);
+            }
+            let formatted = evaluate_runtime_format_number_with_number(
+                inputs,
+                &value.format,
+                context,
+                variables,
+                control,
+                Some(&number),
+            )?;
+            append_text(result, &formatted, inputs.request_id, control)?;
+        }
         ValueExpression::LocationPath(path)
         | ValueExpression::Xslt10FirstNodeLocationPath(path)
         | ValueExpression::StringPath(path)
@@ -1118,13 +1170,13 @@ pub(super) fn execute_value_of(
                 inputs, context, path, variable, variables, result, control,
             )?;
         }
-        ValueExpression::Xslt10GroupedVariablePositionPath {
+        ValueExpression::Xslt10GroupedPositionPath {
             selection,
-            variable,
+            position,
             suffix,
         } => {
-            xslt10_compatibility::append_grouped_variable_position_path(
-                inputs, context, selection, variable, suffix, variables, result, control,
+            xslt10_compatibility::append_grouped_position_path(
+                inputs, context, selection, position, suffix, variables, result, control,
             )?;
         }
         ValueExpression::Xslt10VariablePath { variable, path } => {
@@ -1988,6 +2040,19 @@ fn evaluate_runtime_format_number(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
+    evaluate_runtime_format_number_with_number(
+        inputs, expression, context, variables, control, None,
+    )
+}
+
+fn evaluate_runtime_format_number_with_number(
+    inputs: &SequenceInputs<'_>,
+    expression: &crate::xpath::format_number_experiment::FormatNumberExpression,
+    context: Option<NodeId>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+    supplied_number: Option<&str>,
+) -> Result<String, ExecutionFailure> {
     let mut atomic_values = variables.atomics.as_ref().clone();
     for name in expression.variable_names() {
         if !atomic_values.contains_key(name) {
@@ -1996,10 +2061,16 @@ fn evaluate_runtime_format_number(
             atomic_values.insert(name.to_owned(), AtomicValue::untyped(value));
         }
     }
-    let number_path_value = expression
-        .number_path()
-        .map(|path| xslt10_compatibility::first_path_string(inputs, context, path, control))
-        .transpose()?;
+    let number_path_value = if let Some(path) = expression.number_sum_path() {
+        Some(xslt10_compatibility::sum_path_lexical(
+            inputs, context, path, control,
+        )?)
+    } else {
+        expression
+            .number_path()
+            .map(|path| xslt10_compatibility::first_path_string(inputs, context, path, control))
+            .transpose()?
+    };
     let picture_path_value = expression
         .picture_path()
         .map(|path| xslt10_compatibility::first_path_string(inputs, context, path, control))
@@ -2007,7 +2078,7 @@ fn evaluate_runtime_format_number(
     evaluate_format_number(
         expression,
         &atomic_values,
-        number_path_value.as_deref(),
+        supplied_number.or(number_path_value.as_deref()),
         picture_path_value.as_deref(),
     )
     .map_err(|error| match error {
@@ -2038,6 +2109,12 @@ fn evaluate_runtime_format_number(
                 reason.detail()
             ),
         ),
+    })
+    .map_err(|mut failure| {
+        failure
+            .location
+            .get_or_insert_with(|| expression.location().clone());
+        failure
     })
 }
 

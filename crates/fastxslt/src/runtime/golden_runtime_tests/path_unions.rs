@@ -7,6 +7,31 @@ use super::{
 };
 
 #[test]
+fn composed_string_union_patterns_preserve_attribute_focus_and_repeatability() {
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8192, 16384));
+    resources
+        .admit(
+            SOURCE_ID,
+            b"<r attr='a'><left>hit-tail</left><n>hit</n><n>miss</n></r>".to_vec(),
+        )
+        .unwrap();
+    resources.admit(STYLESHEET_ID, br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="r/@* | r/n"/></out></xsl:template><xsl:template match="@*[string-length(self::*) != 5] | n[string(.) = concat(substring-before(/r/left, '-'), '')]" priority="10"><picked><xsl:value-of select="name()"/></picked></xsl:template><xsl:template match="@* | n"/></xsl:stylesheet>"#.to_vec()).unwrap();
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET_ID).unwrap();
+    let mut builder = TransformSetBuilder::new(snapshot, program, 2, policy(16384));
+    for name in ["composed-a", "composed-b"] {
+        builder.add(request(name, name, SOURCE_ID)).unwrap();
+    }
+    let results = execute_transform_set(builder.seal()).unwrap();
+    for name in ["composed-a", "composed-b"] {
+        assert_eq!(
+            results.by_request[name].serialized,
+            "<out><picked>attr</picked><picked>n</picked></out>"
+        );
+    }
+}
+
+#[test]
 fn xslt10_path_union_keeps_quoted_current_text_distinct_from_outer_focus() {
     const SOURCE: &str = "urn:fastxslt:quoted-current:source";
     const STYLESHEET: &str = "urn:fastxslt:quoted-current:stylesheet";

@@ -34,12 +34,25 @@ pub(super) fn fold(
     }
 }
 
-pub(super) fn numeric_literal_argument_type_error(expression: &str) -> Option<&str> {
+// XPath 1.0 converts a numeric argument to string before QName validation.
+// Finite numbers and negative infinity cannot spell a QName. Positive infinity
+// spells `Infinity`, which is a valid name and must not be classified as an error.
+pub(super) fn numeric_literal_qname_error(expression: &str) -> Option<(&str, &'static str)> {
     let (function, argument) = parse_call(expression.trim())?;
     if split_arguments(argument).is_some() || xpath_string_literal(argument.trim()).is_some() {
         return None;
     }
-    argument.trim().parse::<f64>().ok().map(|_| function)
+    let number = crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(argument)?;
+    if number == f64::INFINITY {
+        return None;
+    }
+    let code = match function {
+        "system-property" => "XTDE1390",
+        "function-available" => "XTDE1400",
+        "element-available" => "XTDE1440",
+        _ => return None,
+    };
+    Some((function, code))
 }
 
 pub(super) fn system_property_arity_error(expression: &str) -> bool {
@@ -170,6 +183,9 @@ fn function_available(document: &Document, element: NodeId, lexical_name: &str) 
             | "floor"
             | "format-number"
             | "function-available"
+            | "generate-id"
+            | "id"
+            | "key"
             | "lang"
             | "last"
             | "local-name"
@@ -209,8 +225,10 @@ fn element_available(document: &Document, element: NodeId, lexical_name: &str) -
             | "copy"
             | "copy-of"
             | "element"
+            | "fallback"
             | "for-each"
             | "if"
+            | "message"
             | "number"
             | "processing-instruction"
             | "text"
@@ -260,10 +278,67 @@ pub(super) fn fold_with_policy_for_test(
 
 #[cfg(test)]
 mod tests {
-    use super::{StaticIntrospectionValue, fold, numeric_literal_argument_type_error};
+    use super::{StaticIntrospectionValue, fold, numeric_literal_qname_error};
     use crate::compile::golden_stylesheet_experiment::document_element;
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+
+    #[test]
+    fn advertised_message_and_fallback_capabilities_execute_through_shared_runtime() {
+        use crate::execution_control_experiment::InvocationControl;
+        use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_controlled_for_test;
+        let parse = |identity, bytes: &[u8]| {
+            Document::from_parsed(
+                parse_document(
+                    identity,
+                    bytes,
+                    ParseLimits {
+                        max_events: 128,
+                        max_depth: 16,
+                    },
+                )
+                .unwrap(),
+            )
+            .unwrap()
+        };
+        let source = parse("urn:capability-source", b"<r/>");
+        for terminate in ["no", "yes"] {
+            let xml = format!(
+                r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:alias="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:unimplemented" extension-element-prefixes="e" version="1.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="element-available('alias:message')"/><xsl:text>|</xsl:text><xsl:value-of select="element-available('xsl:fallback')"/><xsl:text>|</xsl:text><xsl:if test="element-available('xsl:message')"><xsl:message terminate="{terminate}">notice</xsl:message></xsl:if><xsl:if test="element-available('xsl:fallback')"><e:missing><xsl:fallback><xsl:text>fallback</xsl:text></xsl:fallback></e:missing><xsl:fallback><xsl:message terminate="yes">must not run</xsl:message></xsl:fallback></xsl:if></xsl:template></xsl:stylesheet>"#
+            );
+            let document = parse("urn:capability-style", xml.as_bytes());
+            let root = document_element(&document).unwrap();
+            for name in [
+                "e:message",
+                "e:fallback",
+                "xsl:param",
+                "xsl:sort",
+                "xsl:stylesheet",
+                "xsl:sequence",
+            ] {
+                assert_eq!(
+                    fold(&document, root, &format!("element-available('{name}')")),
+                    Some(StaticIntrospectionValue::Boolean(false))
+                );
+            }
+            let program =
+                crate::compile::golden_stylesheet_experiment::compile_stylesheet(&document)
+                    .unwrap();
+            let mut control = InvocationControl::unbounded();
+            let result = execute_compiled_stylesheet_controlled_for_test(
+                &program,
+                &source,
+                "capability",
+                &mut control,
+            );
+            if terminate == "no" {
+                assert_eq!(result.unwrap(), "true|true|fallback");
+            } else {
+                assert!(result.unwrap_err().contains("XTMM9000"));
+            }
+            assert_eq!(control.messages(), ["notice"]);
+        }
+    }
 
     #[test]
     fn system_property_wrong_arity_is_invalid_and_deferred_in_legacy_future_context() {
@@ -376,30 +451,41 @@ mod tests {
     }
 
     #[test]
-    fn recognizes_only_numeric_literal_introspection_argument_type_errors() {
+    fn recognizes_only_numeric_literal_introspection_qname_errors() {
         assert_eq!(
-            numeric_literal_argument_type_error("system-property(123)"),
-            Some("system-property")
+            numeric_literal_qname_error("system-property(123)"),
+            Some(("system-property", "XTDE1390"))
         );
         assert_eq!(
-            numeric_literal_argument_type_error("function-available(1.5)"),
-            Some("function-available")
+            numeric_literal_qname_error("function-available(1.5)"),
+            Some(("function-available", "XTDE1400"))
         );
         assert_eq!(
-            numeric_literal_argument_type_error("element-available(-2)"),
-            Some("element-available")
+            numeric_literal_qname_error("element-available(-2)"),
+            Some(("element-available", "XTDE1440"))
         );
         assert_eq!(
-            numeric_literal_argument_type_error("system-property('xsl:version')"),
+            numeric_literal_qname_error("system-property('xsl:version')"),
             None
         );
         assert_eq!(
-            numeric_literal_argument_type_error("system-property(concat('xsl:', 'version'))"),
+            numeric_literal_qname_error("system-property(concat('xsl:', 'version'))"),
+            None
+        );
+        assert_eq!(numeric_literal_qname_error("system-property(1, 2)"), None);
+        for argument in ["NaN", "Infinity", "inf", "+123", "1e3", "--2", ".", "$n"] {
+            assert_eq!(
+                numeric_literal_qname_error(&format!("system-property({argument})")),
+                None
+            );
+        }
+        assert_eq!(
+            numeric_literal_qname_error(&format!("system-property({})", "9".repeat(400))),
             None
         );
         assert_eq!(
-            numeric_literal_argument_type_error("system-property(1, 2)"),
-            None
+            numeric_literal_qname_error(&format!("system-property(-{})", "9".repeat(400))),
+            Some(("system-property", "XTDE1390"))
         );
     }
 }

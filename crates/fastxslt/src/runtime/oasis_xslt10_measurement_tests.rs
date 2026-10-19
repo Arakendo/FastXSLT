@@ -1198,10 +1198,11 @@ fn trace_case_failure(identity: &str, phase: &str, failure: &WorkbenchFailure) {
         return;
     }
     println!(
-        "failure-trace\t{identity}\tphase={phase}\tcategory={:?}\tcode={}\tdetail={}",
+        "failure-trace\t{identity}\tphase={phase}\tcategory={:?}\tcode={}\tdetail={}\tlocation={}",
         failure.category,
         failure.code,
-        escaped_detail(&failure.detail)
+        escaped_detail(&failure.detail),
+        escaped_detail(&format!("{:?}", failure.location))
     );
 }
 

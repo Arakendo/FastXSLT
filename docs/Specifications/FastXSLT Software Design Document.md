@@ -1640,12 +1640,63 @@ selection yields an empty key without traversing a fabricated node. Selection
 and conversion retain the actual source owner and invocation control; internal
 sort keys do not become semantic result text.
 
+When the existing forward-compatible output validator ignores an invalid
+optional `indent` or `undeclare-prefixes` value, that property is absent from
+semantic settings and specified-property merge metadata. Lexical presence alone
+must not create a declaration conflict or replace an earlier valid setting.
+This preserves the existing validator's eligibility; it does not broaden
+processor profiles or attribute recovery.
+
+ADR-0025's private selected-processor integration supplies declaration validators
+and an explicit output-Boolean policy to the same compiler owners. Its bounded
+legacy route ignores unknown template/output attributes and invalid optional
+output Booleans only in selected forward-compatible contexts. Ignored attributes
+are not evaluated or retained as output merge properties. A modern declared
+version does not enable modern Boolean aliases under selected legacy semantics.
+Known attributes with unpropagated readers remain unsupported. This integration
+does not change ordinary entry points, production defaults or the public profile
+surface; complete processor-policy propagation remains a validation gate.
+
+The same private integration passes selected legacy text-attribute behavior to
+the ordinary text constructor: forward contexts ignore unknown attributes and
+invalid optional escaping values, while normal contexts reject them. Valid
+escaping flags, character-content validation, original locations and runtime
+charges remain shared. Local version scope is interpreted by the selected
+processor. This does not admit other instruction attributes, static-context
+controls or a broader forward-compatible recovery rule.
+
 Known `system-property()` zero- or multi-argument calls report `XPST0017`
 through the static introspection owner. XSLT 1.x forward-compatible processing
 defers that known arity error alongside admitted syntax/type errors until
 instantiation, preserving dormant-template behavior. Unsupported capability
 does not become a deferred error through this rule; broader function arities
 and general expression typing are not selected.
+
+Numeric-literal introspection arguments under admitted XPath 1.0 semantics are
+converted to strings before QName validation; they are not rejected merely for
+being numbers. A complete literal call in `xsl:value-of`, or an admitted Boolean
+call leaf, can retain a dynamic QName failure through the shared failure IR.
+Short-circuiting skips an unreached Boolean leaf. The diagnostic identifiers
+`XTDE1390`, `XTDE1400` and `XTDE1440` distinguish the three introspection
+functions; these later-edition identifiers label the failures, not a claim that
+XSLT 1.0 defines those codes. Instruction validation remains eager. Dynamic
+arguments, successful overflow-derived QName lookup and general composition
+remain outside this correction; it does not promote the selected-processor
+reference or broaden the compiler's catch-and-defer rule.
+
+The existing static function-availability owner includes the implemented
+unprefixed `id`, `key` and `generate-id` functions. Conditional availability
+checks and actual calls must agree; namespace-qualified lookalikes do not
+inherit these capabilities by local name. This correction does not admit
+`msxsl:node-set`, unparsed-entity metadata, or change processor-version reporting.
+ADR-0025's selected-profile capability reconciliation remains a separate
+integration gate, not an inference from this baseline table.
+
+The same baseline availability owner reports the implemented `xsl:message` and
+`xsl:fallback` instructions as available, including namespace-prefix aliases.
+Guarding them with `element-available()` must preserve actual message delivery,
+termination and fallback behavior. Non-instruction declarations and unsupported
+extension names do not acquire availability from a matching local name.
 
 Within XSLT 1.0 compatibility, a binary numeric sort-key expression reuses the
 same typed and charged path-arithmetic plan as ordinary value evaluation. The

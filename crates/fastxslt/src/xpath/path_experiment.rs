@@ -16,6 +16,9 @@ const XSLT10_OUTER_ATTRIBUTE_MARKER: char = '\0';
 mod path_boolean_predicate;
 use path_boolean_predicate::{EvaluationFocus, PathBooleanPredicate};
 
+#[path = "path_experiment/composed_string_predicate.rs"]
+mod composed_string_predicate;
+
 #[path = "path_experiment/qualified_nodes.rs"]
 pub(crate) mod qualified_nodes;
 
@@ -211,6 +214,27 @@ impl LocationPath {
                     | PathBooleanPredicate::NestedPositionalChildStringEquals(_)
             )
         )
+    }
+
+    pub(crate) fn is_single_step_composed_string_match_path(&self) -> bool {
+        self.origin == PathOrigin::Relative
+            && matches!(
+                self.steps.as_slice(),
+                [PathStep::ChildNamed(_)
+                    | PathStep::ChildAnyElement
+                    | PathStep::AttributeNamed(_)
+                    | PathStep::AttributeAny]
+            )
+            && matches!(
+                self.final_boolean_predicate.as_deref(),
+                Some(PathBooleanPredicate::ComposedString(_))
+            )
+            && self.final_predicate.is_none()
+            && self.final_context_predicate.is_none()
+            && self.sequence_position_predicate.is_none()
+            && self.step_axis_predicates.iter().all(Option::is_none)
+            && self.step_boolean_predicates.iter().all(Option::is_none)
+            && self.step_position_predicates.iter().all(Vec::is_empty)
     }
 
     pub(crate) fn single_step_predicate_axis_is_reverse(&self) -> bool {
@@ -796,6 +820,14 @@ pub(crate) fn parse_location_path(
     expression: &str,
     location: SourceLocation,
 ) -> Result<LocationPath, PathFailure> {
+    parse_location_path_with_compatibility(expression, location, false)
+}
+
+pub(crate) fn parse_location_path_with_compatibility(
+    expression: &str,
+    location: SourceLocation,
+    xslt10: bool,
+) -> Result<LocationPath, PathFailure> {
     validate_expression_opening(expression, &location)?;
     let (expression, sequence_position_predicate) =
         parse_complete_path_position_filter(expression).unwrap_or((expression, None));
@@ -815,7 +847,8 @@ pub(crate) fn parse_location_path(
     let normalized_prefix = unwrap_parenthesized_path_prefix(expression);
     let expression = normalized_prefix.as_deref().unwrap_or(expression);
     let (expression, final_context_predicate) = parse_final_context_predicate(expression);
-    let (expression, final_boolean_predicate) = parse_final_boolean_predicate(expression);
+    let (expression, final_boolean_predicate) =
+        parse_final_boolean_predicate(expression, &location, xslt10);
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
     let final_predicate = final_predicate.map(Box::new);
     let (expression, origin) = parse_path_origin(expression);
@@ -826,7 +859,7 @@ pub(crate) fn parse_location_path(
         ));
     }
     let parsed_steps = if final_predicate.is_none() {
-        parse_position_steps(expression)
+        parse_position_steps(expression, &location, xslt10)
     } else {
         Some(ParsedPathSteps {
             steps: expression.split('/').map(str::to_owned).collect(),
@@ -911,6 +944,9 @@ pub(crate) fn parse_xslt10_location_path(
     expression: &str,
     location: SourceLocation,
 ) -> Result<LocationPath, PathFailure> {
+    let parse_location_path = |expression: &str, location| {
+        parse_location_path_with_compatibility(expression, location, true)
+    };
     let expression = strip_enclosing_path_parentheses(expression.trim());
     if expression.trim() == "current()" {
         return parse_location_path(".", location);
@@ -1253,6 +1289,37 @@ fn parse_qualified_path_origin<'a>(
     }
 }
 
+fn reject_qualified_function_path(
+    expression: &str,
+    location: &SourceLocation,
+    resolve_prefix: &mut impl FnMut(&str) -> Option<String>,
+) -> Result<(), PathFailure> {
+    // A leading qualified function call is not a qualified child name test.
+    // This selector does not implement function calls; leave their arguments
+    // unparsed rather than diagnosing the whole call as a malformed QName.
+    if let Some((name, _)) = expression.split_once('(')
+        && let Some((prefix, local)) = name.trim().split_once(':')
+        && is_ncname(prefix)
+        && is_ncname(local)
+    {
+        if resolve_prefix(prefix).is_none() {
+            return Err(PathFailure::Invalid {
+                standard_code: "XPST0081",
+                detail: format!("the XPath function name uses an unbound prefix: {prefix}"),
+                location: location.clone(),
+            });
+        }
+        return Err(PathFailure::Unsupported {
+            detail: format!(
+                "the private location-path selector does not support a qualified function call: {}",
+                name.trim()
+            ),
+            location: location.clone(),
+        });
+    }
+    Ok(())
+}
+
 /// Parses the deliberately narrow qualified-child path needed by static `XPath`
 /// expressions while preserving the existing location-path execution backend.
 pub(crate) fn parse_qualified_child_path(
@@ -1261,6 +1328,7 @@ pub(crate) fn parse_qualified_child_path(
     mut resolve_prefix: impl FnMut(&str) -> Option<String>,
 ) -> Result<LocationPath, PathFailure> {
     validate_expression_opening(expression, &location)?;
+    reject_qualified_function_path(expression, &location, &mut resolve_prefix)?;
     if !expression.is_ascii() || expression.ends_with('/') {
         return Err(PathFailure::Unsupported {
             detail: format!(
@@ -1756,7 +1824,11 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<AxisPredicate>)
     (path, Some(predicate))
 }
 
-fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBooleanPredicate>>) {
+fn parse_final_boolean_predicate<'a>(
+    expression: &'a str,
+    location: &SourceLocation,
+    xslt10: bool,
+) -> (&'a str, Option<Box<PathBooleanPredicate>>) {
     let Some((path, predicate)) = expression.split_once('[') else {
         return (expression, None);
     };
@@ -1791,7 +1863,7 @@ fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBool
     {
         return (expression, None);
     }
-    let Some(predicate) = path_boolean_predicate::parse(predicate) else {
+    let Some(predicate) = path_boolean_predicate::parse(predicate, location, xslt10) else {
         return (expression, None);
     };
     (path, Some(Box::new(predicate)))
@@ -1944,7 +2016,11 @@ fn parse_attribute_value_predicate(predicate: &str) -> Option<(&str, String)> {
     None
 }
 
-fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
+fn parse_position_steps(
+    expression: &str,
+    location: &SourceLocation,
+    xslt10: bool,
+) -> Option<ParsedPathSteps> {
     let raw_steps = split_path_steps(expression)?;
     let mut steps = Vec::with_capacity(raw_steps.len());
     let mut position_predicates = Vec::with_capacity(raw_steps.len());
@@ -1978,7 +2054,9 @@ fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
                 {
                     axis_predicate = Some(predicate);
                 } else {
-                    boolean_predicate = Some(Box::new(path_boolean_predicate::parse(predicate)?));
+                    boolean_predicate = Some(Box::new(path_boolean_predicate::parse(
+                        predicate, location, xslt10,
+                    )?));
                 }
             } else {
                 let predicate = if !position_predicate
@@ -1988,7 +2066,9 @@ fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
                 {
                     StepPredicate::ContextName(name.into_boxed_str())
                 } else {
-                    StepPredicate::Boolean(Box::new(path_boolean_predicate::parse(predicate)?))
+                    StepPredicate::Boolean(Box::new(path_boolean_predicate::parse(
+                        predicate, location, xslt10,
+                    )?))
                 };
                 position_predicate.push(predicate);
             }

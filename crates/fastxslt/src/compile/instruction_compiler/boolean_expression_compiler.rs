@@ -125,6 +125,23 @@ pub(super) fn compile(
     )
 }
 
+fn compile_numeric_qname_failure(
+    expression: &str,
+    location: &SourceLocation,
+    xslt10_compatibility: bool,
+) -> Option<BooleanExpression> {
+    if !xslt10_compatibility {
+        return None;
+    }
+    let (function, code) =
+        super::xslt10_static_introspection_compiler::numeric_literal_qname_error(expression)?;
+    Some(BooleanExpression::Xslt10DeferredFailure {
+        code,
+        detail: format!("{function} argument converts to a string that is not a valid QName"),
+        location: location.clone(),
+    })
+}
+
 fn compile_path_string_predicate(
     document: &Document,
     element: NodeId,
@@ -342,6 +359,7 @@ fn compile_xslt10_special(
     }
     compile_xslt10_variable_numeric_comparison(expression, xslt10_compatibility)
         .or_else(|| compile_xslt10_context_translate_starts_with(expression, xslt10_compatibility))
+        .or_else(|| compile_numeric_qname_failure(expression, location, xslt10_compatibility))
 }
 
 fn parse_xslt10_prior_descendant_same_name(
@@ -911,11 +929,11 @@ fn compile_identity_test(
     }))
 }
 
-fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {
+pub(super) fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {
     split_top_level_boolean_operator(expression, b"or")
 }
 
-fn split_top_level_and(expression: &str) -> Option<(&str, &str)> {
+pub(super) fn split_top_level_and(expression: &str) -> Option<(&str, &str)> {
     split_top_level_boolean_operator(expression, b"and")
 }
 
@@ -1551,7 +1569,7 @@ fn parse_generated_node_argument(expression: &str) -> Option<&str> {
     Some(if argument.is_empty() { "." } else { argument })
 }
 
-fn strip_enclosing_parentheses(mut expression: &str) -> &str {
+pub(super) fn strip_enclosing_parentheses(mut expression: &str) -> &str {
     loop {
         let bytes = expression.as_bytes();
         if bytes.first() != Some(&b'(') || bytes.last() != Some(&b')') {

@@ -55,9 +55,11 @@ impl Default for DecimalFormat {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Operand {
+    SuppliedNumber,
     Literal(String),
     Variable(String),
     Path(LocationPath),
+    SumPath(LocationPath),
 }
 
 impl FormatNumberExpression {
@@ -66,7 +68,10 @@ impl FormatNumberExpression {
             .into_iter()
             .filter_map(|operand| match operand {
                 Operand::Variable(name) => Some(name.as_str()),
-                Operand::Literal(_) | Operand::Path(_) => None,
+                Operand::Literal(_)
+                | Operand::Path(_)
+                | Operand::SumPath(_)
+                | Operand::SuppliedNumber => None,
             })
             .chain(self.requested_format_variable.as_deref())
     }
@@ -74,14 +79,31 @@ impl FormatNumberExpression {
     pub(crate) fn number_path(&self) -> Option<&LocationPath> {
         match &self.number {
             Operand::Path(path) => Some(path),
-            Operand::Literal(_) | Operand::Variable(_) => None,
+            Operand::Literal(_)
+            | Operand::Variable(_)
+            | Operand::SumPath(_)
+            | Operand::SuppliedNumber => None,
         }
+    }
+
+    pub(crate) fn number_sum_path(&self) -> Option<&LocationPath> {
+        match &self.number {
+            Operand::SumPath(path) => Some(path),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn use_supplied_number(&mut self) {
+        self.number = Operand::SuppliedNumber;
     }
 
     pub(crate) fn picture_path(&self) -> Option<&LocationPath> {
         match &self.picture {
             Operand::Path(path) => Some(path),
-            Operand::Literal(_) | Operand::Variable(_) => None,
+            Operand::Literal(_)
+            | Operand::Variable(_)
+            | Operand::SumPath(_)
+            | Operand::SuppliedNumber => None,
         }
     }
 
@@ -165,8 +187,9 @@ impl FormatNumberExpression {
 #[cfg(feature = "workbench")]
 fn operand_capacity(value: &Operand) -> usize {
     match value {
+        Operand::SuppliedNumber => 0,
         Operand::Literal(value) | Operand::Variable(value) => value.capacity(),
-        Operand::Path(path) => path.known_owned_capacity_bytes(),
+        Operand::Path(path) | Operand::SumPath(path) => path.known_owned_capacity_bytes(),
     }
 }
 
@@ -374,9 +397,9 @@ fn resolve<'a>(
             .get(name)
             .map(AtomicValue::lexical)
             .ok_or_else(|| FormatNumberEvaluationFailure::UnboundVariable(name.clone())),
-        Operand::Path(_) => path_value.ok_or(FormatNumberEvaluationFailure::Unsupported(
-            FormatNumberUnsupported::Number,
-        )),
+        Operand::Path(_) | Operand::SumPath(_) | Operand::SuppliedNumber => path_value.ok_or(
+            FormatNumberEvaluationFailure::Unsupported(FormatNumberUnsupported::Number),
+        ),
     }
 }
 
@@ -387,6 +410,18 @@ fn parse_number(
 ) -> Option<Operand> {
     if let Some(variable) = variable(expression) {
         return Some(Operand::Variable(variable.to_owned()));
+    }
+    // Aggregate through the shared runtime sum, never the source-free folder.
+    // Keep this first composition unqualified and XSLT-1.0-only.
+    if admit_xslt10_paths
+        && let Some(path) = expression
+            .strip_prefix("sum(")
+            .and_then(|s| s.strip_suffix(')'))
+        && path.trim().split('/').all(is_ascii_ncname)
+    {
+        return parse_xslt10_location_path(path.trim(), location.clone())
+            .ok()
+            .map(Operand::SumPath);
     }
     if let Some(inner) = expression
         .strip_prefix("number(")
@@ -1126,6 +1161,31 @@ mod tests {
             resource: "memory:format-number".to_owned(),
             span: 0..1,
         }
+    }
+
+    #[test]
+    fn sum_format_admission_requires_legacy_simple_paths_and_resolved_values() {
+        let legacy =
+            parse_with_path_operands("format-number(sum(r/v), '0')", &location(), true).unwrap();
+        assert!(legacy.number_sum_path().is_some());
+        assert!(evaluate(&legacy, &BTreeMap::new()).is_err());
+        assert_eq!(
+            evaluate_with_path_values(&legacy, &BTreeMap::new(), Some("3"), None),
+            Ok("3".to_owned())
+        );
+        for source in [
+            "format-number(sum(p:v), '0')",
+            "format-number(sum(key('k', 'v')), '0')",
+            "format-number(sum($v), '0')",
+            "format-number(sum(r/v[1]), '0')",
+        ] {
+            let guarded = parse_with_path_operands(source, &location(), true).unwrap();
+            assert!(guarded.number_sum_path().is_none());
+            assert!(evaluate(&guarded, &BTreeMap::new()).is_err());
+        }
+        let modern = parse("format-number(sum(r/v), '0')", &location()).unwrap();
+        assert!(modern.number_sum_path().is_none());
+        assert!(evaluate(&modern, &BTreeMap::new()).is_err());
     }
 
     #[test]

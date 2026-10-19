@@ -1461,6 +1461,8 @@ pub(crate) enum ValueExpression {
     Xslt10NamespaceUriIdLookup(Box<Xslt10IdLookup>),
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Xslt10CountKeyLookup(Box<Xslt10KeyLookup>),
+    Xslt10SumKeyLookup(Box<Xslt10KeyLookup>),
+    Xslt10FormattedKeySum(Box<Xslt10FormattedKeySum>),
     LocationPath(LocationPath),
     Xslt10FirstNodeLocationPath(LocationPath),
     Xslt10FirstNodePathUnion(Vec<LocationPath>),
@@ -1598,9 +1600,9 @@ pub(crate) enum ValueExpression {
         path: LocationPath,
         variable: String,
     },
-    Xslt10GroupedVariablePositionPath {
+    Xslt10GroupedPositionPath {
         selection: LocationPath,
-        variable: String,
+        position: Xslt10PositionOperand,
         suffix: LocationPath,
     },
     Xslt10VariablePath {
@@ -1668,11 +1670,25 @@ pub(crate) enum ValueExpression {
     ConditionalPath(Box<ConditionalPathExpression>),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Xslt10PositionOperand {
+    Variable(String),
+    Literal(String),
+}
+
 /// A terminal node-set equality filter with its outer source scalarized before lookup.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Xslt10OuterAttributeFilter {
     pub(crate) candidate: ExpandedName,
     pub(crate) outer: ExpandedName,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10FormattedKeySum {
+    pub(crate) lookup: Xslt10KeyLookup,
+    pub(crate) string_coercion: bool,
+    pub(crate) translation: Option<(String, String)>,
+    pub(crate) format: Box<FormatNumberExpression>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1954,6 +1970,15 @@ pub(crate) enum StringComparison {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum BooleanExpression {
+    // Reached expression failure, distinct from an instruction-level failure.
+    // Lowering must prove timing at the call boundary. Production currently
+    // admits only constant numeric-to-QName failures under XPath 1.0 semantics;
+    // selected-processor arity/error-timing integration remains test-only.
+    Xslt10DeferredFailure {
+        code: &'static str,
+        detail: String,
+        location: SourceLocation,
+    },
     GeneratedSourceIdentityComparison {
         left: Box<GeneratedSourceIdentity>,
         right: Box<GeneratedSourceIdentity>,
