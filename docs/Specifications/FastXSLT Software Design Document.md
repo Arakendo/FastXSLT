@@ -563,6 +563,19 @@ qualification and reject incompatible composition rather than relabeling.
 Production integration remains gated by the ADR's executable requirements;
 acceptance selects no public profile API, default or conformance claim.
 
+The R0 measured profile was promoted by the maintainer on 2026-10-23 with
+[9/9 obligations closed](../Campaigns/processor-edition-profile/promotion-ledger.md).
+It has a crate-private non-test selected-legacy
+resource compiler entry. It uses the existing sealed resolver and graph limits,
+applies strict preprocessing in the selected lowerer, and refuses unsupported
+entry/grammar shapes without falling back to baseline lowering. Modern selected
+entry points remain test-only. Admission is limited to the frozen, incomplete R0
+slice: selected XSLT 1.0 processor semantics plus strict-1.0 preprocessing. Its
+preserved full-corpus promotion baseline is 358/3,173 exact, separately from the
+ordinary 2,504/3,173 baseline. This is not XSLT 1.0 conformance, public profile
+selection or permission to widen R0. Ordinary facade/adapter defaults and native,
+WASM and .NET selector surfaces remain unchanged.
+
 Context-taking helpers that still use declaration-driven lowering accept only
 that processor qualification; a selected processor request fails explicitly
 before compilation or graph fallback. Preprocessing qualification alone does

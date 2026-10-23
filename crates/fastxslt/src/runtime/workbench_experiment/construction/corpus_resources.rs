@@ -61,6 +61,7 @@ impl ExperimentalEngine {
                 stylesheet_external_subset: probe.subsets.stylesheet,
                 capacity: PreparationCapacity::Growth,
                 strict_preprocessing: probe.strict,
+                selected_legacy: probe.selected_legacy,
             },
         )
     }
@@ -109,8 +110,11 @@ fn corpus_roles_coalesce_only_equal_identity_and_bytes() {
 
 #[test]
 fn corpus_roles_share_one_resource_without_relaxing_adapter_admission() {
+    use crate::xslt::golden_semantics_experiment::{
+        ProcessorPolicyStamp, StylesheetPreprocessingStamp,
+    };
     let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out>same resource</out></xsl:template></xsl:stylesheet>"#;
-    for strict in [false, true] {
+    for (strict, selected_legacy) in [(false, false), (true, false), (true, true)] {
         let create = |limits| {
             ExperimentalEngine::new_with_corpus_resources(
                 "urn:shared".to_owned(),
@@ -127,6 +131,7 @@ fn corpus_roles_share_one_resource_without_relaxing_adapter_admission() {
                 limits,
                 PreprocessingProbeOptions {
                     strict,
+                    selected_legacy,
                     subsets: WorkbenchExternalSubsetLimits {
                         declarations: InternalSubsetLimits {
                             declarations: 1,
@@ -140,11 +145,23 @@ fn corpus_roles_share_one_resource_without_relaxing_adapter_admission() {
                 },
             )
         };
+        let engine = create(WorkbenchLimits::default()).unwrap();
         assert_eq!(
-            create(WorkbenchLimits::default())
-                .unwrap()
-                .transform_bytes("roles")
-                .unwrap(),
+            engine.program.processor,
+            if selected_legacy {
+                ProcessorPolicyStamp::Xslt10Reference
+            } else {
+                ProcessorPolicyStamp::DeclarationDrivenBaseline
+            }
+        );
+        if selected_legacy {
+            assert_eq!(
+                engine.program.preprocessing,
+                StylesheetPreprocessingStamp::StrictXslt10Reference
+            );
+        }
+        assert_eq!(
+            engine.transform_bytes("roles").unwrap(),
             b"<out>same resource</out>"
         );
         let failure = create(WorkbenchLimits {

@@ -10,7 +10,7 @@ fn selected_constant_parameters_preserve_shared_import_and_include_precedence() 
         r#"<xsl:param name="p" select="string('imported')"/>"#,
     );
     let lower = || {
-        compile_selected_legacy_import_module_for_test(
+        compile_selected_legacy_import_module(
             &dependency,
             vec![],
             &mut InvocationControl::unbounded(),
@@ -19,7 +19,7 @@ fn selected_constant_parameters_preserve_shared_import_and_include_precedence() 
         .unwrap()
     };
     let principal = document("principal", br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:import href="dependency"/><xsl:param name="p" select="'principal'"/></xsl:stylesheet>"#);
-    let program = compile_selected_legacy_import_module_for_test(
+    let program = compile_selected_legacy_import_module(
         &principal,
         vec![lower()],
         &mut InvocationControl::unbounded(),
@@ -31,20 +31,18 @@ fn selected_constant_parameters_preserve_shared_import_and_include_precedence() 
         matches!(&program.global_bindings[0].default, GlobalBindingDefault::Text(value) if value == "principal")
     );
     let principal = document("principal", br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:include href="dependency"/><xsl:param name="p" select="'principal'"/></xsl:stylesheet>"#);
-    let Err(StrictPreprocessingFailure::Compile(error)) =
-        compile_selected_legacy_include_module_for_test(
-            &principal,
-            vec![lower()],
-            &mut InvocationControl::unbounded(),
-        )
-    else {
+    let Err(StrictPreprocessingFailure::Compile(error)) = compile_selected_legacy_include_module(
+        &principal,
+        vec![lower()],
+        &mut InvocationControl::unbounded(),
+    ) else {
         panic!("same-precedence duplicate must fail")
     };
     assert_eq!(error.category, compiler::CompileCategory::Invalid);
     assert_eq!(error.code, "FXST0029");
     assert!(error.detail.contains("duplicate global"), "{error:?}");
     let principal = document("principal", br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:include href="dependency"/></xsl:stylesheet>"#);
-    let program = compile_selected_legacy_include_module_for_test(
+    let program = compile_selected_legacy_include_module(
         &principal,
         vec![lower()],
         &mut InvocationControl::unbounded(),
@@ -68,19 +66,17 @@ fn selected_mixed_composition_preserves_included_import_precedence_and_qualifica
     let make_included = || {
         let mut control = InvocationControl::unbounded();
         let high =
-            compile_selected_legacy_import_module_for_test(&high, vec![], &mut control, false)
-                .unwrap();
-        compile_selected_legacy_import_module_for_test(&included, vec![high], &mut control, false)
-            .unwrap()
+            compile_selected_legacy_import_module(&high, vec![], &mut control, false).unwrap();
+        compile_selected_legacy_import_module(&included, vec![high], &mut control, false).unwrap()
     };
-    let low_selected = compile_selected_legacy_import_module_for_test(
+    let low_selected = compile_selected_legacy_import_module(
         &low,
         vec![],
         &mut InvocationControl::unbounded(),
         false,
     )
     .unwrap();
-    let program = compile_selected_legacy_mixed_module_for_test(
+    let program = compile_selected_legacy_mixed_module(
         &principal,
         low_selected,
         make_included(),
@@ -98,7 +94,7 @@ fn selected_mixed_composition_preserves_included_import_precedence_and_qualifica
         "high"
     );
     assert!(
-        matches!(compile_selected_legacy_mixed_module_for_test(&principal, compiler::compile_stylesheet(&low).unwrap(), make_included(), &mut InvocationControl::unbounded()), Err(StrictPreprocessingFailure::Compile(error)) if error.code == "FXST1058")
+        matches!(compile_selected_legacy_mixed_module(&principal, compiler::compile_stylesheet(&low).unwrap(), make_included(), &mut InvocationControl::unbounded()), Err(StrictPreprocessingFailure::Compile(error)) if error.code == "FXST1058")
     );
 }
 
@@ -113,21 +109,19 @@ fn selected_branching_imports_delay_name_validation_until_complete_graph() {
     let principal = document("principal", br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:import href="branch"/><xsl:import href="empty"/><xsl:output method="text"/><xsl:template name="from-principal">resolved</xsl:template></xsl:stylesheet>"#);
     let build = |complete| {
         let mut control = InvocationControl::unbounded();
-        let a = compile_selected_legacy_import_module_for_test(&leaf, vec![], &mut control, false)
-            .unwrap();
-        let b = compile_selected_legacy_import_module_for_test(&empty, vec![], &mut control, false)
-            .unwrap();
-        compile_selected_legacy_import_module_for_test(&branch, vec![a, b], &mut control, complete)
+        let a = compile_selected_legacy_import_module(&leaf, vec![], &mut control, false).unwrap();
+        let b = compile_selected_legacy_import_module(&empty, vec![], &mut control, false).unwrap();
+        compile_selected_legacy_import_module(&branch, vec![a, b], &mut control, complete)
     };
     assert!(
         matches!(build(true), Err(StrictPreprocessingFailure::Compile(error)) if error.code == "FXST0014"),
         "unresolved name must fail at the graph boundary"
     );
-    let program = compile_selected_legacy_import_module_for_test(
+    let program = compile_selected_legacy_import_module(
         &principal,
         vec![
             build(false).unwrap(),
-            compile_selected_legacy_import_module_for_test(
+            compile_selected_legacy_import_module(
                 &empty,
                 vec![],
                 &mut InvocationControl::unbounded(),
@@ -204,7 +198,7 @@ fn selected_positioned_includes_preserve_order_and_reject_incompatible_artifacts
             &[],
         )
         .unwrap();
-        let program = compile_selected_legacy_include_module_for_test(
+        let program = compile_selected_legacy_include_module(
             &principal,
             vec![included],
             &mut InvocationControl::unbounded(),
@@ -222,7 +216,7 @@ fn selected_positioned_includes_preserve_order_and_reject_incompatible_artifacts
         );
         let incompatible = compiler::compile_stylesheet(&imported).unwrap();
         assert!(matches!(
-            compile_selected_legacy_include_module_for_test(
+            compile_selected_legacy_include_module(
                 &principal,
                 vec![incompatible],
                 &mut InvocationControl::unbounded()
@@ -231,7 +225,7 @@ fn selected_positioned_includes_preserve_order_and_reject_incompatible_artifacts
     }
     let principal = document("principal", br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:import href="a"/><xsl:import href="b"/></xsl:stylesheet>"#);
     assert!(matches!(
-        compile_selected_legacy_import_module_for_test(
+        compile_selected_legacy_import_module(
             &principal,
             vec![
                 compiler::compile_stylesheet(&imported).unwrap(),

@@ -4,6 +4,49 @@ use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_for_t
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 #[test]
+fn processor_edition_reference_global_constructor_linking_cannot_claim_selected_policy() {
+    use compiler::global_constructor_reference;
+    let leaf = module("urn:leaf", "1.0", "");
+    for kind in ["include", "import"] {
+        let principal = module(
+            "urn:principal",
+            "1.0",
+            &format!(
+                r#"<xsl:{kind} href="urn:leaf"/><xsl:template match="/"><xsl:text>baseline</xsl:text></xsl:template>"#
+            ),
+        );
+        for edition in [None, Some(Edition::Legacy), Some(Edition::Modern)] {
+            let context = edition.map_or_else(StylesheetCompilationContext::baseline, |edition| {
+                compilation_context(edition, StylesheetPreprocessingProfile::Modern)
+            });
+            let result = if kind == "include" {
+                global_constructor_reference::compile_with_single_include(
+                    &principal, &leaf, context,
+                )
+            } else {
+                global_constructor_reference::compile_with_single_import(&principal, &leaf, context)
+            };
+            if edition.is_none() {
+                let compiled = result.expect("baseline control must compile");
+                assert!(
+                    execute_compiled_stylesheet_for_test(&compiled.program, &principal, "baseline")
+                        .unwrap()
+                        .ends_with("baseline")
+                );
+            } else {
+                let error = result
+                    .err()
+                    .expect("baseline reference must reject selected policy");
+                assert_eq!(error.code, "FXST1058", "{kind}");
+                assert_eq!(error.category, CompileCategory::Unsupported);
+                assert!(error.detail.contains("policy-aware lowering"));
+                assert_eq!(error.location.resource, "urn:principal");
+            }
+        }
+    }
+}
+
+#[test]
 fn processor_edition_reference_baseline_compiler_cannot_claim_selected_policy() {
     use compiler::stylesheet_module_compiler as modules;
     let leaf = module("urn:leaf", "2.0", "");

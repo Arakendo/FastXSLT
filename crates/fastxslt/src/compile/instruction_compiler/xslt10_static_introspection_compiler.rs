@@ -260,10 +260,9 @@ fn expanded_name<'a>(
     Some((Some(namespace), local))
 }
 
-// AR-0031: reuse lexical/QName mechanics without reusing declaration-derived
-// processor policy. None means unproved/outside the probe, not unavailable.
-#[cfg(test)]
-pub(super) fn fold_with_policy_for_test<T>(
+// Reuse lexical/QName mechanics without declaration-derived processor policy.
+// None means outside the caller's admitted capability, not unavailable.
+pub(super) fn fold_with_policy<T>(
     document: &Document,
     element: NodeId,
     expression: &str,

@@ -309,12 +309,8 @@ fn compile_graph(
         && let [child] = graph.dependencies.as_slice()
         && child.dependencies.is_empty()
     {
-        return compile_selected_legacy_resolved_pair_for_test(
-            &graph.document,
-            &child.document,
-            control,
-        )
-        .map_err(classify_compile_failure);
+        return compile_selected_legacy_resolved_pair(&graph.document, &child.document, control)
+            .map_err(classify_compile_failure);
     }
     let mut children = graph
         .dependencies
@@ -330,12 +326,12 @@ fn compile_graph(
         .iter()
         .all(|kind| *kind == Some(StylesheetDependencyKind::Import))
     {
-        compile_selected_legacy_import_module_for_test(&graph.document, children, control, complete)
+        compile_selected_legacy_import_module(&graph.document, children, control, complete)
     } else if kinds
         .iter()
         .all(|kind| *kind == Some(StylesheetDependencyKind::Include))
     {
-        compile_selected_legacy_include_module_for_test(&graph.document, children, control)
+        compile_selected_legacy_include_module(&graph.document, children, control)
     } else if kinds
         == [
             Some(StylesheetDependencyKind::Import),
@@ -344,7 +340,7 @@ fn compile_graph(
     {
         let included = children.pop().unwrap();
         let imported = children.pop().unwrap();
-        compile_selected_legacy_mixed_module_for_test(&graph.document, imported, included, control)
+        compile_selected_legacy_mixed_module(&graph.document, imported, included, control)
     } else {
         return Err((
             "harness-limitation",

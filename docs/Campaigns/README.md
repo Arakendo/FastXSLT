@@ -5,11 +5,11 @@ scope, promotion ledger, evidence, review dispositions and handoff checkpoints.
 Create one when work needs sustained tracking across tranches, not for every
 ordinary fix. Campaigns do not introduce another architectural approval layer.
 
-## Current campaigns
+## Campaign status
 
 | Campaign | Status | Next boundary |
 | --- | --- | --- |
-| [Processor-edition profile](processor-edition-profile/README.md) | Promotion scope proposed; R0 awaiting approval | Review the finite ledger before further feature expansion |
+| [Processor-edition profile](processor-edition-profile/README.md) | Complete: R0 promoted 2026-10-23, 9/9 closed | Preserve promotion baseline; future breadth separately scoped; no public/default change |
 
 ## Historical campaign collections
 
@@ -35,7 +35,7 @@ evidence. Corpus counts and observations retain their original profiles/dates.
 | [Competitive benchmarks](competitive-benchmarks/README.md) | 2 |
 | [WASM target](wasm-target/README.md) | 1 |
 
-Three further records moved into the active processor-edition campaign above:
+Three further records moved into the processor-edition campaign above:
 **982 records migrated in total**. The
 [migration manifest](evidence-migration-2026-10-22.json) records old/new paths
 and before/after SHA-256 values; the [migration report](evidence-migration-2026-10-22.md)

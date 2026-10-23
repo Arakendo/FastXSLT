@@ -22,6 +22,7 @@ mod construction;
 pub(crate) struct PreprocessingProbeOptions {
     pub(crate) subsets: WorkbenchExternalSubsetLimits,
     pub(crate) strict: bool,
+    pub(crate) selected_legacy: bool,
 }
 
 /// Explicit bounds for the isolated ASP.NET workbench experiment.

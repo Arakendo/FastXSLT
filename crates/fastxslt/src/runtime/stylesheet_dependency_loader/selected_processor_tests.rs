@@ -1,10 +1,10 @@
 //! Selected-policy integration over the existing sealed graph loader.
 use super::*;
-use crate::compile::golden_stylesheet_experiment::compile_selected_legacy_import_module_for_test;
-use crate::compile::golden_stylesheet_experiment::compile_selected_legacy_include_module_for_test;
-use crate::compile::golden_stylesheet_experiment::compile_selected_legacy_mixed_module_for_test;
+use crate::compile::golden_stylesheet_experiment::compile_selected_legacy_import_module;
+use crate::compile::golden_stylesheet_experiment::compile_selected_legacy_include_module;
+use crate::compile::golden_stylesheet_experiment::compile_selected_legacy_mixed_module;
 use crate::compile::golden_stylesheet_experiment::compile_selected_legacy_resolved_chain_for_test;
-use crate::compile::golden_stylesheet_experiment::compile_selected_legacy_resolved_pair_for_test;
+use crate::compile::golden_stylesheet_experiment::compile_selected_legacy_resolved_pair;
 use crate::execution_control_experiment::InvocationControl;
 use crate::resources::{ResolutionLimits, ResourceLimits, ResourceSetBuilder};
 use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_for_test;
@@ -53,7 +53,7 @@ fn compile(
         child.document.parent(child.root),
         Some(child.document.document_node())
     );
-    compile_selected_legacy_resolved_pair_for_test(
+    compile_selected_legacy_resolved_pair(
         &graph.document,
         &child.document,
         &mut InvocationControl::unbounded(),
@@ -125,13 +125,12 @@ fn selected_policy_resolved_compilation_charges_both_modules_and_keeps_them_immu
     let principal_children = graph.document.children(graph.root).to_vec();
     let child_children = child.document.children(child.root).to_vec();
     let mut measured = InvocationControl::unbounded();
-    compile_selected_legacy_resolved_pair_for_test(&graph.document, &child.document, &mut measured)
-        .unwrap();
+    compile_selected_legacy_resolved_pair(&graph.document, &child.document, &mut measured).unwrap();
     let required = measured.consumed(WorkDomain::XdmNode);
     assert!(required > 1);
     let mut limits = WorkLimits::unbounded();
     limits.xdm_nodes = required;
-    compile_selected_legacy_resolved_pair_for_test(
+    compile_selected_legacy_resolved_pair(
         &graph.document,
         &child.document,
         &mut InvocationControl::new(CancellationToken::new(), limits),
@@ -139,7 +138,7 @@ fn selected_policy_resolved_compilation_charges_both_modules_and_keeps_them_immu
     .unwrap();
     limits.xdm_nodes -= 1;
     assert!(matches!(
-        compile_selected_legacy_resolved_pair_for_test(
+        compile_selected_legacy_resolved_pair(
             &graph.document,
             &child.document,
             &mut InvocationControl::new(CancellationToken::new(), limits)
@@ -154,11 +153,7 @@ fn selected_policy_resolved_compilation_charges_both_modules_and_keeps_them_immu
     let mut cancelled =
         InvocationControl::unbounded().cancelling_on_charge(WorkDomain::XdmNode, required - 1);
     assert!(matches!(
-        compile_selected_legacy_resolved_pair_for_test(
-            &graph.document,
-            &child.document,
-            &mut cancelled
-        ),
+        compile_selected_legacy_resolved_pair(&graph.document, &child.document, &mut cancelled),
         Err(StrictPreprocessingFailure::Control(
             ControlFailure::Cancelled {
                 domain: WorkDomain::XdmNode
@@ -331,8 +326,7 @@ fn replay_branch_resources(case: &str, kind: StylesheetDependencyKind, paths: &[
                     compile_import_graph(child, &mut control, false)
                 })
                 .collect();
-            compile_selected_legacy_include_module_for_test(&graph.document, includes, &mut control)
-                .unwrap()
+            compile_selected_legacy_include_module(&graph.document, includes, &mut control).unwrap()
         }
     };
     drop(graph);
@@ -364,13 +358,9 @@ fn replay_mixed(case: &str, paths: &[&str]) {
     let mut control = InvocationControl::unbounded();
     let imported = compile_import_graph(import, &mut control, false);
     let included = compile_import_graph(include, &mut control, false);
-    let program = compile_selected_legacy_mixed_module_for_test(
-        &graph.document,
-        imported,
-        included,
-        &mut control,
-    )
-    .unwrap();
+    let program =
+        compile_selected_legacy_mixed_module(&graph.document, imported, included, &mut control)
+            .unwrap();
     drop(graph);
     assert_corpus_output(&program, &root, case);
 }
@@ -404,7 +394,7 @@ fn selected_policy_resolved_deeper_imports_replay_impincl26() {
 fn selected_policy_resolved_impincl03_admits_constant_leaf_parameter() {
     // Unchanged leaf dependency of impincl03; not a whole-case execution credit.
     let (_, graph) = load_branch_resources("p", &[]);
-    let program = compile_selected_legacy_import_module_for_test(
+    let program = compile_selected_legacy_import_module(
         &graph.document,
         vec![],
         &mut InvocationControl::unbounded(),
@@ -438,13 +428,8 @@ fn compile_import_graph(
             compile_import_graph(child, control, false)
         })
         .collect();
-    compile_selected_legacy_import_module_for_test(
-        &graph.document,
-        imports,
-        control,
-        complete_graph,
-    )
-    .unwrap()
+    compile_selected_legacy_import_module(&graph.document, imports, control, complete_graph)
+        .unwrap()
 }
 
 fn replay_chain(case: &str, paths: &[&str]) {

@@ -4,10 +4,15 @@ param(
     [string]$TraceCase,
     [string]$TraceFrontier,
     [ValidateSet('modern', 'strict-xslt10')]
-    [string]$PreprocessingProfile = 'modern'
+    [string]$PreprocessingProfile = 'modern',
+    [ValidateSet('baseline', 'selected-legacy')]
+    [string]$ProcessorProfile = 'baseline'
 )
 
 $ErrorActionPreference = 'Stop'
+if ($ProcessorProfile -eq 'selected-legacy' -and $PreprocessingProfile -ne 'strict-xslt10') {
+    throw 'selected-legacy requires explicit strict-xslt10 preprocessing'
+}
 $expectedHash = '66750E63994C3A07252D8A6555E82E5CE5127D1942005BCC8314C7D736BD7BD5'
 $resolvedArchive = (Resolve-Path -LiteralPath $ArchivePath).Path
 $resolvedTests = (Resolve-Path -LiteralPath $ExtractedTestsPath).Path
@@ -33,9 +38,11 @@ $priorRoot = $env:FASTXSLT_OASIS_XSLT10_ROOT
 $priorTraceCase = $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE
 $priorTraceFrontier = $env:FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER
 $priorPreprocessingProfile = $env:FASTXSLT_OASIS_PREPROCESSING_PROFILE
+$priorProcessorProfile = $env:FASTXSLT_OASIS_PROCESSOR_PROFILE
 try {
     $env:FASTXSLT_OASIS_XSLT10_ROOT = $resolvedTests
     $env:FASTXSLT_OASIS_PREPROCESSING_PROFILE = $PreprocessingProfile
+    $env:FASTXSLT_OASIS_PROCESSOR_PROFILE = $ProcessorProfile
     if ([string]::IsNullOrWhiteSpace($TraceCase)) {
         Remove-Item Env:FASTXSLT_OASIS_XSLT10_TRACE_CASE -ErrorAction SilentlyContinue
     }
@@ -58,4 +65,5 @@ finally {
     $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE = $priorTraceCase
     $env:FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER = $priorTraceFrontier
     $env:FASTXSLT_OASIS_PREPROCESSING_PROFILE = $priorPreprocessingProfile
+    $env:FASTXSLT_OASIS_PROCESSOR_PROFILE = $priorProcessorProfile
 }

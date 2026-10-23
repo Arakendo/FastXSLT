@@ -1,5 +1,11 @@
 //! Bounded selected-profile call timing; shared Boolean IR/runtime, no evaluator.
+#[cfg(test)]
 use super::*;
+#[cfg(not(test))]
+use super::{
+    BooleanExpression, CompileFailure, Instruction, LocalVersion, SourceLocation,
+    boolean_expression_compiler, direct_literal_property_arity_error, invalid, is_ascii_ncname,
+};
 
 pub(super) fn text_result(
     condition: BooleanExpression,
@@ -13,6 +19,7 @@ pub(super) fn text_result(
     };
     Instruction::Choose {
         branches: vec![crate::xslt::golden_semantics_experiment::ChooseBranch {
+            #[cfg(test)]
             condition_reference: location.clone(),
             test: condition,
             body: vec![text("true")],
@@ -22,6 +29,7 @@ pub(super) fn text_result(
     }
 }
 
+#[cfg(test)]
 pub(super) fn compile(
     expression: &str,
     version: LocalVersion,

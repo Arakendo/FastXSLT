@@ -84,7 +84,6 @@ impl OutputBooleanPolicy {
         }
     }
 
-    #[cfg(test)]
     pub(super) const fn selected_legacy(forward: bool) -> Self {
         Self {
             modern_aliases: false,

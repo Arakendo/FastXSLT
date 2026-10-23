@@ -1,6 +1,15 @@
 //! Selected-processor argument eligibility and shared named-call lowering.
 //! No runtime, module linking, or host policy belongs here.
+#[cfg(test)]
 use super::*;
+#[cfg(not(test))]
+use super::{
+    CompileFailure, Document, Instruction, LocalVersion, NodeId, NodeKind, compile_apply_imports,
+    compile_apply_templates, compiler, ensure_no_meaningful_children, invalid, is_ascii_ncname,
+    is_xslt_element, lower_selected_value_of, meaningful_children, optional_attribute, refusal,
+    require_probe_attribute_set, required_attribute, selected_keys, template_invocation_compiler,
+    value_of, xpath_string_literal,
+};
 
 #[cfg(test)]
 mod tests;

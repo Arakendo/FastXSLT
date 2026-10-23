@@ -25,6 +25,7 @@ pub(crate) fn compile_with_single_include(
     context: stylesheet_preprocessing::StylesheetCompilationContext,
 ) -> Result<CompiledReference, CompileFailure> {
     let root = document_element(principal)?;
+    context.require_declaration_driven_lowering(principal.location(root))?;
     let dependencies =
         stylesheet_module_compiler::discovered_stylesheet_dependencies_at(principal, root)?;
     let [dependency] = dependencies.as_slice() else {
@@ -162,6 +163,7 @@ pub(crate) fn compile_with_single_import(
     context: stylesheet_preprocessing::StylesheetCompilationContext,
 ) -> Result<CompiledReference, CompileFailure> {
     let root = document_element(principal)?;
+    context.require_declaration_driven_lowering(principal.location(root))?;
     stylesheet_module_compiler::validate_import_order_at(principal, root)?;
     let dependencies =
         stylesheet_module_compiler::discovered_stylesheet_dependencies_at(principal, root)?;

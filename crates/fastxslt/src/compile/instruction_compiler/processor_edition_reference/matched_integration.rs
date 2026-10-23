@@ -1,10 +1,31 @@
 //! ADR-0025 matched-template integration checkpoint. Private until profile gates
 //! pass; ordinary entry points retain their existing semantics. Uses shared
 //! declaration, sequence, instruction, fallback and result construction owners.
+#[cfg(test)]
 use super::*;
+#[cfg(not(test))]
+use super::{
+    BooleanExpression, CompileFailure, DeclaredVersion, Document, Edition, Instruction, NodeId,
+    NodeKind, SourceLocation, ValueExpression, XSLT_NAMESPACE, boolean_expression_compiler,
+    compile_apply_imports, compile_apply_templates, compile_copy_of,
+    compile_forward_fallbacks_with_body, compile_if_with_lowerers, compile_literal_element_parts,
+    compile_local_variable_name, compile_message_with_body, compile_select_variable,
+    compile_sequence_with_element_lowerer, compile_static_atomic_variable, compile_text,
+    compile_text_after_attribute_validation, compile_text_tree_variable_with_mode,
+    compile_value_of_with_validated_options, compiler, computed_element_compiler,
+    conditional_instruction_compiler, ensure_fallback_attributes, ensure_no_meaningful_children,
+    has_local_version, invalid, is_ascii_ncname, is_xslt_element, is_xslt10_template_element,
+    literal_attribute_compiler, meaningful_children, module_version, number_compiler,
+    optional_attribute, parse_literal_document_call, probe_declared_version,
+    require_probe_attribute_set, required_attribute, template_invocation_compiler, unsupported,
+    validate_exclude_result_prefixes, value_expression_compiler, xpath_string_literal,
+    xslt10_static_introspection_compiler,
+};
 use crate::execution_control_experiment::InvocationControl;
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
-use compiler::stylesheet_preprocessing::{StrictPreprocessingFailure, stylesheet_visibility_view};
+use compiler::stylesheet_preprocessing::StrictPreprocessingFailure;
+#[cfg(test)]
+use compiler::stylesheet_preprocessing::stylesheet_visibility_view;
 
 #[path = "boolean_call_timing.rs"]
 mod boolean_call_timing;
@@ -23,11 +44,12 @@ mod template_arguments;
 
 #[path = "module_graph/mod.rs"]
 mod module_graph;
-pub(crate) use module_graph::compile_selected_legacy_import_module_for_test;
-pub(crate) use module_graph::compile_selected_legacy_include_module_for_test;
-pub(crate) use module_graph::compile_selected_legacy_mixed_module_for_test;
+pub(crate) use module_graph::compile_selected_legacy_import_module;
+pub(crate) use module_graph::compile_selected_legacy_include_module;
+pub(crate) use module_graph::compile_selected_legacy_mixed_module;
+#[cfg(test)]
 pub(crate) use module_graph::compile_selected_legacy_resolved_chain_for_test;
-pub(crate) use module_graph::compile_selected_legacy_resolved_pair_for_test;
+pub(crate) use module_graph::compile_selected_legacy_resolved_pair;
 
 #[derive(Clone, Copy)]
 enum LocalVersion {
@@ -36,6 +58,7 @@ enum LocalVersion {
     ModernWitness(DeclaredVersion),
 }
 
+#[cfg(test)]
 fn compile(
     document: &Document,
     edition: Edition,
@@ -48,6 +71,7 @@ fn compile(
 
 // Only a validated supplied dependency edge may be excluded. Named references
 // are checked after linking, so imported declarations can satisfy principal reads.
+#[cfg(test)]
 fn lower_module(
     document: &Document,
     edition: Edition,
@@ -176,11 +200,19 @@ fn lower_validated_module(
     dependency_globals: &[String],
     control: &mut InvocationControl,
 ) -> Result<StylesheetProgram, StrictPreprocessingFailure> {
+    #[cfg(test)]
     let preprocessing = match edition {
         Edition::Legacy => StylesheetPreprocessingProfile::StrictXslt10,
+        #[cfg(test)]
         Edition::Modern => StylesheetPreprocessingProfile::Modern,
     };
-    let view = stylesheet_visibility_view(document, root, preprocessing, control)?;
+    let view = match edition {
+        Edition::Legacy => {
+            compiler::stylesheet_preprocessing::strict_content::prepare(document, root, control)?
+        }
+        #[cfg(test)]
+        Edition::Modern => stylesheet_visibility_view(document, root, preprocessing, control)?,
+    };
     let mut globals = dependency_globals.to_vec();
     for child in meaningful_children(&view, root) {
         if is_xslt_element(&view, child, "param") || is_xslt_element(&view, child, "variable") {
@@ -199,6 +231,7 @@ fn lower_validated_module(
         ignored_top_level,
         &mut |document, root, lexical| match edition {
             Edition::Legacy => legacy_numeric_version(lexical, document.location(root)).map(|_| ()),
+            #[cfg(test)]
             Edition::Modern => compiler::validate_declared_version(document, root, lexical),
         },
         &mut |document, template| {
@@ -234,7 +267,14 @@ fn lower_validated_module(
         },
         &mut lower_selected_global,
     )?;
-    let mut program = compilation_context(edition, preprocessing).qualify_module(program);
+    let context = match edition {
+        Edition::Legacy => {
+            compiler::stylesheet_preprocessing::StylesheetCompilationContext::selected_legacy()
+        }
+        #[cfg(test)]
+        Edition::Modern => compilation_context(edition, preprocessing),
+    };
+    let mut program = context.qualify_module(program);
     compiler::finalize_decimal_formats(&mut program)?;
     compiler::finalize_attribute_sets(&mut program)?;
     compiler::finalize_character_maps(&mut program)?;
@@ -1061,7 +1101,7 @@ fn scoped_version(
     if !has_local_version(document, element) {
         return Ok(inherited);
     }
-    if matches!(edition, Edition::Modern)
+    if edition.is_modern()
         && (is_xslt_element(document, element, "value-of")
             || is_xslt_element(document, element, "element"))
         && optional_attribute(document, element, Some(XSLT_NAMESPACE), "version").is_none()
@@ -1082,6 +1122,7 @@ fn scoped_version(
     let lexical = required_attribute(document, element, Some(XSLT_NAMESPACE), "version")?;
     match edition {
         Edition::Legacy => legacy_numeric_version(lexical, document.location(element)),
+        #[cfg(test)]
         Edition::Modern => probe_declared_version(lexical, document.location(element))
             .map(LocalVersion::ModernWitness),
     }
@@ -1136,7 +1177,7 @@ fn computed_element(
             || !(name.local == "name"
                 || static_legacy_name
                     && matches!(name.local.as_str(), "namespace" | "use-attribute-sets")
-                || name.local == "version" && matches!(edition, Edition::Modern))
+                || name.local == "version" && edition.is_modern())
         {
             return Err(refusal(document, *attribute));
         }
@@ -1634,14 +1675,18 @@ fn direct_literal_property_arity_error(expression: &str) -> bool {
 #[path = "matched_integration_tests.rs"]
 mod tests;
 
+#[cfg(test)]
 #[path = "top_level_integration_tests.rs"]
 mod top_level_tests;
 
+#[cfg(test)]
 #[path = "message_integration_tests.rs"]
 mod message_tests;
 
+#[cfg(test)]
 #[path = "dispatch_integration_tests.rs"]
 mod dispatch_tests;
 
+#[cfg(test)]
 #[path = "named_integration_tests.rs"]
 mod named_tests;

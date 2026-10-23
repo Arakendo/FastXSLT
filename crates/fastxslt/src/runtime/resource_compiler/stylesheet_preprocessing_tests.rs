@@ -274,6 +274,7 @@ fn strict_workbench_probe_uses_its_supplied_preprocessing_budget() {
         limits,
         PreprocessingProbeOptions {
             strict: true,
+            selected_legacy: false,
             subsets: WorkbenchExternalSubsetLimits {
                 declarations: InternalSubsetLimits {
                     declarations: 1,

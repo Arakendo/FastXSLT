@@ -26,6 +26,8 @@ struct ConstructionOptions {
     capacity: PreparationCapacity,
     #[cfg(test)]
     strict_preprocessing: bool,
+    #[cfg(test)]
+    selected_legacy: bool,
 }
 
 #[cfg(test)]
@@ -122,6 +124,7 @@ impl ExperimentalEngine {
                 stylesheet_external_subset: None,
                 capacity: PreparationCapacity::Growth,
                 strict_preprocessing: false,
+                selected_legacy: false,
             },
         )
     }
@@ -150,6 +153,7 @@ impl ExperimentalEngine {
                 stylesheet_external_subset: None,
                 capacity: PreparationCapacity::Growth,
                 strict_preprocessing: false,
+                selected_legacy: false,
             },
         )
     }
@@ -178,6 +182,7 @@ impl ExperimentalEngine {
                 stylesheet_external_subset: external_subsets.stylesheet,
                 capacity: PreparationCapacity::Growth,
                 strict_preprocessing: false,
+                selected_legacy: false,
             },
         )
     }
@@ -207,6 +212,7 @@ impl ExperimentalEngine {
                 stylesheet_external_subset: probe.subsets.stylesheet,
                 capacity: PreparationCapacity::Growth,
                 strict_preprocessing: probe.strict,
+                selected_legacy: probe.selected_legacy,
             },
         )
     }
@@ -291,7 +297,9 @@ impl ExperimentalEngine {
             dtd_limits.stylesheet_external_subset,
         );
         #[cfg(test)]
-        let compile_limits = if dtd_limits.strict_preprocessing {
+        let compile_limits = if dtd_limits.selected_legacy {
+            compile_limits.with_selected_legacy_probe()
+        } else if dtd_limits.strict_preprocessing {
             compile_limits.with_strict_preprocessing()
         } else {
             compile_limits

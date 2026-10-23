@@ -1,0 +1,80 @@
+run	1
+R0_COST_BEGIN
+compile=preparsed-module+strict-preprocessing+lowering+drop; warm=shared-execution+serialization; acquisition/XML-parse excluded
+charge	text	root-reference	xdm-node	18
+charge	text	selected-candidate	xdm-node	18
+sample	text	0	root-reference	compile-ns	1859	warm-ns	686
+sample	text	0	selected-candidate	compile-ns	1744	warm-ns	643
+sample	text	1	selected-candidate	compile-ns	1750	warm-ns	659
+sample	text	1	root-reference	compile-ns	1560	warm-ns	640
+sample	text	2	root-reference	compile-ns	1545	warm-ns	638
+sample	text	2	selected-candidate	compile-ns	2022	warm-ns	651
+sample	text	3	selected-candidate	compile-ns	1750	warm-ns	637
+sample	text	3	root-reference	compile-ns	1558	warm-ns	664
+sample	text	4	root-reference	compile-ns	1554	warm-ns	639
+sample	text	4	selected-candidate	compile-ns	1745	warm-ns	639
+charge	fallback	root-reference	xdm-node	27
+charge	fallback	selected-candidate	xdm-node	27
+sample	fallback	0	root-reference	compile-ns	2300	warm-ns	647
+sample	fallback	0	selected-candidate	compile-ns	2418	warm-ns	769
+sample	fallback	1	selected-candidate	compile-ns	2731	warm-ns	637
+sample	fallback	1	root-reference	compile-ns	2135	warm-ns	642
+sample	fallback	2	root-reference	compile-ns	2283	warm-ns	640
+sample	fallback	2	selected-candidate	compile-ns	2300	warm-ns	641
+sample	fallback	3	selected-candidate	compile-ns	2423	warm-ns	639
+sample	fallback	3	root-reference	compile-ns	2120	warm-ns	638
+sample	fallback	4	root-reference	compile-ns	2114	warm-ns	694
+sample	fallback	4	selected-candidate	compile-ns	2329	warm-ns	637
+charge	conditional	root-reference	xdm-node	27
+charge	conditional	selected-candidate	xdm-node	27
+sample	conditional	0	root-reference	compile-ns	3120	warm-ns	687
+sample	conditional	0	selected-candidate	compile-ns	3092	warm-ns	686
+sample	conditional	1	selected-candidate	compile-ns	3147	warm-ns	690
+sample	conditional	1	root-reference	compile-ns	2968	warm-ns	683
+sample	conditional	2	root-reference	compile-ns	3071	warm-ns	692
+sample	conditional	2	selected-candidate	compile-ns	3051	warm-ns	779
+sample	conditional	3	selected-candidate	compile-ns	3068	warm-ns	682
+sample	conditional	3	root-reference	compile-ns	3482	warm-ns	686
+sample	conditional	4	root-reference	compile-ns	2974	warm-ns	688
+sample	conditional	4	selected-candidate	compile-ns	3138	warm-ns	688
+R0_COST_END
+run	2
+R0_COST_BEGIN
+compile=preparsed-module+strict-preprocessing+lowering+drop; warm=shared-execution+serialization; acquisition/XML-parse excluded
+charge	text	root-reference	xdm-node	18
+charge	text	selected-candidate	xdm-node	18
+sample	text	0	root-reference	compile-ns	1784	warm-ns	727
+sample	text	0	selected-candidate	compile-ns	1904	warm-ns	670
+sample	text	1	selected-candidate	compile-ns	1769	warm-ns	669
+sample	text	1	root-reference	compile-ns	1561	warm-ns	694
+sample	text	2	root-reference	compile-ns	1563	warm-ns	673
+sample	text	2	selected-candidate	compile-ns	1766	warm-ns	664
+sample	text	3	selected-candidate	compile-ns	1897	warm-ns	664
+sample	text	3	root-reference	compile-ns	1563	warm-ns	671
+sample	text	4	root-reference	compile-ns	1560	warm-ns	693
+sample	text	4	selected-candidate	compile-ns	1777	warm-ns	670
+charge	fallback	root-reference	xdm-node	27
+charge	fallback	selected-candidate	xdm-node	27
+sample	fallback	0	root-reference	compile-ns	2099	warm-ns	837
+sample	fallback	0	selected-candidate	compile-ns	2325	warm-ns	796
+sample	fallback	1	selected-candidate	compile-ns	2328	warm-ns	860
+sample	fallback	1	root-reference	compile-ns	2122	warm-ns	797
+sample	fallback	2	root-reference	compile-ns	2110	warm-ns	842
+sample	fallback	2	selected-candidate	compile-ns	2340	warm-ns	806
+sample	fallback	3	selected-candidate	compile-ns	2352	warm-ns	831
+sample	fallback	3	root-reference	compile-ns	2125	warm-ns	797
+sample	fallback	4	root-reference	compile-ns	2110	warm-ns	849
+sample	fallback	4	selected-candidate	compile-ns	3511	warm-ns	796
+charge	conditional	root-reference	xdm-node	27
+charge	conditional	selected-candidate	xdm-node	27
+sample	conditional	0	root-reference	compile-ns	3169	warm-ns	723
+sample	conditional	0	selected-candidate	compile-ns	3085	warm-ns	779
+sample	conditional	1	selected-candidate	compile-ns	3059	warm-ns	718
+sample	conditional	1	root-reference	compile-ns	3053	warm-ns	715
+sample	conditional	2	root-reference	compile-ns	3026	warm-ns	719
+sample	conditional	2	selected-candidate	compile-ns	3270	warm-ns	724
+sample	conditional	3	selected-candidate	compile-ns	3112	warm-ns	817
+sample	conditional	3	root-reference	compile-ns	3490	warm-ns	772
+sample	conditional	4	root-reference	compile-ns	3449	warm-ns	736
+sample	conditional	4	selected-candidate	compile-ns	3110	warm-ns	713
+R0_COST_END

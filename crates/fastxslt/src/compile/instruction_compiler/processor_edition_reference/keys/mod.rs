@@ -1,5 +1,12 @@
 //! Selected key admission only; indexing, lookup and dispatch remain shared.
+#[cfg(test)]
 use super::*;
+#[cfg(not(test))]
+use super::{
+    CompileFailure, Document, LocalVersion, NodeId, ensure_no_meaningful_children, is_ascii_ncname,
+    refusal, required_attribute, validate_value_binding, value_expression_compiler,
+    xpath_string_literal,
+};
 use crate::xslt::golden_semantics_experiment::Xslt10KeyLookup;
 
 pub(super) fn validate_declaration(

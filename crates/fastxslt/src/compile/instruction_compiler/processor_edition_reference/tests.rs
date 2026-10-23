@@ -20,6 +20,44 @@ fn module_document(xml: &str) -> Document {
 }
 
 #[test]
+fn selected_migration_preserves_independent_root_reference_outcomes() {
+    use crate::execution_control_experiment::InvocationControl;
+    for body in [
+        "<xsl:text>literal</xsl:text>",
+        "<xsl:if test='false()'><xsl:foo/></xsl:if><xsl:text>survived</xsl:text>",
+        "<xsl:if test='true()'><xsl:foo/></xsl:if>",
+        "<xsl:sequence select='1'><xsl:fallback><xsl:text>fallback</xsl:text></xsl:fallback></xsl:sequence>",
+    ] {
+        let document = module_document(&format!(
+            "<xsl:stylesheet xmlns:xsl='http://www.w3.org/1999/XSL/Transform' version='2.0'><xsl:template match='/'>{body}</xsl:template></xsl:stylesheet>"
+        ));
+        // The original root-template reference retains its own admission and
+        // traversal; it does not call the migrated matched-module lowerer.
+        let reference = lower_module(
+            &document,
+            Edition::Legacy,
+            &mut InvocationControl::unbounded(),
+        )
+        .unwrap();
+        let candidate = compile_selected_legacy_import_module(
+            &document,
+            Vec::new(),
+            &mut InvocationControl::unbounded(),
+            true,
+        )
+        .unwrap();
+        assert_eq!(candidate.processor, reference.processor);
+        assert_eq!(candidate.preprocessing, reference.preprocessing);
+        let source = module_document("<r/>");
+        drop(document);
+        assert_eq!(
+            execute_compiled_stylesheet_for_test(&candidate, &source, "migration"),
+            execute_compiled_stylesheet_for_test(&reference, &source, "migration"),
+        );
+    }
+}
+
+#[test]
 fn processor_edition_reference_modern_missing_fallback_is_static_in_original_module() {
     use crate::execution_control_experiment::InvocationControl;
     for condition in ["true()", "false()"] {

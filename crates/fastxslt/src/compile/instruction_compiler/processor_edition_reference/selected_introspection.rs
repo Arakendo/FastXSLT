@@ -1,7 +1,17 @@
 //! Private selected-1.0 numeric processor reporting; not production promotion.
 //! `QName` parsing stays in the shared introspection owner. No availability table
 //! or declaration-derived processor identity is imported into this route.
+#[cfg(test)]
 use super::*;
+#[cfg(not(test))]
+use super::{
+    BooleanExpression, Document, LocalVersion, NodeId, XSLT_NAMESPACE,
+    xslt10_static_introspection_compiler,
+};
+
+#[cfg(test)]
+#[path = "introspection_boundary_tests.rs"]
+mod boundary_tests;
 
 pub(super) fn version_number(
     document: &Document,
@@ -12,7 +22,7 @@ pub(super) fn version_number(
     if matches!(version, LocalVersion::ModernWitness(_)) {
         return None;
     }
-    xslt10_static_introspection_compiler::fold_with_policy_for_test(
+    xslt10_static_introspection_compiler::fold_with_policy(
         document,
         element,
         expression,

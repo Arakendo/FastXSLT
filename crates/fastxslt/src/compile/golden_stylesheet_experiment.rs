@@ -50,16 +50,12 @@ mod xslt10_global_constructor_compiler;
 #[path = "global_constructor_reference.rs"]
 pub(crate) mod global_constructor_reference;
 
-#[cfg(test)]
-pub(crate) use instruction_compiler::compile_selected_legacy_import_module_for_test;
-#[cfg(test)]
-pub(crate) use instruction_compiler::compile_selected_legacy_include_module_for_test;
-#[cfg(test)]
-pub(crate) use instruction_compiler::compile_selected_legacy_mixed_module_for_test;
+pub(crate) use instruction_compiler::compile_selected_legacy_import_module;
+pub(crate) use instruction_compiler::compile_selected_legacy_include_module;
+pub(crate) use instruction_compiler::compile_selected_legacy_mixed_module;
 #[cfg(test)]
 pub(crate) use instruction_compiler::compile_selected_legacy_resolved_chain_for_test;
-#[cfg(test)]
-pub(crate) use instruction_compiler::compile_selected_legacy_resolved_pair_for_test;
+pub(crate) use instruction_compiler::compile_selected_legacy_resolved_pair;
 pub(crate) use stylesheet_module_compiler::{
     StylesheetDependencyKind, compile_stylesheet_with_import_and_include,
     compile_stylesheet_with_imported_and_included_programs_at,

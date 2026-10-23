@@ -38,9 +38,16 @@ pub(in crate::runtime) struct StylesheetCompileLimits {
     preprocessing: StylesheetPreprocessingProfile,
     #[cfg(test)]
     modern_preprocessing_reference: bool,
+    selected_legacy_probe: bool,
 }
 
 impl StylesheetCompileLimits {
+    #[cfg(test)]
+    pub(in crate::runtime) const fn with_selected_legacy_probe(mut self) -> Self {
+        self.selected_legacy_probe = true;
+        self
+    }
+
     pub(in crate::runtime) const fn new(
         max_dependency_depth: usize,
         max_modules: usize,
@@ -61,6 +68,7 @@ impl StylesheetCompileLimits {
             preprocessing: StylesheetPreprocessingProfile::Modern,
             #[cfg(test)]
             modern_preprocessing_reference: false,
+            selected_legacy_probe: false,
         }
     }
 
@@ -190,6 +198,9 @@ fn compile_resource_with_resolver_and_limits(
     limits: StylesheetCompileLimits,
     control: &mut InvocationControl,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
+    if limits.selected_legacy_probe {
+        return compile_selected_legacy_resource(resolver, stylesheet_id, limits, control);
+    }
     let graph = load_stylesheet_dependency_graph(
         resolver,
         stylesheet_id,
@@ -237,9 +248,37 @@ fn compile_resource_with_resolver_and_limits(
     Ok(program)
 }
 
+/// Explicit crate-private selected entry. The caller supplies a sealed resolver
+/// and the ordinary graph/control bounds; this is not a facade/default selector.
+/// Selected lowering owns strict preprocessing, with no baseline fallback.
+pub(in crate::runtime) fn compile_selected_legacy_resource(
+    resolver: &mut SnapshotResolver<'_>,
+    stylesheet_id: &str,
+    limits: StylesheetCompileLimits,
+    control: &mut InvocationControl,
+) -> Result<StylesheetProgram, ExecutionFailure> {
+    let graph = load_stylesheet_dependency_graph(
+        resolver,
+        stylesheet_id,
+        limits.dependency,
+        limits.xml,
+        limits.internal_subset,
+        limits.external_subset,
+    )
+    .map_err(dependency_failure)?;
+    selected_profile_graph::compile(&graph, control, true)
+}
+
 #[cfg(test)]
 #[path = "resource_compiler/stylesheet_graph_context.rs"]
 mod stylesheet_graph_context;
+
+#[path = "resource_compiler/selected_profile_graph.rs"]
+mod selected_profile_graph;
+
+#[cfg(test)]
+#[path = "resource_compiler/selected_entry_tests.rs"]
+mod selected_entry_tests;
 
 #[cfg(test)]
 fn preprocess_stylesheet_graph(

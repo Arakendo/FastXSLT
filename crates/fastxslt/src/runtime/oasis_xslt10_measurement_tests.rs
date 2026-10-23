@@ -385,6 +385,14 @@ fn measures_local_oasis_xslt10_compatibility() {
         "unknown measurement preprocessing profile"
     );
     let strict_preprocessing = preprocessing_profile == "strict-xslt10";
+    let processor =
+        std::env::var("FASTXSLT_OASIS_PROCESSOR_PROFILE").unwrap_or_else(|_| "baseline".to_owned());
+    assert!(matches!(processor.as_str(), "baseline" | "selected-legacy"));
+    let selected_legacy = processor == "selected-legacy";
+    assert!(
+        !selected_legacy || strict_preprocessing,
+        "selected legacy requires strict preprocessing"
+    );
     let root = PathBuf::from(
         std::env::var_os(SUITE_ROOT_ENVIRONMENT)
             .expect("measurement script must supply the extracted OASIS TESTS directory"),
@@ -543,6 +551,7 @@ fn measures_local_oasis_xslt10_compatibility() {
                 stylesheet_resources,
                 measurement_limits(),
                 PreprocessingProbeOptions {
+                    selected_legacy,
                     strict: strict_preprocessing,
                     subsets: WorkbenchExternalSubsetLimits {
                         declarations: dtd_reference_limits(),
@@ -592,8 +601,15 @@ fn measures_local_oasis_xslt10_compatibility() {
                     &failure,
                     case.operation == "execution-error",
                 );
+                if selected_legacy && failure.code == "FXHP0001" {
+                    measurement.increment("selected-harness-limitation");
+                }
                 if case.operation == "execution-error" {
-                    measurement.expected_initialization_failure(&case.identity, &failure);
+                    if selected_legacy && failure.category != "invalid" {
+                        measurement.increment("expected-error-nonsemantic-uncredited");
+                    } else {
+                        measurement.expected_initialization_failure(&case.identity, &failure);
+                    }
                 }
                 continue;
             }
@@ -640,8 +656,12 @@ fn measures_local_oasis_xslt10_compatibility() {
                     case.operation == "execution-error",
                 );
                 if case.operation == "execution-error" {
-                    measurement.increment("expected-error-observed-during-execution");
-                    measurement.increment("expected-error-credit");
+                    if selected_legacy && failure.category != "invalid" {
+                        measurement.increment("expected-error-nonsemantic-uncredited");
+                    } else {
+                        measurement.increment("expected-error-observed-during-execution");
+                        measurement.increment("expected-error-credit");
+                    }
                 }
                 continue;
             }
@@ -818,6 +838,39 @@ fn measures_local_oasis_xslt10_compatibility() {
         }
     }
 
+    let terminal_total: usize = [
+        "missing-principal-source",
+        "missing-principal-stylesheet",
+        "missing-supplemental-stylesheet",
+        "missing-supplemental-data",
+        "initialization-failure",
+        "initialization-panic",
+        "execution-failure",
+        "execution-panic",
+        "actual-output-decode-failure",
+        "unusable-error-expectation-excluded",
+        "expected-error-unexpected-success",
+        "comparison-not-xml",
+        "host-parser-policy-excluded",
+        "host-collation-policy-excluded",
+        "serialization-layout-policy-excluded",
+        "xslt10-discretionary-policy-excluded",
+        "legacy-processor-profile-excluded",
+        "unusable-reference-result-excluded",
+        "missing-output-metadata",
+        "missing-expected-output",
+        "xml-comparison-pass",
+        "xml-comparison-mismatch",
+        "xml-comparator-unsupported",
+    ]
+    .iter()
+    .map(|key| measurement.counters.get(*key).copied().unwrap_or_default())
+    .sum();
+    assert_eq!(
+        terminal_total, 3173,
+        "full catalog must retain one terminal disposition per case"
+    );
+    println!("terminal-disposition-total\t{terminal_total}");
     let expected_error_denominator = measurement
         .counters
         .get("expected-error-catalog-case")
@@ -838,12 +891,25 @@ fn measures_local_oasis_xslt10_compatibility() {
         expected_error_credit
             + measurement.expected_error_unexpected_success_cases.len()
             + measurement.unusable_error_expectation_excluded_cases.len()
-            + expected_error_infrastructure,
+            + expected_error_infrastructure
+            + measurement
+                .counters
+                .get("expected-error-nonsemantic-uncredited")
+                .copied()
+                .unwrap_or_default(),
         "every catalog expected-error case must retain one visible disposition"
     );
 
     println!("OASIS_XSLT10_MEASUREMENT_BEGIN");
     println!("preprocessing-profile\t{preprocessing_profile}");
+    println!("processor-profile\t{processor}");
+    if selected_legacy {
+        // Ranked displays below are capped; the selected promotion report also
+        // retains the complete diagnostic partition without dropping the tail.
+        for (frontier, count) in &measurement.initialization_frontiers {
+            println!("selected-initialization-disposition\t{frontier}\t{count}");
+        }
+    }
     for (key, value) in &measurement.counters {
         println!("counter\t{key}\t{value}");
     }

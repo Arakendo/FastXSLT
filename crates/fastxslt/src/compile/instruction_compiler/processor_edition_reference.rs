@@ -1,25 +1,54 @@
-//! AR-0031 bounded instruction probe, not a complete compilation profile.
-//! Explicit edition/version inputs; no ambient override or production dispatch.
-//! Nested fallback bodies use shared traversal with explicit edition propagation.
-//! Constant/availability-test if/choose bodies propagate policy; other containers, locals,
-//! local-version scope and general module graphs stay guarded.
+//! Bounded selected legacy lowering plus retained AR-0031 test references.
+//! The historical module path is private. Non-test entry points admit only the
+//! R0 legacy slice; modern selection and the original instruction/root probes
+//! remain test-only. No public selector, default change or profile promotion.
+#[cfg(test)]
 use super::*;
+#[cfg(not(test))]
+use super::{
+    BooleanExpression, CompileFailure, Document, Instruction, NodeId, NodeKind, SourceLocation,
+    ValueExpression, XSLT_NAMESPACE, boolean_expression_compiler, compile_apply_imports,
+    compile_apply_templates, compile_copy_of, compile_forward_fallbacks_with_body,
+    compile_if_with_lowerers, compile_literal_element_parts, compile_local_variable_name,
+    compile_message_with_body, compile_select_variable, compile_sequence_with_element_lowerer,
+    compile_static_atomic_variable, compile_text, compile_text_after_attribute_validation,
+    compile_text_tree_variable_with_mode, compile_value_of_with_validated_options,
+    computed_element_compiler, conditional_instruction_compiler, ensure_fallback_attributes,
+    ensure_no_meaningful_children, invalid, is_ascii_ncname, is_xslt_element,
+    is_xslt10_template_element, literal_attribute_compiler, meaningful_children, number_compiler,
+    optional_attribute, parse_literal_document_call, required_attribute,
+    template_invocation_compiler, unsupported, validate_exclude_result_prefixes,
+    value_expression_compiler, xpath_string_literal, xslt10_static_introspection_compiler,
+};
 use crate::compile::golden_stylesheet_experiment as compiler;
 
 #[path = "processor_edition_reference/matched_integration.rs"]
 mod matched_integration;
-pub(crate) use matched_integration::compile_selected_legacy_import_module_for_test;
-pub(crate) use matched_integration::compile_selected_legacy_include_module_for_test;
-pub(crate) use matched_integration::compile_selected_legacy_mixed_module_for_test;
+pub(crate) use matched_integration::compile_selected_legacy_import_module;
+pub(crate) use matched_integration::compile_selected_legacy_include_module;
+pub(crate) use matched_integration::compile_selected_legacy_mixed_module;
+#[cfg(test)]
 pub(crate) use matched_integration::compile_selected_legacy_resolved_chain_for_test;
-pub(crate) use matched_integration::compile_selected_legacy_resolved_pair_for_test;
+pub(crate) use matched_integration::compile_selected_legacy_resolved_pair;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Edition {
+pub(super) enum Edition {
     Legacy,
+    #[cfg(test)]
     Modern,
 }
 
+impl Edition {
+    fn is_modern(self) -> bool {
+        match self {
+            Self::Legacy => false,
+            #[cfg(test)]
+            Self::Modern => true,
+        }
+    }
+}
+
+#[cfg(test)]
 fn compilation_context(
     edition: Edition,
     preprocessing: StylesheetPreprocessingProfile,
@@ -45,7 +74,8 @@ enum DeclaredVersion {
 
 /// Single root-template module only. All other declaration shapes are refused
 /// before any non-profile-aware compiler entry point can consume their bodies.
-fn lower_module(
+#[cfg(test)]
+pub(super) fn lower_module(
     document: &Document,
     edition: Edition,
     control: &mut crate::execution_control_experiment::InvocationControl,
@@ -62,6 +92,7 @@ fn lower_module(
 
 // Orthogonal cross-combinations are differential controls only, not supported
 // product profiles. This entry remains inside the test-only reference owner.
+#[cfg(test)]
 fn lower_module_with_preprocessing(
     document: &Document,
     edition: Edition,
@@ -154,6 +185,7 @@ fn probe_declared_version(
     }
 }
 
+#[cfg(test)]
 fn lower(
     document: &Document,
     element: NodeId,
@@ -163,6 +195,7 @@ fn lower(
     lower_at_depth(document, element, edition, version, 0)
 }
 
+#[cfg(test)]
 fn lower_template(
     document: &Document,
     element: NodeId,
@@ -197,6 +230,7 @@ fn lower_template(
     )
 }
 
+#[cfg(test)]
 fn lower_at_depth(
     document: &Document,
     element: NodeId,
@@ -309,6 +343,7 @@ fn lower_at_depth(
     )
 }
 
+#[cfg(test)]
 fn lower_body(
     document: &Document,
     parent: NodeId,
@@ -341,6 +376,7 @@ fn lower_body(
     )
 }
 
+#[cfg(test)]
 fn lower_condition(
     document: &Document,
     element: NodeId,
@@ -378,6 +414,7 @@ fn has_local_version(document: &Document, element: NodeId) -> bool {
 
 // Hypothetical policy witnesses, not supported processor-version claims or
 // a complete availability catalog. Modern sequence capability is unproved.
+#[cfg(test)]
 fn introspect(
     document: &Document,
     element: NodeId,
@@ -385,9 +422,9 @@ fn introspect(
     expression: &str,
 ) -> Option<xslt10_static_introspection_compiler::StaticIntrospectionValue> {
     use xslt10_static_introspection_compiler::{
-        StaticIntrospectionValue as Value, fold_with_policy_for_test,
+        StaticIntrospectionValue as Value, fold_with_policy,
     };
-    fold_with_policy_for_test(
+    fold_with_policy(
         document,
         element,
         expression,
@@ -411,8 +448,10 @@ fn introspect(
     )
 }
 
+#[cfg(test)]
 #[path = "processor_edition_reference/tests.rs"]
 mod tests;
 
+#[cfg(test)]
 #[path = "processor_edition_reference/include_chain.rs"]
 mod include_chain;

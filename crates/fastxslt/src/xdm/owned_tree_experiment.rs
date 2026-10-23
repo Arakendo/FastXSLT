@@ -148,8 +148,7 @@ pub(crate) enum StringValueVisitFailure<SinkFailure> {
 
 impl Document {
     /// Generic immutable relationship reference, with no stylesheet semantics.
-    /// Test-gated until its compiler consumer completes ADR-0023 integration.
-    #[cfg(test)]
+    /// Used by private stylesheet preprocessing; grants no new resource authority.
     pub(crate) fn view_filtering_children(
         &self,
         keep: impl Fn(NodeId, NodeId) -> bool,

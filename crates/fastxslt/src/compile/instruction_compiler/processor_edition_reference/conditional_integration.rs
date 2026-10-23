@@ -1,5 +1,13 @@
 //! Selected-profile routing only; conditional assembly and execution stay shared.
+#[cfg(test)]
 use super::*;
+#[cfg(not(test))]
+use super::{
+    BooleanExpression, CompileFailure, DeclaredVersion, Document, Edition, Instruction,
+    LocalVersion, NodeId, SourceLocation, StaticBindings, body, boolean_call_timing,
+    compile_if_with_lowerers, conditional_instruction_compiler, invalid, is_xslt_element, refusal,
+    require_probe_attribute_set, selected_introspection, selected_keys,
+};
 
 pub(super) fn compile(
     document: &Document,
@@ -96,5 +104,6 @@ fn validate_attributes(
     Ok(())
 }
 
+#[cfg(test)]
 #[path = "conditional_integration_tests.rs"]
 mod tests;

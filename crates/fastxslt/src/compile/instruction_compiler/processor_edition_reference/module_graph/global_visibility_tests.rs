@@ -15,7 +15,7 @@ fn selected_complete_pair_reads_principal_globals_from_imported_templates() {
     let source = document("source", b"<r/>");
     for version in ["1.0", "2.0", "3.0"] {
         let (principal, dependency) = pair(version, "red");
-        let program = compile_selected_legacy_resolved_pair_for_test(
+        let program = compile_selected_legacy_resolved_pair(
             &principal,
             &dependency,
             &mut InvocationControl::unbounded(),
@@ -35,7 +35,7 @@ fn selected_complete_pair_reads_principal_globals_from_imported_templates() {
             );
         }
         let (principal, dependency) = pair(version, "blue");
-        let other = compile_selected_legacy_resolved_pair_for_test(
+        let other = compile_selected_legacy_resolved_pair(
             &principal,
             &dependency,
             &mut InvocationControl::unbounded(),
@@ -67,7 +67,7 @@ fn selected_complete_pair_reads_principal_globals_from_imported_templates() {
 #[test]
 fn selected_complete_pair_global_avt_limits_cancel_and_recover() {
     let (principal, dependency) = pair("2.0", "red");
-    let program = compile_selected_legacy_resolved_pair_for_test(
+    let program = compile_selected_legacy_resolved_pair(
         &principal,
         &dependency,
         &mut InvocationControl::unbounded(),

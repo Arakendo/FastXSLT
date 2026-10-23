@@ -120,7 +120,6 @@ pub(super) fn compile_computed_element_after_attribute_validation(
 
 /// Selected legacy callers validate the bounded name grammar and attributes.
 /// Processor identity must not be inferred from the local version declaration.
-#[cfg(test)]
 pub(super) fn compile_selected_legacy_dynamic_element(
     document: &Document,
     element: NodeId,

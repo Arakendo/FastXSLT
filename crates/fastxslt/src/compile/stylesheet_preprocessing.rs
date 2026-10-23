@@ -12,6 +12,9 @@ use crate::xslt::golden_semantics_experiment::{
     ProcessorPolicyStamp, StylesheetPreprocessingStamp, StylesheetProgram,
 };
 
+#[path = "stylesheet_preprocessing/strict_content.rs"]
+pub(crate) mod strict_content;
+
 #[cfg(test)]
 #[path = "stylesheet_preprocessing/canonical_content.rs"]
 pub(super) mod canonical_content;
@@ -19,7 +22,6 @@ pub(super) mod canonical_content;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum StylesheetPreprocessingProfile {
     Modern,
-    #[cfg(test)]
     StrictXslt10,
 }
 
@@ -55,6 +57,15 @@ impl StylesheetCompilationContext {
         Self {
             preprocessing: StylesheetPreprocessingStamp::ModernBaseline,
             processor: ProcessorPolicyStamp::DeclarationDrivenBaseline,
+        }
+    }
+
+    /// Coherent qualification for the bounded selected legacy lowering path.
+    /// This does not relabel existing artifacts or expose a public selector.
+    pub(crate) const fn selected_legacy() -> Self {
+        Self {
+            preprocessing: StylesheetPreprocessingStamp::StrictXslt10Reference,
+            processor: ProcessorPolicyStamp::Xslt10Reference,
         }
     }
 
@@ -294,21 +305,18 @@ fn modern_forces_whitespace_removal(
     }) || previous.is_some_and(|node| super::is_xslt_element(document, *node, "catch"))
 }
 
-#[cfg(test)]
 #[derive(Debug)]
 pub(crate) enum StrictPreprocessingFailure {
     Compile(CompileFailure),
     Control(crate::execution_control_experiment::ControlFailure),
 }
 
-#[cfg(test)]
 impl From<CompileFailure> for StrictPreprocessingFailure {
     fn from(failure: CompileFailure) -> Self {
         Self::Compile(failure)
     }
 }
 
-#[cfg(test)]
 impl From<crate::execution_control_experiment::ControlFailure> for StrictPreprocessingFailure {
     fn from(failure: crate::execution_control_experiment::ControlFailure) -> Self {
         Self::Control(failure)
@@ -331,7 +339,6 @@ pub(super) fn preserves_literal_text(
     }
     match profile {
         StylesheetPreprocessingProfile::Modern => {}
-        #[cfg(test)]
         StylesheetPreprocessingProfile::StrictXslt10 => {
             return contains_non_whitespace(document, siblings[text_index]);
         }
@@ -593,6 +600,61 @@ mod tests {
         assert_eq!(view.location(children[0]), tree.location(children[0]));
         let untouched = element(&tree, "untouched");
         assert_eq!(view.children(untouched), tree.children(untouched));
+    }
+
+    #[test]
+    fn non_test_strict_component_matches_reference_and_control_boundaries() {
+        use crate::execution_control_experiment::{
+            CancellationToken, InvocationControl, WorkDomain, WorkLimits,
+        };
+        for xml in [
+            "<outer><out>A<!--c--> <?pi x?><z/>B</out><untouched> </untouched></outer>",
+            "<outer xml:space='preserve'><out> <!--c--><z xml:space='default'> </z></out></outer>",
+            "<outer xmlns:x='http://www.w3.org/1999/XSL/Transform'><out><x:text> </x:text> </out></outer>",
+        ] {
+            let tree = document(xml);
+            let root = element(&tree, "out");
+            let original = tree.children(root).to_vec();
+            let mut reference_control = InvocationControl::unbounded();
+            let reference = strict_stylesheet_view(&tree, root, &mut reference_control).unwrap();
+            let mut candidate_control = InvocationControl::unbounded();
+            let candidate = strict_content::prepare(&tree, root, &mut candidate_control).unwrap();
+            let required = reference_control.consumed(WorkDomain::XdmNode);
+            assert_eq!(candidate_control.consumed(WorkDomain::XdmNode), required);
+            assert!(candidate.same_origin(&tree));
+            assert!(candidate.shares_node_storage_with(&tree));
+            let mut pending = vec![tree.document_node()];
+            while let Some(node) = pending.pop() {
+                assert_eq!(candidate.children(node), reference.children(node));
+                assert_eq!(candidate.parent(node), reference.parent(node));
+                assert_eq!(candidate.location(node), tree.location(node));
+                pending.extend_from_slice(tree.children(node));
+            }
+            // Sweep every insufficient budget, not only the last allocation.
+            for budget in 0..=required {
+                let mut limits = WorkLimits::unbounded();
+                limits.xdm_nodes = budget;
+                let mut a = InvocationControl::new(CancellationToken::new(), limits);
+                let mut b = InvocationControl::new(CancellationToken::new(), limits);
+                let expected = strict_stylesheet_view(&tree, root, &mut a);
+                let actual = strict_content::prepare(&tree, root, &mut b);
+                assert_eq!(expected.is_ok(), budget == required);
+                assert_eq!(actual.is_ok(), expected.is_ok());
+                assert_eq!(
+                    format!("{:?}", actual.err()),
+                    format!("{:?}", expected.err())
+                );
+            }
+            let token = CancellationToken::new();
+            token.cancel();
+            let mut a = InvocationControl::new(token.clone(), WorkLimits::unbounded());
+            let mut b = InvocationControl::new(token, WorkLimits::unbounded());
+            assert_eq!(
+                format!("{:?}", strict_content::prepare(&tree, root, &mut a).err()),
+                format!("{:?}", strict_stylesheet_view(&tree, root, &mut b).err()),
+            );
+            assert_eq!(tree.children(root), original);
+        }
     }
 
     #[test]

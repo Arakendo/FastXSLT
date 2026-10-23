@@ -7,15 +7,17 @@ standards scope are decided.
 ## Current critical path
 
 [ADR-0026](../ADR/ADR-0026-evidence-gated-profile-promotion-and-frontier-progress.md)
-now governs the ADR-0025 integration pilot. **Next: review the proposed
-[R0 promotion ledger](../Campaigns/processor-edition-profile/promotion-ledger.md) before further private
-feature expansion.** It maps nine accepted gate categories to bounded exit
-criteria: proposed 0 closed / 9, with seven partially evidenced and two open;
-this is not an effort percentage or an approved denominator. Q01's qualification
-safeguard is a provisional repair within proposed P06, not a tenth gate.
-The proposed next three tranches are qualification audit, expression/introspection
-closure audit, and full private conserved measurement. The detailed corpus next
-cases below remain backlog unless their relationship to approved scope is explicit.
+governs the completed ADR-0025 integration pilot. **R0 promoted 2026-10-23:**
+[promotion ledger](../Campaigns/processor-edition-profile/promotion-ledger.md),
+nine fixed obligations, **9/9 closed by maintainer disposition: Promote**.
+This is not an effort percentage. Q01 is classified within P06, not a tenth gate.
+Scope remains closed. **The approved second interval is now 3/3 complete**:
+[non-test migration, entry/parity validation, controls/cost and full replay](../Campaigns/processor-edition-profile/evidence/r0-non-test-migration-review-2026-10-23.md).
+Selected exact remains 358/3,173; a fresh ordinary baseline replay remains
+2,504/3,173. Two entry-shape refusal defects were repaired without feature
+expansion. The incomplete crate-private selected legacy/strict profile is admitted
+through the non-test shared compiler path. Preserve its report as the R0 promotion
+baseline; no public selector, default or conformance claim is selected.
 
 The current OASIS checkpoint is 2,504 / 3,173 exact comparisons (78.92%);
 80% requires another 35 exact cases. Resume the ranked ordinary frontier,
@@ -25,8 +27,9 @@ Shared key-sum, conversion and formatting composition is implemented; detailed
 completed slices remain in the [numeric campaign evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-literal-document-path-binding-2026-10-17.md).
 The [extension-boundary reassessment](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-literal-document-path-binding-2026-10-17.md#2026-10-18-numeric-campaign-extension-boundary)
 parks `PerfRepro2` at unsupported Microsoft `node-set()`, not missing arithmetic.
-Do not bypass that extension boundary to chase the percentage. Resume accepted
-ADR-0025 processor-profile integration below; no additional exact pass is credited.
+Do not bypass that extension boundary to chase the percentage. Resume case-driven
+breadth with separate profile-labelled replay; promotion itself credits no new
+exact pass and does not widen the closed R0 feature ceiling.
 
 `Microsoft/Miscellaneous__84475` now passes unchanged through bounded composed
 string predicates and shared attribute/element match dispatch. Strict

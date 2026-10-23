@@ -92,7 +92,6 @@ mod conditional_expression_compiler;
 #[path = "instruction_compiler/conditional_instruction_compiler.rs"]
 mod conditional_instruction_compiler;
 use conditional_instruction_compiler::compile_if;
-#[cfg(test)]
 use conditional_instruction_compiler::compile_if_with_lowerers;
 #[path = "instruction_compiler/sort_compiler.rs"]
 mod sort_compiler;
@@ -355,19 +354,17 @@ fn compile_sequence_element_with_literal_compiler<E: From<CompileFailure>>(
 #[path = "instruction_compiler/stylesheet_content_reference.rs"]
 mod stylesheet_content_reference;
 
-#[cfg(test)]
 #[path = "instruction_compiler/processor_edition_reference.rs"]
 mod processor_edition_reference;
 #[cfg(test)]
-pub(crate) use processor_edition_reference::compile_selected_legacy_import_module_for_test;
-#[cfg(test)]
-pub(crate) use processor_edition_reference::compile_selected_legacy_include_module_for_test;
-#[cfg(test)]
-pub(crate) use processor_edition_reference::compile_selected_legacy_mixed_module_for_test;
+#[path = "instruction_compiler/processor_edition_reference/migration_cost.rs"]
+mod selected_migration_cost;
+pub(crate) use processor_edition_reference::compile_selected_legacy_import_module;
+pub(crate) use processor_edition_reference::compile_selected_legacy_include_module;
+pub(crate) use processor_edition_reference::compile_selected_legacy_mixed_module;
 #[cfg(test)]
 pub(crate) use processor_edition_reference::compile_selected_legacy_resolved_chain_for_test;
-#[cfg(test)]
-pub(crate) use processor_edition_reference::compile_selected_legacy_resolved_pair_for_test;
+pub(crate) use processor_edition_reference::compile_selected_legacy_resolved_pair;
 
 fn is_xslt10_template_element(local_name: &str) -> bool {
     matches!(

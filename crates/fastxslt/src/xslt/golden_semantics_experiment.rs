@@ -60,11 +60,11 @@ pub(crate) struct StylesheetProgram {
 
 /// ADR-0025 artifact qualification. The existing declaration-driven compiler is
 /// not relabeled as a coherent modern or legacy processor by adding this field.
-/// Selected reference stamps are test-only until compilation policy is integrated.
+/// The legacy stamp also qualifies the bounded private R0 non-test candidate;
+/// modern selection remains test-only. Stamping alone does not promote a profile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ProcessorPolicyStamp {
     DeclarationDrivenBaseline,
-    #[cfg(test)]
     Xslt10Reference,
     #[cfg(test)]
     ModernReference,
@@ -75,7 +75,6 @@ pub(crate) enum ProcessorPolicyStamp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum StylesheetPreprocessingStamp {
     ModernBaseline,
-    #[cfg(test)]
     StrictXslt10Reference,
     #[cfg(test)]
     ModernReference,

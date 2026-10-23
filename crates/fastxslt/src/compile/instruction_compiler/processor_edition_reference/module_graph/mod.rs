@@ -1,7 +1,14 @@
 //! Bounded selected-policy composition; no acquisition or relative resolution.
+#[cfg(test)]
 use super::*;
+#[cfg(not(test))]
+use super::{
+    Document, Edition, InvocationControl, StrictPreprocessingFailure, StylesheetProgram, compiler,
+    ensure_no_meaningful_children, is_xslt_element, lower_module_with_globals, meaningful_children,
+    refusal, require_probe_attribute_set, required_attribute, validate_selected_global_binding,
+};
 
-pub(crate) fn compile_selected_legacy_mixed_module_for_test(
+pub(crate) fn compile_selected_legacy_mixed_module(
     document: &Document,
     imported: StylesheetProgram,
     included: StylesheetProgram,
@@ -36,7 +43,7 @@ pub(crate) fn compile_selected_legacy_mixed_module_for_test(
 
 /// Lower one resolved import-only module; the loader owns recursion and limits.
 /// Imported programs must already carry the selected compilation qualification.
-pub(crate) fn compile_selected_legacy_import_module_for_test(
+pub(crate) fn compile_selected_legacy_import_module(
     document: &Document,
     mut imports: Vec<StylesheetProgram>,
     control: &mut InvocationControl,
@@ -84,7 +91,7 @@ pub(crate) fn compile_selected_legacy_import_module_for_test(
 }
 
 /// Includes retain their declaration positions; each dependency is already lowered.
-pub(crate) fn compile_selected_legacy_include_module_for_test(
+pub(crate) fn compile_selected_legacy_include_module(
     document: &Document,
     includes: Vec<StylesheetProgram>,
     control: &mut InvocationControl,
@@ -125,7 +132,7 @@ pub(crate) fn compile_selected_legacy_include_module_for_test(
 
 /// Test-only compiler seam after the existing loader has resolved one dependency.
 /// The caller owns resolution; compilation never relabels the dependency identity.
-pub(crate) fn compile_selected_legacy_resolved_pair_for_test(
+pub(crate) fn compile_selected_legacy_resolved_pair(
     principal: &Document,
     included: &Document,
     control: &mut InvocationControl,
@@ -186,6 +193,7 @@ pub(crate) fn compile_selected_legacy_resolved_pair_for_test(
     Ok(program)
 }
 
+#[cfg(test)]
 fn compile_supplied_siblings(
     principal: &Document,
     imported: &Document,
@@ -244,6 +252,7 @@ fn compile_supplied_siblings(
 }
 
 // A bounded supplied chain, not a resolver or a general dependency graph.
+#[cfg(test)]
 fn compile_supplied_chain(
     documents: &[&Document],
     edition: Edition,
@@ -265,6 +274,7 @@ fn compile_supplied_chain(
 }
 
 /// Existing loader owns the edges; this seam retains the resolved document IDs.
+#[cfg(test)]
 pub(crate) fn compile_selected_legacy_resolved_chain_for_test(
     documents: &[&Document],
     control: &mut InvocationControl,
@@ -272,6 +282,7 @@ pub(crate) fn compile_selected_legacy_resolved_chain_for_test(
     compile_resolved_chain(documents, Edition::Legacy, control)
 }
 
+#[cfg(test)]
 fn compile_resolved_chain(
     documents: &[&Document],
     edition: Edition,
@@ -340,6 +351,7 @@ fn compile_resolved_chain(
     Ok(program)
 }
 
+#[cfg(test)]
 fn compile_supplied(
     principal: &Document,
     imported: &Document,
@@ -349,6 +361,7 @@ fn compile_supplied(
     compile_supplied_leaves(principal, &[imported], edition, control)
 }
 
+#[cfg(test)]
 fn compile_supplied_leaves(
     principal: &Document,
     imports: &[&Document],

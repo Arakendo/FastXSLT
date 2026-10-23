@@ -26,7 +26,6 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
 
 // Selected-profile integration is intentionally limited to default counting and
 // format. Other numbering attributes still have local-version-sensitive owners.
-#[cfg(test)]
 pub(super) fn compile_format_only(
     document: &Document,
     element: NodeId,
