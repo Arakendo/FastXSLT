@@ -9,7 +9,7 @@
 | Trigger | A field host must prevent one repeatedly catastrophic stylesheet/input combination from cycling through replacement workers indefinitely |
 | Related ADRs | ADR-0002, ADR-0005, ADR-0016 |
 | Related reviews | AR-0002, AR-0004, AR-0005, AR-0010 |
-| Related evidence | `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-host-mode-guarantee-cost-matrix-2026-08-26.md`; `docs/Evidence/peer-execution-loss-quarantine-review-monday-2026-09-03.md`; future attempt-journal and fault-injection evidence |
+| Related evidence | `docs/Campaigns/aspnet-hosting/evidence/controls-and-lifecycle/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Campaigns/aspnet-hosting/evidence/controls-and-lifecycle/aspnet-host-mode-guarantee-cost-matrix-2026-08-26.md`; `docs/Evidence/peer-execution-loss-quarantine-review-monday-2026-09-03.md`; future attempt-journal and fault-injection evidence |
 
 ## Architectural question
 

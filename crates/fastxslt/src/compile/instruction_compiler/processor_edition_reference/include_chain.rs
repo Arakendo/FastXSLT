@@ -68,9 +68,63 @@ fn lower_chain_at(
     let included = lower_chain_at(next, remaining, edition, control)?;
     // No principal instructions can enter the production lowerer: preflight
     // admits only the include declaration. Existing composition owns the merge.
-    Ok(compiler::stylesheet_module_compiler::compile_stylesheet_with_included_programs_at_in_context(
-        &view, root, vec![included], compilation_context(edition, preprocessing),
+    Ok(assemble_dependency_shell(
+        &view,
+        included,
+        compilation_context(edition, preprocessing),
+        false,
     )?)
+}
+
+/// This reference admits an empty parent with exactly one dependency edge.
+/// Preflight must precede baseline construction: no expression or instruction
+/// can be mislabeled with a selected processor qualification.
+fn assemble_dependency_shell(
+    document: &Document,
+    dependency: StylesheetProgram,
+    context: StylesheetCompilationContext,
+    is_import: bool,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let root = compiler::document_element(document)?;
+    module_version(document, root)?;
+    let edges = meaningful_children(document, root);
+    let [edge] = edges.as_slice() else {
+        return Err(unsupported(
+            "FXAR0031",
+            "dependency shell must contain only one edge",
+            document.location(root),
+        ));
+    };
+    let kind = if is_import { "import" } else { "include" };
+    if !is_xslt_element(document, *edge, kind) {
+        return Err(unsupported(
+            "FXAR0031",
+            "unexpected dependency shell edge",
+            document.location(*edge),
+        ));
+    }
+    require_probe_attribute_set(document, *edge, "href")?;
+    compiler::required_attribute(document, *edge, None, "href")?;
+    compiler::ensure_no_meaningful_children(document, *edge, kind)?;
+    let mut principal = context.qualify_module(
+        compiler::compile_stylesheet_at_excluding_unvalidated(document, root, &[*edge])?,
+    );
+    if is_import {
+        compiler::stylesheet_module_compiler::merge_single_imported_program(
+            principal,
+            dependency,
+            document.location(*edge),
+            document.location(root),
+        )
+    } else {
+        compiler::stylesheet_module_compiler::merge_included_program(
+            &mut principal,
+            dependency,
+            document.location(*edge),
+        )?;
+        compiler::validate_named_template_references(&principal)?;
+        Ok(principal)
+    }
 }
 
 fn include_edge(

@@ -6,6 +6,9 @@ completed checkboxes as execution history and mark superseded plans rather than
 silently rewriting their original outcome.
 
 - [Roadmap](roadmap.md) -- milestone outcomes and gates.
+- [Campaigns](../Campaigns/README.md) -- bounded blocker work with colocated
+  ledgers, evidence and handoffs; currently the
+  [processor-edition profile campaign](../Campaigns/processor-edition-profile/README.md).
 - [Project Scaffold](project-scaffold.md) -- M0 workspace and documentation
   environment.
 - [M1 Standards Evidence and Private Vertical Slice](m1-standards-evidence-and-private-vertical-slice.md)

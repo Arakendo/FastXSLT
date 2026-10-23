@@ -242,7 +242,7 @@ quadratic distinct-entry composition and map-size-proportional serialization
 lookup. Resolution now applies precedence through a compilation-local ordered
 map, retains a compact scalar-sorted vector, and performs binary lookup during
 serialization. The measurement and conservation evidence is recorded in
-[Character-Map Scaling Remediation](../Evidence/character-map-scaling-remediation-2026-09-03.md).
+[Character-Map Scaling Remediation](../Campaigns/adversarial-remediation/evidence/character-map-scaling-remediation-2026-09-03.md).
 
 Severity:
 - Medium
@@ -341,26 +341,26 @@ remains a work-accounting oracle. The remaining 42 `AxisStep` cases execute
 empty-origin cardinality or preserve their expected static/dynamic standard
 diagnostics through production. Together these migrations make all 1,170
 current QT3 passes production-backed.
-[Default-collation evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
-[Escape-HTML-URI evidence](../Evidence/qt3-escape-html-uri-denominator-2026-09-03.md)
-[Encode-for-URI evidence](../Evidence/qt3-encode-for-uri-denominator-2026-09-03.md)
-[IRI-to-URI evidence](../Evidence/qt3-iri-to-uri-denominator-2026-09-03.md)
-[Lower-case evidence](../Evidence/qt3-lower-case-denominator-2026-09-03.md)
-[Upper-case evidence](../Evidence/qt3-upper-case-denominator-2026-09-03.md)
-[String-length evidence](../Evidence/qt3-string-length-denominator-2026-09-03.md)
-[Years-from-duration evidence](../Evidence/qt3-years-from-duration-denominator-2026-09-03.md)
-[Months-from-duration evidence](../Evidence/qt3-months-from-duration-denominator-2026-09-03.md)
-[Days-from-duration evidence](../Evidence/qt3-days-from-duration-denominator-2026-09-03.md)
-[Hour/minute duration evidence](../Evidence/qt3-hour-minute-duration-denominators-2026-09-03.md)
-[Normalize-space evidence](../Evidence/qt3-normalize-space-denominator-2026-09-03.md)
-[Codepoint-equal evidence](../Evidence/qt3-codepoint-equal-denominator-2026-09-03.md)
-[Empty evidence](../Evidence/qt3-empty-function-initial-denominator-2026-09-03.md)
-[Exists evidence](../Evidence/qt3-exists-function-initial-denominator-2026-09-03.md)
-[Deep-equal production-path evidence](../Evidence/qt3-deep-equal-production-path-2026-09-03.md)
-[Source-free boolean production-path evidence](../Evidence/qt3-source-free-boolean-production-path-2026-09-03.md)
-[Document-aware boolean production-path evidence](../Evidence/qt3-document-aware-boolean-production-path-2026-09-03.md)
-[Axis count production-path evidence](../Evidence/qt3-axis-count-production-path-2026-09-03.md)
-[Axis diagnostic-tail production-path evidence](../Evidence/qt3-axis-diagnostic-tail-production-path-2026-09-03.md)
+[Default-collation evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-default-collation-denominator-2026-09-03.md)
+[Escape-HTML-URI evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-escape-html-uri-denominator-2026-09-03.md)
+[Encode-for-URI evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-encode-for-uri-denominator-2026-09-03.md)
+[IRI-to-URI evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-iri-to-uri-denominator-2026-09-03.md)
+[Lower-case evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-lower-case-denominator-2026-09-03.md)
+[Upper-case evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-upper-case-denominator-2026-09-03.md)
+[String-length evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-string-length-denominator-2026-09-03.md)
+[Years-from-duration evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-years-from-duration-denominator-2026-09-03.md)
+[Months-from-duration evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-months-from-duration-denominator-2026-09-03.md)
+[Days-from-duration evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-days-from-duration-denominator-2026-09-03.md)
+[Hour/minute duration evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-hour-minute-duration-denominators-2026-09-03.md)
+[Normalize-space evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-normalize-space-denominator-2026-09-03.md)
+[Codepoint-equal evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-codepoint-equal-denominator-2026-09-03.md)
+[Empty evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-empty-function-initial-denominator-2026-09-03.md)
+[Exists evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-exists-function-initial-denominator-2026-09-03.md)
+[Deep-equal production-path evidence](../Campaigns/qt3-corpus/evidence/deep-equal/qt3-deep-equal-production-path-2026-09-03.md)
+[Source-free boolean production-path evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-source-free-boolean-production-path-2026-09-03.md)
+[Document-aware boolean production-path evidence](../Campaigns/qt3-corpus/evidence/functions/qt3-document-aware-boolean-production-path-2026-09-03.md)
+[Axis count production-path evidence](../Campaigns/qt3-corpus/evidence/axes/qt3-axis-count-production-path-2026-09-03.md)
+[Axis diagnostic-tail production-path evidence](../Campaigns/qt3-corpus/evidence/axes/qt3-axis-diagnostic-tail-production-path-2026-09-03.md)
 
 Severity:
 - Medium
@@ -504,7 +504,7 @@ lines to `compile/instruction_compiler.rs`, taking it from the reviewed 1,851
 lines to 2,237 lines, without that extraction. The retained review therefore
 exists, but its disposition no longer describes the current checkpoint and
 does not close the architecture-drift mechanism.
-[Review](../Evidence/second-adversarial-source-unit-cohesion-review-2026-09-03.md)
+[Review](../Campaigns/adversarial-remediation/evidence/second-adversarial-source-unit-cohesion-review-2026-09-03.md)
 
 Remediation: **Independently verified and closed 2026-09-03 at `e8115d7`.**
 Boolean-expression recognition and lowering now live behind one private typed

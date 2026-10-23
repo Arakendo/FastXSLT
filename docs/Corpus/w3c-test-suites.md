@@ -47,7 +47,7 @@ limitations are in the [catalog inventory evidence](../Evidence/w3c-suite-catalo
 The XSLT30 metadata inventory additionally records dependency, environment,
 stylesheet-reference, and assertion-family pressure across every pinned case;
 its retained results and limitations are in the
-[case-metadata evidence](../Evidence/xslt30-case-metadata-inventory-2026-08-25.md).
+[case-metadata evidence](../Campaigns/xslt30-corpus/evidence/admission-and-dispatch/xslt30-case-metadata-inventory-2026-08-25.md).
 
 Do not edit upstream catalogs, environments, sources, assertions, or expected
 results. FastXSLT-owned selection manifests, expected unsupported

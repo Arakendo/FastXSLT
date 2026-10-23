@@ -9,7 +9,7 @@
 | Trigger | Explore whether FastXSLT can reorganize ingested XML for cheaper execution rather than expose or inherit a general editable document model |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0004, ADR-0007, ADR-0012, ADR-0020, ADR-0021 |
 | Related reviews | [AR-0009](AR-0009-prepared-input-retention-and-cache-lifecycle.md), [AR-0012](AR-0012-rust-embedding-facade-and-lifecycle.md), [AR-0013](AR-0013-prepared-representation-and-data-layout-audit.md), [AR-0026](AR-0026-namespace-node-identity-and-navigation.md) |
-| Related evidence | [Prepared XDM byte anatomy](../Evidence/prepared-xdm-byte-anatomy-2026-08-31.md), [direct Rust lifecycle baseline](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md), and the current anatomy reproduction below |
+| Related evidence | [Prepared XDM byte anatomy](../Campaigns/native-registry-retention/evidence/prepared-xdm-byte-anatomy-2026-08-31.md), [direct Rust lifecycle baseline](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md), and the current anatomy reproduction below |
 
 ## Architectural question
 
@@ -422,7 +422,7 @@ extension of this concluded campaign.
   through shared preparation, preserving source spans and cancellation precedence.
   Direct candidate controls, native/isolated recovery and executable official
   WASM controls pass. No host candidate selector or completion contract is added.
-  [Closeout evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#bounded-capacity-campaign-closeout-on-2026-10-03)
+  [Closeout evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#bounded-capacity-campaign-closeout-on-2026-10-03)
 
 - 2026-10-03 -- Broadened the production-growth host baseline to six synthetic
   copy shapes: three fresh 5,000-job queues per lane validate 30,000 timed exact
@@ -430,7 +430,7 @@ extension of this concluded campaign.
   Depth 256 is rejected consistently but misclassified as FXXM0002/invalid;
   diagnostic repair remains open. .NET Release and conservation gates pass.
   No candidate selector, staging change, production policy or adoption follows.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#host-shape-ingestion-baseline-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#host-shape-ingestion-baseline-on-2026-10-03)
 
 - 2026-10-03 -- Added complete Rust engine lifecycle timing without allocation
   hooks. Three fresh rotated processes record 432 phase medians/p95 values and
@@ -438,7 +438,7 @@ extension of this concluded campaign.
   prevent a general speedup, precise overhead or reuse break-even claim; memory
   savings remain separately reproducible. Full gates and the official WASM
   build check pass. Host candidate timing/admission and adoption remain open.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-engine-capacity-timing-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-engine-capacity-timing-on-2026-10-03)
 
 - 2026-10-03 -- Measured seven complete-engine ownership prefixes across three
   fresh release processes: all 189 records agree, and 81 released/failure scopes
@@ -448,7 +448,7 @@ extension of this concluded campaign.
   separate from allocator observations. Full gates pass with 1,556 core tests
   and official WASM build check; host candidate timing/admission and adoption
   remain open.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-engine-overlap-allocation-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-engine-overlap-allocation-on-2026-10-03)
 
 - 2026-10-03 -- Extracted shared engine construction privately after the
   2,119-line facade review; the parent is now 1,869 lines. The mechanical
@@ -457,7 +457,7 @@ extension of this concluded campaign.
   failure comparisons and 18 invocation controls with recovery. Full gates and
   official WASM target check pass. Complete-engine allocator peaks and host
   candidate measurements remain open; no production selection changes.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-rust-engine-capacity-controls-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#complete-rust-engine-capacity-controls-on-2026-10-03)
 
 - 2026-10-03 -- Added test-only capacity selection at shared prepared-set
   construction, preserving production growth and existing phase observation.
@@ -466,7 +466,7 @@ extension of this concluded campaign.
   charges, with eighteen same-builder recoveries and no partial publication.
   Full gates pass with 1,552 core tests and official WASM build check. Complete
   engine/adapter candidate measurements and adoption remain open.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#shared-prepared-set-capacity-seam-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#shared-prepared-set-capacity-seam-on-2026-10-03)
 
 - 2026-10-03 -- Added result-heavy concurrent candidate lease controls across
   18 generation pairs and four independent worker controls. All 144 controlled
@@ -475,7 +475,7 @@ extension of this concluded campaign.
   expire. This proves direct-Rust isolation and retirement, not occupancy or
   throughput. Workspace tests pass with 1,550 core tests; candidate adapter
   integration, transient peaks and a supported completion decision remain open.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#concurrent-result-heavy-generation-leases-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#concurrent-result-heavy-generation-leases-on-2026-10-03)
 
 - 2026-10-03 -- Added four private native registry controls: eighteen exact/
   one-less result-heavy scenarios and six concurrent last-capacity scenarios.
@@ -485,7 +485,7 @@ extension of this concluded campaign.
   with 1,549 core and 22 native tests; official WASM build check passes.
   Candidate adapter integration, transient peak and active concurrent leases
   remain open.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#private-native-byte-admission-controls-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#private-native-byte-admission-controls-on-2026-10-03)
 
 - 2026-10-03 -- Added real native/isolated retention/admission baseline through
   existing exports/framing and production growth construction. Three fresh
@@ -495,7 +495,7 @@ extension of this concluded campaign.
   Isolated initialization failure preserves its worker and transferred strings
   outlive disposal. Managed/native Release builds pass. Engine charges/peak,
   candidate adapter integration and active concurrent leases remain open.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#adapter-retention-and-admission-baseline-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#adapter-retention-and-admission-baseline-on-2026-10-03)
 
 - 2026-10-03 -- Reviewed candidate publication boundaries and corrected the
   earlier fence wording: final cancellation observation is not atomic with
@@ -505,7 +505,7 @@ extension of this concluded campaign.
   cancelled controls still fail normally. Distinct old/new origins and final
   weak-owner expiry pass. No supported completion rule, capacity adoption or
   adapter publication change follows. Complete adapter retention remains open.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#candidate-publication-boundary-review-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#candidate-publication-boundary-review-on-2026-10-03)
 
 - 2026-10-03 -- Closed the measured result-heavy construction-failure allocation
   gap. Each run checks 216 XML/XDM construction scopes and 12 resize cancellations;
@@ -515,7 +515,7 @@ extension of this concluded campaign.
   production remains unchanged. Host retention, broader XML failure profiles and
   checkpoint publication/adoption remain open. Full gates pass with 1,547 core
   tests and official WASM compilation.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#construction-failure-allocation-cleanup-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#construction-failure-allocation-cleanup-on-2026-10-03)
 
 - 2026-10-03 -- Extended result-heavy control parity: 108 construction pairs,
   12 before/after resize cancellation controls and 162 invocation cases across
@@ -525,7 +525,7 @@ extension of this concluded campaign.
   match. Production is unchanged. Construction-failure allocation attribution,
   host retention and checkpoint adoption remain open. Full gates pass with
   1,546 core tests and official WASM compilation.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-capacity-control-parity-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-capacity-control-parity-on-2026-10-03)
 
 - 2026-10-03 -- Compared growth/freeze/pre-sizing on result-heavy copied output.
   All 7,776 timed outputs match; all ten work counters and source retirement
@@ -535,7 +535,7 @@ extension of this concluded campaign.
   requests while freeze raises them. Timing reversals prevent a speedup or
   adoption claim. Direct Document scopes omit PreparedInputSet wrappers and
   capacity checkpoint polls. Full gates pass with 1,543 core tests and WASM.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-capacity-comparison-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-capacity-comparison-on-2026-10-03)
 
 - 2026-10-03 -- Added result-heavy requested-allocation scopes. Three fresh
   processes reproduce all 18 records identically; successful release, partial
@@ -545,7 +545,7 @@ extension of this concluded campaign.
   peak. These are allocator requests, not RSS or host accounting. Full gates
   pass with 1,542 core tests and WASM. Capacity-candidate comparisons, broader
   failure parity and adapter transfer remain open; no layout selected.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-allocation-and-failure-controls-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-allocation-and-failure-controls-on-2026-10-03)
 
 - 2026-10-03 -- Added result-heavy direct Rust one/eight-use controls with
   2,592 timed exact outputs and copied-result survival after source retirement.
@@ -554,7 +554,7 @@ extension of this concluded campaign.
   test-only parser ceilings avoid weakening production defaults. Full gates
   pass with 1,541 core tests and WASM. Capacity-candidate result-heavy parity,
   retention and host transfer remain open.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-prepared-reuse-follow-up-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#result-heavy-prepared-reuse-follow-up-on-2026-10-03)
 
 - 2026-10-03 -- Extended direct compile-once ingestion to distinct payloads.
   Three 5,000-job runs compare every timed result exactly; full-job medians are
@@ -562,7 +562,7 @@ extension of this concluded campaign.
   Preparation dominates the largest tier. Fresh-compilation parity, distinct
   provenance and surviving-owner retirement pass. Full gates pass with 1,540
   core tests and WASM; no adapter speedup or representation choice follows.
-  [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#distinct-payload-compile-once-follow-up-on-2026-10-03)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md#distinct-payload-compile-once-follow-up-on-2026-10-03)
 
 - 2026-10-03 -- Added persistent-worker initialization over the existing private
   protocol. Three 5,000-job queues per lane validate 30,000 timed exact outputs;
@@ -571,7 +571,7 @@ extension of this concluded campaign.
   medians are 0.82–0.90 ms without startup. Retirement costs depend on the prior
   source; repeated initialization still recompiles. No staging relocation or
   production representation selected.
-  [Evidence](../Evidence/ar-0027-persistent-worker-ingestion-2026-10-03.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-persistent-worker-ingestion-2026-10-03.md)
 
 - 2026-10-03 -- Added matched full-engine creation measurements through existing
   adapters and direct Rust. Three repetitions conserve 1,152 timed exact results,
@@ -580,7 +580,7 @@ extension of this concluded campaign.
   fresh isolated worker. Pipe writes absorb startup waiting; no internal phase
   or removable managed cost is inferred. Full gates pass with 1,539 core tests
   and WASM. No new export, production capacity choice or corpus credit.
-  [Evidence](../Evidence/ar-0027-matched-engine-creation-2026-10-03.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-matched-engine-creation-2026-10-03.md)
 
 - 2026-10-03 -- Extended reuse observations to seven points. Three recorded
   fresh processes validate 459,486 timed outputs each. Pre-sized wide-source
@@ -590,7 +590,7 @@ extension of this concluded campaign.
   compilation and preparation, with process startup additionally present in the
   isolated path. Matched host attribution remains pending. Full gates and WASM
   pass; production policy and corpus counts are unchanged.
-  [Evidence](../Evidence/ar-0027-capacity-reuse-sweep-and-ingestion-attribution-2026-10-03.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-capacity-reuse-sweep-and-ingestion-attribution-2026-10-03.md)
 
 - 2026-10-03 -- Resolved the localized serialization blocker with safe borrowed
   ancestor cursors; the unchanged 256-deep copy passes on the default debug
@@ -600,7 +600,7 @@ extension of this concluded campaign.
   Pre-sized deep-copy peak falls 20.4%; serializer scratch has a small measured
   transient allocation cost. Full gates pass with 1,538 core tests and 48 ignored
   probes; the official WASM target builds. Capacity adoption remains open.
-  [Evidence](../Evidence/ar-0027-stack-safe-serialization-and-allocation-replay-2026-10-03.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-stack-safe-serialization-and-allocation-replay-2026-10-03.md)
 
 - 2026-10-03 -- Localized the 256-deep default-debug overflow to serialization,
   after successful execution and source retirement. Extracted the recursive
@@ -608,7 +608,7 @@ extension of this concluded campaign.
   repair. Full gates pass with 1,535 core tests and 49 ignored probes; the
   official WASM target builds. The sacrificial crash remains reproducible and
   the deep-copy allocation cell remains excluded. No repair or gain claimed.
-  [Evidence](../Evidence/ar-0027-serialization-stack-localization-2026-10-03.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-serialization-stack-localization-2026-10-03.md)
 
 - 2026-10-03 -- Extended allocation observation through preparation, semantic
   result, serialized result and release. Three release processes reproduce all
@@ -619,7 +619,7 @@ extension of this concluded campaign.
   reproducer passes. That cell remains excluded and explicitly unresolved.
   Full gates pass with 1,535 core tests and 49 ignored probes; WASM builds.
   No timing, capacity adoption or corpus gain is claimed.
-  [Evidence](../Evidence/ar-0027-full-transform-allocation-peaks-2026-10-03.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-full-transform-allocation-peaks-2026-10-03.md)
 
 - 2026-10-03 -- Closed the temporary attribute-value blocker with a narrow
   private projection of eligible relative attribute paths. The unchanged
@@ -630,7 +630,7 @@ extension of this concluded campaign.
   cancellation during selection. Predicate paths remain explicitly unsupported.
   Full gates pass with 1,534 core tests and 47 ignored probes; WASM builds.
   No capacity policy, parser authority or corpus numerator changes.
-  [Evidence](../Evidence/ar-0027-temporary-attribute-value-parity-2026-10-03.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-temporary-attribute-value-parity-2026-10-03.md)
 
 - 2026-10-03 -- Committed the parity checkpoint at `1e04cc7f`, then extracted
   for-each dispatch into a cohesive private owner and verified it unchanged.
@@ -640,7 +640,7 @@ extension of this concluded campaign.
   selection rather than the source-only dispatch panic; it remains explicitly
   ignored and uncredited. Sorted temporary paths are explicitly unsupported
   with sort provenance. No capacity policy or corpus numerator is changed.
-  [Evidence](../Evidence/ar-0027-temporary-for-each-dispatch-repair-2026-10-03.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-temporary-for-each-dispatch-repair-2026-10-03.md)
 
 - 2026-10-03 -- Committed prior work at `74daf64b`, then extended sealed-subset
   parity across five constructors and twenty exact transforms. A broader
@@ -649,7 +649,7 @@ extension of this concluded campaign.
   reproducer as an open correctness blocker rather than crediting parity.
   Full gates pass with 1,526 core tests and 48 ignored probes; WASM builds.
   Production remains unchanged.
-  [Evidence](../Evidence/ar-0027-sealed-subset-parity-and-temporary-path-blocker-2026-10-03.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-sealed-subset-parity-and-temporary-path-blocker-2026-10-03.md)
 
 - 2026-10-02 -- Added private uncharged cancellation checkpoints: at most 256
   scan visits between polls, and checks before/after capacity changes. Ten scan
@@ -658,7 +658,7 @@ extension of this concluded campaign.
   unaccepted. Three rotated construction runs are noisy and establish no
   precise overhead or host benefit. Full gates pass with 1,525 core tests and
   WASM; production remains unchanged.
-  [Evidence](../Evidence/ar-0027-bounded-capacity-checkpoints-2026-10-02.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-bounded-capacity-checkpoints-2026-10-02.md)
 
 - 2026-10-02 -- Measured test-only cancellation boundaries across six shapes
   and three release stress runs. The 96,002-node shared span scan precedes the
@@ -666,7 +666,7 @@ extension of this concluded campaign.
   intervals are shorter. Reservation can finish after signalling cancellation;
   freezing can return after its final semantic check. Checkpoint design remains
   open, production is unchanged, and full gates pass with 1,522 core tests and
-  WASM. [Evidence](../Evidence/ar-0027-capacity-cancellation-gaps-2026-10-02.md)
+  WASM. [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-capacity-cancellation-gaps-2026-10-02.md)
 
 - 2026-10-02 -- Added direct Rust complete-source lifecycle timing and 36 scoped
   successful/failed-construction release controls. All measured scope ownership
@@ -674,7 +674,7 @@ extension of this concluded campaign.
   outcomes. Wide single-use pre-sizing improves 2.2-11.6%, but several other
   shape/reuse cells reverse or are nearly flat. No general speedup, break-even,
   production choice or corpus pass follows. Full gates pass with 1,520 core
-  tests and WASM. [Evidence](../Evidence/ar-0027-capacity-single-use-lifecycle-2026-10-02.md)
+  tests and WASM. [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-capacity-single-use-lifecycle-2026-10-02.md)
 
 - 2026-10-02 -- Extended capacity conservation through typed IDs/defaults,
   complete whitespace derivation, qualified namespace identity, actual strip/
@@ -683,7 +683,7 @@ extension of this concluded campaign.
   leases drain and replacement owners remain independent. Three focused tests
   and full gates pass with 1,518 core tests and WASM. Production remains growth;
   broader parity, allocation/cancellation gaps and host measurements are open.
-  [Evidence](../Evidence/ar-0027-node-vector-presizing-comparison-2026-10-02.md#semantic-and-lifecycle-follow-up)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-node-vector-presizing-comparison-2026-10-02.md#semantic-and-lifecycle-follow-up)
 
 - 2026-10-02 -- Measured test-only pre-sizing through the existing span scan,
   with unchanged per-node charges and budget-ineligible fallback to growth.
@@ -693,7 +693,7 @@ extension of this concluded campaign.
   show 12.8-14.3% lower wide preparation medians but negligible gains on some
   shapes. Production growth remains unchanged; broader parity, complete
   lifecycle and host measurements remain open. Full gates pass with 1,515 core
-  tests and WASM. [Evidence](../Evidence/ar-0027-node-vector-presizing-comparison-2026-10-02.md)
+  tests and WASM. [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-node-vector-presizing-comparison-2026-10-02.md)
 
 - 2026-10-02 -- Measured the test-only node-vector freeze candidate. Retention
   falls 9.4-44.4% in the six-shape matrix; allocator peak is unchanged there, but
@@ -702,7 +702,7 @@ extension of this concluded campaign.
   provenance, charge, budget, cancellation and pinned transform checks pass.
   Pre-sizing, broader parity and host-visible comparison remain open. Full
   gates pass with 1,514 core tests and WASM.
-  [Evidence](../Evidence/ar-0027-node-vector-freeze-comparison-2026-10-02.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-node-vector-freeze-comparison-2026-10-02.md)
 
 - 2026-10-02 -- Completed six-shape capacity/allocation anatomy. Occupied records
   and unused vector slots are now separate; unused records account for 9.4-44.4%
@@ -710,7 +710,7 @@ extension of this concluded campaign.
   Complete XML/XDM allocation scopes reproduce identically across three runs.
   Nominate capacity tightening before changing record fields, but accept no
   optimization. Full gates pass with 1,511 core tests and WASM.
-  [Evidence](../Evidence/ar-0027-document-shape-capacity-anatomy-2026-10-02.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-document-shape-capacity-anatomy-2026-10-02.md)
 
 - 2026-10-02 -- Added shared-seam XML/XDM phase attribution and paired ordinary
   controls. XML is the larger measured phase on four sources; on synthetic 500
@@ -718,21 +718,21 @@ extension of this concluded campaign.
   24,024 timed outputs match; charges, exact/one-less limits, cancellation and
   failure diagnostics retain parity. Observation remains test-only, with no
   layout or parser decision. Full gates pass with 1,510 core tests and WASM.
-  [Evidence](../Evidence/ar-0027-shared-preparation-phase-attribution-2026-10-02.md)
+  [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-shared-preparation-phase-attribution-2026-10-02.md)
 
 - 2026-10-02 -- Added the compile-once fresh-source control. Three fresh release
   processes check all 15,000 timed outcomes exactly; per-job medians are
   10.6-16.8 us, with 5,000-job windows of 64.0-93.5 ms on one worker. Equal bytes
   retain separate origins and provenance. These variable short windows do not
   select a layout, staging change or deployment capacity. Full gates pass with
-  1,508 core tests and the official WASM check. [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md)
+  1,508 core tests and the official WASM check. [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md)
 
 - 2026-10-02 -- Started implementation with a private direct Rust lifecycle
   test/measurement owner. Three fresh release runs observed 28.4-32.5 us complete
   one-shot medians and 2.0-2.1 us compiled/prepared invocation medians on the tiny
   pinned standards case. Full gates pass with 1,507 core tests and the official
   WASM check. Short instrumented timings remain non-decisional; layout and
-  adapter staging are unchanged. [Evidence](../Evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md)
+  adapter staging are unchanged. [Evidence](../Campaigns/prepared-document-capacity/evidence/ar-0027-direct-rust-lifecycle-baseline-2026-10-02.md)
 
 - 2026-10-02 -- Clarified first-class Rust application consumption. Shared
   host-neutral lifecycle ownership does not depend on a .NET performance win;

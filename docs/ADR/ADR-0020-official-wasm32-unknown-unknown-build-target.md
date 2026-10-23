@@ -4,7 +4,7 @@
 - Date: 2026-09-24
 - Related review: AR-0015
 - Related ADRs: ADR-0002, ADR-0003, ADR-0005, ADR-0007
-- Related evidence: `docs/Evidence/wasm-browser-feasibility-and-benchmark-baseline-2026-09-24.md`
+- Related evidence: `docs/Campaigns/wasm-target/evidence/wasm-browser-feasibility-and-benchmark-baseline-2026-09-24.md`
 - Supersedes: None
 
 ## Context

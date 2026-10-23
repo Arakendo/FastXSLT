@@ -1,5 +1,9 @@
 //! Builds one bounded, immutable stylesheet dependency graph from a sealed snapshot.
 
+#[cfg(test)]
+#[path = "stylesheet_dependency_loader/selected_processor_tests.rs"]
+mod selected_processor_tests;
+
 use crate::compile::golden_stylesheet_experiment::{
     CompileFailure, StylesheetDependencyKind, discovered_stylesheet_dependencies_at,
 };

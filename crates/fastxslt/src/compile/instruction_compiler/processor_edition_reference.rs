@@ -8,6 +8,11 @@ use crate::compile::golden_stylesheet_experiment as compiler;
 
 #[path = "processor_edition_reference/matched_integration.rs"]
 mod matched_integration;
+pub(crate) use matched_integration::compile_selected_legacy_import_module_for_test;
+pub(crate) use matched_integration::compile_selected_legacy_include_module_for_test;
+pub(crate) use matched_integration::compile_selected_legacy_mixed_module_for_test;
+pub(crate) use matched_integration::compile_selected_legacy_resolved_chain_for_test;
+pub(crate) use matched_integration::compile_selected_legacy_resolved_pair_for_test;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Edition {
@@ -235,6 +240,7 @@ fn lower_at_depth(
                 compile_if_with_lowerers(
                     document,
                     element,
+                    &mut conditional_instruction_compiler::validate_conditional_attributes,
                     &mut condition,
                     &mut |document, parent| lower_body(document, parent, edition, version, depth),
                 )
@@ -242,6 +248,7 @@ fn lower_at_depth(
                 conditional_instruction_compiler::compile_choose_with_lowerers(
                     document,
                     element,
+                    &mut conditional_instruction_compiler::validate_conditional_attributes,
                     &mut condition,
                     &mut |document, parent, _| {
                         lower_body(document, parent, edition, version, depth)

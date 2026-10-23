@@ -1453,7 +1453,10 @@ fn parse_variable_boolean_call(expression: &str) -> Option<&str> {
     is_ascii_ncname(variable).then_some(variable)
 }
 
-fn parse_xslt10_variable_conversion<'a>(expression: &'a str, function: &str) -> Option<&'a str> {
+pub(super) fn parse_xslt10_variable_conversion<'a>(
+    expression: &'a str,
+    function: &str,
+) -> Option<&'a str> {
     let variable = expression
         .trim()
         .strip_prefix(function)?

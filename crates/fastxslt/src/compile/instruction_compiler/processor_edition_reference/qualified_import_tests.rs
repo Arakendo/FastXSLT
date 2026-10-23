@@ -4,6 +4,91 @@ use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_for_t
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 #[test]
+fn processor_edition_reference_baseline_compiler_cannot_claim_selected_policy() {
+    use compiler::stylesheet_module_compiler as modules;
+    let leaf = module("urn:leaf", "2.0", "");
+    let leaf_root = compiler::document_element(&leaf).unwrap();
+    for shape in [
+        "include",
+        "single-import",
+        "imports",
+        "mixed",
+        "document-import",
+    ] {
+        let edges = match shape {
+            "include" => r#"<xsl:include href="urn:leaf"/>"#,
+            "imports" => r#"<xsl:import href="urn:leaf"/><xsl:import href="urn:other"/>"#,
+            "mixed" => r#"<xsl:import href="urn:leaf"/><xsl:include href="urn:other"/>"#,
+            _ => r#"<xsl:import href="urn:leaf"/>"#,
+        };
+        let principal = module(
+            "urn:principal",
+            "2.0",
+            &format!(
+                r#"{edges}<xsl:template match="/"><xsl:text>baseline</xsl:text></xsl:template>"#
+            ),
+        );
+        let root = compiler::document_element(&principal).unwrap();
+        for edition in [None, Some(Edition::Legacy), Some(Edition::Modern)] {
+            let context = edition.map_or_else(StylesheetCompilationContext::baseline, |edition| {
+                compilation_context(edition, StylesheetPreprocessingProfile::Modern)
+            });
+            // Deliberately supply a matching empty artifact: mismatch checking
+            // alone cannot detect a wrongly lowered principal with a good stamp.
+            let dependency = context.qualify_module(compiler::compile_stylesheet(&leaf).unwrap());
+            let result = match shape {
+                "include" => modules::compile_stylesheet_with_included_programs_at_in_context(
+                    &principal,
+                    root,
+                    vec![dependency],
+                    context,
+                ),
+                "single-import" => {
+                    modules::compile_stylesheet_with_single_imported_program_at_in_context(
+                        &principal, root, dependency, context,
+                    )
+                }
+                "imports" => modules::compile_stylesheet_with_imported_programs_at_in_context(
+                    &principal,
+                    root,
+                    vec![dependency.clone(), dependency],
+                    context,
+                ),
+                "mixed" => {
+                    modules::compile_stylesheet_with_imported_and_included_programs_at_in_context(
+                        &principal,
+                        root,
+                        dependency.clone(),
+                        dependency,
+                        context,
+                    )
+                }
+                _ => modules::compile_stylesheet_with_imports_in_context(
+                    &principal,
+                    &[(&leaf, leaf_root)],
+                    context,
+                ),
+            };
+            if edition.is_none() {
+                let program = result.expect("baseline control must actually compile");
+                assert!(
+                    execute_compiled_stylesheet_for_test(&program, &principal, "baseline")
+                        .unwrap()
+                        .ends_with("baseline")
+                );
+                assert_eq!(program.processor, crate::xslt::golden_semantics_experiment::ProcessorPolicyStamp::DeclarationDrivenBaseline);
+            } else {
+                let error = result.unwrap_err();
+                assert_eq!(error.code, "FXST1058", "{shape}");
+                assert_eq!(error.category, CompileCategory::Unsupported);
+                assert!(error.detail.contains("policy-aware lowering"));
+                assert_eq!(error.location.resource, "urn:principal");
+            }
+        }
+    }
+}
+
+#[test]
 fn processor_edition_reference_shared_linker_preserves_or_rejects_processor_stamp() {
     use crate::xslt::golden_semantics_experiment::ProcessorPolicyStamp;
     // Deliberately bypass CompiledModule: the real program/linker must retain
@@ -40,15 +125,8 @@ fn processor_edition_reference_shared_linker_preserves_or_rejects_processor_stam
                         .qualify_module(compiler::compile_stylesheet(&leaf).unwrap()),
                 };
                 let retained_stamp = dependency.processor;
-                let linked = if edge == "include" {
-                    compiler::stylesheet_module_compiler::compile_stylesheet_with_included_programs_at_in_context(
-                        &principal, root, vec![dependency], context,
-                    )
-                } else {
-                    compiler::stylesheet_module_compiler::compile_stylesheet_with_single_imported_program_at_in_context(
-                        &principal, root, dependency, context,
-                    )
-                };
+                let linked =
+                    assemble_dependency_shell(&principal, dependency, context, edge == "import");
                 if caller == owner {
                     let program = linked.unwrap();
                     assert_eq!(program.processor, retained_stamp);
@@ -176,9 +254,13 @@ fn processor_edition_reference_single_import_matches_existing_composition() {
         let view =
             stylesheet_visibility_view(&principal, root, preprocessing, &mut reference_control)
                 .unwrap();
-        let reference = compiler::stylesheet_module_compiler::compile_stylesheet_with_single_imported_program_at_in_context(
-            &view, root, dependency, compilation_context(edition, preprocessing),
-        ).unwrap();
+        let reference = assemble_dependency_shell(
+            &view,
+            dependency,
+            compilation_context(edition, preprocessing),
+            true,
+        )
+        .unwrap();
         assert_eq!(actual.program, reference);
         assert_eq!(
             control.consumed(crate::execution_control_experiment::WorkDomain::XdmNode),

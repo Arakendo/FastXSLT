@@ -17,6 +17,30 @@ use super::{
 };
 
 pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    compile_with_format_compatibility(
+        document,
+        element,
+        uses_xslt10_compatibility(document, element),
+    )
+}
+
+// Selected-profile integration is intentionally limited to default counting and
+// format. Other numbering attributes still have local-version-sensitive owners.
+#[cfg(test)]
+pub(super) fn compile_format_only(
+    document: &Document,
+    element: NodeId,
+    xslt10: bool,
+) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["format"], "xsl:number")?;
+    compile_with_format_compatibility(document, element, xslt10)
+}
+
+fn compile_with_format_compatibility(
+    document: &Document,
+    element: NodeId,
+    format_xslt10: bool,
+) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(
         document,
         element,
@@ -56,7 +80,7 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
         .map(|pattern| compile_pattern(document, element, pattern, "from"))
         .transpose()?;
     let format = if let Some(format) = optional_attribute(document, element, None, "format") {
-        compile_format_plan(document, element, format)?
+        compile_format_plan(document, element, format, format_xslt10)?
     } else {
         NumberFormatPlan::Static(default_number_format())
     };
@@ -72,7 +96,7 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
         letter_value,
         language,
         grouping: grouping.map(Box::new),
-        xslt10_compatibility: uses_xslt10_compatibility(document, element),
+        xslt10_compatibility: format_xslt10,
         location: document.location(element).clone(),
     })
 }
@@ -449,6 +473,7 @@ fn compile_format_plan(
     document: &Document,
     element: NodeId,
     format: &str,
+    xslt10: bool,
 ) -> Result<NumberFormatPlan, CompileFailure> {
     if let Some(expression) = whole_avt_expression(format)
         && let Some(literal) = xpath_string_literal(expression)
@@ -463,7 +488,7 @@ fn compile_format_plan(
         .map(str::trim)
         .filter(|value| is_ascii_ncname(value))
     {
-        return Ok(if uses_xslt10_compatibility(document, element) {
+        return Ok(if xslt10 {
             NumberFormatPlan::Xslt10Variable(variable.to_owned())
         } else {
             NumberFormatPlan::Variable(variable.to_owned())

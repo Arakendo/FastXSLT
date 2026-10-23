@@ -114,3 +114,7 @@ but supersede a materially changed decision instead of rewriting its history.
   of preprocessing and local declared versions. Recognition, compatibility, error
   timing, introspection and artifact qualification use the shared compiler/runtime.
   Production support remains gated by executable validation.
+- [ADR-0026: Evidence-Gated Profile Promotion and Frontier Progress](ADR-0026-evidence-gated-profile-promotion-and-frontier-progress.md)
+  -- Accepted; pilot finite promotion ledgers on ADR-0025, with separate corpus
+  and promotion reporting, provisional new blockers, closed revision scope and
+  three-tranche reviews. Existing safety and promotion gates remain binding.

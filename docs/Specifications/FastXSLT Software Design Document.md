@@ -563,6 +563,15 @@ qualification and reject incompatible composition rather than relabeling.
 Production integration remains gated by the ADR's executable requirements;
 acceptance selects no public profile API, default or conformance claim.
 
+Context-taking helpers that still use declaration-driven lowering accept only
+that processor qualification; a selected processor request fails explicitly
+before compilation or graph fallback. Preprocessing qualification alone does
+not supply processor semantics. Selected callers lower under their own policy
+and use shared assembly, which checks retained stamps without rewriting them.
+The older empty-dependency-shell reference separately validates that no principal
+instruction or expression enters baseline lowering; it is not a general selected
+compiler entry. This safeguard does not close the full profile-promotion gate.
+
 [ADR-0023](../ADR/ADR-0023-compilation-scoped-stylesheet-preprocessing-profiles.md)
 selects explicit strict-XSLT-1.0 and modern stylesheet-preprocessing profiles
 once at the compilation-graph boundary. Include/import modules and embedded or
@@ -1662,8 +1671,236 @@ the ordinary text constructor: forward contexts ignore unknown attributes and
 invalid optional escaping values, while normal contexts reject them. Valid
 escaping flags, character-content validation, original locations and runtime
 charges remain shared. Local version scope is interpreted by the selected
-processor. This does not admit other instruction attributes, static-context
-controls or a broader forward-compatible recovery rule.
+processor. The selected `xsl:value-of` reader now uses the same bounded optional
+escaping/unknown-attribute policy, then delegates structural validation and
+typed expression lowering to its existing shared owner. Literal strings and
+admitted Boolean call expressions retain escaping flags and static/deferred
+failure timing. Reader-specific guards remain distinct: `separator` is still
+unsupported on selected `value-of`, not a newly recognized attribute on `text`.
+This does not admit other instruction families, static-context controls or a
+broader forward-compatible recovery rule.
+
+The private selected conditional route similarly supplies attribute validation
+to shared `if`/`choose` assembly. It ignores unknown unqualified attributes only
+in legacy-forward contexts, rejects them in normal contexts, and preserves
+static-context guards. Required tests, structural validity, branch compilation
+and execution remain shared; ignored attribute values cannot hide static lexical
+errors or acquire meaning as expressions. Ordinary entry points retain their
+existing validators and behavior.
+
+In the private selected-1.0 scope reader, an edition-unknown XSLT instruction
+does not establish local version scope through either version-attribute
+spelling. It inherits the surrounding context for shared fallback processing;
+literal-result elements inside fallback may still establish their own scope.
+Implementation knowledge of a newer instruction does not make it recognized by
+the selected 1.0 processor. This rule does not admit unintegrated attributes on
+recognized instructions or alter modern scope semantics.
+
+The private selected-1.0 integration resolves the XSLT-namespace `version`
+system property to numeric 1.0 independently of the local declared version.
+It reuses shared literal-call/QName parsing and admits only direct value-of
+stringification, effective-Boolean use and comparisons against numeric literals
+inside the bounded shared Boolean route. It does not treat the property as a
+string variable or admit general numeric expressions. Modern reporting, other
+properties and complete availability/capability reconciliation remain guarded;
+this private evidence does not change production reporting or claim complete
+XSLT 1.0 support.
+
+The private selected-1.0 message route admits absent or valid literal `terminate`
+(`yes`/`no`) and compiles its body through the same selected-policy sequence
+owner. Shared message construction/execution retains observation, termination,
+provenance and work accounting. Unknown attributes, invalid optional values and
+modern message features remain guarded rather than inheriting an unreviewed
+recovery rule. Failed message construction publishes no partial message.
+
+The private selected-1.0 dispatch slice admits an empty, attribute-free
+`xsl:apply-templates` through the existing invocation compiler and runtime.
+It also permits shared unprefixed child-name match paths and direct unprefixed
+attribute value reads (`@name` / `./@name`), with stylesheet `id` retained as
+non-policy metadata. Modes, explicit selection, sorting, argument constructors
+and broader attribute expressions remain guarded. Matched bodies remain
+independently scoped; caller locals do not become callee bindings.
+
+Private selected-1.0 named templates and empty `call-template` use an explicit
+named-declaration lowerer in shared top-level assembly. Matched and named body
+routes retain the selected policy; ordinary callers retain their original named
+parameter/body compiler. Expanded-name resolution, duplicate detection, target
+validation and invocation remain shared. A further private slice admits literal
+text/empty and string-literal select defaults through the respective shared named
+and matched declaration owners, NCName bound-variable/string-literal/context-name
+supplied arguments, and unqualified child-name/wildcard apply selections.
+Bounded absolute child-name and wildcard match patterns also delegate shared
+matching. Parameter nodes are excluded by shared sequence
+traversal and their bindings enter only their template body. A single selected
+value-of can create the existing invocation-owned temporary text-tree value;
+deferred instruction-valued constructors remain explicitly guarded rather than
+being flattened into value expressions. Single-NCName mode metadata on matched
+declarations, signed-32-bit integer priorities and child-path source arguments
+also delegate shared owners. The priority bound keeps legacy binary64 and modern
+decimal interpretation equivalent; larger/fractional priorities remain guarded.
+General expression/instruction defaults, mode lists and sorts are not admitted
+by this slice. Imported named declarations use the bounded composition path
+described below. Named
+calls preserve caller focus, not caller lexical bindings, and deferred failures
+remain tied to reached execution under the selected local-version rules.
+
+The private selected lane also admits literal/empty with-param content through
+shared argument construction and signed-32-bit integer argument literals without
+Rust's leading-plus lexical extension. A shared child-attribute comparison against
+`string($variable)` uses explicit legacy semantics and participates in eager
+lexical binding validation across Boolean short-circuit operands. Bounded
+document-rooted `//NCName` truth tests use the shared charged path evaluator.
+`number($variable)` and signed-32-bit literal plus variable value expressions
+delegate the explicit legacy value compiler, including temporary value-of
+construction. A single argument `for-each` over an unqualified child path with
+exactly one `value-of select="."` reuses the shared string-content argument IR.
+It evaluates in caller focus, preserves path order and empty supplied content,
+and admits no nested local-version, escaping, predicate or general instruction
+semantics. Named-call arguments may also contain one value-of over an unqualified
+attribute, a bound variable, or addition of two bound variables. The selected
+argument owner validates lexical scope and uses explicit legacy value lowering
+through a shared named-call content hook. It admits neither deferred instruction
+constructors nor escaping/version overrides. Variable-to-variable relational
+tests reuse the shared legacy numeric relation evaluator, including existential
+node-set comparisons; both operand names are checked statically. Absolute
+child-path matches ending in a wildcard and context `name()` output reuse their
+shared owners. General argument instructions, wider arithmetic and numeric
+literal domains remain separate integration gates.
+
+The private selected lane admits default `xsl:number` counting with a static
+format or the existing bound-variable format AVT. Format conversion and the
+runtime compatibility flag are supplied explicitly by the selected legacy
+policy. The shared entry point enforces format-only attributes; value/count/from,
+levels, grouping, language and letter-value do not inherit this admission.
+Unbound format variables remain static errors even in dormant bodies. Ordinary
+numbering compilation continues deriving its existing compatibility normally.
+Selected root namespace-exclusion integration admits lists of bound NCNames;
+`#all`, `#default`, nested exclusion controls and extension declarations remain
+outside this selected slice. Shared literal-result namespace construction resolves
+explicit exclusion and extension prefix lists to URIs at the declaring element.
+It applies effective prefix shadowing before filtering, so an excluded or empty
+nearer binding cannot resurrect an ancestor's binding. Required result-name
+namespace bindings survive exclusion. This repair does not expand the selected
+profile's namespace controls or change the existing modern `#all` policy.
+
+The private selected-policy integration can consume a resolved principal/leaf
+pair or a two-to-four-module linear chain from the existing sealed dependency
+loader. The loader retains relative-base resolution, canonical resource identity,
+denial and resource limits; the compiler neither acquires bytes nor relabels
+documents to match href spellings. Every module passes through selected legacy
+lowering and strict preprocessing before shared include/import composition and
+final graph name validation. This test-only bridge does not promote arbitrary
+selected-policy graph composition or a public profile API. Selected legacy
+`apply-imports` admits no attributes or meaningful children and delegates the
+shared invocation compiler/runtime. Single-NCName `apply-templates` mode selection
+and context `value-of select="."` likewise reuse shared semantics; special mode
+tokens, mode lists and qualified mode names remain guarded in this slice.
+
+OASIS-driven private integration also admits import-only branching modules with
+up to three supplied child programs and a principal with up to three positioned
+includes over already-lowered import subtrees. Existing sealed-loader limits
+bound graph acquisition, and shared assembly preserves import precedence,
+apply-imports subtree bounds and include declaration position. Nested import
+assembly defers final named-reference validation until the complete graph;
+ordinary production composition wrappers retain their previous final validation.
+Module qualification is checked before merging. Selected apply-template child
+paths may end in `/*`, without admitting predicates, descendant steps or general
+XPath through that guard. One leading import followed by one include can also
+compose already-lowered import subtrees through the existing mixed owner,
+preserving the included import's precedence over the earlier direct import.
+Broader selected declarations remain separate gates; these are private integration bounds, not
+supported public profile limits.
+
+The private selected legacy lane also admits constant-string global parameters
+and variables.
+Selected sequence lowering keeps global-name visibility separate from local
+duplicate tracking, preserving local shadowing. The resolved-module entries
+expose own-module and already-compiled dependency global names to bounded
+value reads and variable-only concatenation through the shared expression
+compiler/runtime. A complete resolved principal/dependency pair can collect
+both modules' static names before lowering either body, so its imported templates
+can read principal globals. Shared linking still validates precedence and
+duplicates. This does not admit arbitrary graph-wide predeclaration.
+One whole literal-plus-variable `concat()` AVT uses the shared attribute parser;
+surrounding literal text, other expressions and general AVTs remain guarded.
+General global constructors and broader global-dependent expressions remain
+integration gates. Production
+entry points and defaults are unchanged.
+
+Selected legacy computed elements additionally admit an exact `{@NCName}` name
+AVT with no namespace override, attribute-set use or computed-attribute children.
+The existing dynamic-name compiler/runtime owns path evaluation, QName resolution,
+result construction and controls; the selected entry supplies legacy semantics
+explicitly rather than inferring them from a declared version. Body lowering
+remains selected-policy-aware. General name AVTs and dynamic namespace expressions
+are not admitted by this slice, and the modern selected guard is unchanged.
+
+Selected legacy static NCName computed elements may additionally name nonempty
+NCName attribute-set lists and a literal namespace with no AVT braces. Selected
+attribute-set declarations admit NCName set/attribute names and text-only
+attribute values, including empty values. Shared compilation/finalization owns
+set expansion, precedence and missing-set diagnostics. Dynamic attribute names,
+attribute-value instructions, referenced sets within declarations and arbitrary
+cross-module set composition remain separate integration gates.
+
+The private selected legacy lane admits `xsl:copy-of` selecting one unqualified
+NCName child element through the shared path compiler and subtree-copy executor.
+Legacy recovery is selected explicitly, not inferred from the local version;
+this admitted path cannot select unattached attributes. General copy expressions,
+attributes, namespace nodes and document lookup remain guarded. Historical
+`file:` aliases in the acquired-corpus measurement are explicit host admissions
+of already-loaded stylesheet bytes, not engine filesystem access or URI fallback.
+
+Selected legacy template admission also accepts a document-descendant NCName
+pattern, named-element attribute-presence patterns, wildcard numeric equality,
+and shared typed wildcard Boolean predicates composed from context-number
+equality, position comparisons and attribute-string equality using and/or/not.
+These use the existing matcher, priorities and work controls; arbitrary
+predicates, numeric-attribute comparisons and named-element Boolean predicates
+are not implied. Modern selected admission is unchanged. Module preflight and
+validated lowering are private separate responsibilities, not separate compilers.
+
+Selected legacy global variables may bind a single nonempty literal `document()`
+reference with no suffix or second argument. A private global-default lowerer
+selects this behavior explicitly before calling the shared document-reference
+compiler; ordinary compilation retains its local-compatibility gate. The
+reference retains the declaring module's logical identity as base. Selected
+value-of may read a bound variable followed by unqualified child-element steps
+through the shared legacy value compiler. Parameters with document defaults,
+empty/dynamic references, document suffixes and general variable paths remain
+guarded. Invocation-owned resolution and retained node owners are unchanged;
+compilation never acquires or retains the referenced document. The measurement
+host supplies XML bytes in its sealed snapshot without eagerly parsing them.
+
+The selected legacy key slice admits NCName key names and element match names
+with one unqualified attribute use path. Lookup requires a literal NCName key
+name and one attribute path or statically bound variable value. It composes
+with bare key truth tests, key counts and unsorted, parameter-free, unnamed-mode
+apply-templates. Selection lowering is explicitly supplied to shared invocation
+assembly rather than inferred from local declared version. Local attribute
+variables retain source nodes through the existing variable compiler. Shared
+key indexing and invocation ownership are unchanged; dynamic key names, general
+use expressions, predicates, nested lookups and broader dispatch combinations
+remain unadmitted by this slice. Modern selected admission remains unchanged.
+
+Selected legacy source-whitespace declarations admit nonempty lists of ordinary
+NameTests using ASCII NCNames: unqualified names, qualified names, `*` and prefix wildcards. The
+shared policy builder resolves expanded names, validates prefixes and preserves
+strip/preserve precedence; the invocation-owned ADR-0012 view still owns source
+visibility, inherited `xml:space`, charging and cancellation. Stylesheet-tree
+preprocessing remains a separate compilation decision. This admission introduces
+no new cross-module whitespace composition, schema-aware behavior, source mutation
+or prepared-state retention; existing shared guards remain authoritative.
+
+The private selected legacy sequence route also admits unsorted `xsl:for-each`
+over slash-separated ASCII NCName child-element paths, using shared selection
+and `ForEachNodes` execution with selected-policy recursive body lowering.
+Variable/atomic/namespace/document iteration and sort controls remain guarded.
+Zero-argument `position()`/`last()` value output uses shared focus expressions.
+Literal `xml:space="preserve"`/`"default"` attributes are retained by result
+construction while canonical stylesheet preprocessing owns inheritance/reset;
+dynamic or invalid values and other qualified literal attributes are not
+admitted by this slice. Production defaults remain unchanged.
 
 Known `system-property()` zero- or multi-argument calls report `XPST0017`
 through the static introspection owner. XSLT 1.x forward-compatible processing

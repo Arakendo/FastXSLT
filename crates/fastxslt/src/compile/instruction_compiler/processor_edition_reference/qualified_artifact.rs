@@ -88,15 +88,7 @@ impl CompiledModule {
         }
         let view = stylesheet_visibility_view(principal, root, expected.preprocessing, control)?;
         let context = compilation_context(expected.edition, expected.preprocessing);
-        let program = if is_import {
-            compiler::stylesheet_module_compiler::compile_stylesheet_with_single_imported_program_at_in_context(
-                &view, root, self.program, context,
-            )?
-        } else {
-            compiler::stylesheet_module_compiler::compile_stylesheet_with_included_programs_at_in_context(
-            &view, root, vec![self.program], context,
-            )?
-        };
+        let program = assemble_dependency_shell(&view, self.program, context, is_import)?;
         let mut module_identities = self.module_identities;
         module_identities.push(identity.clone());
         Ok(Self {

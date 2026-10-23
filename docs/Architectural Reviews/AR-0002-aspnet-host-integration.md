@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001, ADR-0008, ADR-0009, ADR-0010 |
-| Related evidence | `docs/Evidence/aspnet-host-mode-guarantee-cost-matrix-2026-08-26.md`, `docs/Evidence/aspnet-native-boundary-breakdown-2026-09-03.md`, and their linked native/isolated measurements; AR-0003 and AR-0010 |
+| Related evidence | `docs/Campaigns/aspnet-hosting/evidence/controls-and-lifecycle/aspnet-host-mode-guarantee-cost-matrix-2026-08-26.md`, `docs/Campaigns/aspnet-hosting/evidence/benchmarks/aspnet-native-boundary-breakdown-2026-09-03.md`, and their linked native/isolated measurements; AR-0003 and AR-0010 |
 
 ## Architectural question
 

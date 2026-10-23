@@ -454,4 +454,4 @@ profiles or consumer workloads provide another concrete hypothesis to test.
   with the invocation, and remains differentially verified against the complete
   charged scan; no prepared, worker, snapshot, or cross-generation cache was
   admitted.
-  [Evidence](../Evidence/oasis-xslt10-invocation-key-index-and-muenchian-grouping-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-invocation-key-index-and-muenchian-grouping-2026-09-28.md)

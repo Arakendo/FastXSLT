@@ -7,7 +7,7 @@
 | Review type       | Adversarial performance and allocation review                                                                                                                                                             |
 | Primary workload  | Pinned XSLT30 `for-004`, 5/50/500 deterministic `order-item` elements                                                                                                                                     |
 | Status            | Complete review; P1 and work-control candidates closed; bounded safe-text, namespace-stack, sequence-frame COW, and compiled result namespaces retained; first result-destination P2 rejected           |
-| Input evidence    | [ASP.NET native boundary breakdown](../Evidence/aspnet-native-boundary-breakdown-2026-09-03.md); [`for-004` exact-decimal activated path](../Evidence/for-004-exact-decimal-activated-path-2026-09-04.md) |
+| Input evidence    | [ASP.NET native boundary breakdown](../Campaigns/aspnet-hosting/evidence/benchmarks/aspnet-native-boundary-breakdown-2026-09-03.md); [`for-004` exact-decimal activated path](../Campaigns/performance-optimization/evidence/for-004-exact-decimal-activated-path-2026-09-04.md) |
 | Governing review  | [AR-0013 prepared representation and data-layout audit](../Architectural%20Reviews/AR-0013-prepared-representation-and-data-layout-audit.md)                                                              |
 
 ## Executive result
@@ -257,8 +257,8 @@ the largest shape. The candidate is retained under ADR-0017 with safe per-kind
 detachment and the complete deep-clone differential oracle. No ASP.NET fixture
 currently activates this shape, so no consumer-wide throughput claim is made.
 
-[Non-atomic frame evidence](../Evidence/runtime-frame-non-atomic-clone-attribution-2026-09-05.md)
-[Nested COW evidence](../Evidence/runtime-frame-nested-copy-on-write-2026-09-05.md)
+[Non-atomic frame evidence](../Campaigns/performance-optimization/evidence/runtime-frame-non-atomic-clone-attribution-2026-09-05.md)
+[Nested COW evidence](../Campaigns/performance-optimization/evidence/runtime-frame-nested-copy-on-write-2026-09-05.md)
 
 ### P3 — Leave plan/dispatch and registries unchanged without new evidence
 
@@ -322,14 +322,14 @@ same-machine ASP.NET A/B did not show a repeatable host-visible gain. Native x4
 was effectively unchanged and native sequential 500-item behavior was worse and
 bimodal. The complete production evaluator was restored.
 
-[Experiment evidence](../Evidence/for-004-monotonic-child-path-experiment-2026-09-04.md)
+[Experiment evidence](../Campaigns/performance-optimization/evidence/for-004-monotonic-child-path-experiment-2026-09-04.md)
 
 The paired-attribute P1 experiment is also complete without retention. It
 removed one redundant visit per selected item and improved its focused loop by
 about 5%, but the 500-item native sequential A/B was flat and native x4 was
 slower. The complete separate lookup was restored.
 
-[Paired-attribute evidence](../Evidence/for-004-paired-attribute-lookup-experiment-2026-09-04.md)
+[Paired-attribute evidence](../Campaigns/performance-optimization/evidence/for-004-paired-attribute-lookup-experiment-2026-09-04.md)
 
 Both implementation P1 candidates are therefore closed. Production-shaped
 work-control inventory confirms `8N + 1` charge calls for the measured evaluator.
@@ -346,9 +346,9 @@ with visible bimodality and unchanged managed allocation. The candidate was
 removed. Work-control optimization for this path is closed absent new profiler
 attribution or a materially different semantics-preserving mechanism.
 
-[Work-control shape evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
+[Work-control shape evidence](../Campaigns/performance-optimization/evidence/for-004-work-control-shape-2026-09-04.md)
 
-[Production work-control experiment](../Evidence/for-004-work-control-production-experiment-2026-09-05.md)
+[Production work-control experiment](../Campaigns/performance-optimization/evidence/for-004-work-control-production-experiment-2026-09-05.md)
 
 Further work-control measurement does not authorize weaker budget or
 cancellation semantics. Result construction, plan/dispatch, registry, and
@@ -365,7 +365,7 @@ charged bytes, partial output, and bounded cancellation observation are
 differentially conserved. Five-process .NET 10 A/B medians improved by
 1.33-2.75x through isolated workers and 2.84-3.75x through native hosting.
 
-[Result and text fixture evidence](../Evidence/result-and-text-heavy-performance-fixtures-2026-09-05.md)
+[Result and text fixture evidence](../Campaigns/performance-optimization/evidence/result-and-text-heavy-performance-fixtures-2026-09-05.md)
 
 The two implementation-specific P1 experiments are closed without retention.
 Of the P2 experiments, bounded safe-text serialization is retained. Direct
@@ -394,11 +394,11 @@ bytes by 84.1%; forcing all value kinds to detach at every level was neutral at
 the largest counter-case. Sharing remains inside one invocation and the
 complete deep-clone path remains the semantic and measurement oracle.
 
-[Result-destination negative evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)
+[Result-destination negative evidence](../Campaigns/performance-optimization/evidence/static-range-result-destination-experiment-2026-09-05.md)
 
-[Namespace-scope fixture evidence](../Evidence/namespace-scope-scaling-fixture-2026-09-05.md)
+[Namespace-scope fixture evidence](../Campaigns/performance-optimization/evidence/namespace-scope-scaling-fixture-2026-09-05.md)
 
-[Sequence-frame COW evidence](../Evidence/runtime-frame-nested-copy-on-write-2026-09-05.md)
+[Sequence-frame COW evidence](../Campaigns/performance-optimization/evidence/runtime-frame-nested-copy-on-write-2026-09-05.md)
 
 A subsequent five-process rerun of the same post-specialization .NET 10 tier
 protocol found no material regression in the larger semantic-work lanes. The
@@ -406,4 +406,4 @@ small fixed-overhead isolated lanes declined modestly, while native 500-item
 samples were bimodal but retained a stable median. These observations do not
 reopen the completed audit.
 
-[Post-audit tiered rerun](../Evidence/aspnet-post-performance-audit-tiered-rerun-2026-09-05.md)
+[Post-audit tiered rerun](../Campaigns/aspnet-hosting/evidence/benchmarks/aspnet-post-performance-audit-tiered-rerun-2026-09-05.md)

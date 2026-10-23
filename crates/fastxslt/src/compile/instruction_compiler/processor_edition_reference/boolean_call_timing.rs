@@ -1,10 +1,14 @@
 //! Bounded selected-profile call timing; shared Boolean IR/runtime, no evaluator.
 use super::*;
 
-pub(super) fn text_result(condition: BooleanExpression, location: &SourceLocation) -> Instruction {
+pub(super) fn text_result(
+    condition: BooleanExpression,
+    location: &SourceLocation,
+    disable_output_escaping: bool,
+) -> Instruction {
     let text = |value: &str| Instruction::Text {
         value: value.to_owned(),
-        disable_output_escaping: false,
+        disable_output_escaping,
         location: location.clone(),
     };
     Instruction::Choose {
@@ -24,7 +28,17 @@ pub(super) fn compile(
     location: &SourceLocation,
     bindings: &[String],
 ) -> Result<Option<BooleanExpression>, CompileFailure> {
-    compile_bounded(expression, version, location, bindings, true)
+    compile_with_leaf(expression, version, location, bindings, &|_| None)
+}
+
+pub(super) fn compile_with_leaf(
+    expression: &str,
+    version: LocalVersion,
+    location: &SourceLocation,
+    bindings: &[String],
+    static_leaf: &impl Fn(&str) -> Option<BooleanExpression>,
+) -> Result<Option<BooleanExpression>, CompileFailure> {
+    compile_bounded(expression, version, location, bindings, true, static_leaf)
 }
 
 pub(super) fn condition(
@@ -32,8 +46,9 @@ pub(super) fn condition(
     version: LocalVersion,
     location: &SourceLocation,
     bindings: &[String],
+    static_leaf: &impl Fn(&str) -> Option<BooleanExpression>,
 ) -> Result<Option<BooleanExpression>, CompileFailure> {
-    compile_bounded(expression, version, location, bindings, false)
+    compile_bounded(expression, version, location, bindings, false, static_leaf)
 }
 
 fn compile_bounded(
@@ -42,12 +57,13 @@ fn compile_bounded(
     location: &SourceLocation,
     bindings: &[String],
     require_call: bool,
+    static_leaf: &impl Fn(&str) -> Option<BooleanExpression>,
 ) -> Result<Option<BooleanExpression>, CompileFailure> {
     // Private admission bounds, not supported XPath or host-policy limits.
     if expression.len() > 4096 {
         return Ok(None);
     }
-    let Some((value, contains_call)) = parse(expression, location, version, 0) else {
+    let Some((value, contains_call)) = parse(expression, location, version, 0, static_leaf) else {
         return Ok(None);
     };
     if require_call && !contains_call {
@@ -87,7 +103,12 @@ fn contains_arity_error(value: &BooleanExpression) -> bool {
 // short circuit. Do this only after the complete bounded grammar is admitted.
 fn unbound_variable<'a>(value: &'a BooleanExpression, bindings: &[String]) -> Option<&'a str> {
     match value {
-        BooleanExpression::VariableEffectiveBooleanValue(name) => {
+        BooleanExpression::Xslt10VariableNumericComparison { left, right, .. } => [left, right]
+            .into_iter()
+            .find(|name| !bindings.contains(name))
+            .map(String::as_str),
+        BooleanExpression::VariableEffectiveBooleanValue(name)
+        | BooleanExpression::Xslt10ChildAttributeVariableEquals { variable: name, .. } => {
             (!bindings.contains(name)).then_some(name.as_str())
         }
         BooleanExpression::And { left, right } | BooleanExpression::Or { left, right } => {
@@ -103,6 +124,7 @@ fn parse(
     location: &SourceLocation,
     version: LocalVersion,
     depth: usize,
+    static_leaf: &impl Fn(&str) -> Option<BooleanExpression>,
 ) -> Option<(BooleanExpression, bool)> {
     if depth >= 32 {
         return None;
@@ -119,8 +141,8 @@ fn parse(
         ),
     ] {
         if let Some((left, right)) = parts {
-            let (left, left_call) = parse(left, location, version, depth + 1)?;
-            let (right, right_call) = parse(right, location, version, depth + 1)?;
+            let (left, left_call) = parse(left, location, version, depth + 1, static_leaf)?;
+            let (right, right_call) = parse(right, location, version, depth + 1, static_leaf)?;
             let (left, right) = (Box::new(left), Box::new(right));
             return Some((
                 if conjunction {
@@ -164,7 +186,7 @@ fn parse(
             .strip_prefix(name)
             .and_then(|s| s.strip_suffix(')'))
         {
-            let (value, call) = parse(argument, location, version, depth + 1)?;
+            let (value, call) = parse(argument, location, version, depth + 1, static_leaf)?;
             return Some((
                 if negate {
                     BooleanExpression::Not(Box::new(value))
@@ -174,6 +196,33 @@ fn parse(
                 call,
             ));
         }
+    }
+    if let Some(value) = static_leaf(expression) {
+        return Some((value, true));
+    }
+    dynamic_leaf(expression, location, version)
+}
+
+fn dynamic_leaf(
+    expression: &str,
+    location: &SourceLocation,
+    version: LocalVersion,
+) -> Option<(BooleanExpression, bool)> {
+    if !matches!(version, LocalVersion::ModernWitness(_))
+        && let Some(value @ BooleanExpression::Xslt10VariableNumericComparison { .. }) =
+            boolean_expression_compiler::compile_xslt10_variable_numeric_comparison(
+                expression, true,
+            )
+    {
+        return Some((value, true));
+    }
+    if matches!(
+        version,
+        LocalVersion::LegacyNormal | LocalVersion::LegacyForward
+    ) && let Some(value) =
+        boolean_expression_compiler::compile_child_attribute_variable_string_path(expression, true)
+    {
+        return Some((value, true));
     }
     if matches!(expression, "true()" | "false()") {
         return Some((BooleanExpression::Constant(expression == "true()"), false));
@@ -188,8 +237,13 @@ fn parse(
         ));
     }
     // Dynamic source truth, not compile-time folding of a known branch. Keep
-    // qualified names, predicates and all other calls guarded.
-    if !expression.split('/').all(is_ascii_ncname) {
+    // qualified names and other predicates/calls guarded. The selected legacy
+    // document-rooted descendant leaf uses the same charged path evaluator.
+    let descendant = matches!(
+        version,
+        LocalVersion::LegacyNormal | LocalVersion::LegacyForward
+    ) && expression.strip_prefix("//").is_some_and(is_ascii_ncname);
+    if !descendant && !expression.split('/').all(is_ascii_ncname) {
         return None;
     }
     let path =

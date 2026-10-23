@@ -2,10 +2,604 @@ use super::*;
 use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_for_test;
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
+#[path = "matched_integration_tests/computed_names.rs"]
+mod computed_names;
+
+#[path = "matched_integration_tests/source_copy.rs"]
+mod source_copy;
+
+#[path = "matched_integration_tests/match_predicates.rs"]
+mod match_predicates;
+
+#[path = "matched_integration_tests/key_lookup.rs"]
+mod key_lookup;
+
+#[path = "matched_integration_tests/source_whitespace.rs"]
+mod source_whitespace;
+
+#[test]
+fn selected_constant_global_parameter_reuses_shared_declaration_owner() {
+    use crate::xslt::golden_semantics_experiment::GlobalBindingDefault;
+    let source = document("urn:source", b"<r/>");
+    for version in ["1.0", "2.0", "3.0"] {
+        for select in ["'global'", "string('global')", "string(&quot;global&quot;)"] {
+            let style = document("urn:constant-global", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="{version}"><xsl:output method="text"/><xsl:param name="p" select="{select}"/><xsl:template match="/"><xsl:variable name="p" select="'local'"/><xsl:value-of select="$p"/></xsl:template></xsl:stylesheet>"#).as_bytes());
+            let program =
+                compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).unwrap();
+            assert!(
+                matches!(&program.global_bindings[0].default, GlobalBindingDefault::Text(value) if value == "global")
+            );
+            drop(style);
+            for _ in 0..2 {
+                assert_eq!(
+                    execute_compiled_stylesheet_for_test(&program, &source, "shadow").unwrap(),
+                    "local"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn selected_constant_global_parameter_does_not_admit_other_global_semantics() {
+    for declaration in [
+        r#"<xsl:param name="p" select="document('other')"/>"#,
+        r#"<xsl:param name="p" select="$other"/>"#,
+        r#"<xsl:param name="p" select="string(.)"/>"#,
+        r#"<xsl:param name="p" select="1"/>"#,
+        r#"<xsl:param name="p" select="&quot;x&quot;"/>"#,
+        r#"<xsl:param name="p" select="'x'" required="yes"/>"#,
+        r#"<xsl:variable name="p" select="document($other)"/>"#,
+        r#"<xsl:variable name="p" select="document('')"/>"#,
+        r#"<xsl:variable name="p" select="document('other')/r"/>"#,
+    ] {
+        let style = document("urn:global-guard", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="2.0">{declaration}<xsl:template match="/"/></xsl:stylesheet>"#).as_bytes());
+        let Err(StrictPreprocessingFailure::Compile(error)) =
+            compile(&style, Edition::Legacy, &mut InvocationControl::unbounded())
+        else {
+            panic!("must stay guarded: {declaration}")
+        };
+        assert_eq!(error.code, "FXAR0031");
+        assert_eq!(error.location.resource, "urn:global-guard");
+    }
+    for (declarations, body, code) in [
+        (
+            r#"<xsl:param name="p" select="'a'"/><xsl:param name="p" select="'b'"/>"#,
+            "",
+            "FXST0022",
+        ),
+        (
+            r#"<xsl:param name="p" select="'a'"/>"#,
+            r#"<xsl:variable name="p" select="'b'"/><xsl:variable name="p" select="'c'"/>"#,
+            "FXST0017",
+        ),
+    ] {
+        let style = document("urn:global-validation", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">{declarations}<xsl:template match="/">{body}</xsl:template></xsl:stylesheet>"#).as_bytes());
+        let Err(StrictPreprocessingFailure::Compile(error)) =
+            compile(&style, Edition::Legacy, &mut InvocationControl::unbounded())
+        else {
+            panic!("must fail: {code}")
+        };
+        assert_eq!(error.code, code);
+    }
+}
+
+#[test]
+fn selected_global_reads_keep_local_shadowing_and_sibling_scope_separate() {
+    let source = document("urn:source", b"<r/>");
+    for version in ["1.0", "2.0", "3.0"] {
+        let style = document("urn:global-reads", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="{version}"><xsl:output method="text"/><xsl:param name="p" select="'global'"/><xsl:param name="q" select="'!'"/><xsl:template match="/"><xsl:value-of select="$p"/><xsl:if test="true()"><xsl:variable name="p" select="'local'"/><xsl:value-of select="concat($p,$q)"/></xsl:if><xsl:value-of select="$p"/></xsl:template></xsl:stylesheet>"#).as_bytes());
+        let program =
+            compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).unwrap();
+        drop(style);
+        for _ in 0..2 {
+            assert_eq!(
+                execute_compiled_stylesheet_for_test(&program, &source, "globals").unwrap(),
+                "globallocal!global"
+            );
+        }
+    }
+    for expression in ["$missing", "concat($p,$missing)"] {
+        let style = document("urn:missing-global", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="2.0"><xsl:param name="p" select="'p'"/><xsl:template match="/"><xsl:if test="false()"><xsl:value-of select="{expression}"/></xsl:if></xsl:template></xsl:stylesheet>"#).as_bytes());
+        let Err(StrictPreprocessingFailure::Compile(error)) =
+            compile(&style, Edition::Legacy, &mut InvocationControl::unbounded())
+        else {
+            panic!("unbound names stay static")
+        };
+        assert_eq!(error.code, "XPST0008");
+        assert_eq!(error.location.resource, "urn:missing-global");
+    }
+}
+
+#[test]
+fn selected_global_concat_preserves_shared_work_limits_and_reuse() {
+    use crate::execution_control_experiment::{CancellationToken, WorkDomain, WorkLimits};
+    use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_controlled_for_test as execute;
+    let style = document("urn:global-controls", br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:param name="p" select="'first'"/><xsl:param name="q" select="'second'"/><xsl:template match="/"><xsl:value-of select="concat($p,$q)"/></xsl:template></xsl:stylesheet>"#);
+    let baseline = compiler::compile_stylesheet(&style).unwrap();
+    let selected = compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).unwrap();
+    let source = document("urn:source", b"<r/>");
+    let mut reference = InvocationControl::unbounded();
+    let mut actual = InvocationControl::unbounded();
+    let expected = execute(&baseline, &source, "same", &mut reference).unwrap();
+    assert_eq!(
+        execute(&selected, &source, "same", &mut actual).unwrap(),
+        expected
+    );
+    for domain in [
+        WorkDomain::XPathNodeVisit,
+        WorkDomain::XsltInstruction,
+        WorkDomain::ResultNode,
+        WorkDomain::ResultTextByte,
+    ] {
+        assert_eq!(reference.consumed(domain), actual.consumed(domain));
+    }
+    let required = actual.consumed(WorkDomain::ResultTextByte);
+    assert!(required > 0);
+    let mut limits = WorkLimits::unbounded();
+    limits.result_text_bytes = required;
+    assert_eq!(
+        execute(
+            &selected,
+            &source,
+            "exact",
+            &mut InvocationControl::new(CancellationToken::new(), limits)
+        )
+        .unwrap(),
+        expected
+    );
+    limits.result_text_bytes -= 1;
+    assert!(
+        execute(
+            &selected,
+            &source,
+            "short",
+            &mut InvocationControl::new(CancellationToken::new(), limits)
+        )
+        .unwrap_err()
+        .contains("FXCT0002")
+    );
+    let mut cancelled =
+        InvocationControl::unbounded().cancelling_on_charge(WorkDomain::ResultTextByte, 0);
+    assert!(
+        execute(&selected, &source, "cancel", &mut cancelled)
+            .unwrap_err()
+            .contains("FXCT0001")
+    );
+    assert_eq!(
+        execute(
+            &selected,
+            &source,
+            "reuse",
+            &mut InvocationControl::unbounded()
+        )
+        .unwrap(),
+        expected
+    );
+}
+
+#[test]
+fn selected_version_property_is_numeric_and_independent_of_declared_version() {
+    let source = document("urn:source", b"<r/>");
+    for version in ["1.0", "1.5", "2.0", "3.0"] {
+        let style = document("urn:selected-version", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="http://www.w3.org/1999/XSL/Transform" version="{version}"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="system-property('p:version')"/><xsl:if test="system-property('p:version') &lt; 2.0"><xsl:text>|old</xsl:text></xsl:if><xsl:if test="system-property('p:version') &gt;= 2.0"><xsl:text>|wrong</xsl:text></xsl:if></xsl:template></xsl:stylesheet>"#).as_bytes());
+        let program =
+            compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).unwrap();
+        drop(style);
+        assert_eq!(
+            execute_compiled_stylesheet_for_test(&program, &source, "version").unwrap(),
+            "1|old"
+        );
+    }
+}
+
+#[test]
+#[cfg(feature = "workbench")]
+#[ignore = "requires separately acquired immutable OASIS corpus"]
+fn selected_profile_replays_original_numeric_processor_version_cases() {
+    let root = std::path::PathBuf::from(
+        std::env::var("FASTXSLT_OASIS_XSLT10_ROOT").expect("set corpus root"),
+    );
+    // The archive retains 1.1/1.2 text for stylesheets revised to 17.1/17.2.
+    // Preserve those mismatches; do not replace expected bytes to earn passes.
+    for (case, version, exact) in [
+        ("ver05", "17.1", false),
+        ("ver06", "17.2", false),
+        ("ver07", "2.0", true),
+    ] {
+        let style = document(
+            &format!("urn:oasis:{case}"),
+            &std::fs::read(root.join(format!("Xalan_Conformance_Tests/ver/{case}.xsl"))).unwrap(),
+        );
+        let source = document(
+            "urn:oasis:source",
+            &std::fs::read(root.join(format!("Xalan_Conformance_Tests/ver/{case}.xml"))).unwrap(),
+        );
+        let expected =
+            std::fs::read(root.join(format!("Xalan_Conformance_Tests/REF_OUT/ver/{case}.out")))
+                .unwrap();
+        let program =
+            compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).unwrap();
+        drop(style);
+        let actual = execute_compiled_stylesheet_for_test(&program, &source, case).unwrap();
+        assert!(actual.contains(&format!("Hey! {version} features are not supported!")));
+        assert_eq!(
+            crate::runtime::oasis_xslt10_measurement_tests::xml_equivalent(
+                &actual,
+                &expected,
+                false,
+                None,
+                Some("xml")
+            ),
+            Ok(exact),
+            "{case}: {actual}"
+        );
+    }
+}
+
+#[test]
+fn selected_unknown_instruction_version_attributes_do_not_change_legacy_scope() {
+    let source = document("urn:source", b"<r/>");
+    for instruction in ["new", "sequence"] {
+        for attribute in [
+            r#"xsl:version="1.0""#,
+            r#"version="1.0""#,
+            r#"xsl:version="not-a-number""#,
+        ] {
+            let style = document("urn:unknown-version", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="text"/><xsl:template match="/"><out xsl:version="2.0"><xsl:{instruction} {attribute}><xsl:fallback><xsl:text>ok</xsl:text></xsl:fallback></xsl:{instruction}></out></xsl:template></xsl:stylesheet>"#).as_bytes());
+            let program =
+                compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).unwrap();
+            drop(style);
+            assert_eq!(
+                execute_compiled_stylesheet_for_test(&program, &source, "version").unwrap(),
+                "ok"
+            );
+        }
+    }
+    // An unknown instruction cannot enable forwarding in a normal context.
+    let normal = document("urn:normal", br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:template match="/"><xsl:new xsl:version="2.0"><xsl:fallback/></xsl:new></xsl:template></xsl:stylesheet>"#);
+    assert!(
+        compile(
+            &normal,
+            Edition::Legacy,
+            &mut InvocationControl::unbounded()
+        )
+        .is_err()
+    );
+}
+
+#[test]
+#[cfg(feature = "workbench")]
+#[ignore = "requires separately acquired immutable OASIS corpus"]
+fn selected_profile_replays_original_bvt034_version_scope() {
+    let root = std::path::PathBuf::from(
+        std::env::var("FASTXSLT_OASIS_XSLT10_ROOT").expect("set corpus root"),
+    );
+    let style = document(
+        "urn:oasis:bvt034",
+        &std::fs::read(root.join("MSFT_Conformance_Tests/BVTs/fwdcompat2.xsl")).unwrap(),
+    );
+    let source = document(
+        "urn:oasis:source",
+        &std::fs::read(root.join("MSFT_Conformance_Tests/BVTs/data.xml")).unwrap(),
+    );
+    let expected =
+        std::fs::read(root.join("MSFT_Conformance_Tests/REF_OUT/BVTs/bvt034.txt")).unwrap();
+    let program = compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).unwrap();
+    drop(style);
+    let actual = execute_compiled_stylesheet_for_test(&program, &source, "bvt034").unwrap();
+    assert_eq!(
+        crate::runtime::oasis_xslt10_measurement_tests::xml_equivalent(
+            &actual,
+            &expected,
+            false,
+            None,
+            Some("xml")
+        ),
+        Ok(true)
+    );
+}
+
+#[test]
+fn selected_unknown_version_scope_preserves_fallback_failure_and_local_reset() {
+    let source = document("urn:source", b"<r/>");
+    for (content, expected_error) in [
+        (r#"<xsl:new xsl:version="1.0"/>"#, true),
+        (
+            r#"<xsl:new xsl:version="1.0"><xsl:fallback><out xsl:version="1.0"><xsl:new><xsl:fallback/></xsl:new></out></xsl:fallback></xsl:new>"#,
+            true,
+        ),
+        (
+            r#"<xsl:new xsl:version="1.0"><xsl:fallback><out xsl:version="1.0"><xsl:text>ok</xsl:text></out></xsl:fallback></xsl:new>"#,
+            false,
+        ),
+    ] {
+        let style = document("urn:unknown-reset", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="2.0"><xsl:output method="text"/><xsl:template match="/">{content}</xsl:template></xsl:stylesheet>"#).as_bytes());
+        let result = compile(&style, Edition::Legacy, &mut InvocationControl::unbounded());
+        match result {
+            Ok(program) => {
+                drop(style);
+                let result = execute_compiled_stylesheet_for_test(&program, &source, "reset");
+                assert_eq!(result.is_err(), expected_error);
+                if expected_error {
+                    let failure = result.unwrap_err();
+                    assert!(failure.contains("XTDE1450") && failure.contains("urn:unknown-reset"));
+                } else {
+                    assert_eq!(result.unwrap(), "ok");
+                }
+            }
+            Err(StrictPreprocessingFailure::Compile(failure)) => {
+                assert!(expected_error);
+                assert!(content.contains("<out xsl:version"));
+                assert_eq!(failure.code, "FXAR0031");
+                assert_eq!(failure.category, CompileCategory::Invalid);
+                assert_eq!(failure.location.resource, "urn:unknown-reset");
+            }
+            Err(failure) => panic!("unexpected control failure: {failure:?}"),
+        }
+    }
+}
+
+#[test]
+fn selected_value_of_options_preserve_scope_error_timing_and_guards() {
+    let sheet = |version: &str, body: &str| {
+        document("urn:value-options", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="{version}"><xsl:output method="text"/><xsl:template match="r">{body}</xsl:template></xsl:stylesheet>"#).as_bytes())
+    };
+    for (root, local, succeeds) in [("1.0", "2.0", true), ("2.0", "1.0", false)] {
+        let style = sheet(
+            root,
+            &format!(
+                r#"<out xsl:version="{local}"><xsl:value-of select="'value'" disable-output-escaping="maybe"/></out>"#
+            ),
+        );
+        let result = compile(&style, Edition::Legacy, &mut InvocationControl::unbounded());
+        if succeeds {
+            assert_eq!(
+                execute_compiled_stylesheet_for_test(
+                    &result.unwrap(),
+                    &document("urn:r", b"<r/>"),
+                    "scope"
+                )
+                .unwrap(),
+                "value"
+            );
+        } else {
+            let Err(StrictPreprocessingFailure::Compile(failure)) = result else {
+                panic!("normal scope")
+            };
+            assert_eq!(failure.code, "XTSE0020");
+        }
+    }
+    for expression in ["system-property()", "true() and system-property()"] {
+        let style = sheet(
+            "2.0",
+            &format!(
+                r#"<xsl:if test="flag"><xsl:value-of select="{expression}" unknown="{{" disable-output-escaping="maybe"/></xsl:if><xsl:text>after</xsl:text>"#
+            ),
+        );
+        let program =
+            compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).unwrap();
+        assert_eq!(
+            execute_compiled_stylesheet_for_test(&program, &document("urn:r", b"<r/>"), "dormant")
+                .unwrap(),
+            "after"
+        );
+        let error = execute_compiled_stylesheet_for_test(
+            &program,
+            &document("urn:r", b"<r><flag/></r>"),
+            "reached",
+        )
+        .unwrap_err();
+        assert!(
+            error.contains("XPST0017") && error.contains("urn:value-options"),
+            "{error}"
+        );
+    }
+}
+
+#[test]
+fn selected_value_of_options_keep_structural_and_static_context_guards() {
+    let sheet = |version: &str, body: &str| {
+        document("urn:value-options", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="{version}"><xsl:output method="text"/><xsl:template match="r">{body}</xsl:template></xsl:stylesheet>"#).as_bytes())
+    };
+    // Keep reader-specific guards out of the sibling text instruction.
+    for attribute in ["select", "separator"] {
+        let style = sheet(
+            "2.0",
+            &format!(r#"<xsl:text {attribute}="{{ $missing">literal</xsl:text>"#),
+        );
+        let program =
+            compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).unwrap();
+        assert_eq!(
+            execute_compiled_stylesheet_for_test(
+                &program,
+                &document("urn:r", b"<r/>"),
+                "text-sibling"
+            )
+            .unwrap(),
+            "literal"
+        );
+    }
+    for (body, code) in [
+        (
+            r#"<xsl:value-of select="$missing" unknown="ignored"/>"#,
+            "XPST0008",
+        ),
+        (r#"<xsl:value-of select="'x'" separator="|"/>"#, "FXAR0031"),
+        (
+            r#"<xsl:value-of select="'x'" xpath-default-namespace="urn:x"/>"#,
+            "FXAR0031",
+        ),
+        (
+            r#"<xsl:value-of select="'x'" xml:space="preserve"/>"#,
+            "FXAR0031",
+        ),
+    ] {
+        let Err(StrictPreprocessingFailure::Compile(failure)) = compile(
+            &sheet("2.0", body),
+            Edition::Legacy,
+            &mut InvocationControl::unbounded(),
+        ) else {
+            panic!("guard {body}")
+        };
+        assert_eq!(failure.code, code);
+        assert_eq!(failure.location.resource, "urn:value-options");
+    }
+    for body in [
+        r#"<xsl:value-of unknown="ignored"/>"#,
+        r#"<xsl:value-of select="'x'" unknown="ignored"><child/></xsl:value-of>"#,
+    ] {
+        let Err(StrictPreprocessingFailure::Compile(failure)) = compile(
+            &sheet("2.0", body),
+            Edition::Legacy,
+            &mut InvocationControl::unbounded(),
+        ) else {
+            panic!("structural failure")
+        };
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+    assert!(
+        compile(
+            &sheet(
+                "3.0",
+                r#"<xsl:value-of select="'x'" disable-output-escaping="maybe"/>"#
+            ),
+            Edition::Modern,
+            &mut InvocationControl::unbounded()
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn selected_value_of_options_preserve_work_charges_budgets_and_reuse() {
+    use crate::execution_control_experiment::{CancellationToken, WorkDomain, WorkLimits};
+    use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_controlled_for_test as execute;
+    let source = document("urn:source", "<r><v>&lt;a/&gt;Ω</v></r>".as_bytes());
+    for escaping in ["yes", "no"] {
+        let stylesheet = |version: &str| {
+            document("urn:value-charges", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="{version}"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:value-of select="r/v" disable-output-escaping="{escaping}"/></out></xsl:template></xsl:stylesheet>"#).as_bytes())
+        };
+        let selected = compile(
+            &stylesheet("3.0"),
+            Edition::Legacy,
+            &mut InvocationControl::unbounded(),
+        )
+        .unwrap();
+        let reference = compiler::compile_stylesheet(&stylesheet("1.0")).unwrap();
+        let mut selected_control = InvocationControl::unbounded();
+        let mut reference_control = InvocationControl::unbounded();
+        let expected = execute(&reference, &source, "reference", &mut reference_control).unwrap();
+        assert_eq!(
+            execute(&selected, &source, "selected", &mut selected_control).unwrap(),
+            expected
+        );
+        for domain in [
+            WorkDomain::XPathNodeVisit,
+            WorkDomain::XPathOperation,
+            WorkDomain::XsltInstruction,
+            WorkDomain::XsltTemplateCandidate,
+            WorkDomain::ResultNode,
+            WorkDomain::ResultTextByte,
+            WorkDomain::SerializedByte,
+        ] {
+            assert_eq!(
+                selected_control.consumed(domain),
+                reference_control.consumed(domain),
+                "{domain:?}"
+            );
+        }
+        let bytes = selected_control.consumed(WorkDomain::ResultTextByte);
+        assert!(bytes > 0);
+        for allowance in [bytes - 1, bytes] {
+            let mut limits = WorkLimits::unbounded();
+            limits.result_text_bytes = allowance;
+            let run = || {
+                let result = execute(
+                    &selected,
+                    &source,
+                    "bounded",
+                    &mut InvocationControl::new(CancellationToken::new(), limits),
+                );
+                if allowance == bytes {
+                    assert_eq!(result.unwrap(), expected);
+                } else {
+                    assert!(result.unwrap_err().contains("FXCT0002"));
+                }
+            };
+            run();
+            #[cfg(feature = "allocation-observation")]
+            {
+                let observed = allocation_counter::measure(run);
+                assert_eq!(observed.bytes_current, 0);
+                assert_eq!(observed.count_current, 0);
+            }
+        }
+        let mut cancelled =
+            InvocationControl::unbounded().cancelling_on_charge(WorkDomain::ResultTextByte, 0);
+        assert!(
+            execute(&selected, &source, "cancelled", &mut cancelled)
+                .unwrap_err()
+                .contains("FXCT0001")
+        );
+        assert_eq!(
+            execute(
+                &selected,
+                &source,
+                "reuse",
+                &mut InvocationControl::unbounded()
+            )
+            .unwrap(),
+            expected
+        );
+    }
+}
+
+#[test]
+fn selected_value_of_attributes_preserve_legacy_escaping_and_optional_recovery() {
+    let source = document("urn:value-source", b"<r><v>&lt;tag/&gt;&amp;</v></r>");
+    for version in ["1.0", "1.5", "2.0", "3.0"] {
+        for escaping in ["yes", "no", "maybe", "true"] {
+            let style = document("urn:value-policy", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="{version}"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:value-of select="r/v" disable-output-escaping="{escaping}"/></out></xsl:template></xsl:stylesheet>"#).as_bytes());
+            let result = compile(&style, Edition::Legacy, &mut InvocationControl::unbounded());
+            if version == "1.0" && !matches!(escaping, "yes" | "no") {
+                let Err(StrictPreprocessingFailure::Compile(failure)) = result else {
+                    panic!("invalid normal Boolean")
+                };
+                assert_eq!(failure.code, "XTSE0020");
+            } else {
+                let program = result.unwrap();
+                drop(style);
+                assert_eq!(
+                    execute_compiled_stylesheet_for_test(&program, &source, "value").unwrap(),
+                    if escaping == "yes" {
+                        "<out><tag/>&</out>"
+                    } else {
+                        "<out>&lt;tag/&gt;&amp;</out>"
+                    }
+                );
+            }
+        }
+        let style = document("urn:unknown-value", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="{version}"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of unknown="{{ $missing" select="'value'"/></xsl:template></xsl:stylesheet>"#).as_bytes());
+        let result = compile(&style, Edition::Legacy, &mut InvocationControl::unbounded());
+        if version == "1.0" {
+            let Err(StrictPreprocessingFailure::Compile(failure)) = result else {
+                panic!("unknown normal attribute")
+            };
+            assert_eq!(failure.code, "XTSE0090");
+        } else {
+            assert_eq!(
+                execute_compiled_stylesheet_for_test(&result.unwrap(), &source, "unknown").unwrap(),
+                "value"
+            );
+        }
+    }
+}
+
 #[test]
 #[cfg(feature = "workbench")]
 #[ignore = "requires separately acquired immutable OASIS corpus; fragment evidence only"]
-fn selected_text_replays_original_bvt033_instruction_without_case_credit() {
+fn selected_text_output_replays_original_bvt033_instructions_without_case_credit() {
     let root = std::path::PathBuf::from(
         std::env::var("FASTXSLT_OASIS_XSLT10_ROOT").expect("set corpus root"),
     );
@@ -45,6 +639,30 @@ fn selected_text_replays_original_bvt033_instruction_without_case_credit() {
     assert_eq!(value, "text");
     assert!(!disable_output_escaping);
     assert_eq!(location, *style.location(text));
+    let output = meaningful_children(&style, template)
+        .into_iter()
+        .find(|node| {
+            style
+                .name(*node)
+                .is_some_and(|name| name.namespace.is_none() && name.local == "test17")
+        })
+        .unwrap();
+    let value_node = meaningful_children(&style, output)
+        .into_iter()
+        .find(|node| is_xslt_element(&style, *node, "value-of"))
+        .unwrap();
+    let Instruction::ValueOf {
+        select: ValueExpression::LiteralString(value),
+        disable_output_escaping,
+        location,
+        ..
+    } = value_of(&style, value_node, LocalVersion::LegacyForward, &[]).unwrap()
+    else {
+        panic!("shared literal value instruction")
+    };
+    assert_eq!(value, "value");
+    assert!(!disable_output_escaping);
+    assert_eq!(location, *style.location(value_node));
     // The complete case remains blocked by other owners; this is neither a
     // rewritten fixture nor a replacement expected result or corpus pass.
     assert!(compile(&style, Edition::Legacy, &mut InvocationControl::unbounded()).is_err());
@@ -296,9 +914,9 @@ fn processor_policy_direct_call_arity_has_selected_error_timing() {
 fn processor_policy_direct_call_does_not_admit_nested_or_general_call_semantics() {
     for expression in [
         "false() and unknown-function()",
-        "true() or system-property('xsl:version')",
+        "true() or system-property('xsl:vendor')",
         "system-property($missing, 'x')",
-        "system-property('xsl:version')",
+        "system-property('xsl:vendor')",
         "unknown-function()",
         "system-property(,)",
         "false() and system-property($missing, 'x')",
@@ -807,17 +1425,17 @@ fn processor_policy_computed_body_preserves_nested_fallback_and_path_mode() {
 #[test]
 fn processor_policy_matched_integration_refuses_unpropagated_routes() {
     for declarations in [
-        r#"<xsl:template name="n"><xsl:text>x</xsl:text></xsl:template>"#,
-        r#"<xsl:template match="item"><xsl:param name="p"/></xsl:template>"#,
+        r#"<xsl:template name="n"><xsl:param name="p" select="system-property('xsl:version')"/><xsl:text>x</xsl:text></xsl:template>"#,
+        r#"<xsl:template match="item"><xsl:param name="p" select="system-property('xsl:version')"/></xsl:template>"#,
         r#"<xsl:template match="item[position()=2]"><xsl:text>x</xsl:text></xsl:template>"#,
-        r#"<xsl:template match="item"><xsl:value-of select="system-property('xsl:version')"/></xsl:template>"#,
+        r#"<xsl:template match="item"><xsl:value-of select="system-property('xsl:vendor')"/></xsl:template>"#,
         r#"<xsl:template match="item"><result value="{text()}"/></xsl:template>"#,
         r#"<xsl:template match="item"><result xsl:version="1e0"/></xsl:template>"#,
         r#"<xsl:template match="document-node()"/>"#,
         r#"<xsl:template match="item"><xsl:element name="{name()}"/></xsl:template>"#,
-        r#"<xsl:template match="item"><xsl:element name="result" namespace="urn:dynamic"/></xsl:template>"#,
+        r#"<xsl:template match="item"><xsl:element name="result" namespace="{@namespace}"/></xsl:template>"#,
         r#"<xsl:template match="item"><xsl:element name="result"><xsl:attribute name="a">v</xsl:attribute></xsl:element></xsl:template>"#,
-        r#"<xsl:template match="item"><xsl:element name="result"><xsl:value-of select="system-property('xsl:version')"/></xsl:element></xsl:template>"#,
+        r#"<xsl:template match="item"><xsl:element name="result"><xsl:value-of select="system-property('xsl:vendor')"/></xsl:element></xsl:template>"#,
         r#"<xsl:include href="urn:dependency"/>"#,
         r#"<xsl:variable name="g" select="1"/>"#,
     ] {
@@ -852,7 +1470,7 @@ fn processor_policy_text_variable_retains_scope_through_fallback() {
 fn processor_policy_text_variable_guards_scope_and_constructor_limits() {
     for content in [
         r#"<xsl:variable name="v" select="1"/>"#,
-        r#"<xsl:variable name="v"><xsl:value-of select="text()"/></xsl:variable>"#,
+        r#"<xsl:variable name="v"><xsl:value-of select="text()" disable-output-escaping="yes"/></xsl:variable>"#,
     ] {
         let sheet = document("urn:constructor-guard", format!(r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="2.0"><xsl:template match="item">{content}</xsl:template></xsl:stylesheet>"#).as_bytes());
         assert!(matches!(

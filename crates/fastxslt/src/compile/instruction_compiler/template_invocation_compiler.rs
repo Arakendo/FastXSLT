@@ -40,6 +40,19 @@ pub(super) fn compile_apply_templates(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
+    compile_apply_templates_with_selection(document, element, &mut parse_apply_selection)
+}
+
+pub(super) fn compile_apply_templates_with_selection(
+    document: &Document,
+    element: NodeId,
+    lower_selection: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &str,
+        SourceLocation,
+    ) -> Result<ApplySelection, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(
         document,
         element,
@@ -49,7 +62,7 @@ pub(super) fn compile_apply_templates(
     let location = document.location(element).clone();
     let (sorts, sort_nodes) = super::compile_sort_keys(document, element)?;
     let select = optional_attribute(document, element, None, "select")
-        .map(|expression| parse_apply_selection(document, element, expression, location.clone()))
+        .map(|expression| lower_selection(document, element, expression, location.clone()))
         .transpose()?;
     if matches!(
         select,
@@ -1498,6 +1511,14 @@ pub(super) fn compile_call_template(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
+    compile_call_template_with_content(document, element, &mut compile_content_argument_value)
+}
+
+pub(super) fn compile_call_template_with_content(
+    document: &Document,
+    element: NodeId,
+    content: &mut impl FnMut(&Document, NodeId) -> Result<TemplateArgumentValue, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["name"], "xsl:call-template")?;
     let name = normalize_named_template_name(
         document,
@@ -1532,7 +1553,7 @@ pub(super) fn compile_call_template(
         } else if let Some(sequence_type) = optional_attribute(document, child, None, "as") {
             compile_typed_argument(document, child, sequence_type)?
         } else {
-            compile_content_argument_value(document, child)?
+            content(document, child)?
         };
         arguments.push(TemplateArgument {
             name: argument_name,
@@ -1572,7 +1593,7 @@ fn normalize_template_argument_name(
     }
 }
 
-fn compile_content_argument_value(
+pub(super) fn compile_content_argument_value(
     document: &Document,
     element: NodeId,
 ) -> Result<TemplateArgumentValue, CompileFailure> {

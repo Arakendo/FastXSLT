@@ -4,7 +4,7 @@
 - Date: 2026-08-31
 - Related reviews: AR-0002, AR-0010, AR-0017
 - Related ADRs: ADR-0002, ADR-0008, ADR-0010, ADR-0015
-- Related evidence: `docs/Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `docs/Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; `docs/Evidence/prepared-engine-retention-estimator-calibration-2026-08-31.md`; `docs/Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `docs/Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`
+- Related evidence: `docs/Campaigns/native-registry-retention/evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `docs/Campaigns/native-registry-retention/evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; `docs/Campaigns/native-registry-retention/evidence/prepared-engine-retention-estimator-calibration-2026-08-31.md`; `docs/Campaigns/native-registry-retention/evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `docs/Campaigns/native-registry-retention/evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`
 - Supersedes: None
 
 ## Context

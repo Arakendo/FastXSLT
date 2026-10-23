@@ -9,7 +9,7 @@
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-path-concat-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-literal-template-argument-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-empty-global-string-semantics-2026-09-06.md`; `docs/Evidence/oasis-xslt10-local-variable-sequence-semantics-2026-09-07.md`; `docs/Evidence/oasis-xslt10-attribute-predicate-and-variable-apply-tranche-2026-09-07.md`; `docs/Evidence/oasis-xslt10-sequence-focus-boolean-comparison-2026-09-07.md`; `docs/Evidence/oasis-xslt10-apply-templates-path-union-2026-09-07.md`; `docs/Evidence/oasis-xslt10-signed-modulo-boolean-conjunction-2026-09-07.md`; `docs/Evidence/oasis-xslt10-focus-value-equality-2026-09-07.md`; `docs/Evidence/oasis-xslt10-count-path-condition-2026-09-07.md`; `docs/Evidence/oasis-xslt10-relational-position-predicates-2026-09-07.md`; `docs/Evidence/oasis-xslt10-relative-last-and-chained-position-predicates-2026-09-07.md`; `docs/Evidence/oasis-xslt10-static-number-position-predicate-2026-09-07.md`; `docs/Evidence/oasis-xslt10-focus-relational-conjunction-2026-09-07.md`; `docs/Evidence/oasis-xslt10-position-then-name-predicate-2026-09-07.md` |
+| Related evidence | `docs/Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Campaigns/oasis-xslt10/evidence/namespaces/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-sort-tranche-2026-09-06.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-path-concat-tranche-2026-09-06.md`; `docs/Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-literal-template-argument-tranche-2026-09-06.md`; `docs/Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-empty-global-string-semantics-2026-09-06.md`; `docs/Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-local-variable-sequence-semantics-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-attribute-predicate-and-variable-apply-tranche-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-sequence-focus-boolean-comparison-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-apply-templates-path-union-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/expressions/oasis-xslt10-signed-modulo-boolean-conjunction-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-focus-value-equality-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-count-path-condition-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-relational-position-predicates-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-relative-last-and-chained-position-predicates-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-static-number-position-predicate-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-focus-relational-conjunction-2026-09-07.md`; `docs/Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-position-then-name-predicate-2026-09-07.md` |
 
 ## Architectural question
 
@@ -690,7 +690,7 @@ maintained redistributable legacy suite becomes available.
   visible XML mismatches fall to zero, unusable archival references rise to
   60, and XSLT 1.0 discretionary-policy exclusions rise to five. No engine
   behavior or pass credit changes.
-  [Evidence](../Evidence/oasis-xslt10-residual-doubt-mismatch-dispositions-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-residual-doubt-mismatch-dispositions-2026-09-28.md)
 - 2026-09-28 -- A bounded `xsl:number/@lang` compatibility slice now admits
   literal language hints only where the selected sequence is already invariant:
   decimal tokens for any literal language and the existing Latin alphabetic
@@ -702,41 +702,41 @@ maintained redistributable legacy suite becomes available.
   executions; initialization failures fall to 735, comparator gaps rise to 54,
   visible XML mismatches fall to five (all doubt-annotated), and unusable
   archival references rise to 57.
-  [Evidence](../Evidence/oasis-xslt10-number-language-fallback-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-number-language-fallback-2026-09-28.md)
 - 2026-09-28 -- Legacy HTML serialization now names its DOCTYPE `html`
   independently of the first result element and limits boolean-attribute
   minimization to unnamespaced HTML elements. The unchanged Microsoft
   `BVTs_bvt067` confirms both corrections but remains a visible comparator gap
   because several independent HTML serialization behaviors are still outside
   the admitted slice. No pass credit or special-case comparator is added.
-  [Evidence](../Evidence/oasis-xslt10-html-doctype-and-foreign-element-serialization-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-html-doctype-and-foreign-element-serialization-2026-09-28.md)
 - 2026-09-28 -- Axis-step predicates now admit a bounded relative child path
   ending in one unqualified attribute step and apply XPath 1.0 node-set
   effective-boolean-value semantics. Both unchanged Microsoft ancestral sort
   cases execute and compare exactly. The totals reach 2,226 / 3,173 exact
   matches (70.15%), 2,437 initialized, and 2,389 successful
   executions with zero ordinary XML mismatches.
-  [Evidence](../Evidence/oasis-xslt10-relative-child-attribute-existence-predicate-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-relative-child-attribute-existence-predicate-2026-09-28.md)
 - 2026-09-28 -- The typed path plan now distinguishes complete-sequence
   `(path)[last()]` from a step-local position predicate and admits a non-union
   parenthesized path before a following `/` step. Unchanged Lotus `position89`
   becomes exact; `axes122` advances to its separate unsupported union. The
   totals reach 2,227 / 3,173 exact matches (70.19%), 2,438 initialized, and
   2,390 successful executions with zero ordinary XML mismatches.
-  [Evidence](../Evidence/oasis-xslt10-parenthesized-path-sequence-position-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-parenthesized-path-sequence-position-2026-09-28.md)
 - 2026-09-28 -- XSLT 1.0 apply selection now composes a parenthesized union of
   at most eight typed paths with one common ordinary suffix. Execution reuses
   controlled union evaluation, document ordering, and identity deduplication.
   Unchanged Lotus `axes91` becomes exact, raising the sweep to 2,228 / 3,173
   exact matches (70.22%), 2,439 initialized, and 2,391 successful executions.
-  [Evidence](../Evidence/oasis-xslt10-grouped-path-union-suffix-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-grouped-path-union-suffix-2026-09-28.md)
 - 2026-09-28 -- The private XSLT 1.0 binary-numeric tree now admits controlled
   `count(location-path)` leaves and composes them with its existing checked
   arithmetic. Unchanged Microsoft `Miscellaneous__84435` advances from invalid
   path syntax to its later unsupported variable-valued `xsl:number` boundary;
   its DTD-bearing source remains outside host parser policy, so no pass credit
   or denominator movement is claimed.
-  [Evidence](../Evidence/oasis-xslt10-count-path-arithmetic-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-count-path-arithmetic-2026-09-28.md)
 - 2026-09-28 -- Microsoft `Number__91027` now carries an exact unusable-
   reference-result disposition. Its archival result reuses a leading or sole
   punctuation token as every number separator and emits punctuation for empty
@@ -744,7 +744,7 @@ maintained redistributable legacy suite becomes available.
   existing behavior is unchanged and no pass credit is granted. Exact coverage
   remains 2,221 / 3,173 (70.00%); visible XML mismatches fall to six and
   unusable archival references rise to 56.
-  [Evidence](../Evidence/oasis-xslt10-number-format-reference-inconsistency-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-number-format-reference-inconsistency-2026-09-28.md)
 - 2026-09-28 -- Microsoft `Number__91022` now carries an exact unusable-
   reference-result disposition. The W3C XSLT 1.0 E24 erratum requires a
   processor that recovers from a number below `0.5` to insert its XPath string
@@ -757,7 +757,7 @@ maintained redistributable legacy suite becomes available.
   fallback rather than claiming unsupported numbering sequences. Visible XML
   mismatches therefore fall to seven and discretionary exclusions rise to
   three, again without pass credit.
-  [Evidence](../Evidence/oasis-xslt10-number-below-half-recovery-reference-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-number-below-half-recovery-reference-2026-09-28.md)
 - 2026-09-28 -- XSLT 1.0 output compilation now discards `standalone` when the
   effective XML declaration is omitted, including after same-precedence
   `xsl:output` merging. Modern output settings retain the combination for the
@@ -766,14 +766,14 @@ maintained redistributable legacy suite becomes available.
   policy exclusion for archival source-whitespace removal. The sweep reaches
   2,221 / 3,173 (70.00%), with 2,431 initialized, 2,383 successful executions,
   48 execution failures, and nine visible XML mismatches.
-  [Evidence](../Evidence/oasis-xslt10-omitted-declaration-standalone-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-omitted-declaration-standalone-2026-09-28.md)
 - 2026-09-28 -- A bounded XSLT 1.0 global temporary-text constructor may now
   retain a static, non-terminating message as an invocation-owned side effect.
   The message is charged before observation and never enters the tree value;
   general template dispatch during global construction remains unsupported.
   Unchanged Lotus `message_message16` becomes exact, raising the sweep to
   2,220 / 3,173 (69.97%), 2,431 initialized, and 2,381 successful executions.
-  [Evidence](../Evidence/oasis-xslt10-static-global-message-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-static-global-message-2026-09-28.md)
 - 2026-09-28 -- The corpus-declared gray-area recovery for an
   XSLT-prefixed instruction attribute now ignores exactly
   `xsl:element/@xsl:use-attribute-sets` under XSLT 1.0 compatibility. The
@@ -782,7 +782,7 @@ maintained redistributable legacy suite becomes available.
   raising the sweep to 2,219 / 3,173 (69.93%), 2,430 initialized, and 2,380
   successful executions without weakening modern or general instruction
   validation.
-  [Evidence](../Evidence/oasis-xslt10-prefixed-computed-element-attribute-set-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-prefixed-computed-element-attribute-set-2026-09-28.md)
 - 2026-09-28 -- The compatibility path now composes explicit `child::*`
   element counts with XPath 1.0 general comparison against the outer
   `current()/ancestor-or-self::*` set. Both operations remain typed,
@@ -790,7 +790,7 @@ maintained redistributable legacy suite becomes available.
   exact, raising the sweep to 2,216 / 3,173 (69.84%), 2,427 initialized, and
   2,377 successful executions; the generic `FXXP1001` initialization frontier
   falls from 11 to 10.
-  [Evidence](../Evidence/oasis-xslt10-outer-ancestor-set-predicate-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-outer-ancestor-set-predicate-2026-09-28.md)
 - 2026-09-28 -- XSLT 1.0 binary numeric sort keys now reuse the existing typed,
   charged arithmetic plan instead of falling into location-path parsing. The
   candidate node and sort focus feed the same evaluator used by ordinary value
@@ -798,7 +798,7 @@ maintained redistributable legacy suite becomes available.
   remain authoritative. Unchanged Lotus `sort_sort23` becomes exact, raising
   the sweep to 2,215 / 3,173 (69.81%), 2,426 initialized, and 2,376 successful
   executions.
-  [Evidence](../Evidence/oasis-xslt10-binary-numeric-sort-key-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-binary-numeric-sort-key-2026-09-28.md)
 - 2026-09-28 -- The classic XSLT 1.0
   `generate-id() = generate-id(key(...)[1])` grouping predicate now lowers to
   the existing typed Muenchian plan and invocation-owned key index.
@@ -806,7 +806,7 @@ maintained redistributable legacy suite becomes available.
   explicit call focus. Unchanged Lotus `idkey_idkey01` becomes exact, raising
   the sweep to 2,214 / 3,173 (69.78%), 2,425 initialized, and 2,375 successful
   executions while initialization failures fall to 745.
-  [Evidence](../Evidence/oasis-xslt10-generate-id-muenchian-current-key-value-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-generate-id-muenchian-current-key-value-2026-09-28.md)
 - 2026-09-28 -- Focus-dependent XSLT 1.0 `key()` lookup values now reuse the
   existing typed `concat()` plan, evaluating each path part against the current
   grouping candidate. A compact regression proves parity between the
@@ -816,7 +816,7 @@ maintained redistributable legacy suite becomes available.
   The exact lower bound remains 2,213 / 3,173 (69.74%); initialization reaches
   2,424, successful execution reaches 2,374, initialization failures fall to
   746, and comparator gaps rise to 53.
-  [Evidence](../Evidence/oasis-xslt10-focus-concat-key-value-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-focus-concat-key-value-2026-09-28.md)
 - 2026-09-28 -- Typed Muenchian first-by-key grouping now composes path- or
   key-selected candidates with a lazy source-derived index owned by one
   invocation. Direct ancestry matching removes quadratic sibling scans for
@@ -825,28 +825,28 @@ maintained redistributable legacy suite becomes available.
   raising the sweep to 2,213 / 3,173 (69.74%), 2,423 initialized, and 2,373
   successful executions. `Keys_PerfRepro2` advances to an independent
   focus-dependent concat key-value frontier.
-  [Evidence](../Evidence/oasis-xslt10-invocation-key-index-and-muenchian-grouping-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-invocation-key-index-and-muenchian-grouping-2026-09-28.md)
 - 2026-09-28 -- XSLT 1.0 `xsl:key/@use` now reuses the typed concat plan for
   literal and context-path arguments. Key construction evaluates paths against
   each matched candidate and preserves existing work accounting and authority.
   Microsoft `Keys_PerfRepro2` advances to its independent Muenchian grouping
   predicate frontier; the conserved 2,212 / 3,173 exact lower bound and all
   disposition totals remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-key-use-concat-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-key-use-concat-2026-09-28.md)
 - 2026-09-28 -- Literal/variable-only XSLT 1.0 global `concat()` expressions
   now reuse the existing typed plan, participate in static dependency ordering,
   and materialize invocation-locally. Unchanged Microsoft `BVTs_bvt037`
   becomes exact. The sweep reaches 2,212 / 3,173 exact matches (69.71%), 2,422
   initialized cases, and 2,372 successful executions without changing visible
   non-pass totals.
-  [Evidence](../Evidence/oasis-xslt10-global-concat-select-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-global-concat-select-2026-09-28.md)
 - 2026-09-27 -- Removed a hidden 1,024-event stylesheet-parser ceiling by
   applying the workbench host's explicit XML event/depth limits uniformly to
   principal stylesheets, sealed dependencies, and source preparation. Two
   unchanged large Microsoft cases become exact. The sweep reaches 2,180 / 3,173
   exact matches (68.70%), 2,384 initialized, and 2,337 successfully executed;
   expected-error credit, comparator gaps, and visible mismatches are unchanged.
-  [Evidence](../Evidence/oasis-xslt10-host-owned-stylesheet-xml-limits-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-host-owned-stylesheet-xml-limits-2026-09-27.md)
 - 2026-09-27 -- The private XML adapter now decodes BOM-selected UTF-16LE and
   UTF-16BE while mapping parser spans back to original admitted-byte offsets.
   Twenty-two standard-operation cases leave the generic stylesheet-XML
@@ -854,7 +854,7 @@ maintained redistributable legacy suite becomes available.
   reaches 2,178 / 3,173 exact matches (68.64%), 2,382 initialized, and 2,335
   successfully executed. Named numbering, runtime-formatting, and mismatch
   frontiers retain the remaining cases without inferred credit.
-  [Evidence](../Evidence/oasis-xslt10-bom-utf16-input-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-bom-utf16-input-2026-09-27.md)
 - 2026-09-27 -- Six DOCTYPE references now carry exact unusable-reference
   dispositions. Three Lotus references require a DOCTYPE name/order contrary
   to their first result element or constructed top-level PI; three Microsoft
@@ -862,7 +862,7 @@ maintained redistributable legacy suite becomes available.
   2,172 / 3,173 (68.45%); visible mismatches fall from nine to three and
   unusable archival references rise from 48 to 54 without changing engine
   semantics or awarding pass credit.
-  [Evidence](../Evidence/oasis-xslt10-doctype-reference-inconsistencies-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-doctype-reference-inconsistencies-2026-09-27.md)
 - 2026-09-27 -- Unsupported `xsl:number` sequence tokens now use the XSLT 1.0
   required decimal `1` fallback, while empty and punctuation-only formats gain
   the same default token without claiming locale-specific numbering support.
@@ -871,7 +871,7 @@ maintained redistributable legacy suite becomes available.
   2,188 / 3,173 exact matches (68.96%), 2,395 initialized, and 2,348
   successfully executed, while expected-error credit and comparator gaps remain
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-number-format-fallback-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-number-format-fallback-2026-09-27.md)
 - 2026-09-27 -- Homogeneous nested import branches now compose an arbitrary
   host-bounded number of ordered compiled child programs rather than stopping
   at two. Output-property precedence retains cumulative CDATA element names,
@@ -880,7 +880,7 @@ maintained redistributable legacy suite becomes available.
   sweep to 2,191 / 3,173 exact matches (69.05%), 2,398 initialized, and 2,351
   successfully executed without changing expected-error, mismatch, or
   comparator-gap totals.
-  [Evidence](../Evidence/oasis-xslt10-nested-multi-import-composition-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-nested-multi-import-composition-2026-09-27.md)
 - 2026-09-27 -- Unknown XSLT-namespace top-level declarations are now ignored
   with their complete content in the bounded XSLT 1.x forward-compatible
   interval, while supported `1.0`, `2.0`, and `3.0` versions retain explicit
@@ -888,7 +888,7 @@ maintained redistributable legacy suite becomes available.
   sweep reaches 2,195 / 3,173 exact matches (69.18%), 2,402 initialized, and
   2,355 successfully executed without changing expected-error, mismatch, or
   comparator-gap totals.
-  [Evidence](../Evidence/oasis-xslt10-forward-compatible-top-level-declarations-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-forward-compatible-top-level-declarations-2026-09-27.md)
 - 2026-09-27 -- XSLT 1.x forward-compatible instructions now compile only
   standard fallback content or retain a bounded deferred-failure plan when no
   fallback exists. Four unchanged standard-operation cases become exact and
@@ -896,14 +896,14 @@ maintained redistributable legacy suite becomes available.
   execution-time `XTDE1450`. The sweep reaches 2,199 / 3,173 exact matches
   (69.30%), 2,408 initialized, and 2,359 successfully executed; expected-error
   credit remains 423 / 431 and all mismatch/comparator totals are unchanged.
-  [Evidence](../Evidence/oasis-xslt10-forward-compatible-instruction-fallback-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-forward-compatible-instruction-fallback-2026-09-27.md)
 - 2026-09-27 -- Unknown attributes and invalid optional output-boolean
   lexicals are now ignored only in the bounded XSLT 1.x forward-compatible
   interval. Two unchanged Microsoft cases become exact, taking the sweep to
   2,201 / 3,173 exact matches (69.37%), 2,410 initialized, and 2,361
   successfully executed without changing expected-error, mismatch, or
   comparator-gap totals.
-  [Evidence](../Evidence/oasis-xslt10-forward-compatible-attributes-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-forward-compatible-attributes-2026-09-27.md)
 - 2026-09-27 -- Confirmed invalid XPath syntax/arity failures and a narrowly
   recognized numeric-literal introspection type failure in the bounded XSLT
   1.x forward-compatible interval now remain dormant until their owning
@@ -912,7 +912,7 @@ maintained redistributable legacy suite becomes available.
   without changing total expected-error credit. The sweep reaches 2,204 /
   3,173 exact matches (69.46%), 2,416 initialized cases, and 2,364 successful
   executions. Valid but unsupported XPath remains visibly unsupported.
-  [Evidence](../Evidence/oasis-xslt10-forward-compatible-expression-deferral-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-forward-compatible-expression-deferral-2026-09-27.md)
 - 2026-09-27 -- A standalone `xsl:fallback` in an XSLT 1.0 template now
   compiles as an empty instruction without compiling or instantiating its body.
   Unchanged Microsoft `Fallback__91817` becomes exact, raising the sweep to
@@ -920,14 +920,14 @@ maintained redistributable legacy suite becomes available.
   successful executions. The sibling version-2.0 fallback cases remain behind
   the explicit processor-profile/version-mode boundary rather than being
   credited by pretending the modern core does not support version 2.0.
-  [Evidence](../Evidence/oasis-xslt10-standalone-fallback-noop-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-standalone-fallback-noop-2026-09-27.md)
 - 2026-09-26 -- HTML serialization now omits end tags for the XSLT 1.0 legacy
   void names `basefont`, `frame`, and `isindex`, in addition to the existing
   bounded void set. Unchanged Lotus `output33` becomes the eighth exact
   normalized non-XML pass. Exact coverage reaches 2,172 / 3,173 (68.45%) and
   comparator gaps fall to 52; the broad Microsoft `BVTs_bvt067` stress case
   retains its independent visible differences without credit.
-  [Evidence](../Evidence/oasis-xslt10-legacy-html-void-elements-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-legacy-html-void-elements-2026-09-26.md)
 - 2026-09-26 -- The private `path < numeric-literal` boolean plan now retains
   finite XPath numbers and converts selected node strings as XPath numbers
   rather than integers. Unchanged Lotus `output60` constructs its conditional
@@ -936,21 +936,21 @@ maintained redistributable legacy suite becomes available.
   comparator gap rather than an engine mismatch. Exact credit remains 2,171 /
   3,173 (68.42%); visible mismatches fall to nine and comparator gaps rise to
   53.
-  [Evidence](../Evidence/oasis-xslt10-decimal-path-comparison-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-decimal-path-comparison-2026-09-26.md)
 - 2026-09-26 -- HTML serialization now emits a selected public identifier even
   when no system identifier is present. Unchanged Lotus `output17` and
   `output39` become exact. Four remaining non-XML HTML bodies return to an
   explicit comparator gap after receiving their requested DOCTYPE. The sweep
   reaches 2,171 / 3,173 exact matches (68.42%), with 52 comparator gaps and 10
   visible mismatches.
-  [Evidence](../Evidence/oasis-xslt10-html-public-only-doctype-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-html-public-only-doctype-2026-09-26.md)
 - 2026-09-26 -- The local comparator now isolates one lexically identical,
   bounded DOCTYPE before parsing the remaining XML, without weakening the
   production DTD prohibition. Eight unchanged cases become exact and fourteen
   previously opaque gaps become visible mismatches. The sweep reaches 2,169 /
   3,173 exact matches (68.36%); comparator gaps fall to 48 and visible
   mismatches rise to 16 for explicit follow-up.
-  [Evidence](../Evidence/oasis-xslt10-bounded-doctype-comparison-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-bounded-doctype-comparison-2026-09-26.md)
 - 2026-09-26 -- The bounded byte serializer now admits representable
   Shift_JIS, Big5, and ISO-2022-JP output through the existing optional private
   encoding dependency. Four unchanged Lotus cases execute and three compare
@@ -959,7 +959,7 @@ maintained redistributable legacy suite becomes available.
   `Big-Deal` label remain unsupported. The sweep reaches 2,161 / 3,173 exact
   matches (68.11%) and 2,326 successful executions, while execution failures
   fall to 45.
-  [Evidence](../Evidence/oasis-xslt10-bounded-legacy-output-encoding-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-bounded-legacy-output-encoding-2026-09-26.md)
 - 2026-09-26 -- The private parser adapter now decodes declared
   ASCII-compatible legacy XML through `quick-xml`'s selected decoder without
   transcoding the admitted bytes. Three unchanged OASIS cases become exact;
@@ -968,33 +968,33 @@ maintained redistributable legacy suite becomes available.
   existing comparator boundary. The sweep reaches 2,158 / 3,173 exact matches
   (68.01%), 2,371 initialized, and 2,322 successfully executed. UTF-16 and
   parser production admission remain open under AR-0008.
-  [Evidence](../Evidence/oasis-xslt10-declared-legacy-input-encoding-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-declared-legacy-input-encoding-2026-09-26.md)
 - 2026-09-13 -- Literal `contains()` over the context-node string value now
   extends the typed node-string match family with shared source/temporary
   semantics. One more case executes and matches exactly; the generic
   unsupported match-pattern frontier falls from 18 to 17 and exact results
   rise from 1,368 to 1,369.
-  See [text contains match evidence](../Evidence/oasis-xslt10-text-contains-match-pattern-2026-09-13.md).
+  See [text contains match evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-text-contains-match-pattern-2026-09-13.md).
 - 2026-09-13 -- One exact named-sibling position now composes with one exact
   attribute-value predicate without erasing predicate order. Source and
   temporary trees distinguish position-then-attribute from attribute-then-
   position. Three more cases execute and match exactly; the generic unsupported
   match-pattern frontier falls from 21 to 18 and exact results rise from 1,365
   to 1,368.
-  See [ordered position/attribute match evidence](../Evidence/oasis-xslt10-ordered-position-attribute-match-patterns-2026-09-13.md).
+  See [ordered position/attribute match evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-ordered-position-attribute-match-patterns-2026-09-13.md).
 - 2026-09-13 -- The exact `@*[name()='NCName']` match predicate now retains its
   lexical-name semantics and `0.5` predicate priority instead of collapsing to
   an exact expanded-name pattern. One more case executes and matches exactly;
   the generic unsupported match-pattern frontier falls from 22 to 21 and exact
   results rise from 1,364 to 1,365.
-  See [attribute-name match evidence](../Evidence/oasis-xslt10-attribute-name-match-predicate-2026-09-13.md).
+  See [attribute-name match evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-attribute-name-match-predicate-2026-09-13.md).
 - 2026-09-13 -- Bounded namespace-aware attribute patterns now resolve exact
   names, namespace wildcards, presence predicates, and qualified-element
   attribute-value predicates against stylesheet namespace context. Two more
   cases match exactly; a third advances to a visible import/result-namespace
   mismatch and remains uncredited. The generic unsupported match-pattern
   frontier falls from 25 to 22 and exact results rise from 1,362 to 1,364.
-  See [namespace-aware attribute match evidence](../Evidence/oasis-xslt10-namespace-aware-attribute-match-patterns-2026-09-13.md).
+  See [namespace-aware attribute match evidence](../Campaigns/oasis-xslt10/evidence/namespaces/oasis-xslt10-namespace-aware-attribute-match-patterns-2026-09-13.md).
 - 2026-09-13 -- Exact integer equality against a wildcard element string value
   or unqualified attribute now uses explicit XPath numeric conversion shared by
   source and temporary trees. One more case executes and matches exactly. A
@@ -1002,7 +1002,7 @@ maintained redistributable legacy suite becomes available.
   unsupported; decimal/exponent, relational, arithmetic, variable, namespace,
   and general predicate forms remain outside the slice. Exact results rise from
   1,361 to 1,362.
-  See [wildcard numeric match evidence](../Evidence/oasis-xslt10-wildcard-numeric-match-predicates-2026-09-13.md).
+  See [wildcard numeric match evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-wildcard-numeric-match-predicates-2026-09-13.md).
 - 2026-09-13 -- Wildcard-element exact attribute-value predicates now use a
   charged typed matcher, while `node()` attribute-presence predicates normalize
   to the equivalent wildcard-element presence matcher. Source and temporary
@@ -1010,154 +1010,154 @@ maintained redistributable legacy suite becomes available.
   namespace-qualified, numeric/relational, broader node-test, variable,
   function, and general boolean predicates remain outside the slice. Exact
   results rise from 1,359 to 1,361.
-  See [generalized attribute node-test evidence](../Evidence/oasis-xslt10-generalized-attribute-match-node-tests-2026-09-13.md).
+  See [generalized attribute node-test evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-generalized-attribute-match-node-tests-2026-09-13.md).
 - 2026-09-13 -- Chained and conjunctive pairs of exact unqualified attribute-
   value match predicates now normalize to one typed, charged attribute scan
   shared by source and temporary trees. Three more cases execute and all match
   exactly; larger predicate sets, namespaces, inequality, numeric/relational
   comparison, variables, functions, and general boolean composition remain
   outside the slice. Exact results rise from 1,356 to 1,359.
-  See [two-attribute-value match evidence](../Evidence/oasis-xslt10-two-attribute-value-match-patterns-2026-09-13.md).
+  See [two-attribute-value match evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-two-attribute-value-match-patterns-2026-09-13.md).
 - 2026-09-13 -- The typed context-node string matcher now admits exact
   inequality, negated exact equality, and two-literal equality-or while
   preserving source/temporary parity and bounded charging. Three more cases
   execute and all match exactly; general boolean trees, numeric or relational
   comparison, functions, variables, and multiple predicates remain outside the
   slice. Exact results rise from 1,353 to 1,356.
-  See [composed node-string match evidence](../Evidence/oasis-xslt10-composed-node-string-match-predicates-2026-09-13.md).
+  See [composed node-string match evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-composed-node-string-match-predicates-2026-09-13.md).
 - 2026-09-13 -- Exact context-node string equality now composes with bounded
   unqualified element, text, comment, and processing-instruction match tests
   through one charged typed matcher shared by source and temporary trees. Five
   more cases execute and all match exactly; numeric, function, composed,
   qualified, and multiple predicates remain outside the slice. Exact results
   rise from 1,348 to 1,353.
-  See [node string-value match evidence](../Evidence/oasis-xslt10-node-string-value-match-patterns-2026-09-13.md).
+  See [node string-value match evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-node-string-value-match-patterns-2026-09-13.md).
 - 2026-09-13 -- The exact `*[@name]` wildcard-element attribute-presence
   pattern now uses a dedicated charged typed matcher with source and temporary-
   tree parity. Two more cases execute and both match exactly; value comparisons,
   namespace wildcards, composed predicates, and general boolean predicates
   remain outside the slice. Exact results rise from 1,346 to 1,348.
-  See [wildcard attribute-presence evidence](../Evidence/oasis-xslt10-wildcard-attribute-presence-patterns-2026-09-13.md).
+  See [wildcard attribute-presence evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-wildcard-attribute-presence-patterns-2026-09-13.md).
 - 2026-09-13 -- The exact `//name[true()]` pattern now normalizes at compile
   time to the existing typed leading-descendant path while retaining path
   priority and charged document-rooted membership. Two more cases execute and
   both match exactly; no general function-predicate matcher was admitted. Exact
   results rise from 1,344 to 1,346.
-  See [static-true descendant match evidence](../Evidence/oasis-xslt10-static-true-descendant-match-patterns-2026-09-13.md).
+  See [static-true descendant match evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-static-true-descendant-match-patterns-2026-09-13.md).
 - 2026-09-13 -- Single-name leading descendant patterns now admit one
   unqualified attribute presence/value predicate or one positive static sibling
   position through the existing typed path evaluator. Three more cases execute
   and all three match exactly; the generic unsupported match-pattern frontier
   falls from 47 to 43 without admitting child-value, relational, dynamic, or
   multi-step predicate forms. Exact results rise from 1,341 to 1,344.
-  See [leading descendant predicate evidence](../Evidence/oasis-xslt10-leading-descendant-attribute-and-position-patterns-2026-09-13.md).
+  See [leading descendant predicate evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-leading-descendant-attribute-and-position-patterns-2026-09-13.md).
 - 2026-09-13 -- Leading descendant patterns now extend to the bounded
   `//ancestor/child` and `//ancestor//descendant` forms while retaining typed
   path priority and document-rooted membership. Ten more cases execute and
   four match exactly; six named-whitespace cases remain visibly outside
   ADR-0012. The generic unsupported match-pattern frontier falls from 59 to 47
   and exact results rise from 1,337 to 1,341.
-  See [bounded leading descendant path evidence](../Evidence/oasis-xslt10-bounded-leading-descendant-path-patterns-2026-09-13.md).
+  See [bounded leading descendant path evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-bounded-leading-descendant-path-patterns-2026-09-13.md).
 - 2026-09-09 -- The exact unqualified `match="//name"` abbreviation now
   retains typed path priority and uses bounded document-rooted membership.
   Eight more cases execute, five match exactly, and three downstream
   serialization/whitespace differences remain visible. The generic unsupported
   match-pattern frontier falls from 85 to 59 without admitting descendant
   predicates or multi-step forms. Exact results rise from 1,332 to 1,337.
-  See [leading descendant name match evidence](../Evidence/oasis-xslt10-leading-descendant-name-match-patterns-2026-09-09.md).
+  See [leading descendant name match evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-leading-descendant-name-match-patterns-2026-09-09.md).
 - 2026-09-09 -- Dynamic sibling/descendant node-set equality and bounded
   nested positional-child comparisons now share the typed path evaluator.
   The matching positional-child forms reuse `MatchPattern::Path`, while
   general attribute-comparison patterns remain unsupported. Exact results rise
   from 1,331 to 1,332; one newly executable `indent="yes"` whitespace
   difference remains visibly mismatched.
-  See [dynamic node-set and predicate-match evidence](../Evidence/oasis-xslt10-dynamic-node-set-and-predicate-match-paths-2026-09-09.md).
+  See [dynamic node-set and predicate-match evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-dynamic-node-set-and-predicate-match-paths-2026-09-09.md).
 - 2026-09-09 -- The typed following-sibling predicate leaf now implements
   existential XSLT 1.0 numeric `=`, `!=`, `<`, `<=`, `>`, and `>=` comparisons
   with correct operand reversal and charged sibling visits. Ten unchanged
   cases raise the strict lower bound from 1,321 to 1,331. See
-  [following-sibling relational-predicate evidence](../Evidence/oasis-xslt10-following-sibling-relational-predicates-2026-09-09.md).
+  [following-sibling relational-predicate evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-following-sibling-relational-predicates-2026-09-09.md).
 - 2026-09-09 -- Bounded child-count, attribute string-length, and attribute
   inequality predicate leaves now compose with path execution and effective
   boolean value. Bare-axis condition admission remains narrowed to the
   evidenced `following-sibling::` form after a broader probe exposed a wrong
   result. Two unchanged cases raise the strict lower bound from 1,319 to 1,321.
-  See [predicate cardinality and attribute-length evidence](../Evidence/oasis-xslt10-predicate-cardinality-and-attribute-length-2026-09-09.md).
+  See [predicate cardinality and attribute-length evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-predicate-cardinality-and-attribute-length-2026-09-09.md).
 - 2026-09-09 -- The private typed predicate tree now evaluates bounded
   `starts-with(name(.), literal)` and `string-length(name(.)) = integer`
   leaves while preserving lexical QName prefixes and charged XPath work. Two
   unchanged cases raise the strict lower bound from 1,317 to 1,319. See
-  [context lexical-name predicate evidence](../Evidence/oasis-xslt10-context-lexical-name-predicates-2026-09-09.md).
+  [context lexical-name predicate evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-context-lexical-name-predicates-2026-09-09.md).
 - 2026-09-09 -- Typed predicate paths are now reachable from instruction-local
   effective boolean value, and a context-string/literal leaf composes with
   `not`. One unchanged case raises the strict lower bound from 1,316 to 1,317.
-  See [context-string predicate evidence](../Evidence/oasis-xslt10-context-string-predicate-condition-2026-09-09.md).
+  See [context-string predicate evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-context-string-predicate-condition-2026-09-09.md).
 - 2026-09-09 -- A bounded path-predicate leaf now compares the charged
   `following-sibling::*` node-set with a static integer using shared XSLT 1.0
   numeric conversion. Two operand-order cases raise the strict lower bound
   from 1,314 to 1,316. See
-  [following-sibling numeric-predicate evidence](../Evidence/oasis-xslt10-following-sibling-numeric-predicate-2026-09-09.md).
+  [following-sibling numeric-predicate evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-following-sibling-numeric-predicate-2026-09-09.md).
 - 2026-09-09 -- The private path-predicate tree now composes charged
   `descendant::*` node-set/string equality and inequality with `not`, `and`,
   and `or`. Six unchanged cases raise the strict lower bound from 1,308 to
   1,314 without treating XSLT 1.0 existential `!=` as negated equality. See
-  [descendant node-set predicate evidence](../Evidence/oasis-xslt10-descendant-node-set-predicate-comparison-2026-09-09.md).
+  [descendant node-set predicate evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-descendant-node-set-predicate-comparison-2026-09-09.md).
 - 2026-09-09 -- A private typed attribute-predicate tree now preserves `and`/
   `or` precedence, parentheses, short-circuiting, and charged attribute visits.
   Eleven unchanged cases raise the strict lower bound from 1,297 to 1,308.
   Boolean-tree ownership was extracted after the path source crossed the
   ADR-0004 review threshold. See
-  [attribute boolean-predicate evidence](../Evidence/oasis-xslt10-attribute-boolean-predicate-tree-2026-09-09.md).
+  [attribute boolean-predicate evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-attribute-boolean-predicate-tree-2026-09-09.md).
 - 2026-09-09 -- Static XSLT 1.0 mixed-type path predicates now share one typed
   path entry point across selection and value instructions. Boolean-to-number
   ordered conversion adds two exact OASIS results and raises the strict lower
   bound from 1,295 to 1,297 without a mismatch or runtime-failure increase. See
-  [ordered literal path-predicate evidence](../Evidence/oasis-xslt10-ordered-literal-path-predicates-2026-09-09.md).
+  [ordered literal path-predicate evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-ordered-literal-path-predicates-2026-09-09.md).
 - 2026-09-09 -- Four XSLT 1.0 boolean/node-set predicate spellings now
   normalize to a charged following-sibling existence predicate in the shared
   typed path evaluator. Completing shared `@*` and `not(@*)` presence semantics
   brings two more unchanged cases with it. Six exact results raise the strict
   lower bound from 1,289 to 1,295 with no residual mismatch increase. See
-  [boolean node-set axis-predicate evidence](../Evidence/oasis-xslt10-boolean-node-set-axis-predicates-2026-09-09.md).
+  [boolean node-set axis-predicate evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-boolean-node-set-axis-predicates-2026-09-09.md).
 - 2026-09-09 -- Statically decidable mixed-type equality predicates now fold
   during XSLT 1.0 compilation and retain the ordinary typed location-path
   execution. Three unchanged predicate cases raise the strict lower bound from
   1,286 to 1,289 without admitting dynamic node-set comparison. See
-  [static mixed-equality predicate evidence](../Evidence/oasis-xslt10-static-mixed-equality-path-predicates-2026-09-09.md).
+  [static mixed-equality predicate evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-static-mixed-equality-path-predicates-2026-09-09.md).
 - 2026-09-09 -- The shared exact-rational evaluator now retains typed path-
   union operands, and XSLT 1.0 `xsl:copy-of` can copy the resulting atomic
   value. The unchanged `math103` case raises the strict lower bound from 1,285
   to 1,286. A broader unary-root experiment was rejected after exposing legacy
   double-formatting differences. See
-  [unary numeric path-union evidence](../Evidence/oasis-xslt10-unary-numeric-path-union-copy-2026-09-09.md).
+  [unary numeric path-union evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-unary-numeric-path-union-copy-2026-09-09.md).
 - 2026-09-09 -- XSLT 1.0 source-node variables now compose with the shared
   typed descendant-path evaluator. The unchanged `variable50` case matches
   exactly, raising the strict lower bound from 1,284 to 1,285; constructed
   result-tree fragments remain non-navigable and fail explicitly. See
-  [source-variable descendant-path evidence](../Evidence/oasis-xslt10-source-variable-descendant-path-2026-09-09.md).
+  [source-variable descendant-path evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-source-variable-descendant-path-2026-09-09.md).
 - 2026-09-09 -- The shared typed path model now retains literal
   `local-name()` equality predicates over path focus. The unchanged namespace-
   bearing `copy46` case matches exactly, raising the strict lower bound from
   1,283 to 1,284 without changing mismatch or runtime-failure counts. See
-  [local-name predicate evidence](../Evidence/oasis-xslt10-local-name-path-predicate-2026-09-09.md).
+  [local-name predicate evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-local-name-path-predicate-2026-09-09.md).
 - 2026-09-09 -- Exact standalone `xsl:copy-of select="current()"` now lowers
   to the existing current-item copy plan. One newly initialized case matches
   exactly, raising the strict lower bound from 1,282 to 1,283 without admitting
   composed `current()` semantics. See
-  [standalone current-copy evidence](../Evidence/oasis-xslt10-standalone-current-copy-2026-09-09.md).
+  [standalone current-copy evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-standalone-current-copy-2026-09-09.md).
 - 2026-09-09 -- Computed-attribute `xsl:value-of` now reuses the existing
   literal-only `substring()` fold and exact sequence `position()`/`last()`
   attribute operations. Three newly initialized cases all match exactly,
   raising the strict lower bound from 1,279 to 1,282 without a new mismatch or
   execution failure. See
-  [static and focus-value evidence](../Evidence/oasis-xslt10-computed-attribute-static-and-focus-values-2026-09-09.md).
+  [static and focus-value evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-computed-attribute-static-and-focus-values-2026-09-09.md).
 - 2026-09-09 -- A computed attribute can now retain exactly one already-
   admitted `xsl:number` instruction and consume its value through the shared
   bounded number evaluator. Source focus, work accounting, cancellation,
   retained-capacity accounting, and semantic inspection remain explicit. Four
   exact results raise the strict lower bound from 1,275 to 1,279; two other
   cases reach later compilation boundaries and remain uncredited. See
-  [computed-attribute numbering evidence](../Evidence/oasis-xslt10-computed-attribute-number-2026-09-09.md).
+  [computed-attribute numbering evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-computed-attribute-number-2026-09-09.md).
 - 2026-09-09 -- A bounded constructor refinement admits one explicit
   `xsl:text` child as computed-attribute character content by reusing the
   ordinary text validator. Six cases move beyond `FXST1033`, including one
@@ -1166,14 +1166,14 @@ maintained redistributable legacy suite becomes available.
   sort keys, where they cannot affect numeric ordering; three unchanged cases
   raise the strict lower bound from 1,272 to 1,275. Text collation and dynamic
   metadata remain explicit unsupported boundaries. See
-  [attribute-text and numeric-sort evidence](../Evidence/oasis-xslt10-attribute-text-and-numeric-sort-metadata-2026-09-09.md).
+  [attribute-text and numeric-sort evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-attribute-text-and-numeric-sort-metadata-2026-09-09.md).
 - 2026-09-09 -- Static prefixed computed-attribute QNames now resolve once at
   compilation, with an optional nonempty static namespace override and strict
   `xml`/`xmlns`, malformed, empty, and unbound-prefix failures. Eleven cases
   reach execution and nine exact results raise the strict lower bound from
   1,263 to 1,272; one line-ending mismatch and one comparator boundary remain
   uncredited. Runtime QName parsing and lexical-prefix identity were not added.
-  See [prefixed attribute evidence](../Evidence/oasis-xslt10-static-prefixed-computed-attribute-2026-09-09.md).
+  See [prefixed attribute evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-static-prefixed-computed-attribute-2026-09-09.md).
 - 2026-09-09 -- Direct computed attributes now retain a static namespace URI,
   bounded literal text, and a compile-time prefix binding in the owning
   element's ADR-0018 namespace slice. Twenty-six unchanged cases initialize;
@@ -1181,7 +1181,7 @@ maintained redistributable legacy suite becomes available.
   doubts/whitespace comparisons and four later runtime frontiers remain
   uncredited. Namespace AVTs, prefixed names, and reserved XMLNS construction
   remain explicit boundaries. See
-  [static attribute-namespace evidence](../Evidence/oasis-xslt10-static-computed-attribute-namespace-2026-09-09.md).
+  [static attribute-namespace evidence](../Campaigns/oasis-xslt10/evidence/namespaces/oasis-xslt10-static-computed-attribute-namespace-2026-09-09.md).
 - 2026-09-09 -- The generic 129-case unsupported-attribute frontier is now
   classified by instruction and expanded attribute name; its largest families
   are `xsl:attribute/@namespace` (32), `xsl:sort/@lang` (30), and
@@ -1190,27 +1190,27 @@ maintained redistributable legacy suite becomes available.
   Microsoft `78362` to its independent computed-comment frontier. `yes` and
   invalid lexical values remain explicit unsupported/invalid outcomes, and the
   1,244-pass lower bound is unchanged. See
-  [unsupported-attribute evidence](../Evidence/oasis-xslt10-unsupported-attribute-frontier-and-doe-no-2026-09-09.md).
+  [unsupported-attribute evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-unsupported-attribute-frontier-and-doe-no-2026-09-09.md).
 - 2026-09-09 -- Exact standalone `xsl:preserve-space elements="*"` now
   compiles to the engine's existing preserve-source-whitespace default without
   adding runtime representation or weakening ADR-0012. Six Microsoft cases
   reach execution and four exact results raise the strict lower bound from
   1,240 to 1,244; two independent indent-serialization mismatches remain
   visible. Selective and mixed strip/preserve policies still fail explicitly.
-  See [preserve-all evidence](../Evidence/oasis-xslt10-preserve-all-whitespace-declaration-2026-09-09.md).
+  See [preserve-all evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-preserve-all-whitespace-declaration-2026-09-09.md).
 - 2026-09-09 -- Template parameter defaults can now retain the existing typed
   XSLT 1.0 binary-numeric plan, including an explicit `number(path)` operand,
   and bind its result as an atomic double. Microsoft `bvt072` advances through
   execution with every numeric result correct, but its doubts-annotated
   expected output drops preserved source whitespace; the mismatch remains
   visible and the 1,240-pass lower bound is unchanged. See
-  [binary-numeric parameter evidence](../Evidence/oasis-xslt10-binary-numeric-parameter-default-2026-09-09.md).
+  [binary-numeric parameter evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-binary-numeric-parameter-default-2026-09-09.md).
 - 2026-09-09 -- A compatibility-only template parameter default may now retain
   one text-only `xsl:choose` whose branches use the shared typed path/string
   equality evaluator. The selected value remains an invocation-owned temporary
   text tree. Unchanged Lotus `variable13` raises the strict lower bound from
   1,239 to 1,240 without adding a mismatch or execution failure. See
-  [text-choice parameter evidence](../Evidence/oasis-xslt10-text-choice-parameter-default-2026-09-09.md).
+  [text-choice parameter evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-text-choice-parameter-default-2026-09-09.md).
 - 2026-09-08 -- Typed template parameter defaults now retain source-node paths
   at the caller's exact focus and copy preceding parameter values without
   erasing atomic, source-node, or temporary-tree kind. Parameter names also
@@ -1218,7 +1218,7 @@ maintained redistributable legacy suite becomes available.
   expectations raise the strict lower bound from 1,235 to 1,239; one
   expected-error case advances to its correct runtime forward-reference
   failure without adding a standard-case regression. See
-  [template parameter default evidence](../Evidence/oasis-xslt10-template-parameter-defaults-2026-09-08.md).
+  [template parameter default evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-template-parameter-defaults-2026-09-08.md).
 - 2026-09-08 -- Local variables and global defaults now share a bounded XSLT
   1.0 temporary-tree materializer for exactly
   `for-each(location-path) -> value-of(.)`. Controlled navigation and node
@@ -1849,44 +1849,44 @@ maintained redistributable legacy suite becomes available.
   `FXXP1001` rather than invalid `XPST0003`. Aggregate counters and the 1,376
   exact-result lower bound remain unchanged; no namespace-axis support is
   inferred.
-  [Evidence](../Evidence/oasis-xslt10-qualified-descendant-position-match-2026-09-13.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-qualified-descendant-position-match-2026-09-13.md)
 - 2026-09-13 -- Child-axis-relative position is now explicit for the bounded
   `chapter//footnote[position() != 1]` match plan. Charged source and temporary
   execution independently number same-named siblings under each immediate
   parent, moving unchanged Xalan `match16` from initialization failure to exact
   pass and raising the lower bound from 1,376 to 1,377 without a new mismatch
   or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-descendant-child-axis-position-2026-09-13.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-descendant-child-axis-position-2026-09-13.md)
 - 2026-09-13 -- Differently ranked union-pattern alternatives now retain their
   individual default priorities as separate matched rules sharing one compiled
   body. Five Microsoft cases leave the generic union frontier; two become exact
   passes and three expose later independent boundaries, raising the exact lower
   bound from 1,377 to 1,379 without a new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-union-alternative-priority-2026-09-13.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-union-alternative-priority-2026-09-13.md)
 - 2026-09-13 -- Computed attributes now reuse the complete context-string
   operation for `xsl:value-of select="."` across source and temporary trees.
   Eleven Microsoft Output cases leave the compiler frontier and expose their
   later HTML-serialization boundary; the exact lower bound remains 1,379 and
   no new mismatch is introduced.
-  [Evidence](../Evidence/oasis-xslt10-computed-attribute-context-string-2026-09-13.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-computed-attribute-context-string-2026-09-13.md)
 - 2026-09-14 -- Plain local integer-literal variables now reuse the existing
   typed atomic binding path. Eight cases leave `FXXP1008`; two become exact
   passes, while two later path boundaries, two duplicate-binding diagnostics,
   one alias execution failure, and one whitespace mismatch remain explicitly
   visible. The exact lower bound rises from 1,379 to 1,381.
-  [Evidence](../Evidence/oasis-xslt10-local-integer-literal-variables-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-local-integer-literal-variables-2026-09-14.md)
 - 2026-09-14 -- Local `name()` and `name(.)` bindings now retain a private
   context-derived atomic instruction with source-prefix and work-accounting
   semantics. Three cases leave `FXXP1008`; two expose later language boundaries
   and one exposes an existing whitespace mismatch, so the exact lower bound
   remains 1,381.
-  [Evidence](../Evidence/oasis-xslt10-local-context-name-variables-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-local-context-name-variables-2026-09-14.md)
 - 2026-09-14 -- Local `count(location-path)` variables now reuse the controlled
   path evaluator and typed integer frames. All three
   `count(preceding::text())` cases leave `FXXP1008`; one becomes an exact pass
   and two expose a later `$this + 1` classification defect. The exact lower
   bound rises from 1,381 to 1,382.
-  [Evidence](../Evidence/oasis-xslt10-local-count-path-variables-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-local-count-path-variables-2026-09-14.md)
 - 2026-09-14 -- Template arguments now reuse the bounded XSLT 1.0 binary
   numeric evaluator, moving the two `$this + 1` cases into execution. Their
   newly visible reverse-axis mismatch was repaired at the existing single-step
@@ -1894,24 +1894,24 @@ maintained redistributable legacy suite becomes available.
   the general path result remains document ordered. Both unchanged cases become
   exact passes, raising the lower bound from 1,382 to 1,384 without a new
   mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-template-argument-arithmetic-and-reverse-axis-position-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-template-argument-arithmetic-and-reverse-axis-position-2026-09-14.md)
 - 2026-09-14 -- Local source-dependent numeric variables now reuse the same
   bounded binary-numeric plan, controlled evaluator, and typed atomic frame as
   other numeric consumers. Unchanged Lotus `variable43` moves from `FXXP1008`
   to exact result, raising the lower bound from 1,384 to 1,385 without a new
   mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-local-path-arithmetic-variable-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-local-path-arithmetic-variable-2026-09-14.md)
 - 2026-09-14 -- Local source-node variables now compose through typed relative
   paths while preserving controlled evaluation, document order, duplicate
   elimination, and downstream focus size. The unchanged Microsoft `last()`
   case moves from `FXXP1008` to exact result, raising the lower bound from 1,385
   to 1,386 without a new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-local-variable-rooted-path-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-local-variable-rooted-path-2026-09-14.md)
 - 2026-09-14 -- Exact `name()` and `name(.)` template arguments now reuse the
   charged source lexical-name operation. The unchanged Lotus recursive
   named-template case retains caller focus and becomes exact, raising the lower
   bound from 1,386 to 1,387 without a new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-template-argument-context-name-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-template-argument-context-name-2026-09-14.md)
 - 2026-09-14 -- Untyped boolean globals, variable numeric conversion,
   focus-position offsets, variable sort keys, and source-variable template
   argument paths now compose through existing typed state. One unchanged
@@ -1919,7 +1919,7 @@ maintained redistributable legacy suite becomes available.
   visible indentation mismatch. The exact lower bound rises from 1,387 to
   1,388; the sorted-variable path also replaces one exposed panic assumption
   with typed source-node handling.
-  [Evidence](../Evidence/oasis-xslt10-variable-flow-and-sort-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-variable-flow-and-sort-2026-09-14.md)
 - 2026-09-14 -- Context-node `name()` equality now retains the source lexical
   QName and its comparison mode in a private boolean plan. Unchanged Lotus
   `axes121` reaches its intended line-feed branch. The local XML comparator now
@@ -1927,38 +1927,38 @@ maintained redistributable legacy suite becomes available.
   whitespace before tree comparison, moving six executing mismatches to exact
   results and raising the lower bound from 1,388 to 1,394. The engine's DTD
   authority boundary remains unchanged.
-  [Evidence](../Evidence/oasis-xslt10-context-name-condition-and-xml-line-endings-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-context-name-condition-and-xml-line-endings-2026-09-14.md)
 - 2026-09-14 -- Recognized XPath node tests now accept intervening whitespace
   before their parentheses and canonicalize into the existing typed path plan.
   Unchanged Lotus `select18` moves from the generic function-shaped path
   frontier to an exact comment-copy result, raising the lower bound from 1,394
   to 1,395 without admitting arbitrary function steps.
-  [Evidence](../Evidence/oasis-xslt10-node-test-whitespace-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-node-test-whitespace-2026-09-14.md)
 - 2026-09-14 -- An exact XSLT 1.0 `current()` expression now lowers to the
   existing context-item path, and the value-expression fallback consistently
   uses the compatibility parser. Eight cases leave the generic function path
   frontier; three become exact and five remain visible mismatches, raising the
   lower bound from 1,395 to 1,398 without admitting composed `current()`
   semantics.
-  [Evidence](../Evidence/oasis-xslt10-exact-current-select-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-exact-current-select-2026-09-14.md)
 - 2026-09-14 -- The existing XSLT 1.0 path string-function plan now retains a
   literal or typed path second operand for `contains()`. Both paths use
   controlled first-node string conversion and complete retention accounting.
   Four unchanged Lotus cases become exact, raising the lower bound from 1,398
   to 1,402 without broadening the other binary string functions.
-  [Evidence](../Evidence/oasis-xslt10-path-to-path-contains-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-path-to-path-contains-2026-09-14.md)
 - 2026-09-14 -- Bounded source-free NaN composition now preserves XPath 1.0
   equality, arithmetic, and integral-function behavior at compilation while
   leaving modern decimal semantics unchanged. Eight unchanged Lotus cases move
   from initialization failure to exact results, raising the lower bound from
   1,402 to 1,410 without a new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-nan-composition-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-nan-composition-2026-09-14.md)
 - 2026-09-14 -- A bounded XSLT 1.0 `string()` wrapper now reuses context-path
   numeric plans. The unchanged Lotus long-decimal case exposed a shared exact-
   rational formatting overflow, repaired by using the minimal terminating-
   decimal scale. One case becomes exact, raising the lower bound from 1,410 to
   1,411 with no added mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-string-number-and-exact-decimal-formatting-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-string-number-and-exact-decimal-formatting-2026-09-14.md)
 - 2026-09-14 -- The bounded XSLT 1.0 predicate
   `string(number(.)) = 'NaN'` now compiles to a typed context-number test and
   reuses controlled context string-value access. Unchanged Microsoft
@@ -1966,7 +1966,7 @@ maintained redistributable legacy suite becomes available.
   decisions, but remains an upstream doubts-annotated mismatch because its
   expected result omits whitespace emitted by normative built-in template
   processing. The exact lower bound remains 1,411.
-  [Evidence](../Evidence/oasis-xslt10-context-number-nan-predicate-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-context-number-nan-predicate-2026-09-14.md)
 - 2026-09-14 -- Explicit-axis paths accepted by the typed XPath parser now
   participate in ordinary node-set effective-boolean-value evaluation instead
   of being limited to a special following-sibling spelling. Unchanged Lotus
@@ -1974,20 +1974,20 @@ maintained redistributable legacy suite becomes available.
   choices correct. Its remaining XML mismatch is implementation-dependent
   indentation emitted under `indent='yes'`; it is retained as comparison-
   harness pressure and the exact lower bound remains 1,411.
-  [Evidence](../Evidence/oasis-xslt10-explicit-axis-boolean-paths-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-explicit-axis-boolean-paths-2026-09-14.md)
 - 2026-09-14 -- XPath 1.0 `contains(number(.), 'NaN')` now reuses the typed
   context-number NaN boolean plan, preserving implicit number-to-string
   conversion without a general nested-function evaluator. Unchanged Lotus
   `math_math104` becomes exact, raising the lower bound from 1,411 to 1,412
   without a new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-contains-context-number-nan-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-contains-context-number-nan-2026-09-14.md)
 - 2026-09-14 -- Bounded `position() mod N = M` instruction predicates now
   compile to a typed dynamic-focus plan with explicit divisor/remainder and
   source location. Unchanged Lotus `numbering45` composes the predicate with
   the existing modulo-aware `xsl:number` count pattern and becomes exact,
   raising the lower bound from 1,412 to 1,413 without a new mismatch or
   execution failure.
-  [Evidence](../Evidence/oasis-xslt10-position-modulo-boolean-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-position-modulo-boolean-2026-09-14.md)
 - 2026-09-14 -- Literal-QName XSLT 1.0 implementation introspection now folds
   during stylesheet compilation. `system-property()` supplies the required
   XSLT properties, `function-available()` reports the admitted function
@@ -1996,13 +1996,13 @@ maintained redistributable legacy suite becomes available.
   enter execution: thirteen become exact XML results and two vendor-property
   cases retain their upstream manual-comparison disposition. The exact lower
   bound rises from 1,413 to 1,426 without a new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-static-introspection-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-static-introspection-2026-09-14.md)
 - 2026-09-14 -- Static XSLT 1.0 `substring()` calls now preserve XPath 1.0
   NaN and positive/negative infinity behavior when their numeric operands are
   bounded literal divisions. Five unchanged Lotus cases become exact, raising
   the lower bound from 1,426 to 1,431 without broadening the modern fold or
   adding a mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-non-finite-substring-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/expressions/oasis-xslt10-non-finite-substring-2026-09-14.md)
 - 2026-09-14 -- Bounded relative child paths on both sides of a predicate
   equality now use XPath 1.0 node-set general-comparison semantics: any pair
   of selected nodes with equal string values satisfies the predicate. Four
@@ -2010,70 +2010,70 @@ maintained redistributable legacy suite becomes available.
   already-typed spaced `. = 'literal'` spelling in Lotus `output25`. Microsoft
   `Miscellaneous__84427` advances to its later explicit HTML-serialization
   boundary. The exact lower bound rises from 1,431 to 1,436.
-  [Evidence](../Evidence/oasis-xslt10-child-node-set-comparison-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-child-node-set-comparison-2026-09-14.md)
 - 2026-09-14 -- The bounded source-free composition
   `number(string(static-decimal)) = static-decimal` now folds under XSLT 1.0
   compatibility rules. Unchanged Lotus `math16` becomes exact, raising the
   lower bound from 1,436 to 1,437 while modern and dynamic nested conversions
   remain rejected.
-  [Evidence](../Evidence/oasis-xslt10-nested-static-conversion-2026-09-14.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-nested-static-conversion-2026-09-14.md)
 - 2026-09-15 -- Typed lexical context-name comparison now serves both path
   predicates and instruction conditions, while context string-value
   inequality reuses the existing equality plan through negation. Unchanged
   Lotus `sort_sort37` and `node_node15` become exact, raising the lower bound
   from 1,437 to 1,439 without adding a mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-lexical-context-comparison-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-lexical-context-comparison-2026-09-15.md)
 - 2026-09-15 -- Relative child and child/final-attribute node sets now compare
   with string literals under bounded XPath 1.0 existential equality and
   inequality semantics. Two unchanged result-tree cases become exact,
   including Lotus `select_select51`, raising the lower bound from 1,439 to
   1,441 without adding a mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-child-node-set-literal-comparison-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-child-node-set-literal-comparison-2026-09-15.md)
 - 2026-09-15 -- Literal-result AVTs now preserve the context node's retained
   lexical QName for `name()`/`name(.)` and fold one static quoted XPath string
   expression. Unchanged Lotus `lre_lre06` becomes exact, raising the lower
   bound from 1,441 to 1,442; Lotus `axes_axes129` advances only to its later
   namespace-axis frontier and remains excluded from the pass count.
-  [Evidence](../Evidence/oasis-xslt10-literal-result-avt-scalars-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-literal-result-avt-scalars-2026-09-15.md)
 - 2026-09-15 -- A bounded typed AVT can now compose ordered static text and
   multiple already-admitted source paths. Microsoft `AVTs__77582` initializes
   and executes with the expected brace-bearing attribute values, but remains a
   visible XML-comparison mismatch because of serializer-added whitespace
   between expected top-level fragment elements. The exact lower bound remains
   1,442; the comparator was not weakened.
-  [Evidence](../Evidence/oasis-xslt10-multi-path-avt-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-multi-path-avt-2026-09-15.md)
 - 2026-09-15 -- The shared typed location-path evaluator now applies XPath 1.0
   node-set effective boolean value to `[text()]` and `child::text()` predicates.
   Unchanged Microsoft `AVTs__77570` becomes exact through the bounded
   multi-path AVT lane, raising the lower bound from 1,442 to 1,443 without a
   new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-text-child-predicate-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-text-child-predicate-2026-09-15.md)
 - 2026-09-15 -- One bounded multi-part AVT expression may now reuse the shared
   controlled path-union evaluator, preserving document-order normalization,
   duplicate removal, traversal charging, and first-node string conversion.
   Unchanged Microsoft `AVTs__77571` becomes exact, raising the lower bound from
   1,443 to 1,444 without a new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-avt-path-union-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-avt-path-union-2026-09-15.md)
 - 2026-09-15 -- Relative child-path comparison now retains a typed terminal
   text-node step, and a single-expression AVT may emit the lexical result of a
   bounded path-to-string equality or inequality. Microsoft `AVTs__77564`
   executes with the expected attribute values but remains a visible mismatch
   because of expected inter-element fragment formatting. The exact lower bound
   remains 1,444.
-  [Evidence](../Evidence/oasis-xslt10-text-node-comparison-avt-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-text-node-comparison-avt-2026-09-15.md)
 - 2026-09-15 -- The private typed AVT scanner now admits one dynamic path when
   accompanied by an escaped literal brace, and permits one nonempty outer pair
   of parentheses around that path. Three unchanged Microsoft cases execute
   with the expected attribute values but remain visible fragment-format
   mismatches. The exact lower bound remains 1,444 and malformed brace forms
   remain rejected.
-  [Evidence](../Evidence/oasis-xslt10-parenthesized-path-and-escaped-brace-avt-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-parenthesized-path-and-escaped-brace-avt-2026-09-15.md)
 - 2026-09-15 -- Bounded multi-part AVTs now retain typed binary numeric parts
   compiled and executed by the shared controlled XSLT 1.0 exact-rational
   machinery. Microsoft `AVTs__77576` produces all expected decimal values but
   remains a visible fragment-format mismatch. The exact lower bound remains
   1,444.
-  [Evidence](../Evidence/oasis-xslt10-numeric-composition-avt-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-numeric-composition-avt-2026-09-15.md)
 - 2026-09-15 -- Single-level numbering now distinguishes a context node that
   matches the count pattern from a counted ancestor: the former remains
   eligible without a matching `from` ancestor, while the latter still requires
@@ -2081,13 +2081,13 @@ maintained redistributable legacy suite becomes available.
   Microsoft `Number__84687`, whose suite metadata calls the behavior a gray
   area referred for an erratum, moves to a visible legacy-expectation mismatch.
   The conserved exact lower bound remains 1,444.
-  [Evidence](../Evidence/oasis-xslt10-single-number-self-before-from-boundary-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-single-number-self-before-from-boundary-2026-09-15.md)
 - 2026-09-15 -- Namespace-qualified foreign top-level stylesheet data is now
   ignored without interpretation, retention, execution, or new authority;
   unqualified top-level literals remain invalid. Three unchanged OASIS cases
   become exact, one becomes a visible mismatch, and four advance to later
   explicit boundaries, raising the lower bound from 1,444 to 1,447.
-  [Evidence](../Evidence/oasis-xslt10-foreign-top-level-data-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-foreign-top-level-data-2026-09-15.md)
 - 2026-09-15 -- One bounded computed-attribute constructor now retains an
   existing controlled path for `xsl:for-each` with exactly one
   `xsl:value-of select="."` body. Execution concatenates selected source-node
@@ -2095,54 +2095,54 @@ maintained redistributable legacy suite becomes available.
   and cancellation controls. Unchanged Lotus `attribset_attribset25` becomes
   exact, raising the lower bound from 1,447 to 1,448 without a new mismatch or
   execution failure.
-  [Evidence](../Evidence/oasis-xslt10-computed-attribute-for-each-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-computed-attribute-for-each-2026-09-15.md)
 - 2026-09-15 -- The same compile-validated `xsl:for-each` plus
   `xsl:value-of select="."` path constructor now supplies content-valued named
   template arguments. Runtime evaluation materializes one parentless temporary
   text node, preserving XSLT 1.0 result-tree-fragment behavior and all existing
   work controls. Unchanged Lotus `namedtemplate_namedtemplate11` becomes exact,
   raising the lower bound from 1,448 to 1,449.
-  [Evidence](../Evidence/oasis-xslt10-template-argument-for-each-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-template-argument-for-each-2026-09-15.md)
 - 2026-09-15 -- Content-valued named-template arguments now admit a bounded
   static mixed text/literal-result-element constructor. The compiler reuses the
   existing private constructed-node plan and each invocation materializes one
   fresh temporary tree, while dynamic instructions and attributes remain
   unsupported. Unchanged Lotus `copy_copy08` becomes exact, raising the lower
   bound from 1,449 to 1,450 without a new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-static-template-argument-tree-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-static-template-argument-tree-2026-09-15.md)
 - 2026-09-15 -- Computed attributes now admit one bounded constructor-local
   source-path variable followed by `count($same-name)`. The private plan retains
   only the controlled path, preserves surrounding lexical shadowing, and does
   not establish a general local-frame contract. Unchanged Microsoft
   `Variables__78409` becomes exact, raising the lower bound from 1,450 to 1,451
   without a new mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-computed-attribute-local-count-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-computed-attribute-local-count-2026-09-15.md)
 - 2026-09-15 -- A first attribute-set slice resolves uniquely named local sets
   with static text values into literal-result-element plans during compilation.
   Set, literal, and explicit child-attribute precedence is preserved; dynamic
   values and same-name include/import composition remain unsupported rather
   than producing partial results. Seven unchanged Lotus cases become exact,
   raising the lower bound from 1,451 to 1,458 with no new XML mismatch.
-  [Evidence](../Evidence/oasis-xslt10-local-static-attribute-sets-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-local-static-attribute-sets-2026-09-15.md)
 - 2026-09-15 -- The same compile-time local static attribute-set resolver now
   serves statically named `xsl:element`, preserving explicit child-attribute
   override and existing namespace fixup. Three unchanged cases become exact,
   raising the lower bound from 1,458 to 1,461 with no new XML mismatch.
-  [Evidence](../Evidence/oasis-xslt10-static-computed-element-attribute-sets-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-static-computed-element-attribute-sets-2026-09-15.md)
 - 2026-09-15 -- Local static attribute sets now form a compile-validated
   dependency graph. Referenced sets expand before the referring set, final
   consumers retain higher precedence, undefined names report `XTSE0710`, and
   direct or indirect cycles report `XTSE0720`. Seven unchanged cases become
   exact, raising the lower bound from 1,461 to 1,468 without a runtime registry
   or a new XML mismatch.
-  [Evidence](../Evidence/oasis-xslt10-inherited-static-attribute-sets-2026-09-15.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-inherited-static-attribute-sets-2026-09-15.md)
 - 2026-09-16 -- `xsl:copy` now consumes the same immutable compile-time static
   attribute-set expansion, with explicit child attributes overriding set
   values. Document-node copy emits the set constructors as pending attributes
   before its body, preserving XSLT 1.0 root-copy behavior. Six unchanged cases
   become exact, raising the lower bound from 1,468 to 1,474 without a new XML
   mismatch, execution failure, or runtime registry.
-  [Evidence](../Evidence/oasis-xslt10-source-copy-attribute-sets-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-source-copy-attribute-sets-2026-09-16.md)
 - 2026-09-16 -- Multiple same-name local `xsl:attribute-set` declarations now
   compose at compilation in document order. Each declaration applies its
   referenced sets before its own values, later declarations override earlier
@@ -2151,14 +2151,14 @@ maintained redistributable legacy suite becomes available.
   same-name cross-module composition remains explicit. Eight unchanged Lotus
   cases become exact, raising the lower bound from 1,474 to 1,482 without a new
   XML mismatch, execution failure, runtime registry, or panic.
-  [Evidence](../Evidence/oasis-xslt10-composed-local-attribute-sets-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-composed-local-attribute-sets-2026-09-16.md)
 - 2026-09-16 -- Attribute-set computed values may now reference one declared
   global atomic variable or parameter. Compilation records the reference as
   global, so a same-named local binding at the consuming instruction cannot
   capture it. Unchanged Lotus `attribset44` becomes exact, raising the lower
   bound from 1,482 to 1,483 without a new mismatch, execution failure, runtime
   attribute-set registry, or panic.
-  [Evidence](../Evidence/oasis-xslt10-attribute-set-global-variable-scope-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-attribute-set-global-variable-scope-2026-09-16.md)
 - 2026-09-16 -- XSLT 1.0 same-expanded-name result attributes now select the
   last statically compiled value, covering computed-over-literal and repeated
   leading computed attributes. The compatibility choice is made during
@@ -2166,7 +2166,7 @@ maintained redistributable legacy suite becomes available.
   failures are unchanged. Three unchanged cases become exact, raising the lower
   bound from 1,483 to 1,486 without a new mismatch, execution failure, or
   runtime version branch.
-  [Evidence](../Evidence/oasis-xslt10-duplicate-result-attribute-recovery-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-duplicate-result-attribute-recovery-2026-09-16.md)
 - 2026-09-16 -- Statically evident XSLT 1.0 `xsl:attribute` constructors after
   result child construction now use the specification's permitted recovery and
   are ignored. Later versions retain `XTDE0410`, and dynamically late pending
@@ -2174,7 +2174,7 @@ maintained redistributable legacy suite becomes available.
   become exact, raising the lower bound from 1,486 to 1,491 while expected-error
   accounting remains unchanged and no mismatch, execution failure, or panic is
   added.
-  [Evidence](../Evidence/oasis-xslt10-late-result-attribute-recovery-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-late-result-attribute-recovery-2026-09-16.md)
 - 2026-09-16 -- Principal simplified stylesheets now compile their document
   element as the implicit root template through the ordinary literal-result
   compiler. All 30 former blanket `FXST0009` candidates advance to their real
@@ -2182,20 +2182,20 @@ maintained redistributable legacy suite becomes available.
   execution/serialization failure, and one reaches a visible mismatch. No
   exact pass is claimed, the lower bound remains 1,491, and the six unexpected
   expected-error successes remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-simplified-stylesheet-frontier-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-simplified-stylesheet-frontier-2026-09-16.md)
 - 2026-09-16 -- An `xsl:version="1.0"` control attribute on a simplified
   stylesheet root now establishes the same typed value-expression compatibility
   context as a conventional stylesheet root. The existing first-node
   conversion plan makes unchanged Microsoft `Namespace__78215` exact, raising
   the lower bound from 1,491 to 1,492; the higher-version forward-compatibility
   companion remains explicit.
-  [Evidence](../Evidence/oasis-xslt10-simplified-stylesheet-value-conversion-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-simplified-stylesheet-value-conversion-2026-09-16.md)
 - 2026-09-16 -- Static comment and processing-instruction constructors now
   fold explicit `xsl:text` children, ignoring disable-output-escaping only in
   those node-construction contexts where it has no effect. One unchanged
   Microsoft comment case becomes exact, raising the lower bound from 1,492 to
   1,493; one simplified case advances to the existing HTML serializer boundary.
-  [Evidence](../Evidence/oasis-xslt10-static-comment-pi-text-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-static-comment-pi-text-2026-09-16.md)
 - 2026-09-16 -- `xsl:text` now accepts and validates its legal `xml:space`
   attribute, and static comment/processing-instruction constructors fold
   bounded context-free `xsl:value-of` literal, `concat()`, and `substring()`
@@ -2203,14 +2203,14 @@ maintained redistributable legacy suite becomes available.
   lower bound from 1,493 to 1,494. Two `xml:space` cases advance only to their
   real serializer or ordinary disable-output-escaping boundary; dynamic
   constructor content remains explicit.
-  [Evidence](../Evidence/oasis-xslt10-static-node-content-and-text-space-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-static-node-content-and-text-space-2026-09-16.md)
 - 2026-09-16 -- Static comment construction now applies XSLT 1.0's permitted
   add-space recovery when content contains `--` or ends in `-`. The recovery is
   selected during compilation; later versions retain `FXST1037`. All ten
   formerly blocked unchanged cases become exact, raising the lower bound from
   1,494 to 1,504 without a new mismatch, failure, unexpected success, runtime
   version branch, or panic.
-  [Evidence](../Evidence/oasis-xslt10-comment-delimiter-recovery-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-comment-delimiter-recovery-2026-09-16.md)
 - 2026-09-16 -- Literal result elements now apply their namespaced
   `xsl:exclude-result-prefixes` control through the existing compiled namespace
   selection path. Fourteen cases leave `FXST1007`: eight become exact, raising
@@ -2218,13 +2218,13 @@ maintained redistributable legacy suite becomes available.
   indentation mismatches after producing the required namespace nodes;
   and four reach the explicit namespace-alias boundary. The control attribute
   is not copied to the result and no runtime policy branch is introduced.
-  [Evidence](../Evidence/oasis-xslt10-literal-result-prefix-exclusion-2026-09-16.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-literal-result-prefix-exclusion-2026-09-16.md)
 - 2026-09-17 -- The stylesheet compiler now rejects retained non-whitespace
   top-level text rather than silently skipping non-element children. Unchanged
   Microsoft `Stylesheet_InvalidStylesheetMustThrowException` moves from
   unexpected success to observed initialization failure, reducing that class
   from six to five while the exact-result lower bound remains 1,512.
-  [Evidence](../Evidence/oasis-xslt10-top-level-text-rejection-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-top-level-text-rejection-2026-09-17.md)
 - 2026-09-17 -- `exclude-result-prefixes` is now validated at each declaration
   site, so a prefix declared only by an included module cannot satisfy an
   unbound token on the principal stylesheet. Unchanged Microsoft
@@ -2232,7 +2232,7 @@ maintained redistributable legacy suite becomes available.
   unexpected success to static `XTSE0808`, reducing that class from five to
   four while the exact-result lower bound remains 1,512. All four survivors are
   upstream doubt-marked and remain visible rather than being forced to fail.
-  [Evidence](../Evidence/oasis-xslt10-excluded-prefix-validation-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-excluded-prefix-validation-2026-09-17.md)
 - 2026-09-17 -- Literal result elements now apply XSLT 1.0 handling for
   unknown XSLT-namespace attributes and lexically scoped
   `extension-element-prefixes`. Declarations are validated at their sites,
@@ -2241,34 +2241,34 @@ maintained redistributable legacy suite becomes available.
   cases become exact, raising the lower bound from 1,512 to 1,515; two more
   advance to later honest boundaries without adding a mismatch, execution
   failure, unexpected success, runtime version branch, or panic.
-  [Evidence](../Evidence/oasis-xslt10-literal-result-extension-controls-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-literal-result-extension-controls-2026-09-17.md)
 - 2026-09-17 -- Foreign namespaced extension attributes on admitted XSLT
   elements are now ignored under XSLT 1.0 compatibility, while unqualified,
   XSLT-namespace, reserved XML, and modern-version attributes retain their
   existing validation. Two unchanged cases become exact, raising the lower
   bound from 1,515 to 1,517 without adding a mismatch, execution failure,
   unexpected success, runtime extension hook, or panic.
-  [Evidence](../Evidence/oasis-xslt10-extension-attributes-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-extension-attributes-2026-09-17.md)
 - 2026-09-17 -- Ordinary XSLT instruction validation now admits and validates
   `xml:space`, connecting it to the existing inherited stylesheet-text
   preservation path. Two unchanged Microsoft cases advance from static
   unsupported to visible output mismatches; the exact lower bound remains
   1,517. The slice is retained as honest frontier movement and does not claim
   complete preserved-whitespace behavior for every structural content model.
-  [Evidence](../Evidence/oasis-xslt10-stylesheet-xml-space-admission-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-stylesheet-xml-space-admission-2026-09-17.md)
 - 2026-09-17 -- `xsl:value-of disable-output-escaping="no"` now uses the
   ordinary semantic-result path; `yes` remains explicit unsupported and other
   lexicals are invalid. Unchanged Lotus `output_output07` becomes exact,
   raising the lower bound from 1,517 to 1,518 without adding a result-node
   escape flag, mismatch, failure, runtime version branch, or panic.
-  [Evidence](../Evidence/oasis-xslt10-value-of-disabled-output-escaping-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-value-of-disabled-output-escaping-2026-09-17.md)
 - 2026-09-17 -- Static `xsl:number letter-value` is now admitted only where the
   existing ASCII token semantics are equivalent: traditional formatting, or
   alphabetic formatting over Latin alphabetic tokens. Affected unchanged cases
   advance to their real non-ASCII or compound-token boundaries; the exact lower
   bound remains 1,518. Dynamic, locale-sensitive, and non-equivalent semantics
   remain explicit without a runtime branch.
-  [Evidence](../Evidence/oasis-xslt10-static-letter-value-admission-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-static-letter-value-admission-2026-09-17.md)
 - 2026-09-17 -- An XSLT 1.0 local variable whose complete constructor is one
   admitted `xsl:value-of` path now materializes through the existing charged,
   invocation-owned temporary-tree path. Variable-valued named-template
@@ -2277,7 +2277,7 @@ maintained redistributable legacy suite becomes available.
   raising the lower bound from 1,518 to 1,523 without admitting general
   sequence constructors, later-version result-tree-fragment behavior,
   cross-invocation sharing, a new mismatch, or a panic.
-  [Evidence](../Evidence/oasis-xslt10-local-value-of-temporary-tree-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-local-value-of-temporary-tree-2026-09-17.md)
 - 2026-09-17 -- Local and global XSLT 1.0 bindings made entirely from static
   text and `xsl:text` now fold into the existing temporary text-tree
   representation. The exact nested
@@ -2287,7 +2287,7 @@ maintained redistributable legacy suite becomes available.
   `BVTs_bvt085` executes to a visible archival replacement-character mismatch.
   The exact lower bound remains 1,523; no expected bytes are rewritten and no
   general constructor or expression-composition claim is made.
-  [Evidence](../Evidence/oasis-xslt10-static-text-tree-sequence-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-static-text-tree-sequence-2026-09-17.md)
 - 2026-09-17 -- Qualified `//` and `.//` paths now retain the existing typed
   document- or context-descendant origin, while prefixed element and attribute
   namespace wildcards compile to exact namespace tests. Six unchanged cases
@@ -2296,7 +2296,7 @@ maintained redistributable legacy suite becomes available.
   mismatches; and two reach independent expression or numbering boundaries.
   Prefix validation, charged traversal, cancellation, document order, and
   source identity remain shared with the ordinary path evaluator.
-  [Evidence](../Evidence/oasis-xslt10-qualified-descendant-paths-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-qualified-descendant-paths-2026-09-17.md)
 - 2026-09-17 -- Static `xsl:namespace-alias` declarations now resolve ordinary
   and `#default` prefixes during compilation and rewrite literal result names
   and namespace bindings before execution. The 43-case blanket frontier is
@@ -2304,7 +2304,7 @@ maintained redistributable legacy suite becomes available.
   exact, raising the lower bound from 1,525 to 1,533. Fourteen discretionary or
   later semantic mismatches and five later execution failures remain visible;
   general include/import alias precedence is not inferred.
-  [Evidence](../Evidence/oasis-xslt10-static-namespace-alias-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/namespaces/oasis-xslt10-static-namespace-alias-2026-09-17.md)
 - 2026-09-17 -- Unnamed `xsl:decimal-format` declarations now compose and
   validate during compilation, then specialize the existing two-argument
   `format-number()` plan without adding runtime stylesheet-policy lookup. The
@@ -2314,19 +2314,19 @@ maintained redistributable legacy suite becomes available.
   formats, non-ASCII digit families, dynamic third-argument lookup, and general
   include/import decimal-format composition remain explicit rather than
   approximated.
-  [Evidence](../Evidence/oasis-xslt10-unnamed-decimal-format-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-unnamed-decimal-format-2026-09-17.md)
 - 2026-09-17 -- Named decimal-format declarations and literal third-argument
   QNames now resolve in their static namespace contexts and specialize the
   same direct formatting plan. Eleven additional cases initialize and all nine
   newly executing ordinary cases compare exactly, raising the lower bound from
   1,549 to 1,558. Undeclared and cross-module format lookup remains explicit;
   computed names and non-ASCII digit families are not approximated.
-  [Evidence](../Evidence/oasis-xslt10-static-named-decimal-format-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-static-named-decimal-format-2026-09-17.md)
 - 2026-09-17 -- Decimal formatting now applies XSLT 1.0's consecutive-character
   digit-family rule inside numeric output only. Five more cases initialize and
   one becomes exact, raising the lower bound from 1,558 to 1,559; four reach
   later explicit runtime boundaries.
-  [Evidence](../Evidence/oasis-xslt10-decimal-digit-family-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-decimal-digit-family-2026-09-17.md)
 - 2026-09-17 -- The shared HTML serializer now admits general semantic result
   trees instead of using corpus-shaped production whitelists, and an absent
   output method selects legacy HTML when the first significant result element
@@ -2335,20 +2335,20 @@ maintained redistributable legacy suite becomes available.
   1,559 to 1,564, while 72 mismatches, 41 XML-comparator gaps, and one missing
   expected error remain visible. This is result-tree admission and frontier
   discovery, not a claim of complete HTML serialization conformance.
-  [Evidence](../Evidence/oasis-xslt10-general-html-result-admission-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-general-html-result-admission-2026-09-17.md)
 - 2026-09-17 -- Literal-result AVTs now validate escaped, quoted, empty,
   unmatched, and nested brace structure before expression capability
   selection. Eight unchanged malformed cases move from generic unsupported to
   static `XTSE0370 / invalid`; valid but unimplemented expressions continue to
   report `FXST1031`. The exact lower bound remains 1,564.
-  [Evidence](../Evidence/oasis-xslt10-malformed-avt-classification-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-malformed-avt-classification-2026-09-17.md)
 - 2026-09-17 -- HTML serialization now minimizes the XSLT 1.0 boolean-
   attribute set when an unnamespaced value equals its name case-insensitively.
   `Lotus/attribset_attribset17#1` reaches the expected minimized attribute
   spelling, but the XML-semantic comparator cannot parse that legal HTML form;
   the 1,564 exact lower bound therefore remains unchanged and the harness gap
   stays visible.
-  [Evidence](../Evidence/oasis-xslt10-html-boolean-attribute-minimization-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-html-boolean-attribute-minimization-2026-09-17.md)
 - 2026-09-17 -- HTML URI-attribute recognition now uses the standard
   element/attribute pairs instead of treating every `href` as URI-valued. URI
   serialization percent-encodes an embedded double quote as `%22` while
@@ -2356,7 +2356,7 @@ maintained redistributable legacy suite becomes available.
   `Lotus/output_output70#1` case moves from mismatch to exact comparison,
   raising the strict lower bound from 1,564 to 1,565 without changing any
   execution or comparator denominator.
-  [Evidence](../Evidence/oasis-xslt10-html-uri-attribute-escaping-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-html-uri-attribute-escaping-2026-09-17.md)
 - 2026-09-17 -- Ordinary HTML attributes now use an HTML-specific escaping
   path that preserves angle brackets and XML whitespace characters while
   retaining escaped ampersands, quotes, and C1 controls. The unchanged
@@ -2364,7 +2364,7 @@ maintained redistributable legacy suite becomes available.
   `Microsoft/Output_EntityRefInAttribHtml#1` outputs reach their expected
   attribute spellings but retain later pretty-print/newline differences. They
   remain visible mismatches, and the strict lower bound remains 1,565.
-  [Evidence](../Evidence/oasis-xslt10-html-ordinary-attribute-escaping-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-html-ordinary-attribute-escaping-2026-09-17.md)
 - 2026-09-17 -- The XSLT 1.0 no-character-map HTML path now preserves `&`
   immediately before `{`, and legacy HTML void elements omit their end tags
   even when result-tree content follows their start tag. The unchanged
@@ -2373,7 +2373,7 @@ maintained redistributable legacy suite becomes available.
   relevant expected HTML spellings. Non-XML comparison and independent
   presentation differences remain visible, so the exact lower bound remains
   1,565.
-  [Evidence](../Evidence/oasis-xslt10-html-ampersand-curly-and-void-content-2026-09-17.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-html-ampersand-curly-and-void-content-2026-09-17.md)
 - 2026-09-18 -- Exact `xsl:element name="{name()}"` and `name="{name(.)}"`
   forms now retain the instruction's static namespace context and resolve the
   context node's lexical QName at execution. Seven cases leave the generic
@@ -2381,27 +2381,27 @@ maintained redistributable legacy suite becomes available.
   reports runtime `XTDE0830` for a source prefix unavailable in that static
   context. The exact lower bound remains 1,565, and arbitrary name/namespace
   AVTs remain unsupported.
-  [Evidence](../Evidence/oasis-xslt10-context-name-computed-element-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-context-name-computed-element-2026-09-18.md)
 - 2026-09-18 -- Structurally complete `format-number()` calls now classify
   top-level arity before operand and picture capability. Four unchanged OASIS
   cases with zero, one, or four arguments move from generic `FXXP1009 /
   unsupported` to static `XPST0017 / invalid`; ten valid-arity unsupported
   cases remain explicit. Aggregate lifecycle and comparison counts are
   unchanged, including the 1,565 exact-result lower bound.
-  [Evidence](../Evidence/oasis-xslt10-format-number-arity-classification-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-format-number-arity-classification-2026-09-18.md)
 - 2026-09-18 -- Exact string-literal AVTs on `xsl:sort` `data-type` and
   `order` now fold into the existing typed sort plan at compilation. Two
   unchanged Microsoft cases advance to a later computed-name boundary, while
   one variable-valued Lotus order is now honestly unsupported instead of
   invalid. The net `FXST1044` frontier falls from 17 to 16; aggregate counts
   and the 1,565 exact lower bound remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-static-sort-control-avts-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-static-sort-control-avts-2026-09-18.md)
 - 2026-09-18 -- Static malformed `xsl:element` names now report structured
   `XTDE0820 / invalid` rather than masquerading as dynamic-name capability
   gaps. Ten unchanged OASIS cases leave `FXST1047`, reducing that frontier
   from 23 to 13; all survivors contain genuinely dynamic AVTs. Aggregate
   lifecycle counts and the 1,565 exact-result lower bound remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-static-computed-element-qname-errors-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-static-computed-element-qname-errors-2026-09-18.md)
 - 2026-09-18 -- An `xsl:element` name AVT containing exactly one admitted
   location path now lowers to a typed instruction, evaluates through the
   charged XPath owner, applies XSLT 1.0 first-node string conversion, and
@@ -2411,7 +2411,7 @@ maintained redistributable legacy suite becomes available.
   `Lotus/lre_lre08#1` raises the strict exact-result lower bound from 1,565 to
   1,566. Variable, composite, predicate/function, and dynamic-namespace forms
   remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-path-valued-computed-element-names-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-path-valued-computed-element-names-2026-09-18.md)
 - 2026-09-18 -- Exact static-text-plus-`position()` computed-element names now
   reuse the established sequence focus and the same private runtime `QName`
   resolver as path-valued names. The path and focus-position forms were
@@ -2420,28 +2420,28 @@ maintained redistributable legacy suite becomes available.
   case becomes exact, raising the strict lower bound from 1,566 to 1,567 and
   reducing `FXST1047` from 2 to 1; variable/path and general composite AVTs
   remain unsupported.
-  [Evidence](../Evidence/oasis-xslt10-focus-position-computed-element-name-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-focus-position-computed-element-name-2026-09-18.md)
 - 2026-09-18 -- Exact one-path XSLT 1.0 computed-attribute name AVTs now reuse
   the charged location-path evaluator and first-node string conversion, then
   apply attribute-specific runtime `QName` rules. Static namespace overrides
   are retained on the containing result element during compilation. Five cases
   leave `FXST1062`; two become exact, raising the lower bound from 1,567 to
   1,569, while the other three expose independent later boundaries.
-  [Evidence](../Evidence/oasis-xslt10-path-valued-computed-attribute-names-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-path-valued-computed-attribute-names-2026-09-18.md)
 - 2026-09-18 -- The private computed-attribute name plan now also admits exact
   `name()` / `name(.)` and one-expression string-literal AVTs. Two cases leave
   `FXST1062`: one reaches exact runtime `XTDE0855`, while the other reaches the
   independent result-attribute attachment boundary. Neither receives pass
   credit; the lower bound remains 1,569 and five variable-composition cases
   remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-context-and-literal-computed-attribute-names-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-context-and-literal-computed-attribute-names-2026-09-18.md)
 - 2026-09-18 -- Computed-attribute names made only from static text and
   unqualified variable references now reuse the existing invocation/global
   variable frame and attribute `QName` validator. The final five cases leave
   `FXST1062`, eliminating that frontier. They expose two empty-attribute-set
   errors, two UTF-16 serialization boundaries, and one correctly unbound local
   variable; no new pass is credited and the lower bound remains 1,569.
-  [Evidence](../Evidence/oasis-xslt10-variable-composed-computed-attribute-names-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-composed-computed-attribute-names-2026-09-18.md)
 - 2026-09-18 -- Bounded static `xsl:key` declarations now compile into
   immutable stylesheet-owned expanded names, match patterns, and `use` paths,
   compose across admitted module graphs, and participate in exact retained-
@@ -2450,7 +2450,7 @@ maintained redistributable legacy suite becomes available.
   three become exact, raising the lower bound from 1,569 to 1,572, while 85
   function-shaped lookup cases remain explicit pending invocation-owned index
   semantics.
-  [Evidence](../Evidence/oasis-xslt10-static-key-declaration-admission-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-static-key-declaration-admission-2026-09-18.md)
 - 2026-09-18 -- Literal-name/literal-value `key()` calls in the private
   `xsl:value-of` path now execute through a complete charged source scan. The
   scan reuses compiled key match/`use` semantics, composes same-name
@@ -2459,7 +2459,7 @@ maintained redistributable legacy suite becomes available.
   raising the strict lower bound from 1,572 to 1,585; an undeclared key reports
   runtime `XTDE1260`, while 11 dynamic/nonliteral forms remain explicit as
   `FXXP1023`. No index, cross-invocation retention, or new authority is added.
-  [Evidence](../Evidence/oasis-xslt10-literal-key-lookup-reference-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-literal-key-lookup-reference-2026-09-18.md)
 - 2026-09-18 -- The typed key-use plan now admits constant strings and
   `number(location-path)`, while finite source-free numeric lookup values reuse
   the exact arithmetic compiler. Two unchanged Lotus cases become exact,
@@ -2467,7 +2467,7 @@ maintained redistributable legacy suite becomes available.
   1,971 cases and execution reaches 1,868; expected-error accounting is
   unchanged. Dynamic values, node sets, unions, context-dependent arithmetic,
   and retained indexes remain outside the slice.
-  [Evidence](../Evidence/oasis-xslt10-static-atomic-key-values-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-static-atomic-key-values-2026-09-18.md)
 - 2026-09-18 -- The complete charged key scan now has one private node-
   selection owner shared by value conversion, `xsl:for-each`, and
   `xsl:apply-templates`. A focused oracle confirms additive declarations,
@@ -2475,76 +2475,76 @@ maintained redistributable legacy suite becomes available.
   consumers. Four unchanged cases become exact, raising the strict lower bound
   from 1,587 to 1,591; initialization reaches 1,979 and execution reaches
   1,875. No source-derived index or wider dynamic-key surface is admitted.
-  [Evidence](../Evidence/oasis-xslt10-key-node-selection-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-key-node-selection-2026-09-18.md)
 - 2026-09-18 -- `xsl:copy-of` now consumes the same private charged key node
   selection and the existing source deep-copy owner. The unchanged Lotus
   `copy30` case becomes exact, raising the lower bound from 1,591 to 1,592;
   initialization reaches 1,980 and execution reaches 1,876. No index,
   alternate copy semantics, or wider key grammar is introduced.
-  [Evidence](../Evidence/oasis-xslt10-key-copy-of-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-key-copy-of-2026-09-18.md)
 - 2026-09-18 -- The private key selection now applies exact positional
   predicates before an optional path tail: integer position,
   `position()=N`, `last()`, and `last()=position()`. Thirteen unchanged cases
   become exact, raising the lower bound from 1,592 to 1,605; initialization
   reaches 1,993 and execution reaches 1,889. General predicates and dynamic key
   arguments remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-positional-key-selection-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-positional-key-selection-2026-09-18.md)
 - 2026-09-18 -- A literal-name key lookup may now take a variable second
   argument. Atomic and temporary-tree values reuse the existing XSLT 1.0
   conversion owner; source-node-set values contribute every node string value.
   One Microsoft case becomes exact and one reaches an independent HTML
   indentation mismatch, raising the lower bound from 1,605 to 1,606 while two
   cases leave initialization failure. Dynamic key names remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-variable-key-values-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-variable-key-values-2026-09-18.md)
 - 2026-09-18 -- A literal-name key lookup may now take an existing typed
   context location path as its second argument. Every selected node string
   value participates in lookup. One Lotus case becomes exact and one Microsoft
   case reaches independent runtime `XTDE0410`, raising the lower bound from
   1,606 to 1,607 while two cases leave initialization failure. Arbitrary
   expressions and cross-document key context remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-context-path-key-values-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-context-path-key-values-2026-09-18.md)
 - 2026-09-18 -- The typed XSLT 1.0 `count()` value-expression consumer now
   reuses the same charged key node selector as the other admitted consumers.
   The unchanged Lotus `idkey15` case becomes exact, raising the strict lower
   bound from 1,607 to 1,608; initialization reaches 1,998 and execution reaches
   1,893. Key expressions in AVTs, conditions, sorting, unions, and match
   patterns remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-count-key-selection-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-count-key-selection-2026-09-18.md)
 - 2026-09-18 -- Literal-result AVTs may now compose optional static text with
   `generate-id(key(...))`, reusing the shared charged key selector and stable
   principal-source node identity. Focused matching and empty-selection cases
   pass. The two motivating Microsoft cases advance to an independent
   zero-argument `generate-id()` AVT boundary, so the lower bound remains 1,608.
   General function-valued AVTs remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-generated-key-identity-avt-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-generated-key-identity-avt-2026-09-18.md)
 - 2026-09-18 -- The ordered key selector now admits one exact literal
   attribute-equality predicate, resolves its QName statically, and charges each
   inspected source attribute. The unchanged composed-module Microsoft case
   becomes exact, raising the strict lower bound from 1,608 to 1,609;
   initialization reaches 1,999 and execution reaches 1,894. General key
   predicates remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-key-attribute-predicate-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-key-attribute-predicate-2026-09-18.md)
 - 2026-09-18 -- The private apply/for-each selection owner now unions up to
   eight already typed key lookups. Every alternative uses the charged reference
   scan before source document-order normalization and identity deduplication.
   The unchanged Lotus `select55` case becomes exact, raising the strict lower
   bound from 1,609 to 1,610; initialization reaches 2,000 and execution reaches
   1,895. Mixed key/path unions and retained indexes remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-key-union-selection-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-key-union-selection-2026-09-18.md)
 - 2026-09-18 -- XSLT 1.0 sort expressions may now reuse the shared charged key
   selector from each candidate's context and apply existing first-node string
   conversion before ordinary sort typing. The unchanged Lotus `idkey32` and
   `idkey33` cases become exact, raising the strict lower bound from 1,610 to
   1,612; initialization reaches 2,002 and execution reaches 1,897. No sort-
   specific index or general function evaluator is added.
-  [Evidence](../Evidence/oasis-xslt10-key-sort-selection-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-key-sort-selection-2026-09-18.md)
 - 2026-09-18 -- Structurally complete `key()` calls with any arity other than
   two now report `XPST0017 / invalid` before operand capability selection.
   Three unchanged Microsoft expected-error cases leave the generic unsupported
   frontier and report the precise static failure. They were already counted as
   observed errors, so the 1,612 exact lower bound and other totals remain
   unchanged. Nested and dynamic two-argument forms remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-key-arity-classification-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-key-arity-classification-2026-09-18.md)
 - 2026-09-18 -- A typed key lookup may now obtain its lookup values from
   another complete typed lookup under a compile-time nesting limit of four.
   Inner and outer reference scans remain independently charged and recursive
@@ -2552,7 +2552,7 @@ maintained redistributable legacy suite becomes available.
   `idkey21` case becomes exact, raising the strict lower bound from 1,612 to
   1,613; initialization reaches 2,003 and execution reaches 1,898. Dynamic key
   names and arbitrary nested expressions remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-nested-key-selection-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-nested-key-selection-2026-09-18.md)
 - 2026-09-18 -- A key name may now come from one unqualified variable
   reference. Its XSLT 1.0 string value is resolved as a lexical QName against
   immutable namespaces captured at the call site; invalid/unbound names report
@@ -2560,7 +2560,7 @@ maintained redistributable legacy suite becomes available.
   capacity-accounted. The unchanged Lotus `idkey25` case becomes exact, raising
   the strict lower bound from 1,613 to 1,614; initialization reaches 2,004 and
   execution reaches 1,899. Arbitrary dynamic-name expressions remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-variable-key-name-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-variable-key-name-2026-09-18.md)
 - 2026-09-18 -- The runtime key-name plan now also consumes typed XSLT 1.0
   `concat()` expressions made only from literals and unqualified variable
   references. The unchanged Microsoft `91727` case initializes and executes
@@ -2568,21 +2568,21 @@ maintained redistributable legacy suite becomes available.
   mismatch. Initialization reaches 2,005, execution reaches 1,900, and visible
   mismatches reach 215; the strict exact lower bound remains 1,614. General
   context-dependent dynamic-name expressions remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-concat-key-name-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-concat-key-name-2026-09-18.md)
 - 2026-09-18 -- Exact one-variable AVTs for `xsl:sort` `data-type` and `order`
   now retain typed variable controls and resolve them through charged XSLT 1.0
   string conversion once per sort invocation. The unchanged Lotus `sort32`
   and `sort33` cases become exact, raising the strict lower bound from 1,614 to
   1,616; initialization reaches 2,007 and execution reaches 1,902. General
   dynamic AVTs and language-sensitive collation remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-variable-sort-controls-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-variable-sort-controls-2026-09-18.md)
 - 2026-09-18 -- `xsl:for-each` over an invocation-owned source-node variable
   now retains sort keys and routes the node IDs through the ordinary stable,
   charged source sort. The unchanged Lotus `sort40` case becomes exact,
   raising the strict lower bound from 1,616 to 1,617; initialization reaches
   2,008 and execution reaches 1,903. Atomic-sequence sorting and a second
   evaluator are not admitted.
-  [Evidence](../Evidence/oasis-xslt10-variable-selection-sort-2026-09-18.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-variable-selection-sort-2026-09-18.md)
 - 2026-09-19 -- The typed key lookup now preserves `//tail` as a
   context-relative descendant path from every selected keyed node rather than
   accidentally lowering it as a document-rooted path. The unchanged Lotus
@@ -2590,7 +2590,7 @@ maintained redistributable legacy suite becomes available.
   from 1,617 to 1,618 and reducing visible mismatches from 215 to 214. Existing
   charged path evaluation, ordering, deduplication, and key ownership remain
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-key-descendant-tail-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-key-descendant-tail-2026-09-19.md)
 - 2026-09-19 -- `format-number()` variable operands now reuse the established
   charged XSLT 1.0 string conversion instead of seeing only local atomics and
   temporary trees. Seven unchanged Microsoft cases leave misleading unbound-
@@ -2598,7 +2598,7 @@ maintained redistributable legacy suite becomes available.
   one reaches its independent encoding boundary. `FXRT0002` falls from 20 to
   13 while the strict exact lower bound remains 1,618. The repair does not
   expand the bounded formatter or select arbitrary-precision representation.
-  [Evidence](../Evidence/oasis-xslt10-format-number-variable-conversion-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-format-number-variable-conversion-2026-09-19.md)
 - 2026-09-19 -- Literal-result AVTs now reuse the same charged XSLT 1.0
   variable string conversion, including global temporary trees and declared
   empty parameters, while retaining the AVT source location on failure. Five
@@ -2606,14 +2606,14 @@ maintained redistributable legacy suite becomes available.
   namespace-alias cases expose later comparison behavior. The strict lower
   bound rises from 1,618 to 1,619, successful execution reaches 1,908, and the
   `FXRT0002` frontier falls from 13 to 8.
-  [Evidence](../Evidence/oasis-xslt10-global-tree-variable-avts-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-global-tree-variable-avts-2026-09-19.md)
 - 2026-09-19 -- A typed XSLT 1.0 `contains($haystack,$needle)` plan now
   converts exactly two variable operands through the shared charged string-
   value owner. The unchanged Lotus `string56` case becomes exact, raising the
   strict lower bound from 1,619 to 1,620; initialization reaches 2,009 and
   execution reaches 1,909. Modern function conversion and broader argument
   shapes remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-variable-contains-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-contains-2026-09-19.md)
 - 2026-09-19 -- A content-built XSLT 1.0 variable containing exactly one
   `xsl:value-of` now retains the shared typed `ValueExpression` rather than a
   path-only subset, evaluates it with the current focus and lexical frame, and
@@ -2622,7 +2622,7 @@ maintained redistributable legacy suite becomes available.
   strict lower bound from 1,620 to 1,621; initialization reaches 2,010 and
   execution reaches 1,910. General sequence constructors and modern semantics
   remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-value-of-tree-expression-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-value-of-tree-expression-2026-09-19.md)
 - 2026-09-19 -- `sum($variable)` now requires an existing source-node variable
   and shares the charged node conversion, XPath numeric conversion,
   accumulation, and lexical formatting used by `sum(path)`. The unchanged,
@@ -2630,7 +2630,7 @@ maintained redistributable legacy suite becomes available.
   bound from 1,621 to 1,622; initialization reaches 2,011 and execution reaches
   1,911. Temporary-tree node-set conversion and modern function conversion are
   not widened.
-  [Evidence](../Evidence/oasis-xslt10-variable-sum-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-sum-2026-09-19.md)
 - 2026-09-19 -- The bounded XSLT 1.0 value compiler now composes streaming,
   charged `normalize-space()` over a source-node variable with the established
   Unicode-codepoint `translate()` implementation when both mapping operands
@@ -2638,14 +2638,14 @@ maintained redistributable legacy suite becomes available.
   strict lower bound from 1,622 to 1,623; initialization reaches 2,012 and
   execution reaches 1,912. Dynamic mapping operands and general nested calls
   remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-normalized-variable-translate-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-normalized-variable-translate-2026-09-19.md)
 - 2026-09-19 -- A typed path-translation plan now permits the search or
   replacement map to reuse the existing bounded XSLT 1.0 concat plan while
   retaining the smaller literal-only path. The unchanged Lotus `string138`
   and `string139` cases become exact, raising the strict lower bound from 1,623
   to 1,625; initialization reaches 2,014 and execution reaches 1,914. Dynamic
   function dispatch and non-path input values remain outside the slice.
-  [Evidence](../Evidence/oasis-xslt10-concatenated-translate-maps-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/expressions/oasis-xslt10-concatenated-translate-maps-2026-09-19.md)
 - 2026-09-19 -- `string($variable div $variable)` now selects a narrow XSLT
   1.0 double-division plan and emits the XPath lexical values for infinities
   and NaN without weakening the exact-rational evaluator's zero-divisor
@@ -2653,7 +2653,7 @@ maintained redistributable legacy suite becomes available.
   the required `Infinity`; initialization reaches 2,016 and execution reaches
   1,916. Both remain visibly blocked by the HTML comparator, so the strict
   exact lower bound remains 1,625.
-  [Evidence](../Evidence/oasis-xslt10-variable-division-string-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-division-string-2026-09-19.md)
 - 2026-09-19 -- Compiled decimal-format declarations now survive admitted
   module composition and specialize the whole program only after include/import
   merging. Dependency declarations bind principal calls and a principal
@@ -2662,7 +2662,7 @@ maintained redistributable legacy suite becomes available.
   become exact, bringing the current strict lower bound to 1,805, successful
   execution to 1,934, and initialization to 2,033; visible mismatches remain
   54. Same-name declarations contributed by separate includes remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-module-decimal-format-composition-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-module-decimal-format-composition-2026-09-19.md)
 - 2026-09-19 -- Local XSLT 1.0 content variables that exceed the compact
   static/value-only constructors now execute the ordinary instruction sequence
   into an invocation-owned temporary tree. Materialization preserves result
@@ -2672,7 +2672,7 @@ maintained redistributable legacy suite becomes available.
   become exact and three advance to honest later runtime frontiers, raising the
   strict lower bound to 1,811, successful execution to 1,940, and
   initialization to 2,042 while mismatches remain 54.
-  [Evidence](../Evidence/oasis-xslt10-local-sequence-temporary-tree-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-local-sequence-temporary-tree-2026-09-19.md)
 - 2026-09-19 -- An XSLT 1.0 computed attribute containing exactly one
   path-valued `xsl:copy-of` now reuses the ordinary charged location-path
   evaluator. Selected text and attribute nodes contribute their string values;
@@ -2681,7 +2681,7 @@ maintained redistributable legacy suite becomes available.
   become exact, raising the strict lower bound to 1,814, successful execution
   to 1,943, and initialization to 2,045 while mismatches remain 54. Modern
   computed-attribute sequence construction remains explicitly unsupported.
-  [Evidence](../Evidence/oasis-xslt10-copy-of-attribute-content-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-copy-of-attribute-content-2026-09-19.md)
 - 2026-09-19 -- The exact XSLT 1.0 boolean predicate
   `starts-with(translate(., literal, literal), literal)` now compiles to a
   typed compatibility plan over the current source node. It reuses the shared
@@ -2690,7 +2690,7 @@ maintained redistributable legacy suite becomes available.
   Microsoft `Miscellaneous__84430` case becomes exact, raising the strict lower
   bound to 1,815, successful execution to 1,944, and initialization to 2,046
   while mismatches and execution failures remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-context-translate-prefix-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/expressions/oasis-xslt10-context-translate-prefix-2026-09-19.md)
 - 2026-09-19 -- XSLT 1.0 variable/focus string composition now admits numeric
   EBV for `position() mod $variable` and `string-length($variable)`, together
   with variable/literal `contains()`, `starts-with()`, `substring-before()`,
@@ -2699,7 +2699,7 @@ maintained redistributable legacy suite becomes available.
   recursive table case becomes exact, raising the strict lower bound to 1,816,
   successful execution to 1,945, and initialization to 2,047 while mismatches
   and execution failures remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-variable-focus-string-composition-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-focus-string-composition-2026-09-19.md)
 - 2026-09-19 -- The source-free XSLT 1.0 form
   `string(number(decimal))` now performs its required IEEE-double conversion
   at compilation, retains the resulting XPath lexical string, and folds exact
@@ -2709,7 +2709,7 @@ maintained redistributable legacy suite becomes available.
   raising the strict lower bound to 1,817, successful execution to 1,946, and
   initialization to 2,048 while mismatches and execution failures remain
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-static-number-string-round-trip-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-static-number-string-round-trip-2026-09-19.md)
 - 2026-09-19 -- The exact XSLT 1.0 boolean path
   `child[@attribute=string($variable)]` now reuses shared variable string
   conversion and performs a charged scan of unqualified children and
@@ -2718,7 +2718,7 @@ maintained redistributable legacy suite becomes available.
   `namedtemplate07` case becomes exact, raising the strict lower bound to
   1,818, successful execution to 1,947, and initialization to 2,049 while
   mismatches and execution failures remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-child-attribute-variable-predicate-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-child-attribute-variable-predicate-2026-09-19.md)
 - 2026-09-19 -- The optional argument of `generate-id()` now normalizes to the
   current context-node selection in both value and identity-comparison plans.
   The zero-argument form reuses existing stable node identity, cardinality,
@@ -2727,7 +2727,7 @@ maintained redistributable legacy suite becomes available.
   strict lower bound to 1,819, successful execution to 1,948, and
   initialization to 2,050 while mismatches and execution failures remain
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-zero-argument-generate-id-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-zero-argument-generate-id-2026-09-19.md)
 - 2026-09-19 -- The exact XSLT 1.0 comparison `. = $variable` now applies
   node-set equality when the variable owns a source-node sequence. It compares
   controlled string values with any-match semantics and preserves runtime
@@ -2735,7 +2735,7 @@ maintained redistributable legacy suite becomes available.
   The unchanged Lotus `variable51` case becomes exact, raising the strict lower
   bound to 1,820, successful execution to 1,949, and initialization to 2,051
   while mismatches and execution failures remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-context-node-set-variable-comparison-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-context-node-set-variable-comparison-2026-09-19.md)
 - 2026-09-19 -- A structurally complete typed `key()` lookup used directly as
   an XSLT 1.0 conditional test now obtains its effective boolean value from the
   existing charged key selector. Non-empty and empty selections remain ordinary
@@ -2744,7 +2744,7 @@ maintained redistributable legacy suite becomes available.
   Lotus `impincl17` imported-key case becomes exact, raising the strict lower
   bound to 1,821, successful execution to 1,950, and initialization to 2,052
   while mismatches and execution failures remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-key-effective-boolean-value-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-key-effective-boolean-value-2026-09-19.md)
 - 2026-09-19 -- The exact XSLT 1.0 ancestor conditions
   `ancestor::*[@attribute='literal'][not(text())]` and
   `ancestor::*[positive-integer][@attribute]` now retain sequential-predicate
@@ -2753,7 +2753,7 @@ maintained redistributable legacy suite becomes available.
   to 1,822, successful execution to 1,951, and initialization to 2,053 while
   mismatches and execution failures remain unchanged. General predicate
   composition and modern admission remain open.
-  [Evidence](../Evidence/oasis-xslt10-sequential-ancestor-filters-2026-09-19.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-sequential-ancestor-filters-2026-09-19.md)
 - 2026-09-20 -- Three typed XSLT 1.0 plans now retain the expression-entry
   source node while same-name predicates establish candidate focus: combined
   descendant/following EBV, rooted descendant count, and rooted child
@@ -2762,7 +2762,7 @@ maintained redistributable legacy suite becomes available.
   to 1,953, and initialization to 2,055 while mismatches and execution failures
   remain unchanged. General composed `current()` and forward-compatible
   version policy remain open.
-  [Evidence](../Evidence/oasis-xslt10-current-name-predicates-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-current-name-predicates-2026-09-20.md)
 - 2026-09-20 -- XSLT 1.0 `current()/relative-path` value expressions now
   lower the relative suffix through the existing charged compatibility path
   plan rooted at the instruction source focus. The unchanged Lotus
@@ -2770,7 +2770,7 @@ maintained redistributable legacy suite becomes available.
   1,825, successful execution to 1,954, and initialization to 2,056 while
   mismatches and execution failures remain unchanged. Modern and generally
   composed `current()` expressions remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-current-rooted-relative-path-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-current-rooted-relative-path-2026-09-20.md)
 - 2026-09-20 -- One-child-step XSLT 1.0 sort keys may now use a local or global
   numeric variable as their positional predicate. The plan reuses the existing
   compatibility conversion and charged path semantics rather than adding a
@@ -2779,7 +2779,7 @@ maintained redistributable legacy suite becomes available.
   execution to 1,957, and initialization to 2,059 while mismatches and
   execution failures remain unchanged. Multi-step predicate focus and general
   dynamic sort expressions remain unsupported.
-  [Evidence](../Evidence/oasis-xslt10-variable-position-sort-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-variable-position-sort-2026-09-20.md)
 - 2026-09-20 -- XSLT 1.0 apply/for-each selection now admits the exact
   `$path[$pos]` form over an invocation-owned source-node sequence and a local
   or global numeric variable. Selection is typed, work-charged, non-mutating,
@@ -2787,7 +2787,7 @@ maintained redistributable legacy suite becomes available.
   unchanged Lotus `variable52` case becomes exact, raising the strict lower
   bound to 1,829, successful execution to 1,958, and initialization to 2,060
   while mismatches and execution failures remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-variable-sequence-position-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-sequence-position-2026-09-20.md)
 - 2026-09-20 -- The invocation-owned source-node sequence and numeric-variable
   compatibility semantics now compose inside the exact
   `concat($series[number($pos)], ...)` value form and the
@@ -2797,7 +2797,7 @@ maintained redistributable legacy suite becomes available.
   raising the strict lower bound to 1,830, successful execution to 1,959, and
   initialization to 2,061 while mismatches and execution failures remain
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-variable-position-composition-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-position-composition-2026-09-20.md)
 - 2026-09-20 -- Global XSLT 1.0 variables and parameters now normalize QName
   declarations and direct references to the compiler's existing expanded-name
   key. Prefix aliases for one namespace therefore resolve without runtime
@@ -2806,7 +2806,7 @@ maintained redistributable legacy suite becomes available.
   initialization to 2,065 while mismatches and execution failures remain
   unchanged. Qualified variables embedded in broader path expressions remain
   an explicit frontier.
-  [Evidence](../Evidence/oasis-xslt10-global-variable-qnames-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-global-variable-qnames-2026-09-20.md)
 - 2026-09-20 -- QName-named source-node variables may now root an admitted
   relative XSLT 1.0 child path through the existing charged
   `SourceVariablePath` plan. Namespace aliases resolve to the canonical
@@ -2815,7 +2815,7 @@ maintained redistributable legacy suite becomes available.
   strict lower bound to 1,836, successful execution to 1,965, and
   initialization to 2,067 while mismatches and execution failures remain
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-qualified-variable-rooted-paths-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-qualified-variable-rooted-paths-2026-09-20.md)
 - 2026-09-20 -- Direct XSLT 1.0 apply/for-each selection of a QName-named
   global variable or parameter now resolves to the same canonical expanded-name
   key and existing invocation-owned `VariableSequence` plan. Five unchanged
@@ -2823,7 +2823,7 @@ maintained redistributable legacy suite becomes available.
   successful execution to 1,970, and initialization to 2,072 while mismatches
   and execution failures remain unchanged. Qualified local declarations and
   arbitrary qualified-variable expressions remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-qualified-variable-sequence-selection-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-qualified-variable-sequence-selection-2026-09-20.md)
 - 2026-09-20 -- Local XSLT 1.0 variable declarations now normalize QName names
   to the same compile-time expanded-name key used by direct references. The key
   enters the existing invocation-local copy-on-write frame; runtime namespace
@@ -2831,7 +2831,7 @@ maintained redistributable legacy suite becomes available.
   case becomes exact, raising the strict lower bound to 1,842, successful
   execution to 1,971, and initialization to 2,073 while mismatches and
   execution failures remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-local-variable-qnames-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-local-variable-qnames-2026-09-20.md)
 - 2026-09-20 -- Template parameter declarations and supplied argument names now
   normalize to the same expanded-name key, and apply-style invocations reuse
   the bounded content-argument constructor already exercised by named-template
@@ -2839,7 +2839,7 @@ maintained redistributable legacy suite becomes available.
   lower bound to 1,846, successful execution to 1,975, and initialization to
   2,077 while mismatches and execution failures remain unchanged. The
   missing-name error remains explicitly invalid.
-  [Evidence](../Evidence/oasis-xslt10-template-argument-qnames-and-content-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-template-argument-qnames-and-content-2026-09-20.md)
 - 2026-09-20 -- A bounded XSLT 1.0 template-argument instruction constructor
   now executes through the ordinary instruction engine with the complete
   caller context and materializes its charged result as an invocation-owned
@@ -2847,7 +2847,7 @@ maintained redistributable legacy suite becomes available.
   exact, raising the strict lower bound to 1,847, successful execution to
   1,976, and initialization to 2,078 while mismatches and execution failures
   remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-nested-template-argument-constructor-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-nested-template-argument-constructor-2026-09-20.md)
 - 2026-09-20 -- The XSLT 1.0 computed-attribute fallback now retains a bounded
   ordinary instruction sequence and concatenates only its top-level text
   results. Direct and dynamically produced non-text nodes follow the legacy
@@ -2858,7 +2858,7 @@ maintained redistributable legacy suite becomes available.
   initialization to 2,079 while mismatches and execution failures remain
   unchanged. All eleven sibling `FXST1033` observations advance visibly to
   their next distinct frontiers.
-  [Evidence](../Evidence/oasis-xslt10-computed-attribute-sequence-constructor-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-computed-attribute-sequence-constructor-2026-09-20.md)
 - 2026-09-20 -- XSLT 1.0 processing-instruction content may now retain a
   bounded ordinary instruction sequence and execute with the complete dynamic
   context. Only top-level text results contribute data; direct non-text
@@ -2866,7 +2866,7 @@ maintained redistributable legacy suite becomes available.
   space. The modern static context remains unchanged. Initialization reaches
   2,083, successful execution 1,981, and the exact lower bound 1,851 while
   mismatches and execution failures remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-processing-instruction-sequence-constructor-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-processing-instruction-sequence-constructor-2026-09-20.md)
 - 2026-09-20 -- XSLT 1.0 comment content now uses the same bounded ordinary
   instruction sequence and top-level-text projection as adjacent legacy
   constructors, followed by comment-specific delimiter recovery. Four
@@ -2874,14 +2874,14 @@ maintained redistributable legacy suite becomes available.
   execution 1,986, and the exact lower bound 1,855; newly exposed behavior also
   makes one additional execution failure and one mismatch visible rather than
   hiding either behind the former compile frontier.
-  [Evidence](../Evidence/oasis-xslt10-comment-sequence-constructor-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-comment-sequence-constructor-2026-09-20.md)
 - 2026-09-20 -- Source and temporary `xsl:copy` now use the same private
   result-element assembly rule as literal/computed elements. Body-produced
   attributes are absorbed before children; duplicate, late, and escaping
   attributes retain `XTDE0410`. This shared defect repair makes twelve
   unchanged OASIS cases exact, raising successful execution to 1,998 and the
   strict lower bound to 1,867 while reducing execution failures to 91.
-  [Evidence](../Evidence/oasis-xslt10-shallow-copy-body-attributes-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-shallow-copy-body-attributes-2026-09-20.md)
 - 2026-09-20 -- XSLT 1.0 attribute, copy, and copy-of plans now compile-select
   a private recoverable pending-attribute state. Attributes still attach
   normally before child content; only unattached or late results are omitted,
@@ -2890,13 +2890,13 @@ maintained redistributable legacy suite becomes available.
   1,872 (59.00%) while reducing execution failures to 86. Correct recognition
   of attribute-only source copy-of ordering advances Lotus `copy40` to the
   narrower `FXXP1012` frontier without counting it as a pass.
-  [Evidence](../Evidence/oasis-xslt10-result-attribute-recovery-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-result-attribute-recovery-2026-09-20.md)
 - 2026-09-20 -- The XSLT 1.0 source-copy attribute slice now lowers an
   admitted `xsl:value-of` location path into the shared typed first-node
   string-value plan. Lotus `copy40` becomes exact, raising initialization to
   2,090, successful execution to 2,004, and the strict lower bound to 1,873
   (59.03%) while execution failures and mismatches remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-source-copy-path-attribute-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-source-copy-path-attribute-2026-09-20.md)
 - 2026-09-20 -- A global XSLT 1.0 variable whose sole constructor is
   `xsl:copy-of select="/"` now retains only that typed path in compiled state.
   Every invocation materializes a fresh, charged temporary copy of its own
@@ -2905,7 +2905,7 @@ maintained redistributable legacy suite becomes available.
   `copy60` become exact, raising initialization to 2,092, successful execution
   to 2,006, and the strict lower bound to 1,875 (59.09%) while execution
   failures and mismatches remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-global-source-copy-temporary-tree-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-global-source-copy-temporary-tree-2026-09-20.md)
 - 2026-09-20 -- Static global temporary trees now retain ordered typed node
   roots rather than requiring every root to be an element. This reuses the
   existing static child representation, preserves interleaved literal text,
@@ -2914,7 +2914,7 @@ maintained redistributable legacy suite becomes available.
   initialization to 2,093, successful execution to 2,007, and the strict lower
   bound to 1,876 (59.12%) while execution failures and mismatches remain
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-mixed-root-static-temporary-tree-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-mixed-root-static-temporary-tree-2026-09-20.md)
 - 2026-09-20 -- Bounded XSLT 1.0 global temporary text constructors now retain
   ordered literal/direct-global parts, and every referenced expanded-name key
   participates in the existing topological ordering and cycle detector. One
@@ -2923,7 +2923,7 @@ maintained redistributable legacy suite becomes available.
   error reaches its unbound dependency at execution, while one valid case
   exposes a separate local-shadowing defect. Initialization reaches 2,096,
   successful execution 2,008, execution failures 88, and mismatches remain 55.
-  [Evidence](../Evidence/oasis-xslt10-global-text-part-dependencies-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-global-text-part-dependencies-2026-09-20.md)
 - 2026-09-20 -- Direct local-variable aliases now preserve the resolved value
   kind and consult a still-visible global binding before installing the local
   shadow. This includes temporary-tree globals while retaining their
@@ -2931,7 +2931,7 @@ maintained redistributable legacy suite becomes available.
   raising successful execution to 2,009 and the strict lower bound to 1,878
   (59.19%); execution failures fall to 87 while initialization and mismatches
   remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-same-name-local-global-alias-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-same-name-local-global-alias-2026-09-20.md)
 - 2026-09-20 -- The bounded global temporary-text plan now admits compiled
   source location paths alongside literal and direct-global parts. Paths are
   evaluated from each invocation's principal document with first-node XSLT
@@ -2939,14 +2939,14 @@ maintained redistributable legacy suite becomes available.
   variants expose their later template-argument boundary. Initialization
   reaches 2,097, successful execution 2,010, and the strict lower bound 1,879
   (59.22%); execution failures and mismatches remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-global-source-path-text-parts-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-global-source-path-text-parts-2026-09-20.md)
 - 2026-09-20 -- XSLT 1.0 `string($variable)` template arguments now reuse the
   shared controlled variable-string conversion instead of introducing a
   template-call-only coercion path. Both unchanged Lotus `variable65` cases
   become exact, raising initialization to 2,099, successful execution to
   2,012, and the strict lower bound to 1,881 (59.28%); execution failures and
   mismatches remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-variable-string-template-arguments-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-string-template-arguments-2026-09-20.md)
 - 2026-09-20 -- A bounded global conditional-text plan now represents one
   direct-variable string comparison with static text branches. Global
   dependency ordering is repeated after included modules merge, preserving
@@ -2954,7 +2954,7 @@ maintained redistributable legacy suite becomes available.
   materialization. Unchanged Lotus `variable70` becomes exact, raising
   initialization to 2,100, successful execution to 2,013, and the strict lower
   bound to 1,882 (59.31%); execution failures and mismatches remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-included-global-conditional-text-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-included-global-conditional-text-2026-09-20.md)
 - 2026-09-20 -- A global XSLT 1.0 temporary-text constructor containing one
   parameter-free call to a same-module named template may now lower to the
   existing typed plan when that template contains exactly one direct-global
@@ -2963,7 +2963,7 @@ maintained redistributable legacy suite becomes available.
   execution. Unchanged Lotus `variable31` becomes exact, raising initialization
   to 2,101, successful execution to 2,014, and the strict lower bound to 1,883
   (59.34%); execution failures and mismatches remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-named-template-global-text-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-named-template-global-text-2026-09-20.md)
 - 2026-09-20 -- Sequential XSLT 1.0 local variables with string-literal
   initializers may now be compile-folded inside one global temporary-tree
   constructor. Later variable-only literal-result AVTs and direct-variable
@@ -2974,21 +2974,21 @@ maintained redistributable legacy suite becomes available.
   `Variables_GlobalVarHaveLocalVarDefinedWithin` becomes exact, raising
   initialization to 2,102, successful execution to 2,015, and the strict lower
   bound to 1,884 (59.38%); execution failures and mismatches remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-static-locals-global-tree-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-static-locals-global-tree-2026-09-20.md)
 - 2026-09-20 -- Static global temporary trees now admit explicit `xsl:text`
   through the ordinary text validator while preserving constructed-node order.
   The focused regression passes; the full OASIS counters remain unchanged at
   1,884 exact matches because no previously blocked unchanged case depends only
   on this shape. Escaping requests remain explicit rather than being silently
   folded.
-  [Evidence](../Evidence/oasis-xslt10-static-global-explicit-text-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-static-global-explicit-text-2026-09-20.md)
 - 2026-09-20 -- A typed XSLT 1.0 value plan now preserves the filter boundary
   in `(path)[$position]/suffix`: it evaluates the grouped node-set, applies the
   numeric-variable position, then navigates the suffix. Both unchanged
   Microsoft variable/parameter cases become exact. Initialization reaches
   2,104, successful execution 2,017, and the strict lower bound 1,886 (59.44%)
   while execution failures and mismatches remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-grouped-variable-position-path-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-grouped-variable-position-path-2026-09-20.md)
 - 2026-09-20 -- Untyped global `number(path)` now retains a source-dependent
   typed plan and materializes a double from the first selected node for each
   invocation. Direct-variable division, including an outer `string()`, is
@@ -2997,7 +2997,7 @@ maintained redistributable legacy suite becomes available.
   `Miscellaneous__84362` becomes exact. Initialization reaches 2,105,
   successful execution 2,018, and the strict lower bound 1,887 (59.47%) while
   execution failures and mismatches remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-global-number-path-and-variable-division-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-global-number-path-and-variable-division-2026-09-20.md)
 - 2026-09-20 -- Typed location-path predicates now distinguish an unqualified
   child node test from an operator-shaped token in the exact
   `child[NCName=integer]` and `child[*=integer]` forms. Runtime applies charged
@@ -3006,7 +3006,7 @@ maintained redistributable legacy suite becomes available.
   Initialization reaches 2,107, successful execution 2,020, and the strict
   lower bound 1,889 (59.53%); execution failures and mismatches remain
   unchanged, while generic `FXXP1001` initialization failures fall to 39.
-  [Evidence](../Evidence/oasis-xslt10-child-node-test-numeric-predicates-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-child-node-test-numeric-predicates-2026-09-20.md)
 - 2026-09-20 -- The shared path evaluator now admits the
   `following-sibling::text()` kind test with charged forward-axis traversal.
   Two unchanged preserve-space cases become exact; two strip-space cases now
@@ -3015,7 +3015,7 @@ maintained redistributable legacy suite becomes available.
   execution 2,022, execution failures 89, and the strict lower bound 1,891
   (59.60%); mismatches remain 55 and generic `FXXP1001` initialization
   failures fall to 35.
-  [Evidence](../Evidence/oasis-xslt10-following-sibling-text-kind-test-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-following-sibling-text-kind-test-2026-09-20.md)
 - 2026-09-20 -- Final path predicates now admit exact immediate-parent
   unqualified-attribute comparison with a string literal. Parent and attribute
   traversal remain invocation-owned and charged, and the parser does not admit
@@ -3023,7 +3023,7 @@ maintained redistributable legacy suite becomes available.
   Initialization reaches 2,112, successful execution 2,023, and the strict
   lower bound 1,892 (59.63%); execution failures and mismatches remain
   unchanged, while generic `FXXP1001` initialization failures fall to 34.
-  [Evidence](../Evidence/oasis-xslt10-parent-attribute-predicate-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-parent-attribute-predicate-2026-09-20.md)
 - 2026-09-20 -- The exact `.//NCName[$variable]` XSLT 1.0 value form now
   preserves the descendant abbreviation's per-parent child-step focus rather
   than filtering one flattened descendant result. Runtime uses bounded
@@ -3033,7 +3033,7 @@ maintained redistributable legacy suite becomes available.
   execution 2,024, and the strict lower bound 1,893 (59.66%); execution
   failures and mismatches remain unchanged, while generic `FXXP1001`
   initialization failures fall to 33.
-  [Evidence](../Evidence/oasis-xslt10-descendant-child-variable-position-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-descendant-child-variable-position-2026-09-20.md)
 - 2026-09-20 -- The shared location-path owner now validates name tests against
   the XML 1.0 Fifth Edition NCName character repertoire instead of imposing an
   ASCII-only restriction. Namespace and expanded-name behavior remain
@@ -3041,7 +3041,7 @@ maintained redistributable legacy suite becomes available.
   exact. Initialization reaches 2,115, successful execution 2,026, and the
   strict lower bound 1,895 (59.72%); execution failures and mismatches remain
   unchanged, while generic `FXXP1001` initialization failures fall to 31.
-  [Evidence](../Evidence/oasis-xslt10-unicode-name-tests-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-unicode-name-tests-2026-09-20.md)
 - 2026-09-20 -- Exactly two chained ordered comparisons over source-free
   literals may now fold only through the XSLT 1.0 path compiler. The first
   boolean result converts to `1` or `0` before the second comparison, preserving
@@ -3051,7 +3051,7 @@ maintained redistributable legacy suite becomes available.
   successful execution 2,029, and the strict lower bound 1,898 (59.82%);
   execution failures and mismatches remain unchanged, while generic
   `FXXP1001` initialization failures fall to 28.
-  [Evidence](../Evidence/oasis-xslt10-chained-relational-predicates-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-chained-relational-predicates-2026-09-20.md)
 - 2026-09-20 -- Grouped reverse-axis position paths now retain whether the
   predicate is inside the axis step or outside its grouped node-set. The former
   uses reverse proximity; the latter uses document order. Redundant enclosing
@@ -3060,7 +3060,7 @@ maintained redistributable legacy suite becomes available.
   execution 2,030, and the strict lower bound 1,899 (59.85%); execution
   failures and mismatches remain unchanged, while generic `FXXP1001`
   initialization failures fall to 27.
-  [Evidence](../Evidence/oasis-xslt10-grouped-reverse-axis-position-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-grouped-reverse-axis-position-2026-09-20.md)
 - 2026-09-20 -- The shared path owner now admits the standard predeclared
   `xml:lang` name as an expanded attribute in presence predicates and attribute
   steps. Runtime retains charged ancestor/attribute traversal and document
@@ -3069,7 +3069,7 @@ maintained redistributable legacy suite becomes available.
   execution 2,031, and the strict lower bound 1,900 (59.88%); execution
   failures and mismatches remain unchanged, while generic `FXXP1001`
   initialization failures fall to 26.
-  [Evidence](../Evidence/oasis-xslt10-xml-lang-expanded-attribute-path-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-xml-lang-expanded-attribute-path-2026-09-20.md)
 - 2026-09-20 -- Typed location-path predicates now admit a bounded
   child-element-only relative path inside `count()`, compared with one
   nonnegative integer literal. Runtime performs exact integer comparison,
@@ -3078,7 +3078,7 @@ maintained redistributable legacy suite becomes available.
   successful execution 2,032, and the strict lower bound 1,901 (59.91%);
   execution failures and mismatches remain unchanged, while generic
   `FXXP1001` initialization failures fall to 25.
-  [Evidence](../Evidence/oasis-xslt10-relative-element-count-predicate-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-relative-element-count-predicate-2026-09-20.md)
 - 2026-09-20 -- The shared path representation now retains an optional typed
   boolean predicate on an intermediate step, evaluated before later path
   navigation. Exact `count(ancestor::*)` comparisons use charged parent
@@ -3086,7 +3086,7 @@ maintained redistributable legacy suite becomes available.
   exact. Initialization reaches 2,122, successful execution 2,033, and the
   strict lower bound 1,902 (59.94%); execution failures and mismatches remain
   unchanged, while generic `FXXP1001` initialization failures fall to 24.
-  [Evidence](../Evidence/oasis-xslt10-intermediate-ancestor-count-predicate-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-intermediate-ancestor-count-predicate-2026-09-20.md)
 - 2026-09-20 -- A typed nested relative-path existence predicate now applies
   one admitted child path to nodes selected by another and short-circuits on
   the first nonempty inner result. It reuses charged child traversal and does
@@ -3095,7 +3095,7 @@ maintained redistributable legacy suite becomes available.
   2,123, successful execution 2,034, and the strict lower bound 1,903 (59.97%);
   execution failures and mismatches remain unchanged, while generic
   `FXXP1001` initialization failures fall to 23.
-  [Evidence](../Evidence/oasis-xslt10-nested-relative-path-existence-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-nested-relative-path-existence-2026-09-20.md)
 - 2026-09-20 -- Typed boolean path predicates now receive their owning step's
   original position and size, allowing admitted `position()` and `last()`
   operands inside short-circuit boolean composition without filter-then-
@@ -3103,7 +3103,7 @@ maintained redistributable legacy suite becomes available.
   reaches 2,124, successful execution 2,035, and the strict lower bound 1,904
   (60.01%); execution failures and mismatches remain unchanged, while generic
   `FXXP1001` initialization failures fall to 22.
-  [Evidence](../Evidence/oasis-xslt10-boolean-predicate-focus-position-2026-09-20.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-boolean-predicate-focus-position-2026-09-20.md)
 - 2026-09-23 -- Compilation now selects explicit XSLT 1.0 first-node plans for
   multi-node arguments to `name()`, `local-name()`, `namespace-uri()`,
   `string()`, and `normalize-space()`. The same modern plans retain zero-or-one
@@ -3112,7 +3112,7 @@ maintained redistributable legacy suite becomes available.
   string-value owner. Four unchanged Lotus cases become exact, raising the
   complete-catalog lower bound to 1,993 / 3,173 (62.81%) and reducing
   execution failures from 57 to 53.
-  [Evidence](../Evidence/oasis-xslt10-first-node-function-conversion-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-first-node-function-conversion-2026-09-23.md)
 - 2026-09-23 -- The compiled `xsl:number` instruction now records whether its
   stylesheet selected XSLT 1.0 compatibility. When a literal or context-item
   value converts to `NaN`, that path emits the original lexical string without
@@ -3121,7 +3121,7 @@ maintained redistributable legacy suite becomes available.
   raising the complete-catalog lower bound to 1,996 / 3,173 (62.91%) and
   reducing mismatches from 65 to 62. A proposed adjacent empty-number
   punctuation change was rejected after it regressed two Lotus cases.
-  [Evidence](../Evidence/oasis-xslt10-number-value-lexical-recovery-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-number-value-lexical-recovery-2026-09-23.md)
 - 2026-09-23 -- The XSLT 1.0 path entry point now selects one typed predicate
   for `../name = current()` (and its symmetric spelling), retaining the outer
   instruction context separately from each candidate's predicate focus.
@@ -3129,14 +3129,14 @@ maintained redistributable legacy suite becomes available.
   comparison; ordinary XPath and broader `current()` expressions remain
   unsupported. Unchanged Microsoft `XSLTFunctions__84421` becomes exact,
   raising the complete-catalog lower bound to 1,997 / 3,173 (62.94%).
-  [Evidence](../Evidence/oasis-xslt10-outer-current-parent-child-predicate-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-outer-current-parent-child-predicate-2026-09-23.md)
 - 2026-09-23 -- The same outer-context boundary now admits the adjacent
   `current() = .` string-value comparison as a separate zero-allocation typed
   predicate. Microsoft `BVTs_bvt083` advances from `XPST0003` initialization
   rejection to a visible whitespace/output mismatch; it receives no pass
   credit. The full sweep initializes 2,197 cases and executes 2,144, while the
   strict lower bound remains 1,997 / 3,173 (62.94%).
-  [Evidence](../Evidence/oasis-xslt10-outer-current-parent-child-predicate-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-outer-current-parent-child-predicate-2026-09-23.md)
 - 2026-09-23 -- A typed XSLT 1.0 sort-key plan now admits the bounded dynamic
   child-column idiom `./*[name(.) = $variable]` and its symmetric comparison.
   Execution resolves the normal invocation variable, charges child visits,
@@ -3144,7 +3144,7 @@ maintained redistributable legacy suite becomes available.
   the previous unsupported boundary. Unchanged Lotus `sort35` becomes exact,
   raising the complete-catalog lower bound to 1,998 / 3,173 (62.97%) without
   adding a mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-variable-child-name-sort-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-variable-child-name-sort-2026-09-23.md)
 - 2026-09-23 -- A typed XSLT 1.0 boolean plan now recognizes the bounded
   prior-descendant test `position() < $variable and name() = name(current())`.
   Execution preserves the outer current node, resolves the ordinary numeric
@@ -3152,7 +3152,7 @@ maintained redistributable legacy suite becomes available.
   unsupported. Unchanged Microsoft `Miscellaneous__84423` becomes exact,
   raising the lower bound to 1,999 / 3,173 (63.00%) without adding a mismatch
   or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-prior-descendant-current-name-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-prior-descendant-current-name-2026-09-23.md)
 - 2026-09-23 -- Composed the prior-descendant name family with invocation
   variables and the exact child sequence selected by
   `//*[name()=$variable]/*`. The unchanged, suite-doubt-annotated Microsoft
@@ -3161,7 +3161,7 @@ maintained redistributable legacy suite becomes available.
   successful execution 2,147 while the strict lower bound remains 1,999 /
   3,173 (63.00%). A later correction identifies per-parent predicate focus as
   the engine defect rather than attributing the result to the suite doubt.
-  [Evidence](../Evidence/oasis-xslt10-variable-name-sequence-predicates-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-name-sequence-predicates-2026-09-23.md)
 - 2026-09-23 -- Static XSLT 1.0 `key()` match patterns now reuse the declared
   key definitions, charged key-use/path evaluation, and the existing bounded
   invocation-owned document-rooted membership cache. Literal key name/value
@@ -3169,7 +3169,7 @@ maintained redistributable legacy suite becomes available.
   dynamic arguments and broader pattern grammar remain explicit boundaries.
   Six unchanged OASIS cases become exact, raising the sweep to 2,005 / 3,173
   (63.19%), with 2,206 initialized and 2,153 executed successfully.
-  [Evidence](../Evidence/oasis-xslt10-key-match-patterns-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-key-match-patterns-2026-09-23.md)
 - 2026-09-23 -- The shared typed path evaluator now admits the bounded nested
   predicate `Name[starts-with(@First,'J')]`: one unqualified child, one
   unqualified attribute, and one literal prefix, with charged document-order
@@ -3177,7 +3177,7 @@ maintained redistributable legacy suite becomes available.
   key-specific executor. Unchanged Lotus `idkey44` and `idkey45` become exact,
   raising the sweep to 2,007 / 3,173 (63.25%), with 2,208 initialized and 2,155
   executed successfully.
-  [Evidence](../Evidence/oasis-xslt10-nested-child-attribute-prefix-predicate-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-nested-child-attribute-prefix-predicate-2026-09-23.md)
 - 2026-09-23 -- Static XSLT 1.0 `key()` membership may now serve as an
   `xsl:number count` pattern. Compilation reuses the existing typed lookup;
   execution evaluates charged membership once per number-instruction
@@ -3186,7 +3186,7 @@ maintained redistributable legacy suite becomes available.
   Unchanged Lotus `numbering90` becomes exact, raising the sweep to 2,008 /
   3,173 (63.32%), with 2,209 initialized and 2,156 executed successfully.
   Modern XSLT retains the prior unsupported boundary.
-  [Evidence](../Evidence/oasis-xslt10-key-number-pattern-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-key-number-pattern-2026-09-23.md)
 - 2026-09-23 -- Computed element and attribute names now admit one typed
   XSLT 1.0 variable-rooted source path. The runtime accepts only source-node
   variables, uses charged path and string-value evaluation, and rejects a
@@ -3196,33 +3196,33 @@ maintained redistributable legacy suite becomes available.
   reaches 2,210, observed expected execution errors reach 29, and unexpected
   expected-error successes fall to six. Successful execution remains 2,156 and
   the strict lower bound remains 2,008 / 3,173 (63.32%).
-  [Evidence](../Evidence/oasis-xslt10-variable-rooted-computed-name-paths-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-variable-rooted-computed-name-paths-2026-09-23.md)
 - 2026-09-23 -- An unknown lexical `xsl:number/@level` now reports invalid
   `XTSE0020` instead of unsupported `FXST1048`. The unchanged Microsoft
   `Errors_err070` case already received expected-initialization-error credit,
   so the 2,008 / 3,173 (63.32%) strict lower bound is unchanged; the frontier
   now distinguishes invalid stylesheet input from missing numbering breadth.
-  [Evidence](../Evidence/oasis-xslt10-number-level-static-classification-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-number-level-static-classification-2026-09-23.md)
 - 2026-09-23 -- Proven-invalid resolved `format-number()` pictures now report
   dynamic `XTDE1310` rather than unsupported `FXRT1007`. Eleven cases move
   between frontier classes, reducing `FXRT1007` from 13 to 2; ten are catalog
   expected-error scenarios and the contradictory normal-scenario
   `specialCharInPattern` case remains uncredited. Conserved totals and the
   2,008 / 3,173 (63.32%) strict lower bound do not change.
-  [Evidence](../Evidence/oasis-xslt10-format-number-invalid-picture-classification-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-format-number-invalid-picture-classification-2026-09-23.md)
 - 2026-09-23 -- The last two `FXRT1007` runtime cases now preserve their real
   invalidity: a missing first `format-number()` argument is static
   `XPST0003`, while an empty variable-supplied decimal-format QName is dynamic
   `XTDE1280`. The unsupported execution frontier is eliminated without adding
   formatter breadth. Initialization becomes 2,209, successful execution stays
   2,156, and the strict lower bound remains 2,008 / 3,173 (63.32%).
-  [Evidence](../Evidence/oasis-xslt10-format-number-invalid-operands-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-format-number-invalid-operands-2026-09-23.md)
 - 2026-09-23 -- Unknown lexical `xsl:number/@letter-value` values now report
   invalid `XTSE0020`; valid but unimplemented numbering reinterpretations
   remain unsupported `FXST1049`. Unchanged Microsoft `Errors_err069` retains
   its expected-error credit, the `FXST1049` frontier falls from five cases to
   four, and the conserved counts remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-number-letter-value-static-classification-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-number-letter-value-static-classification-2026-09-23.md)
 - 2026-09-23 -- The exact XSLT 1.0 `xsl:number format="{$name}"` shape now
   compiles as a typed invocation-time plan. It reuses the existing charged
   variable string conversion and the same pure admitted-format parser as
@@ -3230,19 +3230,19 @@ maintained redistributable legacy suite becomes available.
   profiles remain static. Unchanged Lotus `namedtemplate12` raises the strict
   sweep to 2,009 / 3,173 exact matches with no new mismatch or execution
   failure.
-  [Evidence](../Evidence/oasis-xslt10-dynamic-number-format-parameter-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-dynamic-number-format-parameter-2026-09-23.md)
 - 2026-09-23 -- Statically known invalid effective `xsl:number` grouping
   values now report invalid `XTDE0030` instead of unsupported `FXST1051`.
   Unchanged Microsoft `Number_GroupingSeperatorShouldBe1Char` retains its
   expected-error credit, the unsupported frontier falls from two cases to one,
   and the conserved counts do not move.
-  [Evidence](../Evidence/oasis-xslt10-number-grouping-invalid-effective-value-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-number-grouping-invalid-effective-value-2026-09-23.md)
 - 2026-09-23 -- Invalid unqualified `xsl:sort/@data-type` effective values now
   report invalid `XTDE0030`, while syntactically valid prefixed extension names
   remain unsupported. Four unchanged expected-error cases retain their credit
   and eliminate the corpus-visible `FXST1044` frontier without changing the
   conserved counts or admitting extension comparison behavior.
-  [Evidence](../Evidence/oasis-xslt10-sort-data-type-invalid-effective-values-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-sort-data-type-invalid-effective-values-2026-09-23.md)
 - 2026-09-23 -- XSLT 1.0 `xsl:message` now compiles to a private typed
   instruction and records bounded invocation-owned message text without
   entering the principal result tree or selecting an ambient/public sink.
@@ -3252,7 +3252,7 @@ maintained redistributable legacy suite becomes available.
   matches (63.85%). Seventeen cases become exact, four terminating cases expose
   `XTMM9000`, one case reaches a later `xsl:apply-imports` context failure, and
   one empty-result indentation mismatch remains visible.
-  [Evidence](../Evidence/oasis-xslt10-invocation-owned-message-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-invocation-owned-message-2026-09-23.md)
 - 2026-09-23 -- Resolved XSLT 1.0 `format-number()` pictures now reject U+00A4
   CURRENCY SIGN with structured `XTDE1310`, preserving the Recommendation's
   pre-currency JDK 1.1 pattern boundary for literal, variable, and path-selected
@@ -3262,7 +3262,7 @@ maintained redistributable legacy suite becomes available.
   matches (63.82%), while unexpected expected-error successes fall from six to
   five. The remaining five were audited and are not treated as one missing
   engine feature.
-  [Evidence](../Evidence/oasis-xslt10-currency-picture-error-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-currency-picture-error-2026-09-23.md)
 - 2026-09-23 -- Local attribute sets now retain source-context string values
   and bounded variable-free sequence constructors for invocation-time
   evaluation. Compiled state remains immutable, lexical variable references
@@ -3272,7 +3272,7 @@ maintained redistributable legacy suite becomes available.
   initialized, 2,176 successfully executed, and 2,027 / 3,173 exact matches
   (63.88%); the remaining seven `FXST1065` cases were deferred to package-level
   composition and were subsequently closed by the static linker tranche.
-  [Evidence](../Evidence/oasis-xslt10-attribute-set-invocation-value-constructors-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-attribute-set-invocation-value-constructors-2026-09-23.md)
 - 2026-09-23 -- Select-based local variables now retain the existing typed
   XSLT 1.0 `concat()` plan as an atomic invocation binding. The evaluator
   resolves outer lexical variables through the current runtime frame, keeps
@@ -3281,7 +3281,7 @@ maintained redistributable legacy suite becomes available.
   `Variables_VariableWithinVariable` becomes exact; the sweep reaches 2,237
   initialized, 2,177 successfully executed, and 2,028 / 3,173 exact matches
   (63.91%) without another mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-local-concat-variable-binding-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-local-concat-variable-binding-2026-09-23.md)
 - 2026-09-23 -- Select-based local variables in the XSLT 1.0 compatibility
   path can now retain the existing typed `key()` lookup as an invocation-owned
   source-node binding. The compiled plan remains source-independent, no new
@@ -3290,7 +3290,7 @@ maintained redistributable legacy suite becomes available.
   `Keys_Bug76935` becomes exact; the sweep reaches 2,238 initialized, 2,178
   successfully executed, and 2,029 / 3,173 exact matches (63.95%) without
   another mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-local-key-variable-binding-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-local-key-variable-binding-2026-09-23.md)
 - 2026-09-23 -- XSLT 1.0 `contains()` can now compose two existing typed
   `concat()` operands, preserving their bounded argument count, invocation
   scope, source context, and work charging. This is not a general nested
@@ -3298,7 +3298,7 @@ maintained redistributable legacy suite becomes available.
   unsupported work. Unchanged Lotus `string_string57` becomes exact; the sweep
   reaches 2,239 initialized, 2,179 successfully executed, and 2,030 / 3,173
   exact matches (63.98%) without another mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-concat-contains-composition-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-concat-contains-composition-2026-09-23.md)
 - 2026-09-23 -- The existing typed XSLT 1.0 concat plan now preserves explicit
   `string($variable)` conversion and can cross a template-argument boundary.
   Runtime evaluation remains caller-focus and invocation-frame owned; compiled
@@ -3306,14 +3306,14 @@ maintained redistributable legacy suite becomes available.
   is introduced. Unchanged Lotus `variable_variable48` becomes exact; the
   sweep reaches 2,240 initialized, 2,180 successfully executed, and 2,031 /
   3,173 exact matches (64.01%) without another mismatch or execution failure.
-  [Evidence](../Evidence/oasis-xslt10-concat-variable-string-template-argument-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-concat-variable-string-template-argument-2026-09-23.md)
 - 2026-09-23 -- Qualified child paths can now retain trailing
   `preceding::text()` and `preceding-sibling::text()` steps through the shared
   reverse-axis evaluator and typed `count()` operation. Four unchanged
   Microsoft whitespace cases become exact; four more reach the deliberately
   separate `xml:space` stripping boundary. The sweep reaches 2,248 initialized,
   2,184 successfully executed, and 2,035 / 3,173 exact matches (64.13%).
-  [Evidence](../Evidence/oasis-xslt10-qualified-count-text-axes-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-qualified-count-text-axes-2026-09-23.md)
 - 2026-09-23 -- The shared template-priority value now compares bounded
   36-digit whole and 18-place fractional priorities exactly while remaining
   immutable, `Copy`, and allocation-free during dispatch. Five unchanged
@@ -3321,7 +3321,7 @@ maintained redistributable legacy suite becomes available.
   XSLT 1.0 binary-number rounding and is not used to weaken modern exact
   ordering. The sweep reaches 2,254 initialized, 2,190 successfully executed,
   and 2,040 / 3,173 exact matches (64.29%).
-  [Evidence](../Evidence/oasis-xslt10-bounded-exact-template-priority-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-bounded-exact-template-priority-2026-09-23.md)
 - 2026-09-23 -- Attribute-set compilation now separates module-local
   declaration compilation from package-level static linking. The linker
   validates the complete dependency graph, composes included and imported
@@ -3330,13 +3330,13 @@ maintained redistributable legacy suite becomes available.
   standard-result cases become exact and the seventh former `FXST1065` case
   reaches its expected static error. The sweep reaches 2,260 initialized,
   2,196 successfully executed, and 2,046 / 3,173 exact matches (64.48%).
-  [Evidence](../Evidence/oasis-xslt10-cross-module-attribute-set-linking-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-cross-module-attribute-set-linking-2026-09-23.md)
 - 2026-09-23 -- Exact strip-all whitespace views now derive inherited source
   `xml:space` preserve/default state without mutating prepared XDM. Twelve
   unchanged Microsoft cases leave `FXRT1014`; eight become exact while four
   expose separate indentation or CDATA-origin differences. The sweep reaches
   2,208 successful executions and 2,054 / 3,173 exact matches (64.73%).
-  [Evidence](../Evidence/oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-inherited-xml-space-stripping-2026-09-23.md)
 - 2026-09-23 -- Exact `xsl:strip-space` QNames now compile to immutable
   expanded-name policy and execute through both the complete safe reference and
   invocation-owned visibility view. Seventeen cases leave `FXST1043`; eight
@@ -3344,7 +3344,7 @@ maintained redistributable legacy suite becomes available.
   2,268 initialized, 2,216 successfully executed, and 2,062 / 3,173 exact
   matches (64.99%). Namespace wildcards, selective preservation, and
   declaration precedence remain explicit.
-  [Evidence](../Evidence/oasis-xslt10-exact-name-whitespace-stripping-2026-09-23.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-exact-name-whitespace-stripping-2026-09-23.md)
 - 2026-09-24 -- Exact preserve-only whitespace declarations now retain their
   expanded names without constructing an invocation view, and included
   declarations remain visible to mixed-policy rejection. The typed XSLT 1.0
@@ -3353,7 +3353,7 @@ maintained redistributable legacy suite becomes available.
   global temporary-tree constructor boundary. The sweep reaches 2,269
   initialized, 2,217 successfully executed, and 2,063 / 3,173 exact matches
   (65.02%).
-  [Evidence](../Evidence/oasis-xslt10-exact-preserve-and-first-text-length-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-exact-preserve-and-first-text-length-2026-09-24.md)
 - 2026-09-24 -- Bounded XSLT 1.0 global temporary trees may now retain typed
   source-path text nodes while materializing all source-derived values and tree
   identity inside each invocation. Stylesheet-constructor whitespace follows
@@ -3362,20 +3362,20 @@ maintained redistributable legacy suite becomes available.
   `Whitespaces__91427` become exact, while six doubt-annotated whitespace cases
   remain visible mismatches. The sweep reaches 2,278 initialized, 2,226
   successfully executed, and 2,066 / 3,173 exact matches (65.11%).
-  [Evidence](../Evidence/oasis-xslt10-source-valued-global-tree-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-source-valued-global-tree-2026-09-24.md)
 - 2026-09-24 -- Stylesheet dependency depth, module, byte, and resolution
   ceilings are now explicit inputs to the unstable workbench. The OASIS host
   selects a reviewed bounded closure while ordinary defaults remain narrow.
   All 21 former `FXRS0006` cases reach later dispositions and eight become
   exact, bringing the sweep to 2,286 initialized, 2,234 successfully executed,
   and 2,074 / 3,173 exact matches (65.36%).
-  [Evidence](../Evidence/oasis-xslt10-host-bounded-dependency-depth-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-host-bounded-dependency-depth-2026-09-24.md)
 - 2026-09-24 -- Untyped global defaults now reuse the existing bounded static
   `string()` folder before path parsing. Two unchanged Lotus deep-import cases
   become exact, bringing the sweep to 2,288 initialized, 2,236 successfully
   executed, and 2,076 / 3,173 exact matches (65.43%) without adding runtime
   expression machinery.
-  [Evidence](../Evidence/oasis-xslt10-static-string-global-defaults-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-static-string-global-defaults-2026-09-24.md)
 - 2026-09-24 -- Reinspection of Microsoft `Miscellaneous__84425` disproved the
   earlier doubt-based mismatch interpretation. The typed XSLT 1.0 evaluator had
   applied `position()` across the merged children of all matching parents;
@@ -3383,28 +3383,28 @@ maintained redistributable legacy suite becomes available.
   are combined. Correcting that focus makes the unchanged case exact, reduces
   mismatches to 76, and raises the strict lower bound to 2,077 / 3,173
   (65.46%) without changing initialization or execution totals.
-  [Evidence](../Evidence/oasis-xslt10-per-parent-step-predicate-focus-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-per-parent-step-predicate-focus-2026-09-24.md)
 - 2026-09-24 -- The existing outer-`current()` compatibility seam now composes
   lexical-name equality with one unqualified literal attribute filter during
   charged descendant traversal. Three unchanged Microsoft cases leave
   `FXXP1019` and become exact, bringing the sweep to 2,291 initialized, 2,239
   successfully executed, and 2,080 / 3,173 exact matches (65.55%). The typed
   plan remains unavailable to modern XPath.
-  [Evidence](../Evidence/oasis-xslt10-current-name-attribute-predicate-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-current-name-attribute-predicate-2026-09-24.md)
 - 2026-09-24 -- XSLT 1.0 sort keys now reuse the existing typed path-substring
   plan with charged first-node string conversion and XPath substring semantics.
   Unchanged Lotus `sort22` becomes exact, bringing the sweep to 2,292
   initialized, 2,240 successfully executed, and 2,081 / 3,173 exact matches
   (65.58%). Dynamic operands and locale-sensitive text ordering remain
   separate explicit boundaries.
-  [Evidence](../Evidence/oasis-xslt10-substring-sort-key-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-substring-sort-key-2026-09-24.md)
 - 2026-09-24 -- The bounded global temporary-text constructor now preserves
   earlier global references across interleaved static local declarations.
   Unchanged Lotus `variable67` becomes exact, bringing the sweep to 2,293
   initialized, 2,241 successfully executed, and 2,082 / 3,173 exact matches
   (65.62%). This admits only literal-valued locals and does not create a general
   constructor evaluator.
-  [Evidence](../Evidence/oasis-xslt10-global-constructor-local-scope-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-global-constructor-local-scope-2026-09-24.md)
 - 2026-09-24 -- Explicit priorities now use the XPath 1.0 IEEE-754 number
   domain only under XSLT 1.0 compatibility, while modern stylesheets retain
   bounded exact-decimal priority comparison. Unchanged Microsoft
@@ -3412,7 +3412,7 @@ maintained redistributable legacy suite becomes available.
   by later source order and becomes exact. Initialization remains 2,293,
   execution remains 2,241, XML mismatches fall from 76 to 75, and the exact
   lower bound rises to 2,083 / 3,173 (65.65%).
-  [Evidence](../Evidence/oasis-xslt10-double-precision-template-priority-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-double-precision-template-priority-2026-09-24.md)
 - 2026-09-24 -- Same-module strip/preserve declarations now retain a wildcard
   default plus disjoint exact-name overrides, preserving NameTest priority and
   later-declaration tie breaking in both safe whitespace representations.
@@ -3421,14 +3421,14 @@ maintained redistributable legacy suite becomes available.
   reaches 2,301 initialized, 2,249 executed, and 2,088 / 3,173 exact matches
   (65.81%). Namespace wildcards and general cross-module precedence remain
   explicit unsupported work.
-  [Evidence](../Evidence/oasis-xslt10-same-module-mixed-whitespace-policy-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-same-module-mixed-whitespace-policy-2026-09-24.md)
 - 2026-09-24 -- Namespace-wildcard whitespace NameTests now resolve prefixes to
   namespace identity during compilation and retain XSLT NameTest priority over
   the general wildcard while remaining below exact expanded names. Unchanged
   Lotus `whitespace07` eliminates `FXST1043`, bringing the sweep to 2,302
   initialized, 2,250 executed, and 2,089 / 3,173 exact matches (65.84%).
   General cross-module whitespace precedence remains unselected.
-  [Evidence](../Evidence/oasis-xslt10-namespace-wildcard-whitespace-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/namespaces/oasis-xslt10-namespace-wildcard-whitespace-2026-09-24.md)
 - 2026-09-24 -- Bounded include-only dependency graphs now compose every
   declaration occurrence in source order, including repeated references to one
   admitted identity. Four cases initialize and execute, two become exact, and
@@ -3436,13 +3436,13 @@ maintained redistributable legacy suite becomes available.
   sweep reaches 2,306 initialized, 2,254 executed, and 2,091 / 3,173 exact
   matches (65.90%). Mixed dependency graphs and broader import precedence
   remain explicit later work.
-  [Evidence](../Evidence/oasis-xslt10-repeated-include-composition-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-repeated-include-composition-2026-09-24.md)
 - 2026-09-24 -- Named decimal-format references now bind after bounded
   include/import composition rather than while each module is still isolated.
   Five unchanged number-format cases leave `FXST1092` and become exact. The
   sweep reaches 2,311 initialized, 2,259 executed, and 2,096 / 3,173 exact
   matches (66.06%) without adding runtime lookup or resource authority.
-  [Evidence](../Evidence/oasis-xslt10-cross-module-decimal-format-linking-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-cross-module-decimal-format-linking-2026-09-24.md)
 - 2026-09-24 -- XSLT 1.0 negative zero now selects the positive
   `format-number()` subpicture, while modern formatting retains the signed-zero
   distinction. Negative subpictures contribute affixes without replacing the
@@ -3450,7 +3450,7 @@ maintained redistributable legacy suite becomes available.
   picture affixes in both profiles. Unchanged Microsoft `testOn-0.00` becomes
   exact; mismatches fall from 78 to 77 and the sweep reaches 2,097 / 3,173
   exact matches (66.09%) with initialization and execution totals unchanged.
-  [Evidence](../Evidence/oasis-xslt10-format-number-negative-subpicture-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-format-number-negative-subpicture-2026-09-24.md)
 - 2026-09-24 -- Imported programs now retain complete host-bounded precedence
   depth, and sibling import branches receive disjoint bands derived from their
   compiled ranges rather than fixed shifts. Five unchanged Lotus deep-import
@@ -3458,7 +3458,7 @@ maintained redistributable legacy suite becomes available.
   reaches 2,316 initialized, 2,264 successfully executed, and 2,102 / 3,173
   exact matches (66.25%); execution failures and visible XML mismatches remain
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-deep-import-precedence-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-deep-import-precedence-2026-09-24.md)
 - 2026-09-24 -- Imported `omit-xml-declaration` now composes with the already
   admitted scalar output properties, and compiled global bindings retain
   private checked import precedence across include seams. One unchanged
@@ -3467,14 +3467,14 @@ maintained redistributable legacy suite becomes available.
   successfully executed, and 2,103 / 3,173 exact matches (66.28%); the newly
   exposed higher-binding self-reference boundary remains visible and
   uncredited.
-  [Evidence](../Evidence/oasis-xslt10-imported-output-and-global-precedence-2026-09-24.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-imported-output-and-global-precedence-2026-09-24.md)
 - 2026-09-25 -- An empty HTML output `version` now means unspecified only under
   XSLT 1.0 compatibility; modern stylesheets retain the lexical value for the
   existing serializer validation boundary. Unchanged Microsoft
   `Output__84306` eliminates the last `SESU0013` execution frontier. The sweep
   remains at 2,317 initialized, reaches 2,266 successfully executed, and
   reaches 2,104 / 3,173 exact matches (66.31%).
-  [Evidence](../Evidence/oasis-xslt10-empty-html-output-version-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-empty-html-output-version-2026-09-25.md)
 - 2026-09-25 -- The historical XSLT 1.0 `unicode` output-encoding label now
   reuses the bounded UTF-16 byte lane without widening modern encoding
   validation. Three unchanged Microsoft cases execute and expose pre-existing,
@@ -3482,7 +3482,7 @@ maintained redistributable legacy suite becomes available.
   also produces an existential XPath 1.0 boolean sort key; unchanged Microsoft
   `BVTs_bvt021` becomes exact. The sweep reaches 2,318 initialized, 2,270
   successfully executed, and 2,105 / 3,173 exact matches (66.34%).
-  [Evidence](../Evidence/oasis-xslt10-unicode-alias-and-boolean-sort-key-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-unicode-alias-and-boolean-sort-key-2026-09-25.md)
 - 2026-09-25 -- The private source-dependent global temporary-tree constructor
   now admits static comments and bounded `xsl:for-each` static text while
   retaining only stylesheet-derived state in the compiled program. Unchanged
@@ -3490,13 +3490,13 @@ maintained redistributable legacy suite becomes available.
   Its CDATA-adjacent stylesheet whitespace remains a visible XML mismatch, so
   the sweep reaches 2,319 initialized and 2,271 successfully executed while
   the strict lower bound remains 2,105 / 3,173 exact matches (66.34%).
-  [Evidence](../Evidence/oasis-xslt10-global-constructed-comment-and-for-each-text-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-global-constructed-comment-and-for-each-text-2026-09-25.md)
 - 2026-09-25 -- Zero-argument `generate-id()` in a literal result attribute now
   reuses the modern core's stable current source-node identity rather than
   introducing compatibility-only identity semantics. Two unchanged Microsoft
   key cases leave `FXST1031` and reach their source DTD prohibition at
   `FXXM0002`; the security boundary and all conserved totals remain unchanged.
-  [Evidence](../Evidence/oasis-shared-context-identity-avt-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-shared-context-identity-avt-2026-09-25.md)
 - 2026-09-25 -- A bounded local source-node variable path may now compare one
   unnamespaced candidate attribute to the lexical name of the outer XSLT 1.0
   `current()` node. The typed instruction retains source-node semantics and
@@ -3504,14 +3504,14 @@ maintained redistributable legacy suite becomes available.
   predicate focus with outer current focus. Two unchanged duplicated Microsoft
   entries become exact. The sweep reaches 2,321 initialized, 2,273 executed,
   and 2,107 / 3,173 exact matches (66.40%).
-  [Evidence](../Evidence/oasis-xslt10-current-name-variable-lookup-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-current-name-variable-lookup-2026-09-25.md)
 - 2026-09-25 -- The exact XSLT 1.0 AVT context expression
   `count(namespace::*)` now evaluates without exposing namespace nodes in the
   private XDM. Attribute and other non-element focuses report zero; element
   focuses count effective non-empty bindings plus implicit `xml`. Unchanged
   Lotus `axes129` becomes exact. The sweep reaches 2,322 initialized, 2,274
   executed, and 2,108 / 3,173 exact matches (66.44%).
-  [Evidence](../Evidence/oasis-xslt10-context-namespace-axis-count-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/namespaces/oasis-xslt10-context-namespace-axis-count-2026-09-25.md)
 - 2026-09-25 -- Attributes constructed inside `xsl:copy` now reuse the shared
   computed-attribute compiler, linker, materializer, duplicate recovery, and
   namespace-fixup path instead of a copy-only literal subset. Unchanged Lotus
@@ -3519,7 +3519,7 @@ maintained redistributable legacy suite becomes available.
   URI, an in-scope QName prefix, and a newly introduced namespace URI; all
   three initialize, execute, and compare exactly. The sweep reaches 2,325
   initialized, 2,277 executed, and 2,111 / 3,173 exact matches (66.53%).
-  [Evidence](../Evidence/oasis-xslt10-source-copy-computed-attributes-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-source-copy-computed-attributes-2026-09-25.md)
 - 2026-09-25 -- Path-valued XSLT 1.0 `xsl:number/@value` now converts the first
   selected source node through the charged shared path and string-value
   machinery. Unchanged Lotus `numbering79` initializes and executes, removing
@@ -3528,7 +3528,7 @@ maintained redistributable legacy suite becomes available.
   lexical pass-through policy, so it remains a visible mismatch. The sweep
   reaches 2,326 initialized and 2,278 executed while the strict lower bound
   remains 2,111 / 3,173 exact matches (66.53%).
-  [Evidence](../Evidence/oasis-xslt10-path-valued-number-conversion-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-path-valued-number-conversion-2026-09-25.md)
 - 2026-09-25 -- Static XSLT introspection now distinguishes the explicit 1.0
   compatibility profile's reported version from the modern core's `3.0`
   processor level. A forward-version `xsl:choose` may defer an unknown
@@ -3538,22 +3538,22 @@ maintained redistributable legacy suite becomes available.
   `1.1`/`1.2` expected text keeps them visibly uncredited. The sweep reaches
   2,328 initialized and 2,280 executed while the strict lower bound remains
   2,111 / 3,173 (66.53%).
-  [Evidence](../Evidence/oasis-xslt10-forward-compatible-static-branch-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-forward-compatible-static-branch-2026-09-25.md)
 - 2026-09-25 -- Modern location-path `xsl:value-of` now performs its standard
   sequence join using the effective separator; the typed XSLT 1.0 expression
   continues to convert only the first selected node. The newly executing
   archive case deliberately remains uncredited because its expected file
   records an XSLT 1.0 processor's forward-compatible handling of a declared
   `version="2.0"`, not the modern core behavior selected by FastXSLT.
-  [Evidence](../Evidence/oasis-modern-value-of-node-sequence-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-modern-value-of-node-sequence-2026-09-25.md)
 - 2026-09-25 -- Text-only global constructors now apply stylesheet whitespace
   rules, and the archival comparator recognizes two semantically empty XML
   results despite declaration-only serialization. Unchanged Microsoft
   `Text__78242` becomes exact without stripping whitespace from source
   documents. The sweep reaches 2,281 successful executions and 2,112 / 3,173
   exact matches (66.56%).
-  [Whitespace evidence](../Evidence/xslt10-text-only-global-constructor-whitespace-2026-09-25.md)
-  [Comparator evidence](../Evidence/oasis-xslt10-empty-result-xml-comparison-2026-09-25.md)
+  [Whitespace evidence](../Campaigns/oasis-xslt10/evidence/bindings/xslt10-text-only-global-constructor-whitespace-2026-09-25.md)
+  [Comparator evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-empty-result-xml-comparison-2026-09-25.md)
 - 2026-09-25 -- Requested XML indentation now separates adjacent top-level
   result elements without rewriting top-level text or mixed content. Six
   unchanged `914xx` whitespace cases add genuine exact matches. The complete
@@ -3561,44 +3561,44 @@ maintained redistributable legacy suite becomes available.
   parser-policy exclusion because it varies ambient MSXML source parsing that
   FastXSLT does not expose. The strict lower bound reaches 2,116 / 3,173
   (66.69%), with 72 visible mismatches and eight named policy exclusions.
-  [Evidence](../Evidence/oasis-xslt10-top-level-element-indentation-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-top-level-element-indentation-2026-09-25.md)
 - 2026-09-25 -- Three Microsoft HTML-output cases reference expected-result
   files containing only a UTF-8 byte-order mark despite necessarily non-empty
   transformations. They now retain a named unusable-reference-result exclusion
   rather than three misleading engine mismatches. The pass numerator remains
   2,116 / 3,173 (66.69%); visible mismatches fall to 69.
-  [Evidence](../Evidence/oasis-xslt10-unusable-html-reference-results-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-unusable-html-reference-results-2026-09-25.md)
 - 2026-09-25 -- Literal and location-path XSLT 1.0 `id()` calls now compile to
   a typed empty lookup under the no-DTD parser policy. Unchanged Xalan
   `idkey09` becomes exact while DTD-dependent siblings remain visibly bounded;
   the sweep reaches 2,329 initialized, 2,282 executed, and 2,117 / 3,173 exact
   matches (66.72%).
-  [Evidence](../Evidence/oasis-xslt10-id-without-typed-ids-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-id-without-typed-ids-2026-09-25.md)
 - 2026-09-25 -- Context `local-name()` sort keys now reuse expanded-name local
   parts and charged sort evaluation. The affected case reaches the separate
   namespace-node boundary, so the conserved totals remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-context-local-name-sort-key-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/sorting/oasis-xslt10-context-local-name-sort-key-2026-09-25.md)
 - 2026-09-25 -- Direct-variable XSLT 1.0 `substring()` now composes existing
   temporary-tree string conversion with the shared codepoint-aware substring
   evaluator. Unchanged Microsoft `RTF_RTF_to_string_substring_function`
   becomes exact, closing the three-case `XPath-Expression` category. The sweep
   reaches 2,330 initialized, 2,283 executed, and 2,118 / 3,173 exact matches
   (66.75%).
-  [Evidence](../Evidence/oasis-xslt10-temporary-tree-substring-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/expressions/oasis-xslt10-temporary-tree-substring-2026-09-25.md)
 - 2026-09-25 -- Ordered XSLT 1.0 comparison between one direct variable and one
   finite static decimal now reuses the established compatibility number
   conversion and shared XPath comparison. Unchanged Microsoft `BVTs_bvt008`
   and `BVTs_bvt062` execute recursive named-template and nested-output loops
   exactly. The sweep reaches 2,332 initialized, 2,285 executed, and 2,120 /
   3,173 exact matches (66.81%).
-  [Evidence](../Evidence/oasis-xslt10-variable-literal-numeric-comparison-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-variable-literal-numeric-comparison-2026-09-25.md)
 - 2026-09-25 -- XSLT 1.0 `xsl:value-of` now composes admitted qualified and
   unqualified location paths through the shared union evaluator, then applies
   first-node string conversion after document-order normalization and identity
   deduplication. Unchanged Microsoft `BVTs_bvt001` becomes exact. The sweep
   reaches 2,333 initialized, 2,286 executed, and 2,121 / 3,173 exact matches
   (66.85%).
-  [Evidence](../Evidence/oasis-xslt10-value-of-path-union-2026-09-25.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-value-of-path-union-2026-09-25.md)
 - 2026-09-26 -- A direct literal, non-empty `document()` call used by
   `xsl:copy-of` now resolves only from the invocation's immutable sealed
   snapshot, preserves host denial, and copies through the charged source-copy
@@ -3606,14 +3606,14 @@ maintained redistributable legacy suite becomes available.
   reaches 2,334 initialized, 2,287 executed, and 2,122 / 3,173 exact matches
   (66.88%). Dynamic references, alternate bases, empty references, and tails
   remain outside this bounded slice.
-  [Evidence](../Evidence/oasis-xslt10-literal-document-copy-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-literal-document-copy-2026-09-26.md)
 - 2026-09-26 -- The same sealed-resource `xsl:copy-of` path now admits one
   unprefixed `//name` descendant selection, preserving document order and the
   XPath 1.0 no-namespace name test. Lotus `mdocs10` leaves the compiler
   frontier, raising initialization to 2,335, then reports its
   catalog-undeclared sibling document as missing rather than acquiring ambient
   bytes. Exact matches remain 2,122 / 3,173 (66.88%).
-  [Evidence](../Evidence/oasis-xslt10-literal-document-copy-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-literal-document-copy-2026-09-26.md)
 - 2026-09-26 -- Direct literal external-document roots now execute through
   `xsl:apply-templates` and guarded `xsl:for-each` without exposing
   unqualified node identities. One unchanged Microsoft template-dispatch case
@@ -3622,7 +3622,7 @@ maintained redistributable legacy suite becomes available.
   and 2,123 / 3,173 exact matches (66.91%). Source-node variables, parameters,
   globals, and stylesheet whitespace filtering remain explicit guards until
   their multi-document semantics are qualified.
-  [Evidence](../Evidence/oasis-xslt10-literal-document-root-execution-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-literal-document-root-execution-2026-09-26.md)
 - 2026-09-26 -- Literal sealed-snapshot external-document execution now admits
   one element-child step, either `/*` or an unprefixed `/name`, for
   `xsl:apply-templates` and `xsl:for-each`. One unchanged Microsoft case becomes
@@ -3633,7 +3633,7 @@ maintained redistributable legacy suite becomes available.
   and 2,125 / 3,173 exact matches (66.97%); visible mismatches remain 69 and
   panics remain zero. The existing cross-document source-value guard remains
   in force.
-  [Evidence](../Evidence/oasis-xslt10-literal-document-child-execution-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-literal-document-child-execution-2026-09-26.md)
 - 2026-09-26 -- The bounded byte serializer now emits ISO-8859-2 from a fixed
   reviewed mapping with ordinary byte limits and work charging. Microsoft
   `Output__78221` moves from `SESU0007` to successful execution, but its
@@ -3642,7 +3642,7 @@ maintained redistributable legacy suite becomes available.
   sweep reaches 2,291 successful executions and 51 execution failures; exact
   matches remain 2,125 / 3,173 (66.97%), with four explicit unusable-reference
   exclusions.
-  [Evidence](../Evidence/oasis-xslt10-iso-8859-2-output-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-iso-8859-2-output-2026-09-26.md)
 - 2026-09-26 -- The five remaining successful cases cataloged as execution
   errors are now separately classified as unusable archival error
   expectations. Three carry suite-owned doubt text saying the Recommendation
@@ -3651,7 +3651,7 @@ maintained redistributable legacy suite becomes available.
   receive no pass credit, while unexplained expected-error successes fall from
   five to zero without changing engine behavior or the 2,125 / 3,173 (66.97%)
   exact lower bound.
-  [Evidence](../Evidence/oasis-xslt10-unusable-error-expectations-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-unusable-error-expectations-2026-09-26.md)
 - 2026-09-26 -- Three forward-version archival expectations now have explicit
   non-pass dispositions instead of remaining indistinguishable from engine
   mismatches. Microsoft `Namespace__78214` requires a genuine legacy XSLT 1.0
@@ -3662,7 +3662,7 @@ maintained redistributable legacy suite becomes available.
   from 69 to 66, unusable reference-result exclusions rise from four to six,
   and one legacy-processor-profile exclusion remains visible. No pass credit
   is awarded.
-  [Evidence](../Evidence/oasis-xslt10-forward-version-archival-dispositions-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-forward-version-archival-dispositions-2026-09-26.md)
 - 2026-09-26 -- Two Microsoft attribute-construction reference results now
   retain exact non-pass dispositions rather than encouraging incorrect
   character normalization. `Attributes__78365` replaces an explicit
@@ -3671,7 +3671,7 @@ maintained redistributable legacy suite becomes available.
   to spaces. Exact matches remain 2,125 / 3,173 (66.97%), visible mismatches
   fall from 66 to 64, and unusable reference-result exclusions rise from six
   to eight.
-  [Evidence](../Evidence/oasis-xslt10-unusable-attribute-whitespace-references-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-unusable-attribute-whitespace-references-2026-09-26.md)
 - 2026-09-26 -- Finite XSLT 1.0 `format-number()` inputs now format the
   IEEE-754 XPath `number` value rather than recovering precision from the
   original decimal lexical form. The modern formatter remains exact-decimal.
@@ -3679,7 +3679,7 @@ maintained redistributable legacy suite becomes available.
   70-digit value. The five archival formatter mismatches have additional
   independent differences, so the exact lower bound remains 2,125 / 3,173
   (66.97%) and no pass or exclusion is awarded.
-  [Evidence](../Evidence/oasis-xslt10-format-number-xpath-double-conversion-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-format-number-xpath-double-conversion-2026-09-26.md)
 - 2026-09-26 -- The five remaining Microsoft `format-number()` mismatches now
   retain named unusable-reference dispositions. Three ISO-8859-1 references
   encode U+2030 using Windows-code-page byte `0x89`; two replace U+FFFD and
@@ -3687,14 +3687,14 @@ maintained redistributable legacy suite becomes available.
   unrepresentable XML characters with numeric references. Exact matches remain
   2,125 / 3,173 (66.97%), visible mismatches fall from 64 to 59, and unusable
   reference-result exclusions rise from eight to 13.
-  [Evidence](../Evidence/oasis-xslt10-lossy-single-byte-format-number-references-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-lossy-single-byte-format-number-references-2026-09-26.md)
 - 2026-09-26 -- Microsoft `AVTs__77574` and `AVTs__77591` now retain named
   unusable-reference dispositions because their expected attribute values
   reconstruct physical source CRLF pairs after XML parsing must normalize
   them to LF. FastXSLT retains standard parsed-character semantics. Exact
   matches remain 2,125 / 3,173 (66.97%), visible mismatches fall from 59 to 57,
   and unusable reference-result exclusions rise from 13 to 15.
-  [Evidence](../Evidence/oasis-xslt10-avt-source-line-ending-references-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-avt-source-line-ending-references-2026-09-26.md)
 - 2026-09-26 -- Three Microsoft reference results now retain named non-pass
   dispositions rather than pressuring the engine to reproduce host-specific
   or source-invented text. `Include_RelUriTest5` rewrites a literal URI slash
@@ -3702,7 +3702,7 @@ maintained redistributable legacy suite becomes available.
   post-comment source line feed and add a space absent from the source tree.
   Exact matches remain 2,125 / 3,173 (66.97%), visible mismatches fall from 57
   to 54, and unusable reference-result exclusions rise from 15 to 18.
-  [Evidence](../Evidence/oasis-xslt10-literal-uri-and-source-string-references-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-literal-uri-and-source-string-references-2026-09-26.md)
 - 2026-09-26 -- Three Microsoft whitespace references now retain named
   non-pass dispositions. `BVTs_bvt029` relies on lexical CDATA delimiters as
   though they split XSLT text nodes; `Text__78272` and `Text__78275` use the
@@ -3710,7 +3710,7 @@ maintained redistributable legacy suite becomes available.
   literal markup and preserved whitespace. Exact matches remain 2,125 / 3,173
   (66.97%), visible mismatches fall from 54 to 51, and unusable
   reference-result exclusions rise from 18 to 21.
-  [Evidence](../Evidence/oasis-xslt10-stylesheet-text-boundary-references-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-stylesheet-text-boundary-references-2026-09-26.md)
 - 2026-09-26 -- Two doubt-annotated Microsoft comparisons now retain bounded
   non-pass dispositions. `BVTs_bvt085` replaces 1,000 requested supplementary
   Unicode characters with lossy ASCII question marks in its archival result;
@@ -3719,14 +3719,14 @@ maintained redistributable legacy suite becomes available.
   matches remain 2,125 / 3,173 (66.97%), visible mismatches fall from 51 to 49,
   host-parser-policy exclusions rise from eight to nine, and unusable-reference
   exclusions rise from 21 to 22.
-  [Evidence](../Evidence/oasis-xslt10-lossy-unicode-and-host-whitespace-references-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-lossy-unicode-and-host-whitespace-references-2026-09-26.md)
 - 2026-09-26 -- Microsoft `Number__84683` now retains a named unusable-reference
   disposition. Its expected result emits a lone formatting suffix for an empty
   number list, and the suite's own doubt record calls the periods spurious.
   FastXSLT retains the empty-string result. Exact matches remain 2,125 / 3,173
   (66.97%), visible mismatches fall from 49 to 48, and unusable-reference
   exclusions rise from 22 to 23.
-  [Evidence](../Evidence/oasis-xslt10-empty-number-list-reference-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-empty-number-list-reference-2026-09-26.md)
 - 2026-09-26 -- Four Microsoft output comparisons now retain bounded non-pass
   dispositions. `Output__77927`, `Output__77928`, and `Output__77939` depend on
   undeclared historical host-parser source-whitespace stripping;
@@ -3735,7 +3735,7 @@ maintained redistributable legacy suite becomes available.
   2,125 / 3,173 (66.97%), visible mismatches fall from 48 to 44,
   host-parser-policy exclusions rise from nine to 12, and unusable-reference
   exclusions rise from 23 to 24.
-  [Evidence](../Evidence/oasis-xslt10-output-whitespace-and-malformed-utf16-references-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-output-whitespace-and-malformed-utf16-references-2026-09-26.md)
 - 2026-09-26 -- Five additional Microsoft output comparisons now retain named
   non-pass dispositions. Four depend on undeclared host-parser removal of
   whitespace-only source nodes; `Output__78180` removes characters from
@@ -3743,7 +3743,7 @@ maintained redistributable legacy suite becomes available.
   matches remain 2,125 / 3,173 (66.97%), visible mismatches fall from 44 to 39,
   host-parser-policy exclusions rise from 12 to 16, and unusable-reference
   exclusions rise from 24 to 25.
-  [Evidence](../Evidence/oasis-xslt10-output-source-and-stylesheet-whitespace-references-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-output-source-and-stylesheet-whitespace-references-2026-09-26.md)
 - 2026-09-26 -- Seven Microsoft UTF-8 HTML-output references now retain named
   unusable-reference dispositions because they replace valid Japanese,
   Cyrillic, Latin Extended-A, and Tamil text with question marks or ASCII
@@ -3753,7 +3753,7 @@ maintained redistributable legacy suite becomes available.
   matches remain 2,125 / 3,173 (66.97%), visible mismatches fall from 39 to 31,
   host-parser-policy exclusions rise from 16 to 17, and unusable-reference
   exclusions rise from 25 to 32.
-  [Evidence](../Evidence/oasis-xslt10-lossy-html-uri-and-copy-references-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-lossy-html-uri-and-copy-references-2026-09-26.md)
 - 2026-09-26 -- Four Microsoft whitespace references now carry exact
   unusable-reference-result dispositions. Their archival results preserve or
   count whitespace solely because it originated inside lexical CDATA markup,
@@ -3761,7 +3761,7 @@ maintained redistributable legacy suite becomes available.
   resulting whitespace-only text node. The exact lower bound remains
   2,125 / 3,173 (66.97%); visible mismatches fall from 31 to 27 and unusable
   reference exclusions rise from 32 to 36.
-  [Evidence](../Evidence/oasis-xslt10-cdata-whitespace-reference-boundary-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-cdata-whitespace-reference-boundary-2026-09-26.md)
 - 2026-09-26 -- Four text-sort cases now carry an explicit
   host-collation-policy disposition because their default punctuation,
   whitespace, and sign ordering is implementation/environment dependent.
@@ -3770,7 +3770,7 @@ maintained redistributable legacy suite becomes available.
   order. Exact matches remain 2,125 / 3,173 (66.97%); visible mismatches fall
   from 27 to 22, four host-collation exclusions are added, and unusable
   reference exclusions rise from 36 to 37.
-  [Evidence](../Evidence/oasis-xslt10-text-sort-policy-and-bvt-reference-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-text-sort-policy-and-bvt-reference-2026-09-26.md)
 - 2026-09-26 -- Three Microsoft conflict-resolution results now carry
   host-parser-policy dispositions because their rule selection is correct and
   only an undeclared source-whitespace suffix differs. `ConflictResolution__77879`
@@ -3780,61 +3780,61 @@ maintained redistributable legacy suite becomes available.
   2,125 / 3,173 (66.97%); visible mismatches fall from 22 to 18,
   host-parser exclusions rise from 17 to 20, and unusable references rise from
   37 to 38.
-  [Evidence](../Evidence/oasis-xslt10-conflict-resolution-reference-dispositions-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-conflict-resolution-reference-dispositions-2026-09-26.md)
 - 2026-09-26 -- Four cases now carry explicit serialization-layout-policy
   dispositions. Their elements, expanded names, attributes, values, and HTML
   escaping agree with the intended semantics; only one historical processor's
   optional indentation text differs. The comparator is not weakened and no
   pass credit is awarded. Exact matches remain 2,125 / 3,173 (66.97%), visible
   mismatches fall from 18 to 14, and four layout-policy exclusions are added.
-  [Evidence](../Evidence/oasis-xslt10-serialization-layout-policy-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-serialization-layout-policy-2026-09-26.md)
 - 2026-09-26 -- Namespace declarations are now normalized and reference-decoded
   before their values become expanded-name namespaces. This repairs a parser
   adapter asymmetry between ordinary attributes and namespace resolution.
   Unchanged Microsoft `Elements__78364` becomes exact, raising the strict lower
   bound to 2,126 / 3,173 (67.00%) and reducing visible mismatches from 14 to 13.
-  [Evidence](../Evidence/oasis-xslt10-namespace-declaration-normalization-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/namespaces/oasis-xslt10-namespace-declaration-normalization-2026-09-26.md)
 - 2026-09-26 -- Microsoft `BVTs_bvt057` now carries an exact
   unusable-reference-result disposition. Its expected file resolves a literal
   result element into the computed attribute's conflicting namespace, while
   FastXSLT preserves both expanded names and allocates a distinct attribute
   prefix. Exact matches remain 2,126 / 3,173 (67.00%); visible mismatches fall
   from 13 to 12 and unusable references rise from 38 to 39.
-  [Evidence](../Evidence/oasis-xslt10-namespace-fixup-reference-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-namespace-fixup-reference-2026-09-26.md)
 - 2026-09-26 -- Microsoft `BVTs_bvt056` now carries a host-parser-policy
   disposition. Its empty stylesheet uses only the standard built-in template
   rules and declares no whitespace stripping, while the archival reference
   assumes whitespace-only source text nodes were removed before execution.
   Exact matches remain 2,126 / 3,173 (67.00%); visible mismatches fall from 12
   to 11 and host-parser exclusions rise from 20 to 21.
-  [Evidence](../Evidence/oasis-xslt10-built-in-template-host-whitespace-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-built-in-template-host-whitespace-2026-09-26.md)
 - 2026-09-26 -- Microsoft `BVTs_bvt091` now carries an exact
   unusable-reference-result disposition. Its stylesheet requests the context
   element's unnormalized XPath string-value, while the archival reference
   invents single-space separators at descendant element boundaries. Exact
   matches remain 2,126 / 3,173 (67.00%); visible mismatches fall from 11 to 10
   and unusable references rise from 39 to 40.
-  [Evidence](../Evidence/oasis-xslt10-bvt-string-value-reference-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-bvt-string-value-reference-2026-09-26.md)
 - 2026-09-26 -- Lotus `numbering_numbering79` and Microsoft `Number__84687`
   now carry exact XSLT 1.0 discretionary-policy dispositions. Their catalog or
   doubts metadata identifies the selected nonnumeric-number and single-level
   `from` behavior as discretionary or referred gray areas. FastXSLT retains
   its already verified compatibility choices. Exact matches remain 2,126 /
   3,173 (67.00%); visible mismatches fall from 10 to eight.
-  [Evidence](../Evidence/oasis-xslt10-discretionary-numbering-policy-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-discretionary-numbering-policy-2026-09-26.md)
 - 2026-09-26 -- Microsoft `Output_EntityRefInAttribHtml`, the final
   doubt-annotated XML mismatch, now carries a serialization-layout-policy
   disposition. Its attribute agrees after XML line normalization; only the
   archival serializer's added child newline differs. Exact matches remain
   2,126 / 3,173 (67.00%), visible mismatches fall from eight to seven, and
   layout-policy exclusions rise from four to five.
-  [Evidence](../Evidence/oasis-xslt10-html-attribute-line-layout-policy-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-html-attribute-line-layout-policy-2026-09-26.md)
 - 2026-09-26 -- Lotus `whitespace_whitespace17` now carries a
   serialization-layout-policy disposition. Its copied result tree is exact;
   only the optional horizontal indentation selected by `indent="yes"` differs.
   Exact matches remain 2,126 / 3,173 (67.00%), visible mismatches fall from
   seven to six, and layout-policy exclusions rise from five to six.
-  [Evidence](../Evidence/oasis-xslt10-copy-of-indentation-layout-policy-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-copy-of-indentation-layout-policy-2026-09-26.md)
 - 2026-09-26 -- Microsoft whitespace cases `91422`, `91423`, `91425`, `91428`,
   and `91453` now carry exact unusable-reference dispositions. The first four
   require CDATA-origin distinctions absent from XDM and are mutually
@@ -3842,7 +3842,7 @@ maintained redistributable legacy suite becomes available.
   principal/import precedence declared by its own stylesheet. Exact matches
   remain 2,126 / 3,173 (67.00%); visible mismatches fall from six to one and
   unusable references rise from 40 to 45.
-  [Evidence](../Evidence/oasis-xslt10-whitespace-reference-inconsistencies-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-whitespace-reference-inconsistencies-2026-09-26.md)
 - 2026-09-26 -- Microsoft `Elements__78362`, the final visible XML mismatch,
   now carries an exact unusable-reference disposition. Its comment and PI
   bodies deliberately create forbidden non-text nodes, making the selected
@@ -3850,45 +3850,45 @@ maintained redistributable legacy suite becomes available.
   regressed three exact cases and was fully rolled back. Exact matches remain
   2,126 / 3,173 (67.00%); visible mismatches reach zero and unusable references
   rise from 45 to 46.
-  [Evidence](../Evidence/oasis-xslt10-constructor-recovery-reference-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-constructor-recovery-reference-2026-09-26.md)
 - 2026-09-26 -- The OASIS comparator now admits an exact normalized lexical
   fallback for catalog cases whose text or HTML result is byte-identical to the
   archival reference but is not an XML document or fragment. Six identities
   become explicitly reported lexical passes; the strict lower bound rises to
   2,132 / 3,173 (67.19%), comparator gaps fall from 77 to 71, and visible XML
   mismatches remain zero.
-  [Evidence](../Evidence/oasis-xslt10-exact-non-xml-result-comparison-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-exact-non-xml-result-comparison-2026-09-26.md)
 - 2026-09-26 -- Two Microsoft text-output cases now use a bounded OASIS-only
   comparison for XML-declaration-prefixed archival wrappers. The raw transform
   text is compared with the parsed wrapper string-value; declaration-free text
   references retain the prior path. The strict lower bound reaches 2,134 /
   3,173 (67.25%), comparator gaps fall from 71 to 69, and visible mismatches
   remain zero.
-  [Evidence](../Evidence/oasis-xslt10-xml-wrapped-text-reference-comparison-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-xml-wrapped-text-reference-comparison-2026-09-26.md)
 - 2026-09-26 -- Standard-operation frontiers are now ranked independently from
   catalog expected-error observations. Source `FXXM0002` cases additionally
   separate DTD-forbidden, non-UTF-8, and other XML input pressure so parser
   policy cannot masquerade as one missing XSLT feature.
-  [Evidence](../Evidence/oasis-xslt10-standard-operation-frontiers-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-standard-operation-frontiers-2026-09-26.md)
 - 2026-09-26 -- Literal `document('...')` value paths now reuse sealed-snapshot
   resolution, invocation-local preparation, stylesheet whitespace views, and
   typed path evaluation. The focused primitive is verified but earns no new
   OASIS pass: the archival cases require cross-document globals or unions, so
   that ownership boundary remains explicit.
-  [Evidence](../Evidence/oasis-xslt10-literal-document-value-path-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-literal-document-value-path-2026-09-26.md)
 - 2026-09-26 -- Microsoft `Output__84010` and `Output__84015` are named
   historical host-parser-whitespace policy exclusions. Both expected outputs
   omit whitespace that their built-in-template execution observes from the
   archival source. Comparator gaps fall from 69 to 67 and host-parser-policy
   exclusions rise from 21 to 23; exact credit remains 2,134 / 3,173 (67.25%).
-  [Evidence](../Evidence/oasis-xslt10-text-built-in-host-whitespace-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-text-built-in-host-whitespace-2026-09-26.md)
 - 2026-09-26 -- The complete 431-case catalog expected-error denominator is now
   conserved independently from result comparisons. Structured initialization
   and execution failures earn 423 credits (98.14%); five unusable archival
   error expectations and three missing archive inputs remain explicit
   exclusions. The measurement asserts the conservation equation and retains
   zero unexplained expected-error successes.
-  [Evidence](../Evidence/oasis-xslt10-expected-error-denominator-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-expected-error-denominator-2026-09-26.md)
 - 2026-09-26 -- The OASIS adapter now maps historical `file:` and absolute URI
   stylesheet references to bounded same-case archive bytes for standard
   operations only. Six cases become exact, one reports a structured local ASP
@@ -3896,14 +3896,14 @@ maintained redistributable legacy suite becomes available.
   missing-resource disposition. The sweep reaches 2,140 / 3,173 exact matches
   (67.44%), 2,348 initialized cases, and 2,297 successful executions while expected-error
   conservation remains unchanged.
-  [Evidence](../Evidence/oasis-xslt10-historical-uri-catalog-mapping-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-historical-uri-catalog-mapping-2026-09-26.md)
 - 2026-09-26 -- Literal sealed-document selection now supports charged,
   document-order `document('...')//unqualified-name` template dispatch with
   external focus, parameters, and the compiled whitespace view. Unchanged Lotus
   `mdocs01` becomes exact while `mdocs11` exposes a later missing-resource
   boundary. The sweep reaches 2,141 / 3,173 exact matches (67.48%), 2,350
   initialized cases, and 2,298 successful executions with zero mismatches.
-  [Evidence](../Evidence/oasis-xslt10-literal-document-descendant-dispatch-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-literal-document-descendant-dispatch-2026-09-26.md)
 - 2026-09-26 -- The OASIS acquisition adapter now admits bounded
   parent-relative literal `document()` resources from standard-operation
   principal stylesheets, provided the canonical path remains inside the owning
@@ -3912,7 +3912,7 @@ maintained redistributable legacy suite becomes available.
   become exact; the sweep reaches 2,143 / 3,173 exact matches (67.54%) and
   2,300 successful executions with all prior initialization, expected-error,
   comparator, and mismatch counts conserved.
-  [Evidence](../Evidence/oasis-xslt10-parent-relative-document-admission-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-parent-relative-document-admission-2026-09-26.md)
 - 2026-09-26 -- Literal-document iteration and dispatch now resolve an empty
   reference through the sealed stylesheet identity and retain qualified
   descendant tests as compile-time expanded names. Unchanged Lotus
@@ -3922,7 +3922,7 @@ maintained redistributable legacy suite becomes available.
   Microsoft `DocumentFuncWithEmptyArg` to copy its qualified stylesheet data
   exactly. The sweep reaches 2,145 / 3,173 exact matches (67.60%), 2,353
   initialized cases, and 2,302 successful executions.
-  [Evidence](../Evidence/oasis-xslt10-stylesheet-document-qualified-descendants-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-stylesheet-document-qualified-descendants-2026-09-26.md)
 - 2026-09-26 -- Literal `document()` copying now retains a typed location path
   after the sealed resource reference. Qualified name tests are expanded from
   the declaring module's static namespace context, while predicates, document
@@ -3931,21 +3931,21 @@ maintained redistributable legacy suite becomes available.
   exact, including module-local `document('')` bases across include/import. The
   sweep reaches 2,149 / 3,173 exact matches (67.73%), 2,357 initialized cases,
   and 2,306 successful executions with zero visible XML mismatches.
-  [Evidence](../Evidence/oasis-xslt10-stylesheet-document-qualified-descendants-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-stylesheet-document-qualified-descendants-2026-09-26.md)
 - 2026-09-26 -- Direct XPath 1.0 numeric literals now use the existing finite
   double string-conversion owner before location-path parsing. Unchanged Lotus
   `string132` through `string135` become exact without changing modern XPath
   typing or adding runtime floating-point state. The sweep reaches 2,153 /
   3,173 exact matches (67.85%), 2,361 initialized cases, and 2,310 successful
   executions with zero visible XML mismatches.
-  [Evidence](../Evidence/oasis-xslt10-direct-numeric-literal-string-conversion-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-direct-numeric-literal-string-conversion-2026-09-26.md)
 - 2026-09-26 -- Statically resolved qualified child paths now compose with the
   shared typed predicate representation. Microsoft `Namespace_XPath_ScopingRules`
   advances past `p1:AAA[2]` but then exposes its archival source's invalid
   binding of a non-`xml` prefix to the reserved XML namespace. The case remains
   visibly uncredited as `FXXM0002`; no parser rule is weakened and the conserved
   totals remain 2,153 / 3,173 exact matches (67.85%).
-  [Evidence](../Evidence/oasis-xslt10-qualified-predicated-child-path-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-qualified-predicated-child-path-2026-09-26.md)
 - 2026-09-26 -- XSLT 1.0 local variables now retain extremely small finite
   numeric literals as typed immutable doubles instead of falling into the cast
   fallback. Two doubt-annotated Microsoft cases initialize and execute, but
@@ -3953,7 +3953,7 @@ maintained redistributable legacy suite becomes available.
   than pass credit. Exact coverage remains 2,153 / 3,173 (67.85%);
   initialization reaches 2,363, successful execution 2,312, and the
   `FXXP1008` frontier falls from five cases to three.
-  [Evidence](../Evidence/oasis-xslt10-local-numeric-literal-binding-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-local-numeric-literal-binding-2026-09-26.md)
 - 2026-09-26 -- The corpus-declared discretionary Greek alphabetic
   `xsl:number` token now executes through a private typed format and the
   bounded HTML/ISO-8859-1 byte lane emits unrepresentable result text as
@@ -3963,14 +3963,14 @@ maintained redistributable legacy suite becomes available.
   2,153 / 3,173 (67.85%); initialization reaches 2,364, successful execution
   2,313, and the `FXST1049` standard-operation frontier falls from three to
   two.
-  [Evidence](../Evidence/oasis-xslt10-greek-alphabetic-numbering-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-greek-alphabetic-numbering-2026-09-26.md)
 - 2026-09-26 -- Serialization preconditions now isolate XML-only declaration,
   doctype, and document-element rules from the text output method. Unchanged
   Microsoft `Output__84008` and `Output__84012` become exact matches through
   the existing text-reference comparators. Exact coverage reaches 2,155 /
   3,173 (67.92%), successful execution 2,315, and execution failures fall from
   51 to 49 without weakening XML/XHTML validation.
-  [Evidence](../Evidence/oasis-xslt10-text-output-xml-parameter-isolation-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-text-output-xml-parameter-isolation-2026-09-26.md)
 - 2026-09-28 -- The bounded location-path parser now distinguishes definitely
   malformed punctuation and adjacent operands from valid-but-unsupported
   expression families. All nine generic `location-path-shape:other` cases gain
@@ -3979,20 +3979,20 @@ maintained redistributable legacy suite becomes available.
   exact lower bound and 423 / 431 expected-error credit remain unchanged, with
   the eight uncredited expected-error entries still fully explained by five
   unusable expectations and three missing inputs.
-  [Evidence](../Evidence/oasis-xslt10-malformed-path-diagnostic-classification-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-malformed-path-diagnostic-classification-2026-09-28.md)
 - 2026-09-28 -- The BOM-selected UTF-16 adapter now fixes the downstream XML
   reader to UTF-8 after transcoding, preventing an explicit retained
   `encoding="UTF-16"` declaration from reinterpreting the private UTF-8 buffer.
   Original admitted-byte offsets remain conserved. Unchanged Lotus
   `output_output80` becomes exact, raising the sweep to 2,229 / 3,173 exact
   matches (70.25%), 2,440 initialized cases, and 2,392 successful executions.
-  [Evidence](../Evidence/oasis-xslt10-utf16-declaration-transcode-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-utf16-declaration-transcode-2026-09-28.md)
 - 2026-09-28 -- A bounded ISO-2022-JP input experiment found that the shared
   Microsoft source used by 11 output cases contains a redundant adjacent state
   transition rejected by the strict decoder at original byte offset 994.
   Accepting it would require a permissive FastXSLT-owned legacy decoder policy,
   so the experiment was removed and the conserved counters remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-iso2022jp-source-frontier-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-iso2022jp-source-frontier-2026-09-28.md)
 - 2026-09-28 -- `xsl:number` grouping attributes now compile into a private
   typed invocation-time plan. XSLT 1.0 variable/concat separator expressions
   and binary-numeric size expressions reuse the charged compatibility
@@ -4000,7 +4000,7 @@ maintained redistributable legacy suite becomes available.
   the normative one-character/positive-integral checks. The two unchanged
   Microsoft cases advance to independent language-sensitive numbering
   boundaries, so the 2,229 / 3,173 exact lower bound remains unchanged.
-  [Evidence](../Evidence/oasis-xslt10-dynamic-number-grouping-avts-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-dynamic-number-grouping-avts-2026-09-28.md)
 - 2026-09-28 -- The local measurement harness now normalizes a bounded set of
   HTML lexical rules before using the existing expanded-name tree comparator.
   The former 54-case comparison frontier is conserved as 19 exact passes, 15
@@ -4009,14 +4009,14 @@ maintained redistributable legacy suite becomes available.
   recognizes ASCII-case-equivalent charset tokens in HTML Content-Type meta
   values. The strict lower bound reaches 2,248 / 3,173 (70.85%), while
   initialization, execution, and expected-error counters remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-bounded-html-comparison-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-bounded-html-comparison-2026-09-28.md)
 - 2026-09-28 -- Direct variable-valued XSLT 1.0 `xsl:number` instructions now
   reuse the charged compatibility string-value and XPath number conversion
   path, including temporary-tree template parameters. The unchanged Microsoft
   case clears the last `FXXP1022` standard frontier and reaches its independent
   DTD-forbidden source policy. Conserved pass and lifecycle totals remain
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-variable-number-value-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-variable-number-value-2026-09-28.md)
 - 2026-09-28 -- The scoped namespace serializer and its complete-clone oracle
   now retain only the final binding for each prefix during element fixup and
   suppress a conflicting non-empty default binding on an unnamespaced element.
@@ -4025,51 +4025,51 @@ maintained redistributable legacy suite becomes available.
   raising the sweep to 2,251 / 3,173 (70.94%) and reducing comparator gaps to
   17 without changing initialization, execution, mismatch, or expected-error
   totals.
-  [Evidence](../Evidence/oasis-xslt10-result-default-namespace-fixup-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/namespaces/oasis-xslt10-result-default-namespace-fixup-2026-09-28.md)
 - 2026-09-28 -- The local comparator now follows the same XSLT 1.0
   unnamespaced-`html` output-method inference already used by serialization.
   The bounded HTML normalizer classifies five former gaps as three exact passes
   and two visible mismatches. No unequal result receives credit. The sweep
   reaches 2,254 / 3,173 (71.04%), with 12 comparator gaps and 17 visible
   mismatches; lifecycle and expected-error totals remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-inferred-html-comparison-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-inferred-html-comparison-2026-09-28.md)
 - 2026-09-28 -- `Microsoft/BVTs_bvt098#1` now has an exact unusable-reference
   disposition: its expected file appends a `foo` sibling that cannot be
   constructed by any supplied simplified-stylesheet instruction or
   source-driven rule. No pass credit or engine change follows. Visible
   mismatches fall to 16 and unusable references rise to 61; the 2,254 / 3,173
   exact lower bound and all lifecycle totals remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-bvt098-reference-inconsistency-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-bvt098-reference-inconsistency-2026-09-28.md)
 - 2026-09-28 -- The test-only comparator now checks already XML-readable HTML
   results before lexical rewriting and decodes only the four named references
   observed in the residual archive. Two former gaps become exact and two
   become visible non-breaking-space mismatches. The strict lower bound reaches
   2,256 / 3,173 (71.10%) and comparator gaps fall to eight without changing
   engine serialization.
-  [Evidence](../Evidence/oasis-xslt10-residual-html-comparison-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-residual-html-comparison-2026-09-28.md)
 - 2026-09-28 -- `Microsoft/BVTs_bvt055#1` receives an exact, uncredited
   unusable-reference disposition: the expected XML binds the reserved XML
   namespace to `xp_1` and emits `xp_1:foo` for the stylesheet's `xml:foo`
   attribute. Comparator gaps fall to seven and unusable references rise to 62;
   pass, lifecycle, mismatch, expected-error, and policy totals are unchanged.
-  [Evidence](../Evidence/oasis-xslt10-bvt055-reference-namespace-inconsistency-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-bvt055-reference-namespace-inconsistency-2026-09-28.md)
 - 2026-09-28 -- Four exact archival reference identities decode through a
   local Windows-1252 overlay rather than a global permissive fallback. All four
   become visible mismatches, reducing comparator gaps to three without pass
   credit or engine behavior changes.
-  [Evidence](../Evidence/oasis-xslt10-windows1252-reference-overlay-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-windows1252-reference-overlay-2026-09-28.md)
 - 2026-09-28 -- The bounded HTML comparator now makes raw attribute values
   XML-safe, preserves known references, and applies first-occurrence handling
   to duplicate case-insensitive HTML attributes. Two former gaps become exact,
   raising the strict lower bound to 2,258 / 3,173 (71.16%). The broad
   `BVTs_bvt067` stress result remains the sole visible comparator gap.
-  [Evidence](../Evidence/oasis-xslt10-html-attribute-comparison-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-html-attribute-comparison-2026-09-28.md)
 - 2026-09-28 -- Literal stylesheet text stripping now uses XML whitespace
   rather than Rust's broader Unicode whitespace predicate. U+00A0 remains
   semantic text through adjacent runs and constructor-content classification.
   Three unchanged cases become exact, raising the strict lower bound to 2,261 /
   3,173 (71.26%) and reducing visible mismatches to 19.
-  [Evidence](../Evidence/oasis-xslt10-literal-xml-whitespace-boundary-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-literal-xml-whitespace-boundary-2026-09-28.md)
 - 2026-09-28 -- The 19 residual unequal successful executions now have
   individual dispositions. Eleven select optional historical HTML/PI layout,
   six use archival references that lose Unicode characters, and one requires
@@ -4079,7 +4079,7 @@ maintained redistributable legacy suite becomes available.
   serialization-layout exclusions rise to 17, unusable references to 68, and
   host-collation exclusions to five. `Microsoft/BVTs_bvt067#1` remains the one
   independent comparator gap.
-  [Evidence](../Evidence/oasis-xslt10-residual-output-dispositions-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-residual-output-dispositions-2026-09-28.md)
 - 2026-09-28 -- The XSLT 1.0 document-child wildcard now has a distinct private
   plan from XSLT 3.0 `document-node(element(...))`. It evaluates the
   document-element candidate, requires its parent to be the document node, and
@@ -4089,7 +4089,7 @@ maintained redistributable legacy suite becomes available.
   explicit source-dependent `format-number()` frontier. Exact coverage remains
   2,261 / 3,173 (71.26%); execution becomes 2,391 successes and 49 classified
   failures, with zero visible mismatches and one independent comparator gap.
-  [Evidence](../Evidence/oasis-xslt10-document-child-wildcard-pattern-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-document-child-wildcard-pattern-2026-09-28.md)
 - 2026-09-29: the last HTML comparator gap is closed without crediting an
   unequal result. The test-only normalizer preserves foreign namespace
   boundaries, and the legacy serializer now follows the normative HTML rules
@@ -4101,7 +4101,7 @@ maintained redistributable legacy suite becomes available.
   executions, zero visible mismatches, and zero comparator gaps. The lower pass
   count is retained honestly because one former pass depended on incorrect
   broad Boolean minimization.
-  [Evidence](../Evidence/oasis-xslt10-html-serialization-reference-boundaries-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-html-serialization-reference-boundaries-2026-09-29.md)
 - 2026-09-29: static `letter-value` validation now admits either valid lexical
   value over the already unambiguous `i` and `I` Roman numbering tokens. Their
   fixed meaning is unchanged; no locale data, dynamic attribute evaluation, or
@@ -4109,13 +4109,13 @@ maintained redistributable legacy suite becomes available.
   `Microsoft/Number__84720#1` becomes exact, bringing the sweep to 2,261 /
   3,173 exact matches (71.26%), 2,441 initialized cases, and 2,392 successful
   executions, with zero visible mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-unambiguous-roman-letter-value-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-unambiguous-roman-letter-value-2026-09-29.md)
 - 2026-09-29: non-built-in output methods now undergo QName and namespace
   classification before serializer capability selection. Empty/malformed and
   bare custom methods are invalid, while namespace-qualified extension methods
   remain explicitly unsupported. The two corrected OASIS cases already held
   expected-error credit, so the aggregate counters remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-output-method-qname-classification-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-output-method-qname-classification-2026-09-29.md)
 - 2026-09-29: the existing invocation-owned `xsl:message` implementation now
   admits its common sequence-constructor and static `terminate` subset across
   declared versions rather than rejecting it solely outside version `1.0`.
@@ -4124,7 +4124,7 @@ maintained redistributable legacy suite becomes available.
   cases, and 2,393 successful executions, with zero visible mismatches and zero
   comparator gaps. Dynamic message attributes and the broader modern message
   surface remain outside this tranche.
-  [Evidence](../Evidence/oasis-xslt10-forward-compatible-message-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-forward-compatible-message-2026-09-29.md)
 - 2026-09-29: the corpus-selected gray-area recovery for
   `@xsl:use-attribute-sets` now applies consistently to `xsl:element`,
   `xsl:attribute-set`, and `xsl:copy`, including dependency-graph collection.
@@ -4133,7 +4133,7 @@ maintained redistributable legacy suite becomes available.
   their next honest frontiers without pass credit; aggregate counts remain
   2,262 / 3,173 exact, 2,442 initialized, and 2,393 executed, with zero visible
   mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-prefixed-computed-element-attribute-set-2026-09-28.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/construction/oasis-xslt10-prefixed-computed-element-attribute-set-2026-09-28.md)
 - 2026-09-29: bounded whole-expression variable and `concat()` AVTs now carry
   XSLT 1.0 `xsl:number/@letter-value` and `@lang` into invocation-time
   validation, while quoted constant `format` AVTs are folded before token
@@ -4144,7 +4144,7 @@ maintained redistributable legacy suite becomes available.
   2,443, initialization failures fall to 727, successful executions remain
   2,393, and execution failures increase to 50. Visible mismatches and
   comparator gaps remain zero.
-  [Evidence](../Evidence/oasis-xslt10-dynamic-number-control-avts-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-dynamic-number-control-avts-2026-09-29.md)
 - 2026-09-29: an exact-version-1.0 stylesheet may now select the existing
   private forward-compatible instruction path locally through
   `xsl:version="2.0"` on a literal result element. Version attributes on XSLT
@@ -4156,7 +4156,7 @@ maintained redistributable legacy suite becomes available.
   exact matches (71.32%), 2,444 initialized cases, and 2,394 successful
   executions; initialization failures fall to 726, with zero visible
   mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-local-forward-compatible-version-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-local-forward-compatible-version-2026-09-29.md)
 - 2026-09-29: `xsl:copy-of` now admits a source location path as the sole
   `document()` argument, resolves each value only through the sealed snapshot,
   and deduplicates repeated resources by invocation-local document identity.
@@ -4165,7 +4165,7 @@ maintained redistributable legacy suite becomes available.
   sweep reaches 2,266 / 3,173 exact matches (71.42%), 2,447 initialized cases,
   and 2,397 successful executions; initialization failures fall to 723, with
   zero visible mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-source-derived-document-copy-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-source-derived-document-copy-2026-09-29.md)
 - 2026-09-29: a literal or source-path first `document()` argument may now use
   the first node selected by one source location path or one literal `document()` call as its
   explicit base identity. Runtime resolution remains invocation-owned and
@@ -4176,7 +4176,7 @@ maintained redistributable legacy suite becomes available.
   matches (71.51%), 2,450 initialized cases, and 2,400 successful executions;
   initialization failures fall to 720,
   with zero visible mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-two-argument-document-base-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-two-argument-document-base-2026-09-29.md)
 - 2026-09-29: the XSLT 1.0 `xsl:copy-of` path now admits one scalar variable as
   the lexical first argument of `document()`, while retaining the typed
   explicit-base forms and sealed-snapshot-only authority. Unchanged
@@ -4184,14 +4184,14 @@ maintained redistributable legacy suite becomes available.
   matches (71.54%), 2,451 initialized cases, and 2,401 successful executions;
   initialization failures fall to 719, with zero visible mismatches and zero
   comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-variable-document-reference-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-variable-document-reference-2026-09-29.md)
 - 2026-09-29: one bounded nested `document()` layer now resolves outer relative
   references from the logical identities of selected inner document nodes.
   Unchanged `Lotus/mdocs_mdocs02#1` and `Lotus/reluri_reluri11#1` become exact.
   The sweep reaches 2,272 / 3,173 exact matches (71.60%), 2,453 initialized
   cases, and 2,403 successful executions; initialization failures fall to 717,
   with zero visible mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-nested-document-references-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-nested-document-references-2026-09-29.md)
 - 2026-09-29: `xsl:apply-templates` now admits one principal-source location
   path as the `document()` reference node-set and one exact descendant element
   selection. The unchanged `Lotus/mdocs_mdocs08#1` case becomes exact through
@@ -4199,7 +4199,7 @@ maintained redistributable legacy suite becomes available.
   The sweep reaches 2,273 / 3,173 exact matches (71.64%), 2,454 initialized
   cases, and 2,404 successful executions; initialization failures fall to 716,
   with zero visible mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-source-document-template-dispatch-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-source-document-template-dispatch-2026-09-29.md)
 - 2026-09-29: `xsl:apply-templates` now admits two typed source paths in
   `document(reference-path, base-path)/*`, preserving explicit base identity,
   owning-document provenance, aggregate focus, and template parameters.
@@ -4207,7 +4207,7 @@ maintained redistributable legacy suite becomes available.
   3,173 exact matches (71.70%), 2,456 initialized cases, and 2,406 successful
   executions; initialization failures fall to 714, with zero visible
   mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-source-document-child-dispatch-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-source-document-child-dispatch-2026-09-29.md)
 - 2026-09-29: the typed source-document descendant selection now also supports
   `count()` and stable text sorting by `substring-after(path, literal)` while
   retaining each sort focus node's owning document. Unchanged
@@ -4215,7 +4215,7 @@ maintained redistributable legacy suite becomes available.
   matches (71.67%), 2,455 initialized cases, and 2,405 successful executions;
   initialization failures fall to 715, with zero visible mismatches and zero
   comparator gaps. Other cross-document sort forms remain unsupported.
-  [Evidence](../Evidence/oasis-xslt10-source-document-template-dispatch-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-source-document-template-dispatch-2026-09-29.md)
 - 2026-09-29: one-argument source-selected and literal `document()` template
   dispatch now composes with the existing typed trailing location-path subset.
   External preparation remains invocation-owned and sealed-snapshot-only;
@@ -4224,7 +4224,7 @@ maintained redistributable legacy suite becomes available.
   The sweep reaches 2,276 / 3,173 exact matches (71.73%), 2,457 initialized
   cases, and 2,407 successful executions; initialization failures fall to 713,
   with zero visible mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-document-path-template-dispatch-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-document-path-template-dispatch-2026-09-29.md)
 - 2026-09-29: one typed stylesheet-document path may end in an expanded
   attribute-equals-variable predicate. Atomic and principal-source node
   variables are converted against the principal invocation before evaluation
@@ -4233,7 +4233,7 @@ maintained redistributable legacy suite becomes available.
   exact matches (71.79%), 2,459 initialized cases, and 2,409 successful
   executions; initialization failures fall to 711, with zero visible
   mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-stylesheet-document-variable-selection-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-stylesheet-document-variable-selection-2026-09-29.md)
 - 2026-09-29: unavailable output encodings now select the XSLT 1.0 section
   16.1-permitted UTF-8 physical fallback only for exact-version-1.0
   stylesheets. Compiled settings retain the requested preference, while modern
@@ -4242,7 +4242,7 @@ maintained redistributable legacy suite becomes available.
   The sweep reaches 2,279 / 3,173 exact matches (71.83%), 2,459 initialized
   cases, and 2,411 successful executions; execution failures fall to 48, with
   zero visible mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-unavailable-output-encoding-fallback-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-unavailable-output-encoding-fallback-2026-09-29.md)
 - 2026-09-29: literal-document `xsl:for-each` now detaches ordered string
   values and cardinality from local principal-source node bindings before the
   source switch. Raw node identity does not cross documents; bounded XSLT 1.0
@@ -4251,7 +4251,7 @@ maintained redistributable legacy suite becomes available.
   reaches 2,283 / 3,173 exact matches (71.95%) and 2,415 successful executions;
   execution failures fall to 44, with zero visible mismatches and zero
   comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-detached-cross-document-node-values-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-detached-cross-document-node-values-2026-09-29.md)
 - 2026-09-29: a bounded wildcard match-predicate AST now composes nested
   `and`/`or`/`not`, context-node integer equality, integer `position()` bounds,
   and unqualified attribute string equality. Source and temporary-tree
@@ -4261,7 +4261,7 @@ maintained redistributable legacy suite becomes available.
   exact matches (71.98%), 2,460 initialized cases, and 2,416 successful
   executions; initialization failures fall to 710, with zero visible
   mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-boolean-wildcard-match-predicate-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-boolean-wildcard-match-predicate-2026-09-29.md)
 - 2026-09-29: template-pattern union decomposition now ignores `|` inside
   quotes, parentheses, and predicate brackets. One bounded named-element
   predicate compares an unqualified child/attribute node-set union to a string
@@ -4272,7 +4272,7 @@ maintained redistributable legacy suite becomes available.
   successful executions; initialization failures fall to 709. Only two
   DTD-typed-ID-dependent `id()` patterns remain in this standard-operation
   match frontier.
-  [Evidence](../Evidence/oasis-xslt10-nested-node-set-union-match-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-nested-node-set-union-match-2026-09-29.md)
 - 2026-09-29: exact-version-1.0 output composition now defers a
   namespace-qualified extension method only when a later unnamed declaration
   in the same module selects a supported standard method. The effective method
@@ -4283,7 +4283,7 @@ maintained redistributable legacy suite becomes available.
   (72.05%), 2,463 initialized cases, and 2,419 successful executions;
   initialization failures fall to 707, with zero visible mismatches and zero
   comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-superseded-extension-output-method-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-superseded-extension-output-method-2026-09-29.md)
 - 2026-09-29: bounded location-path predicates now compose nested child
   selection, child-focus position, string comparison, attributes, `not()`, and
   short-circuit boolean operators. Top-level equality routing observes quote,
@@ -4292,7 +4292,7 @@ maintained redistributable legacy suite becomes available.
   becomes exact. The sweep reaches 2,287 / 3,173 exact matches (72.08%), 2,464
   initialized cases, and 2,420 successful executions; initialization failures
   fall to 706, with zero visible mismatches and zero comparator gaps.
-  [Evidence](../Evidence/oasis-xslt10-nested-child-boolean-path-predicate-2026-09-29.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-nested-child-boolean-path-predicate-2026-09-29.md)
 - 2026-09-30: AR-0024's first private disable-output-escaping tranche retains
   explicit XSLT 1.0 plan/result markers, preserves them through invocation-owned
   temporary-tree copies, and discards them in attribute, comment, and
@@ -4300,7 +4300,7 @@ maintained redistributable legacy suite becomes available.
   / 3,173 exact matches (73.00%), 2,499 initialized cases, and 2,453 successful
   executions. Two visible mismatches and three comparator gaps remain explicit;
   expected-error credit remains 423 / 431.
-  [Evidence](../Evidence/oasis-xslt10-disable-output-escaping-reference-marker-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-disable-output-escaping-reference-marker-2026-09-30.md)
 - 2026-09-30: bounded language/case-aware XSLT 1.0 text sorting, one
   invocation-owned local literal-`document()` variable, compatibility-only
   empty attribute-set lists, and bounded recovery for known misplaced XSLT
@@ -4310,7 +4310,7 @@ maintained redistributable legacy suite becomes available.
   and four comparator gaps remain explicit. XML 1.0 non-ASCII NCNames are now
   accepted, but the corresponding lossy archival reference remains uncredited.
   Expected-error credit remains 423 / 431.
-  [Evidence](../Evidence/oasis-xslt10-74-percent-compatibility-tranche-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-74-percent-compatibility-tranche-2026-09-30.md)
 - 2026-09-30: AR-0025's private bounded internal-subset path admits internal
   character-data entities, non-validating element declarations, and
   non-defaulting `CDATA`/`ID`/`IDREF` attribute declarations without changing
@@ -4321,7 +4321,7 @@ maintained redistributable legacy suite becomes available.
   executions. Of the conserved 117-case direct DTD frontier, 12 parse and 105
   remain explicitly unsupported; two newly executable manual-comparator cases
   receive no exact credit.
-  [Evidence](../Evidence/ar-0025-bounded-typed-id-reference-path-2026-09-30.md)
+  [Evidence](../Campaigns/bounded-dtd/evidence/ar-0025-bounded-typed-id-reference-path-2026-09-30.md)
 - 2026-09-30: AR-0025's bounded reference path adds literal/fixed default
   attributes and can be selected privately for stylesheet modules as well as
   source preparation. Two source-default cases and one simplified stylesheet
@@ -4331,7 +4331,7 @@ maintained redistributable legacy suite becomes available.
   through the reference grammar and 102 remain explicitly unsupported.
   DTD-derived namespace declarations remain rejected before they can be
   misrepresented at the post-tokenization adapter seam.
-  [Evidence](../Evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md)
+  [Evidence](../Campaigns/bounded-dtd/evidence/ar-0025-bounded-default-attribute-and-stylesheet-path-2026-09-30.md)
 - 2026-09-30: XSLT 1.0 `count()` now composes with the existing charged typed-ID
   lookup, including node-set argument conversion, uniqueness, and document
   order. Three unchanged Lotus cases become exact. The complete sweep reaches
@@ -4341,7 +4341,7 @@ maintained redistributable legacy suite becomes available.
   unchanged. Successful execution also reveals three principal-source DTDs
   previously hidden behind stylesheet compile failures, expanding the observed
   direct-DTD attribution set to 120 without widening DTD semantics.
-  [Evidence](../Evidence/oasis-xslt10-count-typed-id-lookup-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-count-typed-id-lookup-2026-09-30.md)
 - 2026-09-30: literal-only XSLT 1.0 `id()` match patterns reuse the shared
   charged typed-ID selector and bounded invocation-owned document-rooted
   membership cache. Relative child, descendant, text, and attribute tails stay
@@ -4350,7 +4350,7 @@ maintained redistributable legacy suite becomes available.
   3,173 (77.53%), 2,654 initialized cases, and 2,608 successful executions.
   Initialization failures fall to 516; all later-failure, mismatch, comparator,
   and expected-error counters remain unchanged.
-  [Evidence](../Evidence/oasis-xslt10-id-match-patterns-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-id-match-patterns-2026-09-30.md)
 - 2026-09-30: bounded numeric attribute comparisons now share one typed
   predicate across ordinary location paths and named match patterns. The match
   runtime preserves source/temporary-tree parity, including boolean predicates
@@ -4359,7 +4359,7 @@ maintained redistributable legacy suite becomes available.
   2,611 successful executions. Initialization failures fall to 513; execution
   failures, mismatches, comparator gaps, and expected-error credit are
   unchanged.
-  [Evidence](../Evidence/oasis-xslt10-numeric-attribute-predicates-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-numeric-attribute-predicates-2026-09-30.md)
 - 2026-09-30: top-level XSLT 1.0 variables may now retain a literal
   `document()` reference as stylesheet-derived static state and prepare its
   target into invocation-local global state through the existing sealed
@@ -4369,26 +4369,26 @@ maintained redistributable legacy suite becomes available.
   moving the sweep to 2,464 / 3,173 (77.65%), 2,659 initialized cases, and
   2,612 successful executions. A newly exposed cross-document node-ownership
   case remains a visible execution failure rather than being approximated.
-  [Evidence](../Evidence/oasis-xslt10-global-literal-document-variable-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-global-literal-document-variable-2026-09-30.md)
 - 2026-09-30: variable-valued XSLT 1.0 `id()` calls now reuse the established
   scalar conversion and charged typed-ID selector. Literal and path arguments
   are unchanged, and match patterns remain literal-only. The unchanged
   `Lotus/idkey_idkey58#1` case becomes exact, moving the sweep to 2,465 / 3,173
   (77.69%), 2,660 initialized cases, and 2,613 successful executions.
-  [Evidence](../Evidence/oasis-xslt10-variable-id-lookup-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/keys-and-ids/oasis-xslt10-variable-id-lookup-2026-09-30.md)
 - 2026-09-30: `xsl:apply-templates` unions may now compose ordinary paths with
   the existing charged typed-ID selector. The unchanged Lotus case becomes
   exact; its duplicated Microsoft case executes the same semantic selection
   but remains a visible archival whitespace mismatch. The complete sweep moves
   to 2,466 / 3,173 (77.72%), 2,662 initialized cases, and 2,615 successful
   executions.
-  [Evidence](../Evidence/oasis-xslt10-id-path-union-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-id-path-union-2026-09-30.md)
 - 2026-09-30: the exact XSLT 1.0 template-parameter default `local-name(.)`
   now observes and charges the call's source context. The focused runtime path
   passes, while unchanged `Lotus/mdocs_mdocs16#1` advances to the unresolved
   cross-document node-ownership seam. Coverage remains 2,466 / 3,173 rather
   than approximating that boundary.
-  [Evidence](../Evidence/oasis-xslt10-context-local-name-parameter-default-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-context-local-name-parameter-default-2026-09-30.md)
 - 2026-09-30: the exact AVT path
   `document('')/xsl:stylesheet/@version` now folds from the declaring module's
   static stylesheet XDM and composes with `current()/...`. One unchanged case
@@ -4396,7 +4396,7 @@ maintained redistributable legacy suite becomes available.
   archival whitespace mismatch. The sweep moves to 2,467 / 3,173 (77.75%),
   2,664 initialized cases, and 2,617 successful executions without runtime
   stylesheet acquisition.
-  [Evidence](../Evidence/oasis-xslt10-stylesheet-document-version-avt-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-stylesheet-document-version-avt-2026-09-30.md)
 - 2026-09-30: literal XSLT 1.0 `id()` count patterns in `xsl:number` now reuse
   the shared charged typed-ID selector. The unchanged
   `Lotus/numbering_numbering91#1` case also admits its exact case-local
@@ -4404,7 +4404,7 @@ maintained redistributable legacy suite becomes available.
   compares exactly. The sweep moves to 2,468 / 3,173 (77.78%), 2,665
   initialized cases, and 2,618 successful executions without widening
   production DTD policy.
-  [Evidence](../Evidence/oasis-xslt10-number-id-count-pattern-2026-09-30.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/numbers/oasis-xslt10-number-id-count-pattern-2026-09-30.md)
 - 2026-10-01: chained child-axis match predicates reuse the shared charged
   per-step evaluator, including relational `last()` comparisons, repeated
   filtering, and boolean last/penultimate selection. The unchanged
@@ -4412,20 +4412,20 @@ maintained redistributable legacy suite becomes available.
   3,173 (77.81%), 2,666 initialized, and 2,619 successful executions.
   Non-child chained patterns remain unsupported; temporary-node path patterns
   now produce structured unsupported diagnostics instead of silent non-match.
-  [Evidence](../Evidence/oasis-xslt10-chained-child-match-predicates-2026-10-01.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/templates-and-modules/oasis-xslt10-chained-child-match-predicates-2026-10-01.md)
 - 2026-10-01: qualified XSLT 1.0 variable paths now normalize lexical QNames
   through the existing static namespace resolver before shared runtime lookup.
   The unchanged `Microsoft/BVTs_bvt073#1` becomes exact; focused tests preserve
   namespace-alias identity, different-namespace isolation, qualified parameter
   scope, and unbound-prefix diagnostics. The sweep reaches 2,470 / 3,173
   (77.84%), 2,667 initialized, and 2,620 successful executions.
-  [Evidence](../Evidence/oasis-xslt10-qualified-variable-paths-2026-10-01.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/bindings/oasis-xslt10-qualified-variable-paths-2026-10-01.md)
 - 2026-10-01: shared arithmetic token boundaries now distinguish wildcard
   subtraction (`@*-5`) from multiplication while retaining negative operands
   and hyphenated names. `Lotus/select_select26#1` becomes exact; the focused
   compiled matrix passes under both XSLT 1.0 and 3.0. The sweep reaches 2,471 /
   3,173 (77.88%), 2,668 initialized, and 2,621 successful executions.
-  [Evidence](../Evidence/oasis-xslt10-wildcard-subtraction-2026-10-01.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-wildcard-subtraction-2026-10-01.md)
 - 2026-10-01: the requested 80% target requires 2,539 exact matches, 68 beyond
   the current 2,471. The complete replay retains 117 standard-operation
   initialization failures and nine standard-operation execution failures;

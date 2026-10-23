@@ -78,7 +78,7 @@ oracle. It admits no parent-chain environment, cross-invocation sharing, public
 type, or unsafe exception.
 
 Prepared-XDM field duplication is measured separately in
-[the prepared-XDM byte anatomy](prepared-xdm-byte-anatomy-2026-08-31.md); that
+[the prepared-XDM byte anatomy](../Campaigns/native-registry-retention/evidence/prepared-xdm-byte-anatomy-2026-08-31.md); that
 evidence nominates future candidates but admits no XDM representation change.
 
 ## Reproduction

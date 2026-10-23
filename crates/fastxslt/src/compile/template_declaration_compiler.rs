@@ -2,11 +2,15 @@
 
 use super::{
     CompileFailure, Document, MatchPattern, MatchedTemplate, NamedTemplate, NodeId, Template,
-    TemplatePriority, compile_matched_template, compile_matched_templates, compile_named_template,
-    effective_default_mode, invalid, is_xslt_element, normalize_named_template_name,
-    optional_attribute, required_attribute, unsupported,
+    TemplatePriority, compile_matched_template, compile_matched_templates, effective_default_mode,
+    invalid, is_xslt_element, normalize_named_template_name, optional_attribute,
+    required_attribute, unsupported,
 };
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "explicit named and matched lowerers preserve separate parameter semantics without a shared mutable compiler context"
+)]
 pub(super) fn compile_top_level_template(
     document: &Document,
     element: NodeId,
@@ -15,6 +19,7 @@ pub(super) fn compile_top_level_template(
     matched_templates: &mut Vec<MatchedTemplate>,
     named_templates: &mut Vec<NamedTemplate>,
     lower_template: &mut impl FnMut(&Document, NodeId) -> Result<Template, CompileFailure>,
+    lower_named: &mut impl FnMut(&Document, NodeId, &str) -> Result<NamedTemplate, CompileFailure>,
 ) -> Result<(), CompileFailure> {
     if let Some(name) = optional_attribute(document, element, None, "name") {
         if optional_attribute(document, element, None, "match").is_none()
@@ -34,7 +39,7 @@ pub(super) fn compile_top_level_template(
                 document.location(element),
             ));
         }
-        named_templates.push(compile_named_template(document, element, &name)?);
+        named_templates.push(lower_named(document, element, &name)?);
         if optional_attribute(document, element, None, "match").is_none() {
             return Ok(());
         }

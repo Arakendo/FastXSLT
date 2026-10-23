@@ -10,7 +10,7 @@ ask whether to continue. Do not weaken semantics or controls to reach 80%.
 
 The processor-edition seam was investigated on 2026-10-16. The catalog
 inventory, implementation-owner map, standards matrix, and bounded private
-experiment proposal are recorded in [processor-edition seam investigation](../Evidence/processor-edition-seam-investigation-2026-10-16.md).
+experiment proposal are recorded in [processor-edition seam investigation](../Campaigns/processor-edition-profile/evidence/processor-edition-seam-investigation-2026-10-16.md).
 The ownership direction is now accepted in
 [ADR-0025](../ADR/ADR-0025-compilation-graph-scoped-processor-edition-policy.md),
 closing AR-0031. Production behavior remains unchanged: implementation must
@@ -61,7 +61,7 @@ ADR-0004 review split the 1,048-line matched integration into a 453-line
 implementation and a 577-line private child regression module. Retain one
 integration owner and avoid a second evaluator.
 
-A subsequent maintainer-authorized [bounded instruction probe](../Evidence/ar-0031-bounded-instruction-probe-2026-10-16.md)
+A subsequent maintainer-authorized [bounded instruction probe](../Campaigns/processor-edition-profile/evidence/ar-0031-bounded-instruction-probe-2026-10-16.md)
 adds test-only edition/version witnesses, now with 50 focused checks, nested
 fallback propagation through shared callback seams, and a bounded introspection
 policy callback reusing existing QName parsing. A test context composes the
@@ -331,7 +331,7 @@ failure: 91 phase failures and 16 modern mismatches; no comparator relaxation.
 Modern/strict exact counts remain 2,502 / 2,499 of 3,173.
 
 2026-10-17 breadth refresh: no ordinary `FXST1015` frontier remains. The
-[local document-path binding tranche](../Evidence/oasis-xslt10-literal-document-path-binding-2026-10-17.md)
+[local document-path binding tranche](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-literal-document-path-binding-2026-10-17.md)
 removes `idkey51`'s first variable-selection blocker but exposes generated-ID
 comparison across literal/source-derived document selections (`FXXP1002`).
 Coverage stays 2,501 / 3,173. Preserve that guarded boundary and assess the whole

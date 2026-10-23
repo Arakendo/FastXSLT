@@ -9,7 +9,7 @@
 | Trigger | A synchronized 5-versus-8-request wave probe confirmed that full pool occupancy helps, while mandatory wave barriers reduced native throughput far below the continuously supplied lane; a small per-worker queue claim was proposed to reduce dispatcher interaction without creating a semantic batch barrier |
 | Related ADRs | ADR-0005, ADR-0016, ADR-0019 |
 | Related reviews | AR-0010, AR-0018, AR-0020, AR-0021 |
-| Related evidence | `docs/Evidence/aspnet-best-practice-deployment-comparison-2026-09-06.md`; `docs/Evidence/isolated-wave-occupancy-2026-09-06.md`; `docs/Evidence/ar-0022-native-finite-dispatch-reference-2026-09-06.md`; `docs/Evidence/ar-0022-native-mixed-duration-dispatch-2026-09-06.md`; `docs/Reviews/performance-optimization-review-2026-09-04.md` |
+| Related evidence | `docs/Campaigns/aspnet-hosting/evidence/benchmarks/aspnet-best-practice-deployment-comparison-2026-09-06.md`; `docs/Campaigns/competitive-benchmarks/evidence/isolated-wave-occupancy-2026-09-06.md`; `docs/Campaigns/finite-dispatch/evidence/ar-0022-native-finite-dispatch-reference-2026-09-06.md`; `docs/Campaigns/finite-dispatch/evidence/ar-0022-native-mixed-duration-dispatch-2026-09-06.md`; `docs/Reviews/performance-optimization-review-2026-09-04.md` |
 
 ## Architectural question
 

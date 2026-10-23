@@ -526,6 +526,7 @@ pub(crate) fn compile_stylesheet_with_included_programs_at_in_context(
     included_programs: Vec<StylesheetProgram>,
     context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    context.require_declaration_driven_lowering(principal.location(principal_root))?;
     let include_declarations = include_nodes_at(principal, principal_root)?;
     if include_declarations.len() != included_programs.len() {
         return Err(invalid(
@@ -612,6 +613,7 @@ pub(crate) fn compile_stylesheet_with_imported_and_included_programs_at_in_conte
     included_program: StylesheetProgram,
     context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    context.require_declaration_driven_lowering(principal.location(principal_root))?;
     let dependencies = dependency_nodes_at(principal, principal_root)?;
     let [import, include] = dependencies.as_slice() else {
         return Err(invalid(
@@ -645,14 +647,36 @@ fn compose_imported_and_included_programs(
     principal_root: NodeId,
     import: NodeId,
     include: NodeId,
-    mut imported_program: StylesheetProgram,
-    mut included_program: StylesheetProgram,
+    imported_program: StylesheetProgram,
+    included_program: StylesheetProgram,
     context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    context.require_declaration_driven_lowering(principal.location(principal_root))?;
     let dependencies = [import, include];
     let mut program =
         compile_stylesheet_at_excluding_unvalidated(principal, principal_root, &dependencies)?;
     program = context.qualify_module(program);
+    merge_imported_and_included_programs(
+        principal,
+        principal_root,
+        import,
+        include,
+        program,
+        imported_program,
+        included_program,
+    )
+}
+
+/// Shared mixed assembly after the caller has lowered every module's policy.
+pub(super) fn merge_imported_and_included_programs(
+    principal: &Document,
+    principal_root: NodeId,
+    import: NodeId,
+    include: NodeId,
+    mut program: StylesheetProgram,
+    mut imported_program: StylesheetProgram,
+    mut included_program: StylesheetProgram,
+) -> Result<StylesheetProgram, CompileFailure> {
     ensure_same_compilation_policy(&program, &imported_program, principal.location(import))?;
     ensure_same_compilation_policy(&program, &included_program, principal.location(include))?;
     let included_minimum_precedence = included_program
@@ -757,6 +781,7 @@ pub(crate) fn compile_stylesheet_with_imports_in_context(
     imported: &[(&Document, NodeId)],
     context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    context.require_declaration_driven_lowering(principal.location(principal.document_node()))?;
     let import_declarations = import_nodes(principal)?;
     if import_declarations.is_empty() || import_declarations.len() != imported.len() {
         return Err(invalid(
@@ -875,6 +900,7 @@ pub(crate) fn compile_stylesheet_with_imported_programs_at_in_context(
     imported_programs: Vec<StylesheetProgram>,
     context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    context.require_declaration_driven_lowering(principal.location(principal_root))?;
     let import_declarations = import_nodes_at(principal, principal_root)?;
     if imported_programs.len() < 2 || import_declarations.len() != imported_programs.len() {
         return Err(invalid(
@@ -889,6 +915,49 @@ pub(crate) fn compile_stylesheet_with_imported_programs_at_in_context(
         &import_declarations,
     )?;
     principal_program = context.qualify_module(principal_program);
+    merge_imported_programs_at(
+        principal,
+        principal_root,
+        principal_program,
+        imported_programs,
+    )
+}
+
+/// Compose already-lowered modules without selecting their processor policy.
+/// Declaration validation and policy checks are retained at the shared boundary.
+pub(super) fn merge_imported_programs_at(
+    principal: &Document,
+    principal_root: NodeId,
+    principal_program: StylesheetProgram,
+    imported_programs: Vec<StylesheetProgram>,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let mut program = assemble_imported_programs_at(
+        principal,
+        principal_root,
+        principal_program,
+        imported_programs,
+    )?;
+    finalize_character_maps(&mut program)?;
+    finalize_decimal_formats(&mut program)?;
+    validate_named_template_references(&program)?;
+    Ok(program)
+}
+
+/// Assemble nested modules before final graph-wide reference validation.
+pub(super) fn assemble_imported_programs_at(
+    principal: &Document,
+    principal_root: NodeId,
+    mut principal_program: StylesheetProgram,
+    imported_programs: Vec<StylesheetProgram>,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let import_declarations = import_nodes_at(principal, principal_root)?;
+    if imported_programs.len() < 2 || import_declarations.len() != imported_programs.len() {
+        return Err(invalid(
+            "FXST0035",
+            "multi-program import composition requires one program per declaration and at least two imports",
+            principal.location(principal_root),
+        ));
+    }
     let mut imported_programs = imported_programs;
     for (program, declaration) in imported_programs.iter().zip(&import_declarations) {
         ensure_same_compilation_policy(
@@ -968,9 +1037,6 @@ pub(crate) fn compile_stylesheet_with_imported_programs_at_in_context(
         merge_imported_decimal_formats(&mut principal_program, program.decimal_formats);
         merge_key_definitions(&mut principal_program, program.key_definitions);
     }
-    finalize_character_maps(&mut principal_program)?;
-    finalize_decimal_formats(&mut principal_program)?;
-    validate_named_template_references(&principal_program)?;
     Ok(principal_program)
 }
 
@@ -993,6 +1059,7 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at_in_context(
     imported_program: StylesheetProgram,
     context: StylesheetCompilationContext,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    context.require_declaration_driven_lowering(principal.location(principal_root))?;
     let import_declarations = import_nodes_at(principal, principal_root)?;
     if import_declarations.len() != 1 {
         return Err(invalid(
@@ -1016,6 +1083,24 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at_in_context(
 }
 
 pub(super) fn merge_single_imported_program(
+    principal_program: StylesheetProgram,
+    imported_program: StylesheetProgram,
+    import_location: &SourceLocation,
+    principal_location: &SourceLocation,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let program = assemble_single_imported_program(
+        principal_program,
+        imported_program,
+        import_location,
+        principal_location,
+    )?;
+    validate_named_template_references(&program)?;
+    Ok(program)
+}
+
+// Intermediate composition preserves qualification but cannot validate names
+// that a parent module may supply. Complete-program callers must validate them.
+pub(super) fn assemble_single_imported_program(
     mut principal_program: StylesheetProgram,
     mut imported_program: StylesheetProgram,
     import_location: &SourceLocation,
@@ -1052,7 +1137,6 @@ pub(super) fn merge_single_imported_program(
     merge_key_definitions(&mut principal_program, imported_program.key_definitions);
     finalize_character_maps(&mut principal_program)?;
     finalize_decimal_formats(&mut principal_program)?;
-    validate_named_template_references(&principal_program)?;
     Ok(principal_program)
 }
 

@@ -50,6 +50,16 @@ mod xslt10_global_constructor_compiler;
 #[path = "global_constructor_reference.rs"]
 pub(crate) mod global_constructor_reference;
 
+#[cfg(test)]
+pub(crate) use instruction_compiler::compile_selected_legacy_import_module_for_test;
+#[cfg(test)]
+pub(crate) use instruction_compiler::compile_selected_legacy_include_module_for_test;
+#[cfg(test)]
+pub(crate) use instruction_compiler::compile_selected_legacy_mixed_module_for_test;
+#[cfg(test)]
+pub(crate) use instruction_compiler::compile_selected_legacy_resolved_chain_for_test;
+#[cfg(test)]
+pub(crate) use instruction_compiler::compile_selected_legacy_resolved_pair_for_test;
 pub(crate) use stylesheet_module_compiler::{
     StylesheetDependencyKind, compile_stylesheet_with_import_and_include,
     compile_stylesheet_with_imported_and_included_programs_at,
@@ -206,11 +216,14 @@ fn compile_stylesheet_with_validation_and_template_lowerer(
         validate_version,
         lower_template,
         &mut compile_output,
+        &mut compile_named_template,
+        &mut compile_global_binding,
     )
 }
 
 #[allow(
     clippy::too_many_lines,
+    clippy::too_many_arguments,
     reason = "shared single-document declaration composition"
 )]
 fn compile_stylesheet_with_declaration_lowerers(
@@ -225,6 +238,12 @@ fn compile_stylesheet_with_declaration_lowerers(
         &str,
         bool,
     ) -> Result<output_compiler::OutputDeclaration, CompileFailure>,
+    lower_named: &mut impl FnMut(&Document, NodeId, &str) -> Result<NamedTemplate, CompileFailure>,
+    lower_global: &mut impl FnMut(
+        &Document,
+        NodeId,
+        GlobalBindingKind,
+    ) -> Result<GlobalBinding, CompileFailure>,
 ) -> Result<StylesheetProgram, CompileFailure> {
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
@@ -330,6 +349,7 @@ fn compile_stylesheet_with_declaration_lowerers(
                     &mut matched_templates,
                     &mut named_templates,
                     lower_template,
+                    lower_named,
                 )?;
             }
             (Some(XSLT_NAMESPACE), "mode") => {
@@ -378,7 +398,7 @@ fn compile_stylesheet_with_declaration_lowerers(
                 } else {
                     GlobalBindingKind::Parameter
                 };
-                let binding = compile_global_binding(document, child, kind)?;
+                let binding = lower_global(document, child, kind)?;
                 if global_bindings
                     .iter()
                     .any(|existing: &GlobalBinding| existing.name == binding.name)
@@ -1346,6 +1366,14 @@ fn compile_xslt10_literal_document_global(
     if !instruction_compiler::uses_xslt10_compatibility(document, element) {
         return Ok(None);
     }
+    compile_literal_document_global(document, element, expression)
+}
+
+fn compile_literal_document_global(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
     let Some((reference, None, tail)) =
         instruction_compiler::parse_literal_document_call(expression.trim())
     else {
@@ -2507,6 +2535,35 @@ fn compile_named_template(
     element: NodeId,
     name: &str,
 ) -> Result<NamedTemplate, CompileFailure> {
+    compile_named_template_with_body_and_validation(
+        document,
+        element,
+        name,
+        &mut validate_named_template_attributes,
+        &mut compile_sequence_excluding_with_bindings,
+    )
+}
+
+pub(super) fn compile_named_template_with_body_and_validation(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    validate: &mut impl FnMut(&Document, NodeId) -> Result<(), CompileFailure>,
+    lower_body: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &[NodeId],
+        &[String],
+    ) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<NamedTemplate, CompileFailure> {
+    validate(document, element)?;
+    compile_named_template_after_validation(document, element, name, lower_body)
+}
+
+fn validate_named_template_attributes(
+    document: &Document,
+    element: NodeId,
+) -> Result<(), CompileFailure> {
     ensure_only_attributes(
         document,
         element,
@@ -2520,7 +2577,20 @@ fn compile_named_template(
             "exclude-result-prefixes",
         ],
         "xsl:template",
-    )?;
+    )
+}
+
+fn compile_named_template_after_validation(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    lower_body: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &[NodeId],
+        &[String],
+    ) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<NamedTemplate, CompileFailure> {
     let mut parameters = Vec::new();
     let mut parameter_nodes = Vec::new();
     let mut body_started = false;
@@ -2556,12 +2626,7 @@ fn compile_named_template(
             .collect(),
         template: Template {
             parameters,
-            body: compile_sequence_excluding_with_bindings(
-                document,
-                element,
-                &parameter_nodes,
-                &parameter_bindings,
-            )?,
+            body: lower_body(document, element, &parameter_nodes, &parameter_bindings)?,
             location: document.location(element).clone(),
         },
     })

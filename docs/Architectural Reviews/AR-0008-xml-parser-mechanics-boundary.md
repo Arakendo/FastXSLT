@@ -8,7 +8,7 @@
 | Scope | XML byte decoding, tokenization, namespaces, provenance, limits, and XDM handoff |
 | Trigger | M1's private transform slice needs to turn admitted bytes into FastXSLT-owned document semantics |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0003 |
-| Related evidence | `docs/Evidence/rust-xml-parser-candidate-review-2026-08-25.md`, `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md`, `docs/Evidence/w3c-xml-conformance-suite-candidate-review-2026-08-25.md`, `docs/Evidence/oasis-xslt10-declared-legacy-input-encoding-2026-09-26.md`, and `docs/Evidence/oasis-xslt10-bom-utf16-input-2026-09-27.md` |
+| Related evidence | `docs/Evidence/rust-xml-parser-candidate-review-2026-08-25.md`, `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md`, `docs/Evidence/w3c-xml-conformance-suite-candidate-review-2026-08-25.md`, `docs/Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-declared-legacy-input-encoding-2026-09-26.md`, and `docs/Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-bom-utf16-input-2026-09-27.md` |
 
 ## Architectural question
 
@@ -172,7 +172,7 @@ or another physical input strategy requires a different event seam.
   Exhaustion is a structured limit outcome, and two unchanged large OASIS
   stylesheets become exact under the measurement host's larger bounded policy.
   Production defaults and parser admission remain open.
-  [Evidence](../Evidence/oasis-xslt10-host-owned-stylesheet-xml-limits-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-host-owned-stylesheet-xml-limits-2026-09-27.md)
 - 2026-09-30 -- The 74% OASIS XSLT 1.0 checkpoint exposed 117 standard source
   or stylesheet cases at deliberate DTD denial, plus related typed-ID and
   unparsed-entity semantics. AR-0025 now owns the bounded internal-subset and
@@ -184,7 +184,7 @@ or another physical input strategy requires a different event seam.
   become exact, and the remainder expose named numbering/runtime/mismatch
   frontiers. The public encoding profile and production parser admission remain
   open.
-  [Evidence](../Evidence/oasis-xslt10-bom-utf16-input-2026-09-27.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-bom-utf16-input-2026-09-27.md)
 - 2026-08-25 -- Opened Under Review with a dev-only `quick-xml` experiment.
 - 2026-08-25 -- Confirmed the adapter can feed an owned private XDM tree after
   source bytes are released; production admission gates remain open.
@@ -203,4 +203,4 @@ or another physical input strategy requires a different event seam.
   archival include references receive explicit exclusions. UTF-16 provenance,
   the supported encoding profile, dependency audit, and production admission
   remain open.
-  [Evidence](../Evidence/oasis-xslt10-declared-legacy-input-encoding-2026-09-26.md)
+  [Evidence](../Campaigns/oasis-xslt10/evidence/serialization/oasis-xslt10-declared-legacy-input-encoding-2026-09-26.md)

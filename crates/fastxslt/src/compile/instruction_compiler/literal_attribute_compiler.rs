@@ -531,7 +531,7 @@ fn parse_two_source_attribute_function<'a>(
         .then_some((left, right))
 }
 
-fn parse_literal_variable_concat(expression: &str) -> Option<(&str, &str)> {
+pub(super) fn parse_literal_variable_concat(expression: &str) -> Option<(&str, &str)> {
     let arguments = expression
         .trim()
         .strip_prefix("concat(")?

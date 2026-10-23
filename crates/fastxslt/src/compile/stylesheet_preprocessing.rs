@@ -35,6 +35,22 @@ pub(crate) struct StylesheetCompilationContext {
 }
 
 impl StylesheetCompilationContext {
+    /// Context-aware baseline helpers apply preprocessing qualification only;
+    /// they do not implement a selected processor's lowering semantics.
+    pub(crate) fn require_declaration_driven_lowering(
+        self,
+        location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    ) -> Result<(), CompileFailure> {
+        if self.processor != ProcessorPolicyStamp::DeclarationDrivenBaseline {
+            return Err(super::unsupported(
+                "FXST1058",
+                "selected processor policy requires policy-aware lowering, not baseline artifact relabeling",
+                location,
+            ));
+        }
+        Ok(())
+    }
+
     pub(crate) const fn baseline() -> Self {
         Self {
             preprocessing: StylesheetPreprocessingStamp::ModernBaseline,

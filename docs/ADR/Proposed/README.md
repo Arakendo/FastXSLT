@@ -5,5 +5,5 @@ candidate architectural decision is under review. Proposed ADRs are not
 binding. If accepted, assign the next unused ADR number, record the acceptance
 date, move the file to `docs/ADR/`, and update the ADR index.
 
-- No active drafts. The processor-edition proposal was accepted as
-  [ADR-0025](../ADR-0025-compilation-graph-scoped-processor-edition-policy.md).
+- No active drafts. The profile-promotion proposal was accepted with modifications
+  as [ADR-0026](../ADR-0026-evidence-gated-profile-promotion-and-frontier-progress.md).

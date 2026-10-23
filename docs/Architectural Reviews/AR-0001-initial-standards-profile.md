@@ -8,7 +8,7 @@
 | Scope | Product standards and semantic baseline |
 | Trigger | The first transform slice needs a precise XPath/XSLT target |
 | Related ADRs | ADR-0007 |
-| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`, `docs/Evidence/private-golden-transform-slice-2026-08-25.md`, and `docs/Evidence/xslt30-template-006-private-execution-2026-08-25.md` |
+| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, `docs/Campaigns/oasis-xslt10/evidence/compatibility-and-controls/oasis-xslt10-suite-candidate-review-2026-08-25.md`, `docs/Evidence/private-golden-transform-slice-2026-08-25.md`, and `docs/Campaigns/xslt30-corpus/evidence/admission-and-dispatch/xslt30-template-006-private-execution-2026-08-25.md` |
 
 ## Architectural question
 

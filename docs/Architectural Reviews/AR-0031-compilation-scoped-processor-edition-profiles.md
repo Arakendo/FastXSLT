@@ -180,7 +180,7 @@ declared versions, governs processor semantics through the shared compiler/runti
 Recognition versus capability is normative. Production integration remains
 subject to the ADR's executable gates; the experiment is not promoted.
 
-The [semantic audit and decision checkpoint](../Evidence/ar-0031-bounded-instruction-probe-2026-10-16.md#semantic-audit-and-decision-checkpoint)
+The [semantic audit and decision checkpoint](../Campaigns/processor-edition-profile/evidence/ar-0031-bounded-instruction-probe-2026-10-16.md#semantic-audit-and-decision-checkpoint)
 recommends a narrow ownership decision, not promotion of the prototype. Select
 graph-scoped processor policy separately from preprocessing and local declared-
 version context; require edition-aware recognition, error timing, introspection
@@ -196,7 +196,7 @@ conformance credit earned.
 
 ### Experiment history
 
-The [first bounded instruction probe](../Evidence/ar-0031-bounded-instruction-probe-2026-10-16.md)
+The [first bounded instruction probe](../Campaigns/processor-edition-profile/evidence/ar-0031-bounded-instruction-probe-2026-10-16.md)
 now exercises explicit edition/version witnesses through existing lowering and
 ordinary runtime controls. A subsequent private callback extraction propagates
 the witnesses through nested fallback bodies; general containers and local-version

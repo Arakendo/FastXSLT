@@ -69,21 +69,13 @@ pub(super) fn compile_computed_element_after_attribute_validation(
     if uses_xslt10_compatibility(document, element)
         && let Some(name) = compile_dynamic_element_name(document, element, name)?
     {
-        let ComputedElementContent {
-            attribute_set_names,
-            computed_attributes,
-            body,
-        } = compile_computed_element_content(document, element, lower_body)?;
-        return Ok(Instruction::DynamicNameElement {
-            xslt10_compatibility: true,
+        return compile_legacy_dynamic_element(
+            document,
+            element,
             name,
             namespace_override,
-            static_namespaces: document.in_scope_namespaces(element).into(),
-            attribute_set_names,
-            computed_attributes,
-            body,
-            location: document.location(element).clone(),
-        });
+            lower_body,
+        );
     }
     if matches!(namespace_override, Some(DynamicNamespaceValue::Path(_))) {
         let ComputedElementContent {
@@ -122,6 +114,57 @@ pub(super) fn compile_computed_element_after_attribute_validation(
         attribute_set_names,
         computed_attributes,
         body: lower_body(document, element, &computed_attribute_nodes)?,
+        location: document.location(element).clone(),
+    })
+}
+
+/// Selected legacy callers validate the bounded name grammar and attributes.
+/// Processor identity must not be inferred from the local version declaration.
+#[cfg(test)]
+pub(super) fn compile_selected_legacy_dynamic_element(
+    document: &Document,
+    element: NodeId,
+    lower_body: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &[NodeId],
+    ) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
+    let lexical = required_attribute(document, element, None, "name")?;
+    let name = compile_dynamic_element_name(document, element, lexical)?.ok_or_else(|| {
+        unsupported(
+            "FXST1047",
+            "selected dynamic name is outside the admitted grammar",
+            document.location(element),
+        )
+    })?;
+    compile_legacy_dynamic_element(document, element, name, None, lower_body)
+}
+
+fn compile_legacy_dynamic_element(
+    document: &Document,
+    element: NodeId,
+    name: DynamicElementName,
+    namespace_override: Option<DynamicNamespaceValue>,
+    lower_body: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &[NodeId],
+    ) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
+    let ComputedElementContent {
+        attribute_set_names,
+        computed_attributes,
+        body,
+    } = compile_computed_element_content(document, element, lower_body)?;
+    Ok(Instruction::DynamicNameElement {
+        xslt10_compatibility: true,
+        name,
+        namespace_override,
+        static_namespaces: document.in_scope_namespaces(element).into(),
+        attribute_set_names,
+        computed_attributes,
+        body,
         location: document.location(element).clone(),
     })
 }

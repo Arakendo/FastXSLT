@@ -502,7 +502,7 @@ fn parse_xslt10_context_node_set_variable_equality(
     (left.trim() == "." && is_ascii_ncname(variable)).then_some(variable)
 }
 
-fn compile_child_attribute_variable_string_path(
+pub(super) fn compile_child_attribute_variable_string_path(
     expression: &str,
     xslt10_compatibility: bool,
 ) -> Option<BooleanExpression> {
@@ -674,7 +674,7 @@ fn compile_count_path_equality(
         .map_err(map_path_failure)
 }
 
-fn compile_xslt10_variable_numeric_comparison(
+pub(super) fn compile_xslt10_variable_numeric_comparison(
     expression: &str,
     xslt10_compatibility: bool,
 ) -> Option<BooleanExpression> {

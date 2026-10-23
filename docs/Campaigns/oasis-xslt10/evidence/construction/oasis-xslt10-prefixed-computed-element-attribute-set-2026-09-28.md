@@ -1,0 +1,118 @@
+# OASIS XSLT 1.0 Prefixed Instruction Attribute-Set Recovery -- 2026-09-28
+
+Date: 2026-09-28  
+Status: Verified compatibility and corpus evidence  
+Corpus: OASIS XSLT/XPath Conformance Test Suite CD04, locally acquired and not redistributed  
+Archive SHA-256: `66750E63994C3A07252D8A6555E82E5CE5127D1942005BCC8314C7D736BD7BD5`
+
+## Pressure
+
+Three unchanged Microsoft cases put `xsl:use-attribute-sets` on an
+`xsl:element` instruction. The standard instruction attribute is unqualified,
+so FastXSLT correctly rejected the namespaced attribute. The suite's own
+`doubts.xml` marks all three cases as gray-area
+`xsl-prefixed-attrib-on-xsl-instruction` cases and selects the `ignore`
+behavior. Their expected results therefore omit the named attribute set from
+the computed element.
+
+## Change
+
+The XSLT 1.0 compatibility compiler initially tolerated and ignored exactly
+`xsl:element/@xsl:use-attribute-sets`. On 2026-09-29 the same corpus-selected
+recovery was extended to `xsl:attribute-set` and `xsl:copy`. It does not
+resolve or apply the named set. The standard unqualified
+`use-attribute-sets` spelling continues through the existing attribute-set
+linker and runtime application path.
+
+The rule is compile-selected and limited to the actual XSLT `element`,
+`attribute-set`, and `copy` instructions under XSLT 1.0 compatibility. It does
+not generally ignore XSLT-namespaced attributes, weaken modern static contexts,
+or treat the prefixed spelling as standards-conforming syntax. Dependency-graph
+collection follows the same namespace rule, so an ignored prefixed spelling
+cannot silently create an attribute-set dependency.
+
+## Corpus result
+
+Unchanged `Microsoft/AttributeSets__91080#1`,
+`Microsoft/AttributeSets__91081#1`, and
+`Microsoft/AttributeSets__91083#1` initialize, execute, and compare exactly
+under the suite-declared gray-area behavior.
+
+| Measurement | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| Initialized | 2,427 | 2,430 | +3 |
+| Executed successfully | 2,377 | 2,380 | +3 |
+| Initialization failures | 743 | 740 | -3 |
+| Execution failures | 50 | 50 | 0 |
+| Exact XML expected-result matches | 2,216 | 2,219 | +3 |
+| XSLT-Result-Tree exact matches | 1,591 | 1,594 | +3 |
+
+The conservative exact-match ratio is `2,219 / 3,173 = 69.93%`.
+Expected-error credit remains 423 / 431, comparator gaps remain 53, and XML
+mismatches remain nine. The cases retain their doubt metadata; this evidence
+does not convert the suite's chosen recovery behavior into an XSLT 1.0
+conformance claim.
+
+The 2026-09-29 extension deliberately earns no additional pass credit.
+`Microsoft/AttributeSets__91036#1` advances to its independent unknown
+unqualified `foo` attribute, while `Microsoft/AttributeSets__91038#1` advances
+to its empty standard `use-attribute-sets` list. The latter remains invalid:
+XSLT 1.0's `QNames` production requires at least one QName. The complete sweep
+therefore stays at 2,262 / 3,173 exact matches (71.29%), 2,442 initialized
+cases, and 2,393 successful executions, with zero visible mismatches and zero
+comparator gaps.
+
+## Verification
+
+A focused runtime test proves that the prefixed spelling is ignored while the
+existing focused test continues to prove that the unqualified spelling applies
+the set. The full corpus sweep then verifies the three unchanged archival
+cases.
+
+```powershell
+cargo test -p fastxslt --all-features xslt10_prefixed_computed_element_attribute_set_attribute_is_ignored
+cargo test -p fastxslt --all-features xslt10_prefixed_attribute_set_spelling_is_ignored_on_declarations_and_copy
+cargo test -p fastxslt --all-features xslt10_attribute_set_lists_require_at_least_one_qname
+./scripts/measure-oasis-xslt10.ps1 -TraceCase 'Microsoft/AttributeSets__91083#1'
+./scripts/measure-oasis-xslt10.ps1 -TraceCase 'Microsoft/AttributeSets__91038#1'
+./scripts/verify.ps1
+```
+
+## Normative references
+
+- [XSLT 1.0 section 7.1.2, Creating Elements with `xsl:element`](https://www.w3.org/TR/1999/REC-xslt-19991116#creating-elements-with-xsl-element)
+- [XSLT 1.0 section 7.1.4, Named Attribute Sets](https://www.w3.org/TR/1999/REC-xslt-19991116#attribute-sets)
+
+## 2026-10-18 choose attribute consistency
+
+The fresh ordinary frontier exposed `Microsoft/AttributeSets__91100#1` at
+`xsl:choose` carrying `xsl:use-attribute-sets`. Its custom attribute validator
+was missing the existing bounded XSLT 1.0 prefixed-attribute recovery helper
+already used by the general instruction validator. Routing it through that
+same helper closes the inconsistency; it does not resolve or apply the value.
+
+The acquired `doubts.xml` explicitly classifies this case under
+`xsl-prefixed-attrib-on-xsl-instruction`, with chosen behavior `ignore` and a
+comment that the specification seems to disallow the spelling. This is
+archival compatibility/recovery evidence, not proof of required XSLT behavior.
+The implementation does not generalize ignoring to arbitrary attributes.
+
+The new focused test failed before the change with `FXST1009`, then passed.
+It checks alternate prefixes bound to the XSLT namespace, malformed ignored
+values, choose/when/otherwise composition and execution after stylesheet
+release. Modern 2.0/3.0 contexts remain guarded. A second test pins rejection
+of unqualified attribute-set spelling, unknown XSLT attributes and invalid
+`xml:space`. The private conditional compiler remains a cohesive 288-line unit.
+
+The unchanged complete case compares exactly under the existing XML comparator.
+No upstream fixture, expected output, comparator or exclusion was changed.
+The modern/strict-preprocessing full sweeps gain one each: **2,504/2,501 exact
+out of 3,173**, with **16/19 mismatches**, **2,707 initialized**, **2,658 executed**
+and **423 expected-error credits** unchanged. Ordinary failures drop from 90
+to 89 (22 unsupported, 63 invalid, 4 missing-resource). Modern exact coverage
+is **78.92%**; 35 additional exact comparisons are required to reach 80%.
+
+Repository verification passes with 2,188 non-ignored workspace tests, strict
+Clippy, formatting, documentation, 1,998 Markdown link checks and pinned
+conformance inventory checks. The official WASM target also builds. The
+separately tested selected-profile value-of work earns no part of this gain.

@@ -200,6 +200,28 @@ knowledge, edition recognition and actual capability must not impersonate one
 another. Accepted ownership does not promote the test-only reference or choose
 production defaults/public profile APIs.
 
+Follow ADR-0026 for the current ADR-0025 integration campaign. Before further
+feature expansion, establish a finite promotion ledger for maintainer review.
+Keep approved scope closed between reviewed revisions; report corpus movement
+separately from obligation closure. New mandatory blockers are provisional and
+reported outside the approved denominator until maintainer disposition; do not
+proceed through known defects or promote with unresolved provisional blockers.
+Review after three semantic tranches (not chat turns/commits), or at the ADR's
+earlier triggers. Unsupported features can remain explicit; existing accepted
+gates cannot be waived. Do not retrofit historical campaigns during this pilot.
+
+Group sustained blocker/campaign paperwork under `docs/Campaigns/<topic>/`.
+Use a short README for objective, status, authority links and next steps; keep
+one authoritative ledger there when needed. Place new campaign-specific evidence
+and handoffs in its `evidence/` and `checkpoints/` subfolders as documents arise.
+Keep numbered ARs/ADRs central. Historical evidence may migrate by coherent
+campaign with a path manifest and repository-wide link verification; preserve
+observations and raw measurement bytes. Use subject subfolders for large corpus
+collections and retain genuinely shared evidence separately. Keep the roadmap
+high-level. Folder creation does not approve
+scope or change document authority; ordinary fixes need no campaign ceremony.
+Follow `docs/Campaigns/README.md` for indexing and closure conventions.
+
 Run these gates after Rust changes:
 
 ```text
@@ -228,5 +250,6 @@ keep relative links valid.
 - `docs/ADR` -- accepted architectural decisions
 - `docs/Architectural Reviews` -- open questions, evidence, and dispositions
 - `docs/Plans` -- executable work and milestone sequencing
+- `docs/Campaigns` -- bounded blocker campaigns, ledgers, evidence and handoffs
 - `docs/Change Requests` -- incoming consumer needs and requested boundaries
 - `docs/Evidence` -- reproducible observations and review records

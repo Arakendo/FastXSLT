@@ -15,7 +15,7 @@ the modern processor reference. A declaration cannot choose processor identity.
 ADR-0023 selected stylesheet preprocessing only; extending its selector or a
 local compatibility helper would conflate distinct decisions.
 
-AR-0031's [bounded experiment and semantic audit](../Evidence/ar-0031-bounded-instruction-probe-2026-10-16.md#semantic-audit-and-decision-checkpoint)
+AR-0031's [bounded experiment and semantic audit](../Campaigns/processor-edition-profile/evidence/ar-0031-bounded-instruction-probe-2026-10-16.md#semantic-audit-and-decision-checkpoint)
 contains 50 focused probes, whole-module lowering, bounded include/import
 propagation, artifact isolation and qualification, and known-newer instruction
 controls. The audit corrected modern missing-fallback error timing in the

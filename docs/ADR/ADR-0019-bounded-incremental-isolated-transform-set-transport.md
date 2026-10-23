@@ -4,7 +4,7 @@
 - Date: 2026-09-05
 - Related reviews: AR-0002, AR-0018, AR-0021
 - Related ADRs: ADR-0002, ADR-0005, ADR-0016
-- Related evidence: `docs/Evidence/ar-0021-versioned-incremental-protocol-2026-09-05.md`
+- Related evidence: `docs/Campaigns/isolated-transport-batching/evidence/ar-0021-versioned-incremental-protocol-2026-09-05.md`
 - Supersedes: None
 
 ## Context

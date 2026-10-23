@@ -187,9 +187,8 @@ fn selected_template_unknown_attribute_uses_processor_not_declared_version() {
 #[test]
 fn selected_declaration_attributes_keep_unpropagated_readers_guarded() {
     for attribute in [
-        r#"name="n""#,
-        r#"mode="m""#,
-        r#"priority="1""#,
+        r#"mode="m n""#,
+        r#"priority="0.1""#,
         r#"xpath-default-namespace="urn:source""#,
         r#"default-mode="m""#,
         r#"default-collation="urn:unproved""#,
@@ -454,12 +453,8 @@ fn selected_top_level_recognition_does_not_hide_unintegrated_legacy_declarations
     for name in [
         "import",
         "include",
-        "strip-space",
-        "preserve-space",
-        "key",
         "decimal-format",
         "namespace-alias",
-        "attribute-set",
         "variable",
         "param",
     ] {
@@ -476,8 +471,15 @@ fn selected_top_level_recognition_does_not_hide_unintegrated_legacy_declarations
             assert!(!failure.location.span.is_empty());
         }
     }
-    // The two integrated declaration families still validate their attributes.
-    for declaration in [r#"<xsl:output method="invalid"/>"#, "<xsl:template/>"] {
+    // Integrated declaration families still validate their attributes.
+    for declaration in [
+        r#"<xsl:output method="invalid"/>"#,
+        "<xsl:template/>",
+        "<xsl:attribute-set/>",
+        "<xsl:key/>",
+        "<xsl:strip-space/>",
+        "<xsl:preserve-space/>",
+    ] {
         assert!(
             compile(
                 &sheet("2.0", declaration),

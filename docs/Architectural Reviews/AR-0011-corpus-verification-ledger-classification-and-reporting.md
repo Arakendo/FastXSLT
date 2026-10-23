@@ -9,7 +9,7 @@
 | Trigger | FastXSLT has 46,421 admitted QT3/XSLT30 cases and 2,586 locally inventoried XML candidates, but only one upstream case executes through a first-party overlay |
 | Related ADRs | ADR-0002, ADR-0005, ADR-0006 |
 | Related reviews | AR-0001, AR-0004, AR-0006, AR-0008, AR-0010 |
-| Related evidence | `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, `docs/Evidence/xslt30-template-006-private-execution-2026-08-25.md`, `docs/Evidence/peer-test-corpus-review-monday-2026-08-25.md`, and `docs/Evidence/w3c-xml-conformance-suite-candidate-review-2026-08-25.md` |
+| Related evidence | `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, `docs/Campaigns/xslt30-corpus/evidence/admission-and-dispatch/xslt30-template-006-private-execution-2026-08-25.md`, `docs/Evidence/peer-test-corpus-review-monday-2026-08-25.md`, and `docs/Evidence/w3c-xml-conformance-suite-candidate-review-2026-08-25.md` |
 
 ## Architectural question
 

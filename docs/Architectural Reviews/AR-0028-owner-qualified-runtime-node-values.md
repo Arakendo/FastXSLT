@@ -8,7 +8,7 @@
 | Scope | Invocation node values, document focus and mixed selections |
 | Trigger | Remaining unchanged OASIS cases require node ownership to survive document switches |
 | Related ADRs | ADR-0004, ADR-0012, ADR-0017, ADR-0021, ADR-0022 |
-| Related evidence | [Global literal-document variables](../Evidence/oasis-xslt10-global-literal-document-variable-2026-09-30.md), [current attribute lookup](../Evidence/oasis-xslt10-current-predicate-lexical-boundaries-2026-10-04.md) |
+| Related evidence | [Global literal-document variables](../Campaigns/oasis-xslt10/evidence/documents-and-resources/oasis-xslt10-global-literal-document-variable-2026-09-30.md), [current attribute lookup](../Campaigns/oasis-xslt10/evidence/paths-and-focus/oasis-xslt10-current-predicate-lexical-boundaries-2026-10-04.md) |
 
 ## Architectural question
 

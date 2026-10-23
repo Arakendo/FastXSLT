@@ -108,6 +108,8 @@ mod literal_attribute_compiler;
 pub(super) use literal_attribute_compiler::compile_literal_result_attributes;
 #[path = "instruction_compiler/number_compiler.rs"]
 mod number_compiler;
+#[path = "instruction_compiler/result_namespace_compiler.rs"]
+mod result_namespace_compiler;
 use number_compiler::compile as compile_number;
 #[path = "instruction_compiler/source_copy_compiler.rs"]
 mod source_copy_compiler;
@@ -356,6 +358,16 @@ mod stylesheet_content_reference;
 #[cfg(test)]
 #[path = "instruction_compiler/processor_edition_reference.rs"]
 mod processor_edition_reference;
+#[cfg(test)]
+pub(crate) use processor_edition_reference::compile_selected_legacy_import_module_for_test;
+#[cfg(test)]
+pub(crate) use processor_edition_reference::compile_selected_legacy_include_module_for_test;
+#[cfg(test)]
+pub(crate) use processor_edition_reference::compile_selected_legacy_mixed_module_for_test;
+#[cfg(test)]
+pub(crate) use processor_edition_reference::compile_selected_legacy_resolved_chain_for_test;
+#[cfg(test)]
+pub(crate) use processor_edition_reference::compile_selected_legacy_resolved_pair_for_test;
 
 fn is_xslt10_template_element(local_name: &str) -> bool {
     matches!(
@@ -600,6 +612,14 @@ fn compile_message_common_subset(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
+    compile_message_with_body(document, element, &mut compile_sequence)
+}
+
+fn compile_message_with_body(
+    document: &Document,
+    element: NodeId,
+    compile_body: &mut impl FnMut(&Document, NodeId) -> Result<Vec<Instruction>, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["terminate"], "xsl:message")?;
     let terminate = match optional_attribute(document, element, None, "terminate") {
         None | Some("no") => false,
@@ -614,7 +634,7 @@ fn compile_message_common_subset(
     };
     Ok(Instruction::Xslt10Message {
         terminate,
-        body: compile_sequence(document, element)?,
+        body: compile_body(document, element)?,
         location: document.location(element).clone(),
     })
 }
@@ -2195,101 +2215,7 @@ pub(super) fn literal_result_namespaces(
     document: &Document,
     element: NodeId,
 ) -> Vec<NamespaceBinding> {
-    let mut namespaces = Vec::new();
-    let mut excluded_prefixes = Vec::new();
-    let mut exclude_all = false;
-    let mut current = Some(element);
-    while let Some(node) = current {
-        let is_stylesheet_root = document.name(node).is_some_and(|name| {
-            name.namespace.as_deref() == Some(XSLT_NAMESPACE)
-                && matches!(name.local.as_str(), "stylesheet" | "transform")
-        });
-        let is_literal_result = document.name(node).is_some_and(|name| {
-            name.namespace.as_deref() != Some(XSLT_NAMESPACE)
-                && !is_declared_extension_element(document, node)
-        });
-        let exclusions = if is_stylesheet_root {
-            optional_attribute(document, node, None, "exclude-result-prefixes")
-        } else if is_literal_result {
-            optional_attribute(
-                document,
-                node,
-                Some(XSLT_NAMESPACE),
-                "exclude-result-prefixes",
-            )
-        } else {
-            None
-        };
-        if let Some(exclusions) = exclusions {
-            for prefix in exclusions.split_whitespace() {
-                if prefix == "#all" {
-                    exclude_all = true;
-                } else if !excluded_prefixes.contains(&prefix) {
-                    excluded_prefixes.push(prefix);
-                }
-            }
-        }
-        let extensions = if is_stylesheet_root {
-            optional_attribute(document, node, None, "extension-element-prefixes")
-        } else if is_literal_result {
-            optional_attribute(
-                document,
-                node,
-                Some(XSLT_NAMESPACE),
-                "extension-element-prefixes",
-            )
-        } else {
-            None
-        };
-        if let Some(extensions) = extensions {
-            for prefix in extensions.split_whitespace() {
-                if !excluded_prefixes.contains(&prefix) {
-                    excluded_prefixes.push(prefix);
-                }
-            }
-        }
-        current = document.parent(node);
-    }
-    let mut current = Some(element);
-    while let Some(node) = current {
-        for binding in document.namespace_declarations(node) {
-            let prefix = binding.prefix.as_deref();
-            let required_for_element = document.name(element).is_some_and(|name| {
-                name.namespace.as_deref() == Some(binding.namespace.as_str())
-                    && document.prefix(element) == prefix
-            });
-            let required_for_attribute = document.attributes(element).iter().any(|attribute| {
-                document.name(*attribute).is_some_and(|name| {
-                    name.namespace.as_deref() == Some(binding.namespace.as_str())
-                        && name.namespace.as_deref() != Some(XSLT_NAMESPACE)
-                        && document.prefix(*attribute) == prefix
-                })
-            });
-            let excluded = match prefix {
-                Some(prefix) => excluded_prefixes.contains(&prefix),
-                None => excluded_prefixes.contains(&"#default"),
-            };
-            if prefix != Some("xml")
-                && binding.namespace != XSLT_NAMESPACE
-                && !binding.namespace.is_empty()
-                && (required_for_element || required_for_attribute || (!exclude_all && !excluded))
-                && !namespaces
-                    .iter()
-                    .any(|existing: &NamespaceBinding| existing.prefix.as_deref() == prefix)
-            {
-                namespaces.push(binding.clone());
-            }
-        }
-        current = document.parent(node);
-    }
-    if let Some(preferred_prefix) = document.prefix(element)
-        && let Some(index) = namespaces
-            .iter()
-            .position(|binding| binding.prefix.as_deref() == Some(preferred_prefix))
-    {
-        namespaces[..=index].rotate_right(1);
-    }
-    namespaces
+    result_namespace_compiler::literal_result_namespaces(document, element)
 }
 
 fn compile_apply_templates(
@@ -2399,6 +2325,25 @@ fn compile_value_of_after_attribute_validation(
                 ));
             }
         };
+    compile_value_of_with_validated_options(
+        document,
+        element,
+        disable_output_escaping,
+        lower_expression,
+    )
+}
+
+fn compile_value_of_with_validated_options(
+    document: &Document,
+    element: NodeId,
+    disable_output_escaping: bool,
+    lower_expression: &mut impl FnMut(
+        &Document,
+        NodeId,
+        &str,
+        &SourceLocation,
+    ) -> Result<ValueExpression, CompileFailure>,
+) -> Result<Instruction, CompileFailure> {
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;

@@ -19,7 +19,7 @@ item from this review remains open.
 This table tracks repository work performed after the read-only review. The
 original findings remain below as reviewed; a completed status does not rewrite
 their original evidence. Implementation details and validation are recorded in
-[the first correctness-tranche evidence](../Evidence/adversarial-review-first-correctness-tranche-2026-08-30.md).
+[the first correctness-tranche evidence](../Campaigns/adversarial-remediation/evidence/adversarial-review-first-correctness-tranche-2026-08-30.md).
 
 | Finding | Status              | Current disposition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ------: | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,7 +40,7 @@ Current total: **all 12 findings handled**, comprising ten semantic, evidence,
 operational, or measured representation repairs and two explicit unsupported
 boundaries. The
 first completed tranche is commit `95aa31a`; the
-subsequent [worker control-frame evidence](../Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md)
+subsequent [worker control-frame evidence](../Campaigns/aspnet-hosting/evidence/controls-and-lifecycle/aspnet-worker-control-frame-serialization-2026-08-31.md)
 records Finding 10's stress and operational validation. The
 [template-candidate evidence](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 advances Finding 7 from an unmeasured suspicion to a confirmed remediation
@@ -52,18 +52,18 @@ invocation-owned membership representation.
 The [global-frame cloning evidence](../Evidence/named-template-global-frame-cloning-2026-08-31.md)
 confirms Finding 12's warm frame pressure and the admitted safe copy-on-write
 replacement. The separate
-[prepared-XDM anatomy](../Evidence/prepared-xdm-byte-anatomy-2026-08-31.md)
+[prepared-XDM anatomy](../Campaigns/native-registry-retention/evidence/prepared-xdm-byte-anatomy-2026-08-31.md)
 measures the other hypothesis without selecting another representation.
 Finding 6's latest
-[ASP.NET burst evidence](../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md)
-and [candidate replay](../Evidence/native-registry-candidate-policy-replay-2026-08-31.md)
+[ASP.NET burst evidence](../Campaigns/native-registry-retention/evidence/aspnet-native-registry-burst-pressure-2026-08-31.md)
+and [candidate replay](../Campaigns/native-registry-retention/evidence/native-registry-candidate-policy-replay-2026-08-31.md)
 separate exact native ownership from managed and allocator retention and explain
 why outcome cardinality alone cannot be a deterministic memory ceiling.
 The subsequent
-[exhaustion-delivery comparison](../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md)
+[exhaustion-delivery comparison](../Campaigns/native-registry-retention/evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md)
 nominated the disjoint tagged scalar status later accepted by
 [ADR-0016](../ADR/ADR-0016-host-configured-native-registry-admission.md). The
-[host-configured admission evidence](../Evidence/native-host-configured-registry-admission-2026-08-31.md)
+[host-configured admission evidence](../Campaigns/native-registry-retention/evidence/native-host-configured-registry-admission-2026-08-31.md)
 records quota enforcement, release recovery, concurrent last-slot admission,
 and the managed boundary smoke that closes Finding 6.
 

@@ -7,7 +7,7 @@
 | Review posture | Assume the harness unintentionally suppresses SaxonCS or Microsoft; look for a faster valid competitor configuration |
 | Scope | ASP.NET tiered comparison, local SaxonCS adapter, Microsoft XSLT 1.0 adapter, and the relationship to AR-0021 batching |
 | Status | Remediated and signed off; all findings resolved and the follow-on publication gate passed |
-| Principal evidence | [FastXSLT/Saxon/Microsoft tiered rerun](../Evidence/aspnet-fastxslt-saxon-microsoft-rerun-2026-09-05.md); [AR-0021](../Architectural%20Reviews/AR-0021-bounded-isolated-transport-batching.md) |
+| Principal evidence | [FastXSLT/Saxon/Microsoft tiered rerun](../Campaigns/aspnet-hosting/evidence/benchmarks/aspnet-fastxslt-saxon-microsoft-rerun-2026-09-05.md); [AR-0021](../Architectural%20Reviews/AR-0021-bounded-isolated-transport-batching.md) |
 
 ## Resolution tracking
 
@@ -23,7 +23,7 @@
 | CBF-08 | Guardrail retained | Measurement records state that managed allocation is not comparable total allocation across engines. |
 
 Detailed implementation and measurement evidence is recorded in the
-[fairness remediation tranche](../Evidence/competitive-benchmark-fairness-remediation-tranche-2026-09-05.md).
+[fairness remediation tranche](../Campaigns/competitive-benchmarks/evidence/competitive-benchmark-fairness-remediation-tranche-2026-09-05.md).
 
 ## Verdict
 

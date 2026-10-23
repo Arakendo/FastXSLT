@@ -4,7 +4,7 @@
 - Date: 2026-09-05
 - Related reviews: AR-0013 and the 2026-09-04 performance review
 - Related ADRs: ADR-0002, ADR-0003, ADR-0004, ADR-0014
-- Related evidence: `docs/Evidence/runtime-frame-nested-copy-on-write-2026-09-05.md`
+- Related evidence: `docs/Campaigns/performance-optimization/evidence/runtime-frame-nested-copy-on-write-2026-09-05.md`
 - Supersedes: None
 
 ## Context

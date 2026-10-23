@@ -21,6 +21,9 @@ The location of a document signals its authority.
   override ADRs.
 - [Plans](Plans/) describe executable work and sequencing. They do not change
   architecture by themselves.
+- [Campaigns](Campaigns/) group bounded blocker work: ledgers, supporting
+  evidence and handoffs. Their indexes link to central architectural records;
+  grouping documents does not change their authority.
 - [Change Requests](Change%20Requests/) preserve needs from applications and
   sibling projects without making a consumer's implementation model part of
   the engine contract. Acceptance is not automatic.
@@ -46,6 +49,7 @@ The location of a document signals its authority.
 | `SECURITY.md` | Threat scope and vulnerability reporting | Repository policy |
 | `docs/Architectural Reviews/` | Unresolved questions and evaluated evidence | Informative until disposition |
 | `docs/Plans/` | Delivery slices and acceptance evidence | Execution guidance only |
+| `docs/Campaigns/` | Topic-scoped ledgers, evidence and handoffs | Execution guidance or observations, not architectural authority |
 | `docs/Change Requests/` | Consumer problems and requested boundaries | Incoming pressure, not a commitment |
 | `docs/Evidence/` and `docs/Corpus/` | Reproducible observations and test inputs | Evidence, not guarantees |
 | `docs/Notes/` | Working memory and research | Non-normative |
@@ -62,8 +66,10 @@ Accepted architectural decision?   -> docs/ADR/
 Proposed ADR awaiting acceptance?  -> docs/ADR/Proposed/
 Architecture under investigation?  -> docs/Architectural Reviews/
 Executable implementation work?    -> docs/Plans/
+Bounded campaign paperwork?        -> docs/Campaigns/<topic>/
 Request from a consuming project?   -> docs/Change Requests/
-Reproducible observation or audit?  -> docs/Evidence/
+Campaign observation or audit?      -> docs/Campaigns/<topic>/evidence/
+Shared observation or audit?        -> docs/Evidence/
 Working research or project memory? -> docs/Notes/
 Test-suite or corpus policy?        -> docs/Corpus/
 ```
@@ -83,3 +89,8 @@ Accepted ADR + specification -> Plan -> Code + tests + evidence
 
 Not every change needs every document. Ordinary bug fixes and local refactors
 that preserve accepted contracts do not require an AR or ADR.
+
+For sustained blocker work, use the [campaign convention](Campaigns/README.md)
+to keep its ledger and supporting records together. Historical campaign evidence
+has migrated with a path manifest; shared evidence and numbered ARs/ADRs remain
+central. Large corpus campaigns use subject-based subfolders.

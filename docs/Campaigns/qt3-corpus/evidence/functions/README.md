@@ -1,0 +1,26 @@
+# Evidence: evidence/functions
+
+Historical observations, not new approvals or current conformance claims.
+
+- [qt3-boolean-effective-value-initial-denominator-2026-09-03.md](qt3-boolean-effective-value-initial-denominator-2026-09-03.md)
+- [qt3-boolean-function-initial-denominators-2026-09-03.md](qt3-boolean-function-initial-denominators-2026-09-03.md)
+- [qt3-codepoint-equal-denominator-2026-09-03.md](qt3-codepoint-equal-denominator-2026-09-03.md)
+- [qt3-days-from-duration-denominator-2026-09-03.md](qt3-days-from-duration-denominator-2026-09-03.md)
+- [qt3-default-collation-denominator-2026-09-03.md](qt3-default-collation-denominator-2026-09-03.md)
+- [qt3-document-aware-boolean-production-path-2026-09-03.md](qt3-document-aware-boolean-production-path-2026-09-03.md)
+- [qt3-document-aware-effective-boolean-value-2026-09-03.md](qt3-document-aware-effective-boolean-value-2026-09-03.md)
+- [qt3-effective-boolean-value-errors-2026-09-03.md](qt3-effective-boolean-value-errors-2026-09-03.md)
+- [qt3-empty-function-initial-denominator-2026-09-03.md](qt3-empty-function-initial-denominator-2026-09-03.md)
+- [qt3-encode-for-uri-denominator-2026-09-03.md](qt3-encode-for-uri-denominator-2026-09-03.md)
+- [qt3-escape-html-uri-denominator-2026-09-03.md](qt3-escape-html-uri-denominator-2026-09-03.md)
+- [qt3-exists-function-initial-denominator-2026-09-03.md](qt3-exists-function-initial-denominator-2026-09-03.md)
+- [qt3-hour-minute-duration-denominators-2026-09-03.md](qt3-hour-minute-duration-denominators-2026-09-03.md)
+- [qt3-iri-to-uri-denominator-2026-09-03.md](qt3-iri-to-uri-denominator-2026-09-03.md)
+- [qt3-lower-case-denominator-2026-09-03.md](qt3-lower-case-denominator-2026-09-03.md)
+- [qt3-months-from-duration-denominator-2026-09-03.md](qt3-months-from-duration-denominator-2026-09-03.md)
+- [qt3-normalize-space-denominator-2026-09-03.md](qt3-normalize-space-denominator-2026-09-03.md)
+- [qt3-not-function-initial-denominator-2026-09-03.md](qt3-not-function-initial-denominator-2026-09-03.md)
+- [qt3-source-free-boolean-production-path-2026-09-03.md](qt3-source-free-boolean-production-path-2026-09-03.md)
+- [qt3-string-length-denominator-2026-09-03.md](qt3-string-length-denominator-2026-09-03.md)
+- [qt3-upper-case-denominator-2026-09-03.md](qt3-upper-case-denominator-2026-09-03.md)
+- [qt3-years-from-duration-denominator-2026-09-03.md](qt3-years-from-duration-denominator-2026-09-03.md)

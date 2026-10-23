@@ -24,6 +24,11 @@ pub(super) fn compile_context_tree(
     context: StylesheetCompilationContext,
     principal: bool,
 ) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    if let Err(error) =
+        context.require_declaration_driven_lowering(module.document.location(module.root))
+    {
+        return Some(Err(error));
+    }
     if module.dependencies.is_empty() {
         return Some(
             if principal {
@@ -174,6 +179,43 @@ mod tests {
             (StylesheetPreprocessingProfile::Modern, true),
             (StylesheetPreprocessingProfile::StrictXslt10, false),
         ]
+    }
+
+    #[test]
+    fn preprocessing_context_rejects_selected_processor_before_baseline_graph_lowering() {
+        use crate::xslt::golden_semantics_experiment::ProcessorPolicyStamp;
+        let leaf = stylesheet("<xsl:template match='/'>baseline</xsl:template>");
+        let parent = stylesheet("<xsl:include href='child.xsl'/>");
+        for modules in [
+            vec![(PRINCIPAL, leaf.as_str())],
+            vec![(PRINCIPAL, parent.as_str()), (CHILD, leaf.as_str())],
+        ] {
+            let graph = graph(&modules);
+            for principal in [false, true] {
+                for processor in [
+                    ProcessorPolicyStamp::Xslt10Reference,
+                    ProcessorPolicyStamp::ModernReference,
+                ] {
+                    let context = StylesheetCompilationContext::baseline()
+                        .with_processor_reference(processor);
+                    let error = compile_context_tree(&graph, context, principal)
+                        .expect("reject, never defer to baseline")
+                        .unwrap_err();
+                    assert_eq!(error.code, "FXST1058");
+                    assert!(error.detail.contains("policy-aware lowering"));
+                    assert_eq!(error.location, *graph.document.location(graph.root));
+                }
+                assert!(
+                    compile_context_tree(
+                        &graph,
+                        StylesheetCompilationContext::baseline(),
+                        principal
+                    )
+                    .unwrap()
+                    .is_ok()
+                );
+            }
+        }
     }
 
     fn selected_graph(

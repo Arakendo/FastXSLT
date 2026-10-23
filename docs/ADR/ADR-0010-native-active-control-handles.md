@@ -4,7 +4,7 @@
 - Date: 2026-08-26
 - Related reviews: AR-0002, AR-0010
 - Related ADRs: ADR-0003, ADR-0008, ADR-0009
-- Related evidence: `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md` and `docs/Evidence/aspnet-native-active-cancellation-2026-08-26.md`
+- Related evidence: `docs/Campaigns/aspnet-hosting/evidence/controls-and-lifecycle/aspnet-active-cooperative-cancellation-2026-08-26.md` and `docs/Campaigns/aspnet-hosting/evidence/controls-and-lifecycle/aspnet-native-active-cancellation-2026-08-26.md`
 - Supersedes: None
 
 ## Context

@@ -1713,7 +1713,7 @@ fn resolve_case_relative_resource_file(
     Some(resolved)
 }
 
-fn stylesheet_dependency_references(identity: &str, bytes: &[u8]) -> Vec<String> {
+pub(super) fn stylesheet_dependency_references(identity: &str, bytes: &[u8]) -> Vec<String> {
     let Ok(parsed) = parse_document(
         identity,
         bytes,
@@ -1745,7 +1745,7 @@ fn stylesheet_dependency_references(identity: &str, bytes: &[u8]) -> Vec<String>
         .collect()
 }
 
-fn resolve_case_dependency_file(
+pub(super) fn resolve_case_dependency_file(
     directory: &Path,
     current: &str,
     reference: &str,

@@ -155,9 +155,9 @@ fn processor_edition_reference_existing_linker_refuses_mixed_preprocessing_artif
             &mut InvocationControl::unbounded(),
         )
         .unwrap();
-        let failure = compiler::stylesheet_module_compiler::compile_stylesheet_with_included_programs_at_in_context(
-            &view, root, vec![foreign], compilation_context(caller, profile),
-        ).unwrap_err();
+        let failure =
+            assemble_dependency_shell(&view, foreign, compilation_context(caller, profile), false)
+                .unwrap_err();
         assert_eq!(failure.code, "FXST1058");
         assert_eq!(failure.category, CompileCategory::Unsupported);
         assert_eq!(

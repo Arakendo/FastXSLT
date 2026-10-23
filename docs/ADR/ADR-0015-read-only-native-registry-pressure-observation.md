@@ -4,7 +4,7 @@
 - Date: 2026-08-31
 - Related reviews: AR-0002, AR-0017
 - Related ADRs: ADR-0003, ADR-0008, ADR-0010
-- Related evidence: `docs/Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`
+- Related evidence: `docs/Campaigns/native-registry-retention/evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`
 - Supersedes: None
 
 ## Context

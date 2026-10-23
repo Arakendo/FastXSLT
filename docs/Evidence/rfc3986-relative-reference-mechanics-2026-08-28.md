@@ -80,6 +80,6 @@ and `xml:base`, perform XSLT's escaping step, assemble stylesheet modules,
 interpret a fragment, apply catalogs, expose a resolver API, or authorize live
 acquisition. It selects no cache identity and admits no cross-generation
 sharing. The later
-[include-0401 execution](xslt30-include-0401-sealed-module-execution-2026-08-28.md)
+[include-0401 execution](../Campaigns/xslt30-corpus/evidence/module-graphs/xslt30-include-0401-sealed-module-execution-2026-08-28.md)
 uses this exact resolver path without broadening the mechanics experiment into
 general module or resolver conformance.

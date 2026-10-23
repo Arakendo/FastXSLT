@@ -15,6 +15,7 @@ pub(super) fn compile_if(
     compile_if_with_lowerers(
         document,
         element,
+        &mut validate_conditional_attributes,
         &mut compile_boolean_test,
         &mut compile_sequence,
     )
@@ -23,6 +24,7 @@ pub(super) fn compile_if(
 pub(super) fn compile_if_with_lowerers(
     document: &Document,
     element: NodeId,
+    validate_attributes: &mut impl FnMut(&Document, NodeId) -> Result<(), CompileFailure>,
     lower_test: &mut impl FnMut(
         &Document,
         NodeId,
@@ -31,12 +33,7 @@ pub(super) fn compile_if_with_lowerers(
     ) -> Result<BooleanExpression, CompileFailure>,
     lower_body: &mut impl FnMut(&Document, NodeId) -> Result<Vec<Instruction>, CompileFailure>,
 ) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(
-        document,
-        element,
-        &["test", "default-mode", "xpath-default-namespace"],
-        "xsl:if",
-    )?;
+    validate_attributes(document, element)?;
     let location = document.location(element).clone();
     let expression = required_conditional_test(document, element)?;
     Ok(Instruction::If {
@@ -53,6 +50,7 @@ pub(super) fn compile_choose(
     compile_choose_with_lowerers(
         document,
         element,
+        &mut validate_conditional_attributes,
         &mut compile_boolean_test,
         &mut |document, child, test| {
             if test.is_some_and(|test| matches!(test, BooleanExpression::Constant(false)))
@@ -69,6 +67,7 @@ pub(super) fn compile_choose(
 pub(super) fn compile_choose_with_lowerers(
     document: &Document,
     element: NodeId,
+    validate_attributes: &mut impl FnMut(&Document, NodeId) -> Result<(), CompileFailure>,
     lower_test: &mut impl FnMut(
         &Document,
         NodeId,
@@ -81,19 +80,14 @@ pub(super) fn compile_choose_with_lowerers(
         Option<&BooleanExpression>,
     ) -> Result<Vec<Instruction>, CompileFailure>,
 ) -> Result<Instruction, CompileFailure> {
-    ensure_choose_attributes(document, element)?;
+    validate_attributes(document, element)?;
     let children = meaningful_children(document, element);
     validate_choose_structure(document, element, &children)?;
     let mut branches = Vec::new();
     let mut otherwise = None;
     for child in children {
         if is_xslt_element(document, child, "when") {
-            ensure_only_attributes(
-                document,
-                child,
-                &["test", "xpath-default-namespace"],
-                "xsl:when",
-            )?;
+            validate_attributes(document, child)?;
             let expression = required_conditional_test(document, child)?;
             let test = lower_test(document, child, expression, document.location(child))?;
             let body = lower_body(document, child, Some(&test))?;
@@ -104,12 +98,7 @@ pub(super) fn compile_choose_with_lowerers(
                 body,
             });
         } else if is_xslt_element(document, child, "otherwise") {
-            ensure_only_attributes(
-                document,
-                child,
-                &["xpath-default-namespace"],
-                "xsl:otherwise",
-            )?;
+            validate_attributes(document, child)?;
             otherwise = Some(lower_body(document, child, None)?);
         } else {
             unreachable!("validate_choose_structure rejects other children")
@@ -122,9 +111,45 @@ pub(super) fn compile_choose_with_lowerers(
     })
 }
 
+pub(super) fn validate_conditional_attributes(
+    document: &Document,
+    element: NodeId,
+) -> Result<(), CompileFailure> {
+    if is_xslt_element(document, element, "if") {
+        ensure_only_attributes(
+            document,
+            element,
+            &["test", "default-mode", "xpath-default-namespace"],
+            "xsl:if",
+        )
+    } else if is_xslt_element(document, element, "choose") {
+        ensure_choose_attributes(document, element)
+    } else if is_xslt_element(document, element, "when") {
+        ensure_only_attributes(
+            document,
+            element,
+            &["test", "xpath-default-namespace"],
+            "xsl:when",
+        )
+    } else {
+        debug_assert!(is_xslt_element(document, element, "otherwise"));
+        ensure_only_attributes(
+            document,
+            element,
+            &["xpath-default-namespace"],
+            "xsl:otherwise",
+        )
+    }
+}
+
 fn ensure_choose_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
     const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
     for attribute in document.attributes(element) {
+        if super::super::is_ignored_xslt10_prefixed_instruction_attribute(
+            document, element, *attribute,
+        ) {
+            continue;
+        }
         let name = document
             .name(*attribute)
             .expect("attribute nodes have expanded names");
@@ -212,4 +237,72 @@ fn required_conditional_test(document: &Document, element: NodeId) -> Result<&st
             document.location(element),
         )
     })
+}
+
+#[cfg(test)]
+mod attribute_compatibility_tests {
+    use super::*;
+    use crate::compile::golden_stylesheet_experiment::compile_stylesheet;
+    use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_for_test;
+    use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+
+    fn document(identity: &str, text: &str) -> Document {
+        Document::from_parsed(
+            parse_document(
+                identity,
+                text.as_bytes(),
+                ParseLimits {
+                    max_events: 1000,
+                    max_depth: 32,
+                },
+            )
+            .unwrap(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn xslt10_choose_uses_existing_prefixed_attribute_set_recovery() {
+        let source = document("urn:source", "<r/>");
+        for version in ["1.0", "2.0", "3.0"] {
+            for prefix in ["xsl", "p"] {
+                let style = document(
+                    "urn:choose-attributes",
+                    &format!(
+                        r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="http://www.w3.org/1999/XSL/Transform" version="{version}"><xsl:output method="text"/><xsl:template match="/"><xsl:choose {prefix}:use-attribute-sets="{{ $missing"><xsl:when test="false()" {prefix}:use-attribute-sets="missing">bad</xsl:when><xsl:otherwise {prefix}:use-attribute-sets="missing">good</xsl:otherwise></xsl:choose></xsl:template></xsl:stylesheet>"#
+                    ),
+                );
+                let compiled = compile_stylesheet(&style);
+                if version == "1.0" {
+                    let program = compiled.unwrap();
+                    drop(style);
+                    assert_eq!(
+                        execute_compiled_stylesheet_for_test(&program, &source, "choose").unwrap(),
+                        "good"
+                    );
+                } else {
+                    assert_eq!(compiled.unwrap_err().code, "FXST1009");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn choose_recovery_keeps_unqualified_and_unrecognized_attributes_guarded() {
+        for attribute in [
+            r#"use-attribute-sets="missing""#,
+            r#"xsl:unknown="ignored""#,
+            r#"xml:space="invalid""#,
+        ] {
+            let style = document(
+                "urn:choose-guard",
+                &format!(
+                    r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:template match="/"><xsl:choose {attribute}><xsl:when test="true()">good</xsl:when></xsl:choose></xsl:template></xsl:stylesheet>"#
+                ),
+            );
+            let failure = compile_stylesheet(&style).unwrap_err();
+            assert_eq!(failure.location.resource, "urn:choose-guard");
+            assert!(matches!(failure.code, "FXST1009" | "XTSE0020"));
+        }
+    }
 }

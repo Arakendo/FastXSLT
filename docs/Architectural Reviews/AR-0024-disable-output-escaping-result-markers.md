@@ -9,7 +9,7 @@
 | Trigger | Thirty-two standard-operation OASIS XSLT 1.0 cases stop at the explicit `FXST1060` boundary, making historically awkward result behavior the nearest material compatibility frontier |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007 |
 | Related reviews | AR-0004, AR-0019 |
-| Related evidence | [OASIS XSLT 1.0 disable-output-escaping reference marker](../Evidence/oasis-xslt10-disable-output-escaping-reference-marker-2026-09-30.md) |
+| Related evidence | [OASIS XSLT 1.0 disable-output-escaping reference marker](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-disable-output-escaping-reference-marker-2026-09-30.md) |
 
 ## Architectural question
 

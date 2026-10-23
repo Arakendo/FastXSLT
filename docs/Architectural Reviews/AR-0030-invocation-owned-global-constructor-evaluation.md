@@ -8,7 +8,7 @@
 | Scope | Global initialization, shared sequence execution and dependency resolution |
 | Trigger | OASIS `Lotus/variable_variable40#1` requires template dispatch while constructing a global value |
 | Related ADRs | ADR-0004, ADR-0007, ADR-0012, ADR-0014, ADR-0017, ADR-0022, ADR-0023 |
-| Related evidence | [Current OASIS frontier](../Evidence/oasis-xslt10-xml-indentation-frontier-2026-10-10.md) |
+| Related evidence | [Current OASIS frontier](../Campaigns/oasis-xslt10/evidence/accounting-and-oracles/oasis-xslt10-xml-indentation-frontier-2026-10-10.md) |
 
 ## Architectural question
 
