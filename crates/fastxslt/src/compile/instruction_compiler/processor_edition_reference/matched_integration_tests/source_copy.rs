@@ -85,12 +85,12 @@ fn selected_child_copy_preserves_shared_subtrees_namespaces_and_controls() {
 fn selected_child_copy_keeps_general_copy_routes_guarded() {
     for select in [
         "@a",
-        ".",
-        "*",
+        "current()/num",
+        "num/*/child",
         "p:num",
         "$v",
         "num[1]",
-        "num/child",
+        "num//child//leaf",
         "namespace::*",
         "document('x')",
     ] {
@@ -103,6 +103,17 @@ fn selected_child_copy_keeps_general_copy_routes_guarded() {
         };
         assert_eq!(error.code, "FXAR0031");
         assert_eq!(error.location.resource, "urn:selected-copy");
+    }
+    // These shared child-path forms remain admitted alongside separately tested descendants.
+    for select in ["num/child", "/num/child", "*", "num/*", "/num/*"] {
+        assert!(
+            compile(
+                &style("2.0", select),
+                Edition::Legacy,
+                &mut InvocationControl::unbounded(),
+            )
+            .is_ok()
+        );
     }
     assert!(
         compile(

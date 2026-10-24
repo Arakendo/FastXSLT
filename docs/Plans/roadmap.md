@@ -6,6 +6,29 @@ standards scope are decided.
 
 ## Current critical path
 
+**Control repair complete:** [B03-C01](../Campaigns/processor-edition-profile/evidence/b03-utf16-ceiling-repair-2026-10-23.md)
+bounds UTF-16 staging and admits encoded capacity before allocation. Both corpus
+reports are unchanged. S2 subsequently admitted UTF-16; S3 admits boolean constant
+copy. [B03 completed 3/3; B04 continuation approved](../Campaigns/processor-edition-profile/evidence/b03-review-2026-10-23.md).
+No R0 denominator change.
+
+Current operation: [autonomous bounded breadth](../Campaigns/processor-edition-profile/breadth-workflow.md),
+batch **B07**, now at 527/3,173 selected exact (+14) and 2,504/3,173 ordinary
+exact. Record each named blocker, scope, exclusions and stop condition before
+coding; eligible routine slices need no individual approval. Carry the live
+counter across sessions/commits/handoffs and return after three semantic slices
+or an earlier architectural, correctness, security, regression or scope trigger.
+R0 stays closed; promotion/public/default decisions remain maintainer-owned.
+
+[B02 review](../Campaigns/processor-edition-profile/evidence/b02-review-2026-10-23.md)
+was approved; no unexplained regressions or provisional blockers. B03 begins
+with the measured output-encoding frontier under the same bounded workflow.
+
+[B01 review](../Campaigns/processor-edition-profile/evidence/b01-review-2026-10-23.md)
+records static-target PIs, standalone wildcard copy and named descendant
+iteration, each with full replay and repository/WASM gates. The maintainer
+approved continuation into B02; record and enforce its new three-slice interval.
+
 [ADR-0026](../ADR/ADR-0026-evidence-gated-profile-promotion-and-frontier-progress.md)
 governs the completed ADR-0025 integration pilot. **R0 promoted 2026-10-23:**
 [promotion ledger](../Campaigns/processor-edition-profile/promotion-ledger.md),
@@ -18,6 +41,18 @@ Selected exact remains 358/3,173; a fresh ordinary baseline replay remains
 expansion. The incomplete crate-private selected legacy/strict profile is admitted
 through the non-test shared compiler path. Preserve its report as the R0 promotion
 baseline; no public selector, default or conformance claim is selected.
+
+The separately approved [post-R0 comment slice](../Campaigns/processor-edition-profile/evidence/post-r0-selected-comments-2026-10-23.md)
+is complete: selected legacy/strict exact coverage is now **393/3,173 (12.39%)**,
+up 35, while the ordinary baseline remains unchanged. The original 358-case R0
+promotion baseline is preserved. The next slice needs a named failing case and
+bounded scope; do not append adjacent constructors to the completed comment work.
+
+The subsequent approved [named element-copy path slice](../Campaigns/processor-edition-profile/evidence/post-r0-selected-copy-paths-2026-10-23.md)
+raises selected exact to **449/3,173 (14.15%), +56**, with the ordinary baseline
+still unchanged. It admits only relative/rooted named child steps for copy-of;
+other selection families remain guarded. This slice is complete; reassess before
+another admission change.
 
 The current OASIS checkpoint is 2,504 / 3,173 exact comparisons (78.92%);
 80% requires another 35 exact cases. Resume the ranked ordinary frontier,

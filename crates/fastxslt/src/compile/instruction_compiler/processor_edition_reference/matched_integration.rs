@@ -636,9 +636,11 @@ fn validate_output_attributes(
             return Err(refusal(document, *attr));
         }
         if name.local == "encoding"
-            && !document
-                .value(*attr)
-                .is_some_and(|v| v.eq_ignore_ascii_case("UTF-8"))
+            && !document.value(*attr).is_some_and(|v| {
+                v.eq_ignore_ascii_case("UTF-8")
+                    || v.eq_ignore_ascii_case("ISO-8859-1")
+                    || v.eq_ignore_ascii_case("UTF-16")
+            })
         {
             return Err(refusal(document, *attr));
         }
@@ -766,14 +768,15 @@ fn lower_sequence_element(
                 out.push(selected_text(document, child, child_version)?);
                 return Ok(());
             }
-            "message" if matches!(edition, Edition::Legacy) => {
-                out.push(selected_message(
-                    document,
-                    child,
-                    child_version,
-                    depth,
-                    scope,
-                )?);
+            "message" | "comment" | "processing-instruction"
+                if matches!(edition, Edition::Legacy) =>
+            {
+                let lower = match name.local.as_str() {
+                    "comment" => selected_comment,
+                    "processing-instruction" => selected_processing_instruction,
+                    _ => selected_message,
+                };
+                out.push(lower(document, child, child_version, depth, scope)?);
                 return Ok(());
             }
             "apply-templates" | "call-template" | "apply-imports"
@@ -853,17 +856,60 @@ fn selected_child_copy(
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
     require_probe_attribute_set(document, element, "select")?;
-    if !is_ascii_ncname(required_attribute(document, element, None, "select")?) {
+    let select = required_attribute(document, element, None, "select")?.trim();
+    let string_literal = ['\'', '"'].into_iter().any(|quote| {
+        select
+            .strip_prefix(quote)
+            .and_then(|value| value.strip_suffix(quote))
+            .is_some_and(|value| !value.contains(quote))
+    });
+    if string_literal
+        || matches!(select, "true()" | "false()")
+        || template_arguments::selected_integer_argument(select)
+    {
+        let instruction = compile_copy_of(document, element)?;
+        return if matches!(instruction, Instruction::CopyOfStaticAtomicText { .. }) {
+            Ok(instruction)
+        } else {
+            Err(refusal(document, element))
+        };
+    }
+    let steps = select.strip_prefix('/').unwrap_or(select);
+    let named_steps = steps.strip_suffix("/*").unwrap_or(steps);
+    let rooted_descendants = select
+        .strip_prefix("//")
+        .is_some_and(|path| path.split('/').all(is_ascii_ncname));
+    let child_comments = steps == "comment()"
+        || steps
+            .strip_suffix("/comment()")
+            .is_some_and(|path| path.split('/').all(is_ascii_ncname));
+    let interior_descendants = steps.split_once("//").is_some_and(|(head, tail)| {
+        head.split('/').all(is_ascii_ncname) && tail.split('/').all(is_ascii_ncname)
+    });
+    if !matches!(select, "*" | "." | "/" | "current()")
+        && !named_steps.split('/').all(is_ascii_ncname)
+        && !rooted_descendants
+        && !child_comments
+        && !interior_descendants
+    {
         return Err(refusal(document, element));
     }
-    // The shared path compiler owns selection. The admitted NCName only selects
+    // The shared compiler owns selection. Named child steps and a final * select
     // child elements, never unattached attributes; still supply selected legacy
     // recovery explicitly instead of inheriting a declared version's flag.
     let mut instruction = compile_copy_of(document, element)?;
-    let Instruction::CopyOfLocationPath {
+    let (Instruction::CopyOfLocationPath {
         recover_unattached_attributes,
         ..
-    } = &mut instruction
+    }
+    | Instruction::CopyOfChildElements {
+        recover_unattached_attributes,
+        ..
+    }
+    | Instruction::CopyOfCurrent {
+        recover_unattached_attributes,
+        ..
+    }) = &mut instruction
     else {
         return Err(refusal(document, element));
     };
@@ -880,9 +926,19 @@ fn selected_child_iteration(
 ) -> Result<Instruction, CompileFailure> {
     require_probe_attribute_set(document, element, "select")?;
     let select = required_attribute(document, element, None, "select")?;
-    // Only child-element paths: no variable/atomic/document/namespace
-    // selection or sorting is implied by this slice.
-    if !select.split('/').all(is_ascii_ncname) {
+    // Relative/rooted named child paths with optional final wildcard, or one root-descendant name. No variable/atomic/
+    // secondary-document/namespace selection or sorting is implied.
+    if select != "*"
+        && !select
+            .strip_prefix('/')
+            .unwrap_or(select)
+            .strip_suffix("/*")
+            .unwrap_or(select.strip_prefix('/').unwrap_or(select))
+            .split('/')
+            .all(is_ascii_ncname)
+        && !select.strip_prefix("//").is_some_and(is_ascii_ncname)
+        && !select.strip_prefix(".//").is_some_and(is_ascii_ncname)
+    {
         return Err(refusal(document, element));
     }
     Ok(Instruction::ForEachNodes {
@@ -985,6 +1041,61 @@ fn selected_literal(
     };
     *content = body(document, child, edition, version, depth + 1, bindings)?;
     Ok(literal)
+}
+
+fn selected_processing_instruction(
+    document: &Document,
+    element: NodeId,
+    version: LocalVersion,
+    depth: usize,
+    bindings: StaticBindings<'_>,
+) -> Result<Instruction, CompileFailure> {
+    require_probe_attribute_set(document, element, "name")?;
+    let name = required_attribute(document, element, None, "name")?;
+    // This slice admits valid static targets only. Dynamic and invalid target
+    // timing remain guarded instead of borrowing baseline version semantics.
+    if !is_ascii_ncname(name) || name.eq_ignore_ascii_case("xml") {
+        return Err(refusal(document, element));
+    }
+    Ok(Instruction::Xslt10ProcessingInstructionNode {
+        target: crate::xslt::golden_semantics_experiment::LiteralAttributeValue::Text(
+            name.to_owned(),
+        ),
+        body: body(
+            document,
+            element,
+            Edition::Legacy,
+            version,
+            depth + 1,
+            bindings,
+        )?
+        .into_boxed_slice(),
+        location: document.location(element).clone(),
+    })
+}
+
+fn selected_comment(
+    document: &Document,
+    element: NodeId,
+    version: LocalVersion,
+    depth: usize,
+    bindings: StaticBindings<'_>,
+) -> Result<Instruction, CompileFailure> {
+    // No baseline constructor lowering: expressions and local version
+    // interpretation must remain selected throughout the body.
+    require_probe_attribute_set(document, element, "")?;
+    Ok(Instruction::Xslt10CommentNode {
+        body: body(
+            document,
+            element,
+            Edition::Legacy,
+            version,
+            depth + 1,
+            bindings,
+        )?
+        .into_boxed_slice(),
+        location: document.location(element).clone(),
+    })
 }
 
 fn selected_message(
@@ -1473,7 +1584,7 @@ fn value_of_with_options(
         if matches!(version, LocalVersion::ModernWitness(DeclaredVersion::Four)) {
             return Err(refusal(document, element));
         }
-        if let Some(test) = boolean_call_timing::compile_with_leaf(
+        if let Some(test) = boolean_call_timing::value_with_leaf(
             expression,
             version,
             document.location(element),
@@ -1596,6 +1707,21 @@ fn lower_selected_value_of(
 
 fn admitted_value(path: &str, version: LocalVersion) -> bool {
     xpath_string_literal(path).is_some()
+        || !matches!(version, LocalVersion::ModernWitness(_))
+            && path
+                .strip_prefix("./")
+                .or_else(|| path.strip_prefix('/'))
+                .unwrap_or(path)
+                .rsplit_once("/@")
+                .is_some_and(|(parent, attribute)| {
+                    parent.split('/').all(is_ascii_ncname) && is_ascii_ncname(attribute)
+                })
+        || !matches!(version, LocalVersion::ModernWitness(_))
+            && path.strip_prefix("./").is_some_and(|relative| {
+                relative
+                    .split('/')
+                    .all(|step| step == "text()" || is_ascii_ncname(step))
+            })
         || !matches!(version, LocalVersion::ModernWitness(_))
             && matches!(
                 path.trim(),

@@ -341,14 +341,6 @@ pub(crate) fn decode_iso_8859_2_byte(byte: u8) -> char {
     ISO_8859_2_UPPER[usize::from(byte - 0xA0)]
 }
 
-pub(super) fn encode_utf16_be(value: &str) -> Vec<u8> {
-    let mut bytes = Vec::with_capacity(value.encode_utf16().count() * 2);
-    for unit in value.encode_utf16() {
-        bytes.extend_from_slice(&unit.to_be_bytes());
-    }
-    bytes
-}
-
 pub(super) fn serialize_utf16_be(
     result: &SemanticResult,
     settings: &OutputSettings,
@@ -359,35 +351,44 @@ pub(super) fn serialize_utf16_be(
     let declaration = if settings.omit_xml_declaration
         || matches!(settings.method.as_deref(), Some("text" | "html"))
     {
-        String::new()
+        ""
     } else {
-        "<?xml version=\"1.0\" encoding=\"UTF-16\"?>".to_owned()
+        "<?xml version=\"1.0\" encoding=\"UTF-16\"?>"
     };
+    let fixed_bytes = 2 + declaration.len() * 2;
+    let body_bytes = byte_limit.checked_sub(fixed_bytes).ok_or_else(|| {
+        failure(
+            "FXSR0002",
+            FailureCategory::Limit,
+            Some(request_id),
+            "serialized UTF-16 BOM/declaration exceeds the result byte limit",
+        )
+    })?;
     let mut body_settings = settings.clone();
     body_settings.encoding = Some("UTF-8".to_owned());
     body_settings.omit_xml_declaration = true;
     body_settings.standalone = None;
     body_settings.version = Some("1.0".to_owned());
-    let body = serialize_xml(result, &body_settings, request_id, usize::MAX, control)?;
-    let mut characters = String::with_capacity(declaration.len() + body.len());
-    characters.push_str(&declaration);
-    characters.push_str(&body);
-    let encoded = encode_utf16_be(&characters);
-    let required = encoded.len().checked_add(2).ok_or_else(|| {
-        failure(
-            "FXSR0002",
-            FailureCategory::Limit,
-            Some(request_id),
-            "serialized UTF-16 result byte count overflowed",
-        )
-    })?;
-    if required > byte_limit {
-        return Err(failure(
-            "FXSR0002",
-            FailureCategory::Limit,
-            Some(request_id),
-            format!("serialized result requires {required} bytes; limit is {byte_limit}"),
-        ));
+    // One UTF-16 unit needs at most three UTF-8 bytes. Supplementary scalars
+    // need two units and four bytes. This bounds staging without rejecting a
+    // valid BMP-heavy result whose UTF-8 representation is larger than UTF-16.
+    let staging_limit = (body_bytes / 2).saturating_mul(3);
+    let body = serialize_xml(result, &body_settings, request_id, staging_limit, control)?;
+    let mut required = fixed_bytes;
+    for character in body.chars() {
+        control
+            .charge(WorkDomain::SerializedByte, 0)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        let extra = character.len_utf16() * 2;
+        if extra > byte_limit - required {
+            return Err(failure(
+                "FXSR0002",
+                FailureCategory::Limit,
+                Some(request_id),
+                "serialized UTF-16 result exceeds the result byte limit",
+            ));
+        }
+        required += extra;
     }
     control
         .charge(
@@ -395,9 +396,17 @@ pub(super) fn serialize_utf16_be(
             required.saturating_sub(body.len()),
         )
         .map_err(|failure| control_failure(failure, request_id))?;
+    control
+        .charge(WorkDomain::SerializedByte, 0)
+        .map_err(|failure| control_failure(failure, request_id))?;
     let mut bytes = Vec::with_capacity(required);
     bytes.extend_from_slice(&[0xfe, 0xff]);
-    bytes.extend_from_slice(&encoded);
+    for unit in declaration.encode_utf16().chain(body.encode_utf16()) {
+        control
+            .charge(WorkDomain::SerializedByte, 0)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        bytes.extend_from_slice(&unit.to_be_bytes());
+    }
     Ok(bytes)
 }
 

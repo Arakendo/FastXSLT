@@ -1,0 +1,1786 @@
+{
+  "BaseCommit": "b5935c8e0dfdb7ef921bd115a1b266518d2f82a9",
+  "Dirty": true,
+  "Rust": "rustc 1.95.0 (59807616e 2026-04-14)",
+  "Cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)",
+  "Sources": [
+    {
+      "Path": ".workbench/oasis-xslt10/extracted-full/testsuite/TESTS/catalog.xml",
+      "Sha256": "A95CC23948D3ECA2A7B9DBD6418C724DB73DC6F5C5FCD5386567047C22B56479"
+    },
+    {
+      "Path": ".workbench/oasis-xslt10/extracted-full/testsuite/TESTS/doubts.xml",
+      "Sha256": "ED4F1FA3F5023F96EFEBE5EBACF12DFBDD70C64C6979994B6F294C508E44456F"
+    },
+    {
+      "Path": "Cargo.lock",
+      "Sha256": "CF1697C59CE7836077D9F4BAB492D7C42AC0DDED1EB05CB75A538368EB6C99F9"
+    },
+    {
+      "Path": "Cargo.toml",
+      "Sha256": "CADB7D69F9709342FA7DBD5CC1D4924AF325F652E3C03CF1656216CE6F9838F3"
+    },
+    {
+      "Path": "corpus\\golden\\boolean-variable-relations\\expected.xml",
+      "Sha256": "819CB96874C289D450F1E2E5587F1A6161CC64C6B55A79B3A704C9216D349DE8"
+    },
+    {
+      "Path": "corpus\\golden\\boolean-variable-relations\\input.xml",
+      "Sha256": "6B93A6788C3021542B5547DEC8D7B08B61A0514F104E4CA5B2EB0830C80849BF"
+    },
+    {
+      "Path": "corpus\\golden\\boolean-variable-relations\\README.md",
+      "Sha256": "6644F093CB18F5AB47DEB2B77AF6890A4D08DED60A8A1D12F8772DBF6555F104"
+    },
+    {
+      "Path": "corpus\\golden\\boolean-variable-relations\\stylesheet.xsl",
+      "Sha256": "5EC12746A638E388DB53AE844278E345280865A5513388165A94A2B16D1E1644"
+    },
+    {
+      "Path": "corpus\\golden\\built-in-template-rules\\expected.xml",
+      "Sha256": "3B806C052DDC35B166E58DD6AA1C3B81895192CB74567B8E5D962A51F54A5987"
+    },
+    {
+      "Path": "corpus\\golden\\built-in-template-rules\\input.xml",
+      "Sha256": "BCB77DC850E36E069E0D3A6054BE3A480A7128B2193BF2E8D2ED6F1EC4CD33A8"
+    },
+    {
+      "Path": "corpus\\golden\\built-in-template-rules\\stylesheet.xsl",
+      "Sha256": "678572B38212403BB6B1574D0C8C162DEE1241077977AF0DC4699A7E201417F0"
+    },
+    {
+      "Path": "corpus\\golden\\hello\\expected.xml",
+      "Sha256": "39B282A35B51B5F52CE92BD9C956986D8AE0E6C43DF7DA28C16B157F6869C05E"
+    },
+    {
+      "Path": "corpus\\golden\\hello\\input.xml",
+      "Sha256": "8378DC23DB35B222883F2A16357A3417AD32397247784615A4BD31EA8552A5F9"
+    },
+    {
+      "Path": "corpus\\golden\\hello\\stylesheet.xsl",
+      "Sha256": "FB323F86D59A2929229CC923DBE8DF652082D77826367F315F6CE4CCC48DC620"
+    },
+    {
+      "Path": "corpus\\golden\\host-owned-two-stage\\expected.xml",
+      "Sha256": "36B9A04544F750DFC14F552674D52778DDDAE99A368F66B315DDFB5E0B993259"
+    },
+    {
+      "Path": "corpus\\golden\\host-owned-two-stage\\input.xml",
+      "Sha256": "6C167F2ED20E6354CB121D41DE90C3EED61009F0A86A95C69289DEC9AE1BABF3"
+    },
+    {
+      "Path": "corpus\\golden\\host-owned-two-stage\\stage1-expected.xml",
+      "Sha256": "39B282A35B51B5F52CE92BD9C956986D8AE0E6C43DF7DA28C16B157F6869C05E"
+    },
+    {
+      "Path": "corpus\\golden\\host-owned-two-stage\\stage1-stylesheet.xsl",
+      "Sha256": "F3B1499515E40131CA5DCF33195712B2394E336FC8EFB64821FCEAB6BE7C33B1"
+    },
+    {
+      "Path": "corpus\\golden\\host-owned-two-stage\\stage2-stylesheet.xsl",
+      "Sha256": "BBB5CBC7C3244C35F2B4A33775A435E90B2FB7700EC2A375BB4F26888B6C874B"
+    },
+    {
+      "Path": "corpus\\golden\\retained-source-for-each\\expected.xml",
+      "Sha256": "7FBE24FC0F9FB39172662C4A22B02E2CBEF8715C8DBF5AAE854564B9F17EFC82"
+    },
+    {
+      "Path": "corpus\\golden\\retained-source-for-each\\README.md",
+      "Sha256": "79A12687B79D012F1033EDDAEDEC01A5C6057300EB44240089891E744ECA94A0"
+    },
+    {
+      "Path": "corpus\\golden\\retained-source-for-each\\secondary.xml",
+      "Sha256": "30856018393AAA4488A3664E9996B6EE1876273907B7B7B275ABFDDF8014F59E"
+    },
+    {
+      "Path": "corpus\\golden\\retained-source-for-each\\source.xml",
+      "Sha256": "829CF35B08D1F8AC41CB2042EBA95E81E188B083DB5BF414E00CADA64721489C"
+    },
+    {
+      "Path": "corpus\\golden\\retained-source-for-each\\stylesheet.xsl",
+      "Sha256": "76377AFE00DB968C7FEFB2A340CAE5F730AD3C3E4A9022361EA07E05DDB5D510"
+    },
+    {
+      "Path": "corpus\\golden\\source-numeric-equality\\expected.xml",
+      "Sha256": "779245307296FF4EE9109D4E09156E4ABF1BB12595D7EF9C5499EDE093B45D7F"
+    },
+    {
+      "Path": "corpus\\golden\\source-numeric-equality\\input.xml",
+      "Sha256": "5950D699A13883FD31DEFEB94CF382BF19CEB5E20C4C2F5E1B4E27E9D91015C9"
+    },
+    {
+      "Path": "corpus\\golden\\source-numeric-equality\\README.md",
+      "Sha256": "F3432E2DD53A207BBAA3E5804D0B6A9FA81D91EE8B0E23EB319B83B4DB7F00E1"
+    },
+    {
+      "Path": "corpus\\golden\\source-numeric-equality\\stylesheet.xsl",
+      "Sha256": "C0B10701B6C499E049BD35B535D7999EFDB2237C5F10BAE0A3DB47E7CDC1094A"
+    },
+    {
+      "Path": "corpus\\golden\\template-dispatch\\expected.xml",
+      "Sha256": "C6655C242E64C708769AD4E0ED30DFF373AD9A82CDE6ACB4A98B8CF1D52A574F"
+    },
+    {
+      "Path": "corpus\\golden\\template-dispatch\\input.xml",
+      "Sha256": "2787302DF342F0DD35942A5613DE4962C6CF3F71A5EFA75D48CEB933855FB314"
+    },
+    {
+      "Path": "corpus\\golden\\template-dispatch\\stylesheet.xsl",
+      "Sha256": "F4655F52FBD95833967C1E7677F6723975C7A04400A38E180A85602AA3FA5E12"
+    },
+    {
+      "Path": "corpus\\golden\\temporary-path-for-each\\expected.xml",
+      "Sha256": "877ABAAEA800019A766D5BEC16D658B434BE9C401EA3EEFDD1268E6D66843D64"
+    },
+    {
+      "Path": "corpus\\golden\\temporary-path-for-each\\input.xml",
+      "Sha256": "241DAE217774C3642C4309C39B83DCE1770F398EA9C219F79ACACBE7DEE8416A"
+    },
+    {
+      "Path": "corpus\\golden\\temporary-path-for-each\\README.md",
+      "Sha256": "C67DB121E36AD9BBDF7044E4133063C3C53C619AACD3E1CE5AD2EE9B5809ECC3"
+    },
+    {
+      "Path": "corpus\\golden\\temporary-path-for-each\\stylesheet.xsl",
+      "Sha256": "E996FC766173F4A29409E487E307E634DA6C32A77B41C53E554328139E7F3DBF"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\axis-step-denominator-v0.toml",
+      "Sha256": "148A9507F332519B8225367EB8DE74B0DB562F450068957CEA10DBE66357F461"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\boolean-denominator-v0.toml",
+      "Sha256": "A97C49E22389DC5C45CF94EE5F00F2D4FF649BA817C9D970437188909092B742"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\codepoint-equal-denominator-v0.toml",
+      "Sha256": "4D3A69F2B37FFDC96DE67A5C6B54590CF93A738DD326EE239DF11EB39AC08FC9"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\days-from-duration-denominator-v0.toml",
+      "Sha256": "D0C5CC4C02E21198C22480BA8155536584DC21CA18AFF196DE854E051D43D958"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\deep-equal-denominator-v0.toml",
+      "Sha256": "DB84AE96E15E825A3597EC9011B79258AEC47E42438F8580FA1F896613D37992"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\default-collation-denominator-v0.toml",
+      "Sha256": "0739D1B3AD8CEC44E5AC381BF596F60D0546705B7AB9FA66005376845BF0A573"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\empty-denominator-v0.toml",
+      "Sha256": "5DC0CC7D88D31124156F78B7068FDFDE520E0952466831AD2738E364A7DA8E75"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\encode-for-uri-denominator-v0.toml",
+      "Sha256": "73C70B33702E272789F4CC79A3B2A23EA110BF0A1077831016B766F2EE20F34F"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\escape-html-uri-denominator-v0.toml",
+      "Sha256": "497E89F89D1D3913E6C34438BDC33AEE9979F0D2B8AD3EDF103CC94C17A2CA43"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\exists-denominator-v0.toml",
+      "Sha256": "DCB30CF04E01C17B96B2D12AA4702396AB1FE4129F2174735CC017E00E648E0D"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\false-denominator-v0.toml",
+      "Sha256": "121F7C2355308874F8EBEBD7EC4778628E39A8CC217A993CFEF9FCB48D366293"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\hours-from-duration-denominator-v0.toml",
+      "Sha256": "A921929A5F0ABCE75E77E87D4967398836F47BE3C02E5231BC3BA34C0777DD56"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\iri-to-uri-denominator-v0.toml",
+      "Sha256": "4908162FAB5D7DD8BACDA6F153A4E212F48344E9754351CC7B6B7C9ADACA99CF"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\lower-case-denominator-v0.toml",
+      "Sha256": "0C7C05FB0D4F35345B030CC1367BF1D4E628710D59D82D1C49B1185C698EDCA8"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\minutes-from-duration-denominator-v0.toml",
+      "Sha256": "EEA1412DAAD864B806E6ABC66E169CA445ECE174D0B24F40A38973F8034A3F5F"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\months-from-duration-denominator-v0.toml",
+      "Sha256": "83F4FA43B325DB0735F70F320E4A6DD352BEF8C9174BE695324EADA2BF41BAA2"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\normalize-space-denominator-v0.toml",
+      "Sha256": "DEF9EEAFFD0F5082E801CDA423D905A2A02F16BDE49589EBF40E6B5BAC1CD47B"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\not-denominator-v0.toml",
+      "Sha256": "8365A7501A2EFF7694772977520DA3FDDC9F06195DB625040D6E865090F60338"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\private-ledger-v0.toml",
+      "Sha256": "B1353917788BC51513E54E4EBA18B57124416419F6E6CDAED3D984347252832B"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\string-length-denominator-v0.toml",
+      "Sha256": "55CEC4367DB344D71587FA62D3A41577BFFD2B0C06B66AA3DFDB370C85000CE0"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\true-denominator-v0.toml",
+      "Sha256": "07EA1AC07A260B8B88820E29C1BCCDF4305CB696D4D361AE4C49FB5B14A6985F"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\upper-case-denominator-v0.toml",
+      "Sha256": "F7CF3D795F4BEB9C9E5A7DE351B4C8CA348ED9B6FF35A1E1FC59559EDFCC6289"
+    },
+    {
+      "Path": "corpus\\overlays\\qt3\\years-from-duration-denominator-v0.toml",
+      "Sha256": "634803C01F657B889C1DE7AA3F551CFDDD4B36493591CCEBDC7A978849BAE7D9"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\apply-imports-denominator-v0.toml",
+      "Sha256": "3CFE9E4B7A12D3BD85878CB6BAF92EA1A25F41E17361AB674174844938C75472"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\apply-templates-denominator-v0.toml",
+      "Sha256": "13081E536990F4C96BCFFE33CE1421D2758B47C3557D28A8BE04BD4EA17E593A"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\built-in-templates-denominator-v0.toml",
+      "Sha256": "BC99177CDE16DDA65C3695EDD3B02A487EFED3F263A9E9975F8911F574CBB4B1"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\call-template-denominator-v0.toml",
+      "Sha256": "036D9CE2C3BADE5815A2EB2CA41FED93551761FF8FC83BC5093DC3EC9F599317"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\choose-denominator-v0.toml",
+      "Sha256": "6FB3AD27D6448B18D014A881E68FFA9C6C4BD65A52BCF3765C654D7C659631AF"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\dynamic-evaluation-profile-denominator-v0.toml",
+      "Sha256": "E05EF10E732B57B863F5C5CB68F83D55D6646632E6BC52AC2C76B249D35B2A8D"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\include-denominator-v0.toml",
+      "Sha256": "001D17B2C108544D4DD91FEFB90A06C4B835B73665D527C9FA0F7CF24AC10637"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\mode-denominator-v0.toml",
+      "Sha256": "55D8464FF355CFE19A73D7C3640C4188F5BE84696C73FD16FA832D996D16E342"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\output-denominator-v0.toml",
+      "Sha256": "9DB1738C837F63D644D5BF532D6068DD4F0F6CBE0765B3F2B60FA1734C307B8B"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\private-slice-v0.toml",
+      "Sha256": "96669615B9341E78FFF99C7D49519AFE1EF71D4B4D49D31D99166B66AB44F106"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\root-denominator-v0.toml",
+      "Sha256": "BBBB8ED8FBE6AA0E3DCD002048A0D6D5463F835F7C0503016BAA303733B41442"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\streaming-profile-denominators-v0.toml",
+      "Sha256": "6E7CC5D4F5D8C6DE3D8478ABA87F02C0506C524542FB14E824435C7F38B41A36"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\strip-space-denominator-v0.toml",
+      "Sha256": "A744472C2D2C53E653FF84A52C007E1B9D0604CE1CD8277DD28F6521AD316C12"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\treat-as-denominator-v0.toml",
+      "Sha256": "434CBA506B96F41A86CDC316E9D83ED6DE4D33BAB14DE84CE7C714819791F23A"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\type-expr-denominator-v0.toml",
+      "Sha256": "D0A0717E219A9A32A2FF1BC49D74C3347DC08DC4D6D718AC39F60E6EB2F379CF"
+    },
+    {
+      "Path": "corpus\\overlays\\xslt30\\type-functions-denominator-v0.toml",
+      "Sha256": "2CFA05A9F6B72D10931BD78B3BF2E19944D8808631FF3DD2AE106D4CF667031F"
+    },
+    {
+      "Path": "corpus\\README.md",
+      "Sha256": "EC1CB88D3CE67A1FB875E04E59E00D9F531206EFD397F70A144A564E7B9B4414"
+    },
+    {
+      "Path": "crates\\fastxslt-dotnet-workbench\\Cargo.toml",
+      "Sha256": "6964646B11BB1803FE2B88C3B6F20A9E30F012960018BFD2CBB83F6F1CCA08D6"
+    },
+    {
+      "Path": "crates\\fastxslt-dotnet-workbench\\src\\boundary_performance_tests.rs",
+      "Sha256": "A10612902723CE20471AFACD3BC46F6FC253D94CB007961C5DC215F870A1E50E"
+    },
+    {
+      "Path": "crates\\fastxslt-dotnet-workbench\\src\\diagnostic_tests.rs",
+      "Sha256": "1F89C15BFB1113EA4AAF078776314DCCD02815A0A84516D0C0AAAA43665658EB"
+    },
+    {
+      "Path": "crates\\fastxslt-dotnet-workbench\\src\\lib.rs",
+      "Sha256": "D1E00D4A8C435572AF564CE7FFD4691B113AEC5E172ED78A66BBDC887C039129"
+    },
+    {
+      "Path": "crates\\fastxslt-dotnet-workbench\\src\\registry_admission.rs",
+      "Sha256": "A064F6C33AF209CEA7E6612C0E51266928C39AF28D84435A0700466AF1A33BCC"
+    },
+    {
+      "Path": "crates\\fastxslt-dotnet-workbench\\src\\tests\\retention_admission_tests.rs",
+      "Sha256": "8B8E0BD22B153A9C9BAD1D1A332533277D6B8C754F738891C541DAF39A93790D"
+    },
+    {
+      "Path": "crates\\fastxslt-wasm-workbench\\Cargo.toml",
+      "Sha256": "39AB96392A0CDA6F4AD3ABBAE1717896970E92685684F0FCEA46032072C55DB1"
+    },
+    {
+      "Path": "crates\\fastxslt-wasm-workbench\\src\\lib.rs",
+      "Sha256": "4683DC07EFFC6549A68BFEFDEB46620A910B88C28564BBD81C67C9D9C508146E"
+    },
+    {
+      "Path": "crates\\fastxslt-worker\\Cargo.toml",
+      "Sha256": "D68FC648B7B23C06546AF0DDA0E0A4276C62530FA42B18AA6EF606AECABA0BF0"
+    },
+    {
+      "Path": "crates\\fastxslt-worker\\src\\batch_outcomes.rs",
+      "Sha256": "3D29E06471BAFD0275DAB621C3267CA4FA47048E64BA6BFB57904487134A5868"
+    },
+    {
+      "Path": "crates\\fastxslt-worker\\src\\incremental_batch.rs",
+      "Sha256": "59364019F15AD2DD4B55F5229EF510639A04C0E141C9FEEC225A65D90C310E3D"
+    },
+    {
+      "Path": "crates\\fastxslt-worker\\src\\main.rs",
+      "Sha256": "3A51A5ACEF935A1B32CD8D176328EC8232D38269180675AA765BEAC8DED5735A"
+    },
+    {
+      "Path": "crates\\fastxslt\\Cargo.toml",
+      "Sha256": "FABE802C292C5F1C4DCE3C69057251F8F71383AD414E431A934E804F6B3AE1D4"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\attribute_set_linker.rs",
+      "Sha256": "88A5DDF4E578E3197368DA2644A1F033497F7202B1C7A81C9A3686686C983C5E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\decimal_format_compiler.rs",
+      "Sha256": "9B493A8091B1E79A18147E3EF71366D74575DF65C701D4403B389AFFC6C906AA"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\global_constructor_admission.rs",
+      "Sha256": "8B32140C492EB21446B78D4A2B6EAAE3AE33A6FC189FFF67E99CD2A667861D25"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\global_constructor_reference.rs",
+      "Sha256": "BC2E670E01D39730437C29F519A28AFD55027519D4E3D9E460EAD3AD2C350554"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\golden_stylesheet_experiment.rs",
+      "Sha256": "BF77B0FBF8881B0FA5C2ECCF6238C410B3EDCB5F33BE45821AD26B949A6428A8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\golden_stylesheet_tests.rs",
+      "Sha256": "526A018027F0A3441017AC1CAC2EFCC61D91F6E3AFF1DA1E4EF5C7D397038699"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler.rs",
+      "Sha256": "37818115F86509119F5D985FEF355D9086DB3022211EF61301D6E43D19225F0B"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\attribute_set_compiler.rs",
+      "Sha256": "27C06A209643573B5068A53480B55AC98941CBAFE3C898D1E98D543A682C6F71"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\boolean_expression_compiler.rs",
+      "Sha256": "8C7C339F0C5B8F116ECD7B3B72ECBBEE937AB7CF07A3A88A23CB08AF664AF711"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\bound_variable_path_compiler.rs",
+      "Sha256": "E4674A6AEC740C5CF826261EB14E6657638956107475D856BEF376081B1BA40C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\composed_string_compiler.rs",
+      "Sha256": "4A86409EB49A1ADAEC7ED0F29F4014BC42C421A0DB071C2976443D6087FAA25F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\computed_attribute_compiler.rs",
+      "Sha256": "C5D03F1E2FD6995F738F33FFEAA89B0681F80E5413F6DA6EA81E63C19A9D2E13"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\computed_element_compiler.rs",
+      "Sha256": "6B26407101AEF11B20971DA6E490BDC65132B42D00E5EB5C3C835F514BD4FF85"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\concat_expression_compiler.rs",
+      "Sha256": "E14FD7DAB3AB0D5113AD1289A9129A4A56B78D5D591CCA336A27B56D98C77099"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\conditional_expression_compiler.rs",
+      "Sha256": "9A9E338D3E5FC8831ECD2646CCB197D942CDCCAD9893191D77E87D0508434669"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\conditional_instruction_compiler.rs",
+      "Sha256": "F86A6C4DA0A11B5003EACC046964E59B830B3FE5D9A6A61AF289D52760AFDBCA"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\formatted_key_sum_compiler.rs",
+      "Sha256": "FCDB4834BB357E85AA5BC9CC78361D58FB150B8453630BEB645608B9268CB78E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\generated_source_identity_compiler.rs",
+      "Sha256": "77FC9058D487D40D3C44E370C9007E4A81C8749622191836A0815774192D0E50"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\grouped_path_union_compiler.rs",
+      "Sha256": "8F38C24D1E5EF73C5D4C94443F90A4337056589A7E078FDC9FA383946B36090C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\id_expression_compiler.rs",
+      "Sha256": "6634D2D62971B50C1D0B47B185E77C3049EC967CC37ACDA5B5B74B91DEE30B92"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\literal_attribute_compiler.rs",
+      "Sha256": "B5D6D099EEED05A01DBFF3719DEAD10A4D02E5D8D85EA483F1F151D6D8D715E3"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\literal_document_value_compiler.rs",
+      "Sha256": "0BCDF26687E8036E4A57C59B2F808E18B4507AED71F75DBDE1D1EA5FF76FDA9C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\namespace_focus_compiler.rs",
+      "Sha256": "95F418B12748E13B171B1CE47D257F13FA184AC9B53F2AB154CFD89E86C75693"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\number_compiler.rs",
+      "Sha256": "7F1902CC31BD10B4E9D6D73AFCFE46E8F0B27C7083E3B73FD97B29DCE96C44FD"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference.rs",
+      "Sha256": "C5C99C6EFB0D7CF56ADA77B5B151358D8393D81F857DD3620E5789ED0B5C12ED"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\artifact_isolation_tests.rs",
+      "Sha256": "F6DA677E5EE97583A6808313BABC16A0D14A0CDD37B70F24F5F53268D55EA9D2"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\boolean_call_timing.rs",
+      "Sha256": "6C58F8F905C4A6FF1B0EB6C35AF0F7A36A1A60C8162C3036763277AEE47D377D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\conditional_integration_tests.rs",
+      "Sha256": "B2386D7A4356D126C781EEAF29582F33D439F396DC264FED4E7D3CCB69DDE21F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\conditional_integration.rs",
+      "Sha256": "FC29681689CB4B19B760DE2F4209109A7B59FAAB793B2A40FB7CAA0490DBB9A4"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\dispatch_integration_tests.rs",
+      "Sha256": "EF4658F7A3D54BA0455343AD2045E9FA89D195A115CBAD5FF745732FBEBE6A2C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\include_chain.rs",
+      "Sha256": "33643BE9B13D8E575A131E6C1E696E15D12CBCACCE06E0B51B369E08DB275B04"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\introspection_boundary_tests.rs",
+      "Sha256": "B81E59407E375E27A184F096C085EE4AB8A3A6D0F4DC20720A3D5E4B72F31065"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\keys\\mod.rs",
+      "Sha256": "AF91D194DE5445DBD090AD1FE3FA4655DB96F893744C29A2235223E4CBDDC37D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\matched_integration_tests.rs",
+      "Sha256": "35FE6F1758C0C9F7E52D1BD1BB338C0E8898EC8857D9B7E896D89BFC56A345B4"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\matched_integration_tests\\computed_names.rs",
+      "Sha256": "7EB58AB5CE820D59F07775F126CB943938147DEE8A41C9C2E7D9471E2A4B4E3A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\matched_integration_tests\\key_lookup.rs",
+      "Sha256": "86BE0CC5EE318CD787C16F952332044FC97D6FE043EDB31A13173452CA24FEF9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\matched_integration_tests\\match_predicates.rs",
+      "Sha256": "1ABF0C215FA8412AB9A658E7A76CBDD2B4F8718CC83AF668E86CB3FCB14B6551"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\matched_integration_tests\\source_copy.rs",
+      "Sha256": "E1B5B08211515240478EF9EE6DFF7BFD6CF1CF1F0CC7C1199A32FD7FD3C0DA93"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\matched_integration_tests\\source_whitespace.rs",
+      "Sha256": "4A70AEC6E9D1343BF1840CB3A7B72D6487E709F714D8C2006F0C6F2908B9FB32"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\matched_integration.rs",
+      "Sha256": "17B9C85B40F58E774ED1D705D90A484E64842E94D34FFEBF9D8483E34D2E78C6"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\message_integration_tests.rs",
+      "Sha256": "6243035EB248E9A948E8DA6BC6D0ECEF5CD96D8979B5A244BC1A2C6DF9ED5379"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\migration_cost.rs",
+      "Sha256": "C3985E2BAD486A1B34DCDC6C47E34ECA847CE38C38885D6A6B0AA80BEF751622"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\module_graph\\global_visibility_tests.rs",
+      "Sha256": "011367ADED6D960CD15EED3DE9EAD341BBBC34ABCC0C66DA320FFE859DD09723"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\module_graph\\mod.rs",
+      "Sha256": "9EE719AB8A4C3F8CD99E6E184802653DE18AA2C5D217BB176DFF558DD7A83472"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\module_graph\\tests.rs",
+      "Sha256": "26B0D58D220AF21212C619AA2BA0C0F49BBDDB248690F75EFAEE87537D3077C0"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\named_integration_tests.rs",
+      "Sha256": "EE9E522CC5178129FD499BAA4D7C91F41AFBE6E58C4CFA16497936C09148F972"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\qualified_artifact.rs",
+      "Sha256": "72A4DF8C02D0BD87C2694F80E47714354C1A982101ED9CD1FF3C53F5C6289828"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\qualified_import_tests.rs",
+      "Sha256": "C81FA8F488A5DAE40791C96BEB7723BEBDDCFCDCB63CD0B662E664CEBE592525"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\selected_introspection.rs",
+      "Sha256": "3A108B680FE428D87DA742BDC9353FC68D209060B3B0147559913DDD7C79BFF1"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\template_arguments\\mod.rs",
+      "Sha256": "DA026D0F4011DA1D77773113F75ED5D94649EE4591ECCEBA8FF503D869571CF7"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\template_arguments\\tests.rs",
+      "Sha256": "F3A9F0A53D4F3F25C4E24860B9288FBDD1AFBA3D0ADF828BE8D624D4785FE29E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\tests.rs",
+      "Sha256": "E17877E65F2AACE0FF869AC264B382DF266522B46299D86EDD93FAD981D951C7"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\processor_edition_reference\\top_level_integration_tests.rs",
+      "Sha256": "4BBFF1C4B59926B456B0315C1ACA39A719388350CB6F6241D3C92B08676D8451"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\result_namespace_compiler.rs",
+      "Sha256": "5559F7F843CBDC3DC7F74A8F378FE5DC12BC64774537102E3F9223A646CC55BE"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\sort_compiler.rs",
+      "Sha256": "112CE19ED266ADF286340C03D9B48BF1E206FBACC0BB22D2762AFE680CE0B2BF"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\source_copy_compiler.rs",
+      "Sha256": "FC18098E45C7434D80F640D7512F524F250E4C09A74F903C93C893CEA6F5E95F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\stylesheet_content_reference.rs",
+      "Sha256": "3C6CC61566AA32F543A98AB739488EE94C4EACB5D23368A9D53A6BDBDA558885"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\template_invocation_compiler.rs",
+      "Sha256": "ADA7337392C8C38841B48DD8B02A4D19FB191D778F0FEDA314A4F929ECF7B985"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\value_expression_compiler.rs",
+      "Sha256": "55246EA23F14A32715ACA96B463B7D3C960F85A2146DE669AA39941CA6325479"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\instruction_compiler\\xslt10_static_introspection_compiler.rs",
+      "Sha256": "5A3DDF6CB094DE15670F50E26F23C982CC632DDB1A2C80565DBA3873AD46C15F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\match_boolean_predicate_compiler.rs",
+      "Sha256": "71BE6DFD9DB9F84A72132EEE45B4480F32C8685BF9894F0374A3F3FE1F7EE4DE"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\match_sequence_predicate_compiler.rs",
+      "Sha256": "458012455A6C51C4ED1A567F5816D8BF73F8DE55472AE10D29BC2FD77E6A3E13"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\mod.rs",
+      "Sha256": "2B24AEE2C0FDCB64C406B1D4C4595461E81139464D033F9F84B2324827357E2D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\mode_declaration_compiler.rs",
+      "Sha256": "56375BC750AA9B46B45B28246BA40A57B3C105332E086472CE75C5D00C27BF39"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\namespace_alias_compiler.rs",
+      "Sha256": "095F0957A49C1FBD1B098300419BC57FB02A038FCE3CF1E19BD21C8F9F703F9E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\output_compiler.rs",
+      "Sha256": "D1FF56D6BBBFDBAD0BC441EA0DDD10A44E87EE449A17AA489F7A62715D4CBFC1"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\stylesheet_module_compiler.rs",
+      "Sha256": "D4CF64361C43D4C2C9156BD93D360AEEEC2BC7AD90C70995DC8C0160ACBC06F7"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\stylesheet_preprocessing.rs",
+      "Sha256": "AD51F9C84576BDA079E2B7297CAC0785FD0EADF01341E5020BD38DE32CD4F0E3"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\stylesheet_preprocessing\\canonical_content.rs",
+      "Sha256": "5C90C81AB18745ABF1AC093E75F7A1F0A252334325685E278E1D9BE0178D862A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\stylesheet_preprocessing\\strict_content.rs",
+      "Sha256": "3297A1C69A34B320703DEC7BB1192F68FB51858602B6168F3BB1403C95E55131"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\stylesheet_validation.rs",
+      "Sha256": "5EF08F692B06F13B67E437AF7FB081067A30CC33A9024A3C877724B4DA84F9CF"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\template_declaration_compiler.rs",
+      "Sha256": "11BAE4A640C9BA17A9B17551C07FE1AFDC659BEA053FCEE1F7DBC58CC27C361E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\template_pattern_compiler.rs",
+      "Sha256": "AB89079E2E9B78E7AA14459B07457AC4D518F35AA8BEAD7DB942EB85B82AD094"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\variable_filtered_path_compiler.rs",
+      "Sha256": "1152AE2ACCF7A8DDDDEF5DBF5335D9BB741FF1BD1C8F2267587983C532B6F6C3"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\compile\\xslt10_global_constructor_compiler.rs",
+      "Sha256": "6847222E0CC172D73A2FF684E6FBAAB9356B65DECC6EA976058D31C0033A1B0D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\diagnostics\\mod.rs",
+      "Sha256": "838EC8EF6E2FDE2D64A6DCA4479CE04F894761513ADF90B5BF3045BDF9E14525"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\execution_control_experiment.rs",
+      "Sha256": "23EE3CA3D687248E22ECB5825414A8AA5A63227C031C363AAAF51DB92B0B7DE2"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\lib.rs",
+      "Sha256": "8186B1ADE0BD3F5A1CF01882C9E0612265497DBA91CE8F31F6C6B15D0CC96278"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\qt3_overlay_test_support.rs",
+      "Sha256": "7FCB06AF7AE5C1F5E8371BA7121A3CEA357C52CC53D228F2BDEBEF1090659008"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\resources\\mod.rs",
+      "Sha256": "0DBA34D85FA920B892F333B0B1E98DEFEE55CC2681C7F77217E5E8F7B913FC02"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\resources\\resolution_experiment.rs",
+      "Sha256": "79E80F2436055D78682BBA08D76A62A4F29761C107CC14E6AD92B1CEFD5F4338"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\atomic_template_executor.rs",
+      "Sha256": "DE5F6F4961A61066375C1A592F4AD9DB69BEA37E09FA666C1C431F0C19EF9E61"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\computed_attribute_namespace_tests.rs",
+      "Sha256": "19B689D6DD999A61CECC76626AB5D9224C02AA60649DB3A955A3A5D905F0F55C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\dynamic_attribute_name.rs",
+      "Sha256": "6A684EC008E83E91A44AEE1FD85EC07237C9CFE8EBDF3C6B724C3160EFFAF9D6"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\dynamic_document.rs",
+      "Sha256": "5358CAF40E7699D07A4EA32BF580C67E32BE4F2934A1720436D65060DBE7A7E1"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\dynamic_document\\retained_owner_tests.rs",
+      "Sha256": "A10E5926F8521C7F73F1DF817A5749F319686904E0CB2FCA49CC0CD8168B4188"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\dynamic_element_name.rs",
+      "Sha256": "4A1BA4AF418E88E91F4AD2C685DE30BFC7EA18269DC4C9441C2068CD5B705ECD"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_control_tests.rs",
+      "Sha256": "A2ECA9FA7AAF025E37B49DF767C7B1A2B0AC2D470D34650FB7151AE031ADDBE2"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment.rs",
+      "Sha256": "5C25CF85AAF1C0BAB17FAD978F1A9DFAAB21C19F02F5B82F4AC2C577EA5A9E8D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\boolean_focus.rs",
+      "Sha256": "1BD3EA57526E13009F0302AAB321202A27F4F25B1DD62288A9508104352FF781"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\byte_encoding.rs",
+      "Sha256": "3797F95620092DD9E689344FF70C9AFBEB60C5E0AB6DA34856D899BFF7981E59"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\document_variable_dispatch.rs",
+      "Sha256": "67CEB9118706830DAD7C2FD710F10023F4097939628545D2DD040BF7927F2E11"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\for_each\\mod.rs",
+      "Sha256": "14011F5124BECDCABDE3F05C73F5E96EC62ED504333B4E931312ECA6E4761666"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\for_each\\tests.rs",
+      "Sha256": "3B5A8B061818BAE79AB930255FA7BE918838279528B48E6376AF4042F2129D30"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_conditional_focus_tests.rs",
+      "Sha256": "41CD55543CC904ABDF37F98293E958839E3E70B65176357C75DDCE9CD92E42BF"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_copy_execution_tests.rs",
+      "Sha256": "1375451711DDA88EC030F1BD323E3E7B26B0168B77CEE92DA12E67F4FF7A02F5"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_copy_reference_tests.rs",
+      "Sha256": "B43A52DE1DF8C6F353477F65DDDEF6D519C2303AF3073CC946F6E706EDAE9770"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_count_argument_tests.rs",
+      "Sha256": "C4275917F5CC041849B2F468AE0EDEDC68C39B1FA6D696929437903B0675D163"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_focus_tests.rs",
+      "Sha256": "5C202C7AA4564A1E299BE833DC0FD8B17A0853E5694DDAC7E446217855413181"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_focus.rs",
+      "Sha256": "54B1E7E3927DE8D01A5547C9E2CBE8BC72EAC2921F0157926AEFF45B1A171934"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_identity_string_tests.rs",
+      "Sha256": "45F16858A87F72ADE83C4F3510A2614C96683EB8C866358502F1C57EA5C6AB38"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_mixed_focus_tests.rs",
+      "Sha256": "BB21850E7B2F4522B46CB529B571DA97E80E6FB523B7F28F7571C757100D490C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_nodes_reference_tests.rs",
+      "Sha256": "40A96F1ED48A6095D96609AE7A6DBE5D87869BA5C99A9150FD1B175AD2CFCB99"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\namespace_sort.rs",
+      "Sha256": "908F567C57455D92BE8861B7159A5838CBF6FFFF3F2B9FFFFA9A3EED0FBF8704"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\serialization.rs",
+      "Sha256": "40E51E1344F3391AB54EAB26479506C3F1374A27F346A6E497D591E0190FB52C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\serialization\\namespace_scope.rs",
+      "Sha256": "3668980CBEB3F28B0FB21CE4657E5D92DC3D1C3ECE275EDB40C902280A2443F5"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\serialization\\node_writer.rs",
+      "Sha256": "33B4ED674E6F4838F0F7F99D9195C53E51133BBEAD4ED100EC0B8F6E2F9F5DA7"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\serialization\\node_writer\\recursive_reference.rs",
+      "Sha256": "97BF7A716E637FEFC183D6E504AE0F727449A07FA56CD57CF416EE6744FDD5EF"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\serialization\\node_writer\\tests.rs",
+      "Sha256": "A8F63A3D524B847D6EE8946CBA714A6FFAF2D387F72ECE5C79E17493495DF046"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\sort_keys.rs",
+      "Sha256": "5E42C27BD9B2CC28F803724DE65682095BC898FF813D646329282AFBA4B0DBF6"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\source_selection\\bound_variable_path.rs",
+      "Sha256": "210F41AD3C033279BF3E6002B80D6AC1D53D8572FF929877D3010887DF7491A2"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\source_selection\\copied_union.rs",
+      "Sha256": "2FF968DD8C997C3D1CB01F4F54CF0677404AFDFCF2A089C9002790E5147F7A08"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_experiment\\source_selection\\unions.rs",
+      "Sha256": "D583F919CC646548824D34E0C0BECB38D6105A5747DD0CB327A8676C11A03A6F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests.rs",
+      "Sha256": "BFC6135429054C3DE27E82DA7C7979C6FD1E7337A7AE0E350A47BBA5A9C665BA"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\bound_variable_path_tests.rs",
+      "Sha256": "CF9A2B5385C291ECEE6218A2866FA1D564FE0CCCFA318ABFDF27F8E902FCCC6F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\composed_contains.rs",
+      "Sha256": "B769C72BC553000A5A73D0DD7E8B89E5ABF98C539EA1ED0ECCB7946641B223A4"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\computed_element_namespaces.rs",
+      "Sha256": "4D0B7C8C8AC32D78DA4BA58FA8F8EAAF3E38D49014618A55AA47290AC7CCD506"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\concat_sort.rs",
+      "Sha256": "07DA6949D2697094CE93A8F06B40E3567D5D3871AB213158E7E63E5440EA0197"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\current_document_lookup.rs",
+      "Sha256": "5B3B810D09D126B6DF6CD5DCC4DC3AE74C0F211FB03B899F3375C4D9B587BDDC"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\deferred_boolean.rs",
+      "Sha256": "C79A4247567529461420B4C3C5EC6FF91DBE25291EB7B25973F374B84CEF8421"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\document_variable_dispatch.rs",
+      "Sha256": "B92F60459AE8C2F67C88C170B019EDDC34206D6F03440B03293B878AF7E0AA6E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\empty_document_union_tests.rs",
+      "Sha256": "2B5078809E3C306E50B118ECEDBA3E6C1B2E371BC39AF7869E0234D29FFC708E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\id_name_composition.rs",
+      "Sha256": "06587461C4F657AF9E1F0328E4C7F73C033F112D947F793A6FB6981CC5DA3737"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\identity_union_position.rs",
+      "Sha256": "0CA061E8631453A0943825D635207829934F9E137B51FDE53CA53F47199C0292"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\numeric_composition.rs",
+      "Sha256": "641D41AA1DFAC19F81379F0F32E536DDDDDB3A49948D67868244C4108C5A417E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\path_unions.rs",
+      "Sha256": "1C372C69F0B07C2434F66C380FE5159E9E5AD77E1E98CDA6E286D0379BDFCF6C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\retained_owner_dispatch_cost.rs",
+      "Sha256": "81FC0E6E5E0B6AECD1D3720C361070B11D47A54455F8BC97AAB4B60E63563FA0"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\retained_source_iteration.rs",
+      "Sha256": "B4EE055FD4D22E506C9BE2DD5EAE9DFCE2010C24E7818114FBF5D06620687BAE"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\source_document_iteration.rs",
+      "Sha256": "AF668F02CD7320292A69A338F45526A8E68C81A00965025B7A4B798592EEEE0A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_tests\\template_rule_context.rs",
+      "Sha256": "614A570DF119C74A486D9B5467736C972C27999A7897B36A924F5D8B119845B1"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\golden_runtime_workflow_tests.rs",
+      "Sha256": "186B611314AB0F93D592C8BFD8D50AA48976F7CD21701CB6CBB36C3C02CF57D9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\id_lookup.rs",
+      "Sha256": "A4B545E3BCF72BFD92412E1040AA9B774E37A374DEB69D87FBF318FE198DD62C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\key_lookup.rs",
+      "Sha256": "EAAF26068020803A93DE06E56338CB146ECCF247EF6ED5048F08489C4A79CA11"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\match_boolean_predicate.rs",
+      "Sha256": "604421581C95A16A515FEFB021DB3AB25F058E98AA0E38B6179FDE9C4CF76AA2"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\match_sequence_predicate.rs",
+      "Sha256": "2FFDD064AA994441A165E3B777B9DA5FECD5906BA751F484A9113DB29E70E493"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\mod.rs",
+      "Sha256": "E37C47F261E75F9ED47931C6360D1432CF69D48A5E08A60B3DB06A87467139D5"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\number_executor.rs",
+      "Sha256": "7E1EC7A603C7E917574694B7182376557A1C21EC3B2489283F5A98D5791CFC43"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\number_executor\\attribute_values.rs",
+      "Sha256": "748EACD14CF3ADFB7B122F2B093EE7947B0EE94155478443524343E2D97FA2DD"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\oasis_html_comparator.rs",
+      "Sha256": "A80636463EFCAF0EA73D7A86517165F26FE1D0AEA10CD874FDA2C08B8A305280"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\oasis_xslt10_measurement_tests.rs",
+      "Sha256": "5B57F974CAFCE38B485408BF220CCEA0481CB58BE9B21FE64C0B79975D7E8450"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\preparation_pipeline_controller_tests.rs",
+      "Sha256": "C560FFCF9EECA0A98FAF64F859DD5D6765CFA928079545691B66C101704C5689"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\preparation_pipeline_experiment.rs",
+      "Sha256": "4CB118380309BACC716DFFC63983673D2FC6F83DC50D47C1F358058F7B7ECAE5"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\preparation_pipeline_topology_tests.rs",
+      "Sha256": "C6B3EAAA9A4CF43CD80008E1C53B26A89E8B9D9AB9D64A124555851883ED99C8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment.rs",
+      "Sha256": "385FED23E44F81EB6C8F009B06F35EDA97AE270621D2156A0D8A850FA85A2FF8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\capacity_cancellation_gap_tests.rs",
+      "Sha256": "ECD3CDC9554F7D175E4715BFA6497C82182FEAD8ABDE661DB57DAF80731C5035"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\capacity_checkpoint_tests.rs",
+      "Sha256": "DD392310F8289E1B37C407FAAEE39FF8868949EAC5E796C9759D98FB7A5087C8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\capacity_comparison_tests.rs",
+      "Sha256": "041F9B6BF70F682365BB478D4F53FE5120E3AD1A7AB9230C7D916F97147167CC"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\capacity_execution_parity_tests.rs",
+      "Sha256": "8DF798C157A48434F87C6DBBB156B792504C635F6A52BABDB412D3120B08CEA7"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\capacity_lifecycle_tests.rs",
+      "Sha256": "DD1271F4BDD632B5EF9E1368491B0792CE2FEA5EA967688039082607565518D8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\capacity_semantic_parity_tests.rs",
+      "Sha256": "95C8D68DDD4243DB7219D2A888AABD959642F719DE1A8BEF8E1A1FAF389197BF"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\capacity_transform_peak_tests.rs",
+      "Sha256": "4618039FAB8710B30DE42EE8A994341F74555026950487AE6D07FE00AB3FEE9A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\direct_lifecycle_tests.rs",
+      "Sha256": "5A2E26384E233B513F1D0821ADCD6BBA1AEAD8B536DA556407327E2EB954DE25"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\document_anatomy_tests.rs",
+      "Sha256": "0BAE97BAD3EA822A3EC55D80750567E511980618DF81D6522E9294B6D196BD15"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\direct_creation_tests.rs",
+      "Sha256": "900260EAB7D22FC462765C1EDD9278A960B5A7572AAD2C62F231F1211C1B460E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\distinct_ingestion_tests.rs",
+      "Sha256": "6B46F56C6B795B2871483E2D61FE9E3FDE73A176A601289192538E43ABAA9F81"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\prepared_set_capacity_tests.rs",
+      "Sha256": "6D4925131DE43D0F2AA18AC8862DA77D80231702F13E5E5C3C63AFDC453E4FCA"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\result_heavy_allocation_tests.rs",
+      "Sha256": "906D78231947880D9E6A72797682944C5E42FD532B591C96600EF5E7105F318C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\result_heavy_capacity_control_tests.rs",
+      "Sha256": "5A3E96715F1F88D8A41FA53A54BFA3709F90CBE67532FBC92C21C2B902EE1AB9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\result_heavy_capacity_tests.rs",
+      "Sha256": "81A48CE13FD846AFE1573B99B2279F76BFBB1AB7AF1BEF89468627DF2AE1BEE6"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\result_heavy_concurrent_tests.rs",
+      "Sha256": "CEAB13EA2884BDBD8E2FC16C26DB9E2BC5C4AE5778F3BA19760AC751D3F327E8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\result_heavy_construction_allocation_tests.rs",
+      "Sha256": "E4E3BDD2C77FCA492AF33234FDB1D2C5337CDC8BC05D4690D1737EC73741B9CD"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\result_heavy_ingestion_tests.rs",
+      "Sha256": "B8C22A295C21EF5D10A66285EB69125F9C90080846917405AA941E220B25E658"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\host_placement\\result_heavy_publication_tests.rs",
+      "Sha256": "4DE6D164C5CF6A7C0CECFFCD23759F3AC97B11725CAE3DEF9C74B768322F5973"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_experiment\\preparation_phase_tests.rs",
+      "Sha256": "87BE4104B27280C7974822B14838A0F187810540B2EF153F8C81D8EA55B8B313"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\prepared_input_representative_lifecycle_tests.rs",
+      "Sha256": "5C7B95FEEAAB81071891B7E3FEE35FD301F65A9EAFE1FFB3F2004A1CF8B9D95C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler.rs",
+      "Sha256": "369334472F2E505E1CD95A0914BDE1D8E61A261DD50795A7578DB3E50A357FAE"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler\\selected_comment_tests.rs",
+      "Sha256": "2D8B73F5BA32D26A91AEE7EAA56156E36FFEBF2D1F411B76F9DDBD782E5AA519"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler\\selected_copy_path_tests.rs",
+      "Sha256": "0676BD988E48F48D94C508E11FC8451C4E267E1C176AEDFFB69428515401EE0F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler\\selected_descendant_iteration_tests.rs",
+      "Sha256": "10C484DD6DAC978ABA9351ED8055FD91DD3B7F584AF5EE5443702F4207596FC8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler\\selected_encoding_tests.rs",
+      "Sha256": "E9B929DAD44908BC09C506380E285BD3D566FD5DCC216BC8514984282FB18131"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler\\selected_entry_tests.rs",
+      "Sha256": "3CE8E48783FB55A318CFFA33FA6E8FC1714E8419AD947888422C023A8A8029C3"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler\\selected_pi_tests.rs",
+      "Sha256": "91392A761CE036AF2AFFA99BAB6AE27131D07AF6BC4E2ABEE9DEC2DCC9017E2C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler\\selected_profile_graph.rs",
+      "Sha256": "26C7CDCDE297CAEDA165B74C729D8C0B376A25B28BA939332C1E1930AF30847F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler\\stylesheet_graph_context.rs",
+      "Sha256": "0D3FAFE72EEB3587F73A631831028FCCEDAD5BB249DCBD631A4893E942C03564"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\resource_compiler\\stylesheet_preprocessing_tests.rs",
+      "Sha256": "112F6F8506D0A703162049637EBB0D712B1B57AF325B82E40EA9D79FCBBE2D9C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\result_tree.rs",
+      "Sha256": "6EBF2512776DA02D5E9B2D5AF43911F2B4222994E51B0FC3B87A453636E45902"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\result_tree\\namespace_attachment.rs",
+      "Sha256": "7A6586C785C4419CE451C3F140CA90784B0487C27119A4289D99AF860F1E2142"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context.rs",
+      "Sha256": "D92574D3BF1ADBA3571312F26D86CE2CE4D9BAC0AEF95B2A18E7C0B7E2567B46"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_execution.rs",
+      "Sha256": "B935B4248A7B85F01EA22C2587C32E621DEE34F1B9627FEAC2D1A2466EEA197B"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests.rs",
+      "Sha256": "6BBFBF9E8CAFAAC4543588D7E3ACCDAADFE0A55EBEF28779A8694AC6410F179D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\attribute_focus.rs",
+      "Sha256": "B9E1AB22E88FE370498D2D18D012C86D1C1D790DA7869018E71678BE3E842F19"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\comment_pi.rs",
+      "Sha256": "A8C11FFBEE8E7F41BB5F70ED1722D359DC3E6B98DA42AA679E119170D7169BC1"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\comparisons.rs",
+      "Sha256": "BA3F9F7EA95D1B60EEF292C36FA9DCEDE9A8B839CAA20BE7DA52B8C67F4A3744"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\comparisons\\pair_equality.rs",
+      "Sha256": "7F64B6C023F1386EBC44DAC486E7D96FA6CFE4C7026AD6694C3812458DE7C637"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\comparisons\\pair_relations.rs",
+      "Sha256": "4E90715B1E091392D62F3ADC3033109EF9ED4D8AB4BDA08105F41441C899DF48"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\comparisons\\value_output.rs",
+      "Sha256": "0B3B6A93309CE12521E2DF08259A4F443FD914B219F9C7BFB8456C8DD3AEB245"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\literal_attributes.rs",
+      "Sha256": "741DC1B56E701E16DC02E61F14C8CB4C128C26388B286063CE1867FC520ABAAE"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\source_copy.rs",
+      "Sha256": "46CA64FCCB28C6ACE04B21CB2275BA476684FB4B4CE35954DB3F12D34223A661"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\source_iteration.rs",
+      "Sha256": "F186E5758560604CC2E2679156C5AA18E7322DCFE875ADCC43BB8188A474CDEE"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_constructor_tests\\string_operations.rs",
+      "Sha256": "EE6C1DB39BC8E51A71A41CE311490EA7BBFAED7450008C874DC3E32E06862836"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference.rs",
+      "Sha256": "380BD465FE710C6FA763931E1B308C7917420A5880E5F30907D818023229199A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\boolean_provenance.rs",
+      "Sha256": "F331E5576241FDF22C9107AF1F842893564ED6F1FADAF1B85ED988FC827744CA"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\compiled_provenance.rs",
+      "Sha256": "B11B541985D5CB3CEBA8480065F8911B61D1A30B498766596A73E83CB8ED2433"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\cycle_provenance.rs",
+      "Sha256": "70DD716B748F62696E2B8FB055DE205BFD5C6A2281F82CDF8146B7027F0C09BE"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\declaration_linking\\mod.rs",
+      "Sha256": "D950CFB03A3784984D3C1D97FB16DD12626B3FC43C8219CA26D63DE72C412307"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\declaration_linking\\production_cost.rs",
+      "Sha256": "350AAD87BE1B23A84DBE051292D4F3AC6B0DE88E3BB07FCFB18958DC3B85D27A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\declaration_linking\\schedule_cost.rs",
+      "Sha256": "92446CA1ACF61DBC3221A63B6C587BF929BC6338D4BFC115D858EBFAF5227AC9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\declaration_linking\\static_admission.rs",
+      "Sha256": "D9BD9514DF5CCD93FCDDD6CAF18C7C861237A3C989E4D626B30B1451DBA96325"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\effective_boolean.rs",
+      "Sha256": "FB3166443137CB9365F30A104A9211C5A32B368084F088C39ECBB3189B162C6A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\evaluation_schedule.rs",
+      "Sha256": "CF80E16AECE59CE1524125DA3DA3A5639FA3AD2C89823D02B83761229EDA7AF9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\failed_cell_context.rs",
+      "Sha256": "2D02FF91EFFC3EFDF23DFEF130E134BB6C7BCA9D191DF275E9D5C5E0DF4D6762"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\failure_context_reference.rs",
+      "Sha256": "CC2342F7CF7B2AC0DA055620771E4BB76CEB2AA65659C3A2C99490F0E83DFEDF"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\failure_observations.rs",
+      "Sha256": "3ADD7435CECF48FB2D4A844BB7DF23B18968B0BBF083E8E8AA43DBF36BA772F6"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\owned_values.rs",
+      "Sha256": "4080365FDC7E43018856E2D5E1F65E02D49ED6E1572C5041306602478EEAFE15"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\owned_values\\comparisons.rs",
+      "Sha256": "741B0C0F0C51C3599A5065E8089EBC95C4104470EEBB6600616EAB63B8BF8C8F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\read_provenance.rs",
+      "Sha256": "B5676FC3067BA64120348066224694AE4A1DE9183E52CEB9B6C2564ABCF11C97"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\shared_execution.rs",
+      "Sha256": "2058F40C2678F3EFCB29AFC3E9F26912A2F3FF5F42AB4845FDC21E566F982A3C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\source_read.rs",
+      "Sha256": "413B232EC22628763351F3D2E52C8D4EFF2040A8A863082AF33E61C3EFA7ED09"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\string_provenance.rs",
+      "Sha256": "B0D36EAE8DFE1ED30006935F5F36946EE2D757BA082D214459E6DF69DCB8EAF9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\temporary_read.rs",
+      "Sha256": "B28A78E33D59B440F34CC353FB6686C4B85ADF3F1E1827B0DAAD212CED95515B"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_demand_reference\\typed_copy.rs",
+      "Sha256": "2965C3B06D98238F7EDC6B988BCFFE5CFEB998584A210C6589088D89A4FB6239"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_initialization_tests.rs",
+      "Sha256": "E762CF59D36A3AF5A2BF4F1ABFC563FDD6FF576CF158D9BEA3ACF7713FF51AA8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_initialization.rs",
+      "Sha256": "EB98EE7D2710E76BA8361C168545E9C94819E954EE0F6165F71AB1AB25938147"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_resolution_tests.rs",
+      "Sha256": "5823F66E0860BF50CFA5807CD593659FCE68A969FBDCF7C6FD8DC7E98B5D8C87"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\global_resolution.rs",
+      "Sha256": "0B9E678A3D6B946AFB41E88DB52008B0DFD20DE6301B3A10733E81D2B24E85F5"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\retained_node_frames_reference.rs",
+      "Sha256": "A20EC064729060BA54CD8036B972CDB9CA3FDC164883942D7FDA6CA037C93192"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\retained_node_live_admission_tests.rs",
+      "Sha256": "D33F987184822796000AD362A42C17437FE52FD9ECF3AE13309B866C3CDB540A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_context\\retained_source_values.rs",
+      "Sha256": "8BC4A23E26795C73CF4D1E105636E11A9016800A561894551BF8750E9149A365"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\runtime_failure.rs",
+      "Sha256": "E61D12A4B85A171DB86C701828E11041DDAF459C8CC594C7CB36963DF81325A2"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\stylesheet_dependency_loader.rs",
+      "Sha256": "F4527BE1F957B532A687D1CADE4C74B23BB82B5B37CED52A80BC7559C27C2F96"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\stylesheet_dependency_loader\\selected_document_tests.rs",
+      "Sha256": "D84AF43D742C1F6AA9BF495672CF13E0344D5775FB60211D3948D98721F96727"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\stylesheet_dependency_loader\\selected_group_measurement.rs",
+      "Sha256": "3EB2A6B5BB93348107BB5E7D1E56DD073FA20226AF39998632CCEF56EFF29406"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\stylesheet_dependency_loader\\selected_processor_tests.rs",
+      "Sha256": "100995E3C6EF99D7211ADD1B45B90EEEF7CC06492EE1B143804821F7364C4823"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\template_selector.rs",
+      "Sha256": "1F14EB2FC3B039BA9532B4C1A44745CC1685CD641AFA7F4DEC6D273864AB30B7"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\temporary_tree_executor.rs",
+      "Sha256": "2A37971E583AC1D0F25E8811457FDBEB939D5D00B5C733BF154D27627D2CF816"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\transform_set_experiment.rs",
+      "Sha256": "6C342D43AB592FE747FCD20DFCE42CE63FD1AF93C850D2EC3F2EA0150DD3AC6C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\value_evaluator.rs",
+      "Sha256": "E8D0147D3C56B0701CBE645FD0B72AB308819F08518D4861984AF6D1D14F0FF5"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\value_evaluator\\composed_string_evaluator.rs",
+      "Sha256": "EDC42C488A57ADDCC7BED75EAF2199660C68D4A362720B9EE9885338FF87522D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\value_evaluator\\generated_identity_evaluator.rs",
+      "Sha256": "C9CCCD0A146C821D5296B8377E18C044B846E55D3475E766C3938F7D70615867"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\value_evaluator\\id_value_evaluator.rs",
+      "Sha256": "B63E135D67BB7A8DDCB81D29C2B814A9C3E1F2147CA05C9C2A4E6BF91B253B4A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\value_evaluator\\literal_document_value_evaluator.rs",
+      "Sha256": "C8BF64254ACE950BF25E465B2F0BAE46BD3B4AEB0CC8CA83F28CF260798880EF"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\value_evaluator\\temporary_attribute_path.rs",
+      "Sha256": "005A51CB6B9782F9F6C79FB3B63C1FE0022BFEB26AA952EA9A420C40A97ADE65"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\value_evaluator\\xslt10_compatibility.rs",
+      "Sha256": "A22116DAF234648BAFB89064DBF5ADA1B9B8B72F895C7FC3A464F17E9A19ADA2"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\value_evaluator\\xslt10_compatibility\\numeric_pairs.rs",
+      "Sha256": "D5BF4C70BBA07656AB3E62BD7F3A756A24B9A4553A57115FC6775AA7E9E73F58"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\value_evaluator\\xslt10_compatibility\\variable_equality.rs",
+      "Sha256": "6A699FAE5B32DE0FBFD131D75BC87BB683506CD68C093AA49D167F1B5CBA29AF"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\variable_filtered_path.rs",
+      "Sha256": "2826D45384C39BE4B78E4967D33DF81FC2B8A128322684CDE1EA11D2C7595608"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\whitespace_view_measurement_tests.rs",
+      "Sha256": "A5FED0D08913A3A77EF66DAC035D25DA722D03B4D275AAC180B4893F8191E4BE"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\whitespace_view_runtime_tests.rs",
+      "Sha256": "78193182D28C37C9E2D68190D0403B802FF262E6047304CCFAAEE3FA7BA36961"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\workbench_experiment.rs",
+      "Sha256": "F14076B3D81EAF18925750D063522AAD98E259A94B6C632164FC3D48A98B770D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\workbench_experiment\\construction.rs",
+      "Sha256": "E16CD4095DC3BD181B57F49B90407894E0E59F03B2C739D371786836026EE5A8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\workbench_experiment\\construction\\capacity_tests.rs",
+      "Sha256": "E8656068ED23416BAB55EF7845E5D3839A49C9EBCC90F7DF8B0A2BEFC7175B6C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\workbench_experiment\\construction\\capacity_tests\\allocation_tests.rs",
+      "Sha256": "CB3AFB0F1073BC19EBE9A3E77228CD80A69489EF2E5650A636A106311B5D9DB6"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\workbench_experiment\\construction\\capacity_tests\\timing_tests.rs",
+      "Sha256": "1D5DBFAA6F55411B612E8F327930D75D5A64C011E1F869E086D7DC459A543268"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\workbench_experiment\\construction\\corpus_resources.rs",
+      "Sha256": "54387AAF9D3F020B06874AACBCF07038B99EDF50D7E7F554872BD6E4B5AFE721"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\workbench_transform_performance_tests.rs",
+      "Sha256": "B8632E196E4442CD6362DF381F502E46B44E3E8F81A4CD97CEDE688B64E2F75A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt10_current_name.rs",
+      "Sha256": "45A06DFE389C28C2495EC938DB52D13DC6C96083A5239F31FC49ABB9D294203A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_apply_imports_inventory_tests.rs",
+      "Sha256": "20A0FE57487C0A73FD9FCB3F1568B51C05CDA7206BA4C6E95336DE7549776C40"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_apply_templates_inventory_tests.rs",
+      "Sha256": "187DE17C6670C8CE58A1C79FA494A2FC6FE4D5A45D23473A4EEFECCFBA4447E6"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_built_in_templates_tests.rs",
+      "Sha256": "81DC3E3AFB3E4FCA8465B7E85F0AB8B3AE07CC876387C27245CC799CC300EDDA"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_call_template_inventory_tests.rs",
+      "Sha256": "6CCDB3655E8130BECD6E8C7C818E484EF38680428A383028A77D4A0792176840"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_castable_inventory_tests.rs",
+      "Sha256": "53C89A07A44898E4504B5AC930520EA167CC522035A1FEB28CBB505AF49FB3C2"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_choose_inventory_tests.rs",
+      "Sha256": "E5B779D31E037B166800A56D4E062436E3E9C21C3E81FF8F078FE6DAEDBD0F97"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_data_manipulation_inventory_tests.rs",
+      "Sha256": "540C728B8B997D7DE7D7607474CE5E45D4D3B6B79CEB88316B750B4B06AC234D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_deep_equal_inventory_tests.rs",
+      "Sha256": "986C59DA564554BFA3A28574923157D4544189CD4C8C8C17D42FC3446A0447F9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_for_inventory_tests.rs",
+      "Sha256": "4FCF4FB5839270F41B346D69DDCE39026933B9E944EA8ADEBFEF88F15AB79F44"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_include_inventory_tests.rs",
+      "Sha256": "35DBF8D461F24E66EC64CDAE10DABB9F235903A60B9B3E953BF29B066F12559E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_initial_mode_inventory_tests.rs",
+      "Sha256": "E6E6C21C22ED79526A6B75F479D08DC655158C6869B104A33BBC44986E20CC53"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_mode_qname_tests.rs",
+      "Sha256": "FEA26556FA9249A25C54B48A4A9D4E5D011FD8DC16628B27DABBE19D18B4038B"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_output_inventory_tests.rs",
+      "Sha256": "E7962CD328D0D6D7A924EC21FDD4EA245CBE31009681C9A0B8A95C95EE7DC0F0"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_path_tests.rs",
+      "Sha256": "963B2738F90089AB9821887E50D00CA65CB9EC771CE9102C3F34C19539515C61"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_root_inventory_tests.rs",
+      "Sha256": "20DAB988514A4CD9BE595C183F043D0ADF4713841B5DD418AD4C7352BFE47468"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_strip_space_tests.rs",
+      "Sha256": "DD2C58F6F5BFB7FAF19B43B71F4C5032EA2F57393E305B89D561106FBEB7F0CA"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\runtime\\xslt30_template_dispatch_tests.rs",
+      "Sha256": "53C3ED896CEB7D2A5D5DF624C0D692F1D290F0F1E155E2B3E806B5C58D121920"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\verification_ledger_conservation_experiment.rs",
+      "Sha256": "EEC269B88430EA8E333AE95407594A474C47C4E00A2B5BC72F749C929BF2C9C5"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\verification_ledger_experiment.rs",
+      "Sha256": "C0CF4E6CFB643C9A8DC38537075911B3363DFA587795C8466D17716342F3DFC4"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\atomic_value_experiment.rs",
+      "Sha256": "404CBA354D9E5681B276AED7BEB9B200B397764828851637A9652CFF79311B53"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\mod.rs",
+      "Sha256": "BB0A7D9C33EA3DC61A9902F32369ABE29B8024930C5597FD85455C2C6C31BA11"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\namespace_binding_reference.rs",
+      "Sha256": "50ED46DF01EE9EB94878D3D539588FBEF57D98361B717D973F08A5EEF18729CD"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\namespace_nodes_reference.rs",
+      "Sha256": "C231D4F9CC660C65EBF3F1F59D11DE7080C644E679D2E168EB9F81DAB086C089"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\owned_tree_experiment.rs",
+      "Sha256": "65546C4AC6036A29B923D491539D36155C9E351FCDF0940CCE96C8E826F38CE5"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\qualified_nodes.rs",
+      "Sha256": "EC077424FD0521749684EA2B98D18102686BE496DD2FB223F8902B7627199764"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\retained_nodes_reference.rs",
+      "Sha256": "A9DE90BE02644A7B47C5531FA2FFFC12D00FA4F12A599A45C4B45F4473BCFC9E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\retained_nodes_reference\\ordering_tests.rs",
+      "Sha256": "95B1303C0BF31C1EEB921867B0233E65F6E99FB4B9E35AB416ED4B5D8493285A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\retained_nodes_reference\\table_measurements.rs",
+      "Sha256": "30FFE2AB6F1FC43AA7EF5FFC5211F227596AC8A02026BF7E0A1875D5A541892F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\retained_nodes_reference\\table_reference.rs",
+      "Sha256": "69E6F7FBCBA4C89D860B90CF5AC207D71DB2DD821E1C90FB4837138C636B24B6"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\retained_owner_adaptation.rs",
+      "Sha256": "8DDD1E3C4165A19AAE3CF38CAA3CE3F94DEE513A82430B48CFE5CF2F434181E5"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xdm\\whitespace_view.rs",
+      "Sha256": "4048719E9AD30E061F09AFDCFD4F6B971D7DC76BB66E759C5A816679118ACF47"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xml\\input_transcoding.rs",
+      "Sha256": "D56975C43529FD80A81838A71308A619740A7B6AA5964BF952AEBA2E4E09C067"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xml\\internal_subset.rs",
+      "Sha256": "3047953DB14F1E0BE732C3C54C4838E579E24AC739172B8325D547CBAA15A4E8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xml\\mod.rs",
+      "Sha256": "C073F8CAA0781D525E8EB59F42B417CBFB9F6C7E2B92F529CB975F583E5BD0A4"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xml\\names.rs",
+      "Sha256": "A587343420B8AC90C8F7F71B26599F559D3D1DFE993E1A5E9E969EDFF9F4445C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xml\\quick_xml_experiment.rs",
+      "Sha256": "4D6D8D87DA846FFE68ADF3F0B59A9B9A920128960B790AB0A7EF446A643E3835"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\binary_numeric_experiment.rs",
+      "Sha256": "2E6CBA021CF0704E4137AD1D08C9911F746995855BCFC41A3A70024E3AD39F38"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\case_conversion_experiment.rs",
+      "Sha256": "F2FEDE48F1396E97049432EF4EC1DAEDEAECA13A9879980E033C9FCE70706225"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\castable_experiment.rs",
+      "Sha256": "7BF582E46DB7F99A2AD2394D83A2FEE49892D53B1FDF7C79E515A29ACC7E016A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\constant_boolean_experiment.rs",
+      "Sha256": "C093525EBACAF4356A5B777C7C7DED8B11C81C4BD657FC47A7F57C3982673105"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\constant_integer_experiment.rs",
+      "Sha256": "142BF4780537061C8B799F740EA253AF9E004C7858E2518F65C3C41510316B28"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\constant_numeric_experiment.rs",
+      "Sha256": "C9739C6CF800C9AF15276AA28988603F18435AC483D7344AF3E8CE0BCBAE696A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\context_requirement_experiment.rs",
+      "Sha256": "14388BB408A13DE29025FBC5C939497A46748611591FE61D097FDE5974214602"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\count_experiment.rs",
+      "Sha256": "0A2451166A16A2D8289353FF47D5FDAD0E8E6A502D910F35242003560757CA40"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\decimal_sum_for_experiment.rs",
+      "Sha256": "0F64DCC79A5EA0F16615020C772CFF2340946D625B01AAFABFD485BB0C09D8BD"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\deep_equal_atomic.rs",
+      "Sha256": "FDF9E34F7BE3A6735DFB6334CAF6D7F8AF9EC8645CA5FEFD317BA6337EA87DAB"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\deep_equal_boolean_experiment.rs",
+      "Sha256": "0AA83BBCBF9BCDE0786ED7B0E449B1FCC5BAAC8EE80E493744074820CF307FE1"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\deep_equal_composite.rs",
+      "Sha256": "1E7E29CAE0E858C76D50D0F21C62A8B75BB5B8D08205BDFCF246C730E96DAF2A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\deep_equal_experiment.rs",
+      "Sha256": "A70CC8D08FD900EBB5638BC5F21C315A564217C8FA274CABB7F175F42D804B65"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\default_collation_experiment.rs",
+      "Sha256": "92715EB77CFA0E54AEB6FC04EAAF63E0FAFE06176FAAF802DE773F3A95F8ED8C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\duration_component_experiment.rs",
+      "Sha256": "FEF7B0B145076ED0337547A595EEB0ED6D555A9F0B44E4C90365B8BBCFF8B998"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\effective_boolean_value_experiment.rs",
+      "Sha256": "F4F451300CBDFFA0F6149DB45C7140B09F78ADB3CE01A8154E11DCB2C19AECDC"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\empty_experiment.rs",
+      "Sha256": "5706E2E84352CE39B1BF7202077CBF7A41867D8F93C0509E2B624B6BAFC7195D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\encode_for_uri_expression.rs",
+      "Sha256": "D5E74AF96A28C543860FF4FBBE37ED8A63AA36E64BE425C8B1F0AE5044233AA9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\escape_html_uri_experiment.rs",
+      "Sha256": "4ADCE751E181F737AC56837B3C3CFE32B4CB9DFB8336953556A55BB4B7E167D7"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\escape_html_uri_expression.rs",
+      "Sha256": "B5EA42932F1578153794A27E0E8EAC54DF7A5F89AB83FF78FE5B70D8C5DEBD80"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\focus_sum_for_experiment.rs",
+      "Sha256": "A873A6ABCBA8077DA358D6FCEB5148F23AC2B2BCF82B31930FA59DC2D06A0C8B"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\for_distinct_values_experiment.rs",
+      "Sha256": "88EAD727D368FBB3F7DFC9CC4E46ACE538E2FA2903057A026C8D0674AD604AEA"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\format_number_experiment.rs",
+      "Sha256": "58CD4D9FD92835CB1BA8F295607018EE2620EBA9946BAE7DEE366938A57C2B32"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\integer_for_experiment.rs",
+      "Sha256": "660369FD8FB276AAA68EB63651CD101C1127CDE6673CED9FB6597A70EDEE3D8D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\iri_to_uri_expression.rs",
+      "Sha256": "5AF9BBB5B21895B93ADD181AA4F3FD23BACD8E9B2393D1B155671922ADD51CD4"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\language_experiment.rs",
+      "Sha256": "3443C5EC70F55507CF37C8AF061F74D5FBE7A74DBDFB2192DF7DC7A9CC464E87"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\mod.rs",
+      "Sha256": "7CFF5EE6C32DA36ED5FE2012B2DD5CF9FFEF7559D524F0066354880BE6FE9042"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_boolean_predicate.rs",
+      "Sha256": "B4BD46AA1E03C2361A3132C17EE7CC3A64C689EE4DE6AD334120D7813B550777"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_experiment_tests.rs",
+      "Sha256": "EC444B3098AE05703BE4075CF0BA3C174F0CC9B296A9E296C341BC74E707DF7A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_experiment.rs",
+      "Sha256": "327E632235094F1445C85771667936C3B58D4F4408AFEE0B593491962B5DD5B8"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_experiment\\composed_string_predicate_tests.rs",
+      "Sha256": "E024A15430E76B1769550E68708C94B9E7C3C4C8585D48D12B20751CF56519C9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_experiment\\composed_string_predicate.rs",
+      "Sha256": "4ADC1E1AF1A594A6D6907FB553BB9B1DF2F6C6640423DBB5D8AB21CC50261A90"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_experiment\\namespace_predicate.rs",
+      "Sha256": "F4004195C91B3D0387E5442B9A9FF8C734C05C3393F2E83B7C371D552AD453C9"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_experiment\\qualified_nodes.rs",
+      "Sha256": "F2EC94A99048C231C66E4F8C69F0AEB71F86D5BB9053D2478F43618661D3E61C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_experiment\\qualified_union_tests.rs",
+      "Sha256": "E2E92A70F3EA766957202DA913C8488E5D5EDA1B04C74E13C0C25D7A74A0AB63"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_operand_type_experiment.rs",
+      "Sha256": "B3E402CB3A6C7951D2E3676698D77B80832E7D80803548EC02B590352A2466BD"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\path_syntax_tests.rs",
+      "Sha256": "28026FFEC31026187DEC723864240BF9F1BBC7601DCE30503D7EBD77FEEE3389"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_axis_tests.rs",
+      "Sha256": "D1EB412926115CB4E3A57E68D693E529346B137CED4EBD05642842E6544ECE95"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_boolean_constant_tests.rs",
+      "Sha256": "C29086D2F76B5B716D59AE79D26D032560D5C2645F3387B2F54DA0D43F6088E2"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_codepoint_equal_tests.rs",
+      "Sha256": "F0EB06EBE25B61C05016DC339A3335AC3119CC117BF96D4BFD6907F3DBC48397"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_deep_equal_tests.rs",
+      "Sha256": "F82CA5BA751425CE31323EB35C07481FAA6303DCE78440F4EBCD42A65984D09D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_default_collation_tests.rs",
+      "Sha256": "3D9267F9944097ADDB2251D070497022FD1DD858C76FC15FA7B5130CBD76B175"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_duration_component_tests.rs",
+      "Sha256": "A14961F2D5B38EE6F3BB5CEE1DFCAC72252B3B05137923F58DB66F6AF7F3F51D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_empty_sequence_tests.rs",
+      "Sha256": "DF1986377DA2171362EEA5B92C71241D1C0033334A9709472B293E2423A5FA65"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_encode_for_uri_tests.rs",
+      "Sha256": "1340263905056322D6D31D9D0F205CA2061A73D823814E7823D6DCC694C29819"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_escape_html_uri_tests.rs",
+      "Sha256": "17BE1040C72C83E2288C08B7B6F9D7E41EB0151B489A87C0953D72F0B694AA8E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_iri_to_uri_tests.rs",
+      "Sha256": "3A407F06CB7CA58FD131DE592030DDFF3207CCDBDA21E171BFE4F0B1E4BBA364"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_lower_case_tests.rs",
+      "Sha256": "942989C3AE60E7BF330F4D708A87616652ADF0AE19BAF8C156A04EF72C4DF90F"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_normalize_space_tests.rs",
+      "Sha256": "68E5E7D42A39DD1C0BCF5E49EA1179DF0FF6B6E9EF19DFD7828A0B17FDA9D2C3"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_production_path_test_support.rs",
+      "Sha256": "7B754D8635D7763250C7421C766935B369AD9EA0BB0AA282089FC8751DFC82A1"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_string_length_tests.rs",
+      "Sha256": "B07444DC089B5AA8E87CB166C338D05AA966A20B08A1D059FCAF5A372C24CC81"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\qt3_upper_case_tests.rs",
+      "Sha256": "090CB70D896FFBAEBAA13C02C34B3B95F0B8EAC72D84825CD76BA6DBBF79161A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\static_string_experiment.rs",
+      "Sha256": "F2E3A14DF0D5AE96A881209D8B2652E6B8C63A1606A66BFC033F7EADC01B253D"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xpath\\string_length_experiment.rs",
+      "Sha256": "274B038C6FF86320A4A4ECFF22E47C84158A3075CB890D45EEA4493F2545A76B"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xslt\\golden_semantics_experiment.rs",
+      "Sha256": "C47D0E8826132BE9FBCBE3C4862AD2CE2FC517CC13602297A8EFB7D24E830B89"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xslt\\golden_semantics_retention.rs",
+      "Sha256": "BBC4B05C2D73DB0D8D8D3275F0001A4000EAF514AD2CD1CD7B43A36E593D196E"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xslt\\mod.rs",
+      "Sha256": "693576EBE5E2D93F55CDD7A36FFBBCABFA643BA953BA436561C9F0E42ABCC54A"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xslt\\semantic_inspection_experiment.rs",
+      "Sha256": "B32079F8BAEE682CAEAF0ED5C2739EE4E6B411FEC6FFF1C0612F590088D18432"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xslt30_overlay_test_support.rs",
+      "Sha256": "F8455F67B89B640EE1AEB697FD18D444A5EBCC1E4F3CCB38E57E48D2488B6E3C"
+    },
+    {
+      "Path": "crates\\fastxslt\\src\\xslt30_profile_denominator_tests.rs",
+      "Sha256": "F665E69795AD45A5703848C12446420A2849A967EF33938B86143DC389DB92D9"
+    },
+    {
+      "Path": "scripts\\check-conformance-sources.ps1",
+      "Sha256": "044850087A7A4CF34F8B3E82353E049012EAE92484CBC4A6D68DC846095465AA"
+    },
+    {
+      "Path": "scripts\\check-markdown-links.ps1",
+      "Sha256": "ED944AEA171DDFF68DBEBF5869BC3C4125B0284EC6649879F4ADCF0DD8CE717A"
+    },
+    {
+      "Path": "scripts\\inventory-conformance-sources.ps1",
+      "Sha256": "3E216691EDD46E0BDEAC6ED0C27AD2B312CF97B54373A3A7FBB435BEEFE9BECA"
+    },
+    {
+      "Path": "scripts\\inventory-oasis-xslt10-dtd.ps1",
+      "Sha256": "183F6DFAC563B6DBFA3AB26B7B695841EF6F26A7DB658A9E1E419D9982360743"
+    },
+    {
+      "Path": "scripts\\inventory-xslt30-case-metadata.ps1",
+      "Sha256": "DB67B193FA6C576FB3EF5062D3A83F4D94011EED94CF89CF2FBED9BB0F5E05E4"
+    },
+    {
+      "Path": "scripts\\measure-best-practice-deployment.ps1",
+      "Sha256": "DB214D749FE78D21A89F5BA844390562575A89F37E41AA51B342146DBB3F9401"
+    },
+    {
+      "Path": "scripts\\measure-competitive-fairness.ps1",
+      "Sha256": "89CC358F865F7B5B07B206AEC3319D1F591A4B5B15A75576E1B1631911E12A19"
+    },
+    {
+      "Path": "scripts\\measure-job-queue-deployment.ps1",
+      "Sha256": "5E93EDAC7662A75936B8E10CF24BF4D19B417AF3434D47898625A93F7A5599FF"
+    },
+    {
+      "Path": "scripts\\measure-oasis-xslt10.ps1",
+      "Sha256": "4BB1199441D12E3E786F4D2739ED4F27E1A16A2D0429BF770592BE88A5996D6A"
+    },
+    {
+      "Path": "scripts\\measure-wasm-workbench.ps1",
+      "Sha256": "9EB0B3342F308498A0E1973673C778295092EC400D95551F6C8867508E72A169"
+    },
+    {
+      "Path": "scripts\\verify-aspnet-workbench.ps1",
+      "Sha256": "D121EDF48A3E88F17833B4AE6BE79AB1A872586E24F11D1F430F7F833946075B"
+    },
+    {
+      "Path": "scripts\\verify.ps1",
+      "Sha256": "AEE7054DFB52623E22F42FE5E01E02A44F7EC5328E41777CD255A9332558D5A6"
+    }
+  ],
+  "Reports": [
+    {
+      "Path": "docs/Campaigns/processor-edition-profile/evidence/post-r0-relative-descendant-iteration-selected-report-2026-10-23.txt",
+      "Sha256": "5D6F09679B49C8CE59CDB7E41FB1771FC9AFE7D2ECB413B5F49921EED7F5E4D5"
+    },
+    {
+      "Path": "docs/Campaigns/processor-edition-profile/evidence/post-r0-relative-descendant-iteration-baseline-report-2026-10-23.txt",
+      "Sha256": "BC92D11943D8E713DAA761F3E90AE9BB99DA1DD9DDFA71EDD1DC501029FE00DD"
+    }
+  ]
+}

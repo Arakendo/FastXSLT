@@ -10,6 +10,24 @@ use crate::xslt::golden_semantics_experiment::{
 
 const PRINCIPAL: &str = "https://example.invalid/main.xsl";
 
+#[path = "selected_comment_tests.rs"]
+mod selected_comment_tests;
+
+#[path = "selected_copy_path_tests.rs"]
+mod selected_copy_path_tests;
+
+#[path = "selected_pi_tests.rs"]
+mod selected_pi_tests;
+
+#[path = "selected_descendant_iteration_tests.rs"]
+mod selected_descendant_iteration_tests;
+
+#[path = "selected_encoding_tests.rs"]
+mod selected_encoding_tests;
+
+#[path = "selected_value_breadth_tests.rs"]
+mod selected_value_breadth_tests;
+
 fn selected(modules: &[(&str, &str)]) -> Result<StylesheetProgram, ExecutionFailure> {
     selected_at(modules, PRINCIPAL)
 }

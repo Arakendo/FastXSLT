@@ -1,0 +1,326 @@
+OASIS_XSLT10_MEASUREMENT_BEGIN
+preprocessing-profile	strict-xslt10
+processor-profile	selected-legacy
+selected-initialization-disposition	invalid/FXAR0031/FXAR0031	11
+selected-initialization-disposition	invalid/FXRS0004/FXRS0004	3
+selected-initialization-disposition	invalid/FXST0007/FXST0007	1
+selected-initialization-disposition	invalid/FXST0008/FXST0008	24
+selected-initialization-disposition	invalid/FXST0009/FXST0009	7
+selected-initialization-disposition	invalid/FXST0010/FXST0010	1
+selected-initialization-disposition	invalid/FXST0011/FXST0011	2
+selected-initialization-disposition	invalid/FXST0014/FXST0014	1
+selected-initialization-disposition	invalid/FXST0016/FXST0016	1
+selected-initialization-disposition	invalid/FXST0017/FXST0017	1
+selected-initialization-disposition	invalid/FXST0026/FXST0026	2
+selected-initialization-disposition	invalid/FXST0030/FXST0030	5
+selected-initialization-disposition	invalid/FXST0031/FXST0031	1
+selected-initialization-disposition	invalid/FXST1002/FXST1002	9
+selected-initialization-disposition	invalid/FXST1005/FXST1005	5
+selected-initialization-disposition	invalid/FXXD0001/FXXD0001	1
+selected-initialization-disposition	invalid/FXXM0001/FXXM0001	19
+selected-initialization-disposition	invalid/FXXM0001/stylesheet-input:non-utf8	1
+selected-initialization-disposition	invalid/XPST0003/XPST0003	2
+selected-initialization-disposition	invalid/XPST0008/XPST0008	3
+selected-initialization-disposition	invalid/XTDE0835/XTDE0835	2
+selected-initialization-disposition	invalid/XTDE0850/XTDE0850	1
+selected-initialization-disposition	invalid/XTDE0855/XTDE0855	3
+selected-initialization-disposition	invalid/XTSE0010/XTSE0010	4
+selected-initialization-disposition	invalid/XTSE0020/XTSE0020	6
+selected-initialization-disposition	invalid/XTSE0090/XTSE0090	4
+selected-initialization-disposition	invalid/XTSE0710/XTSE0710	2
+selected-initialization-disposition	invalid/XTSE0808/XTSE0808	2
+selected-initialization-disposition	missing-resource/FXRS0002/FXRS0002	14
+selected-initialization-disposition	unsupported/FXAR0031/FXAR0031	2476
+selected-initialization-disposition	unsupported/FXST1009/unsupported attribute on xsl:import: {}unknown	1
+selected-initialization-disposition	unsupported/FXST1013/FXST1013	1
+selected-initialization-disposition	unsupported/FXXP1001/location-path-shape:descendant+function	1
+counter	cases-with-doubt-metadata	144
+counter	catalog-cases	3173
+counter	direct-dtd-frontier-case	100
+counter	doubt-annotated-identities	144
+counter	exact-normalized-non-xml-comparison-pass	10
+counter	executed-successfully	542
+counter	execution-failure	11
+counter	expected-error-catalog-case	431
+counter	expected-error-credit	118
+counter	expected-error-infrastructure-excluded	3
+counter	expected-error-nonsemantic-uncredited	308
+counter	expected-error-observed-during-execution	11
+counter	expected-error-observed-during-initialization	107
+counter	host-parser-policy-excluded	6
+counter	initialization-failure	2617
+counter	initialized	553
+counter	missing-principal-source	2
+counter	missing-supplemental-stylesheet	1
+counter	reviewed-external-stylesheet-subset-case	17
+counter	reviewed-single-external-subset-case	103
+counter	serialization-layout-policy-excluded	12
+counter	unusable-error-expectation-excluded	2
+counter	unusable-reference-result-excluded	10
+counter	xml-comparator-unsupported	1
+counter	xml-comparison-mismatch	2
+counter	xml-comparison-pass	509
+initialization-frontier-total	2617
+initialization-frontier	unsupported/FXAR0031/FXAR0031	2476
+initialization-frontier	invalid/FXST0008/FXST0008	24
+initialization-frontier	invalid/FXXM0001/FXXM0001	19
+initialization-frontier	missing-resource/FXRS0002/FXRS0002	14
+initialization-frontier	invalid/FXAR0031/FXAR0031	11
+initialization-frontier	invalid/FXST1002/FXST1002	9
+initialization-frontier	invalid/FXST0009/FXST0009	7
+initialization-frontier	invalid/XTSE0020/XTSE0020	6
+initialization-frontier	invalid/FXST0030/FXST0030	5
+initialization-frontier	invalid/FXST1005/FXST1005	5
+initialization-frontier	invalid/XTSE0010/XTSE0010	4
+initialization-frontier	invalid/XTSE0090/XTSE0090	4
+initialization-frontier	invalid/FXRS0004/FXRS0004	3
+initialization-frontier	invalid/XPST0008/XPST0008	3
+initialization-frontier	invalid/XTDE0855/XTDE0855	3
+initialization-frontier	invalid/FXST0011/FXST0011	2
+initialization-frontier	invalid/FXST0026/FXST0026	2
+initialization-frontier	invalid/XPST0003/XPST0003	2
+initialization-frontier	invalid/XTDE0835/XTDE0835	2
+initialization-frontier	invalid/XTSE0710/XTSE0710	2
+initialization-frontier	invalid/XTSE0808/XTSE0808	2
+initialization-frontier	invalid/FXST0007/FXST0007	1
+initialization-frontier	invalid/FXST0010/FXST0010	1
+initialization-frontier	invalid/FXST0014/FXST0014	1
+initialization-frontier	invalid/FXST0016/FXST0016	1
+initialization-frontier	invalid/FXST0017/FXST0017	1
+initialization-frontier	invalid/FXST0031/FXST0031	1
+initialization-frontier	invalid/FXXD0001/FXXD0001	1
+initialization-frontier	invalid/FXXM0001/stylesheet-input:non-utf8	1
+initialization-frontier	invalid/XTDE0850/XTDE0850	1
+execution-frontier-total	11
+execution-frontier	invalid/XTDE1450/XTDE1450	4
+execution-frontier	invalid/XTMM9000/XTMM9000	3
+execution-frontier	invalid/XPST0003/XPST0003	1
+execution-frontier	invalid/XPST0017/XPST0017	1
+execution-frontier	invalid/XTDE0820/XTDE0820	1
+execution-frontier	invalid/XTDE1390/XTDE1390	1
+standard-initialization-frontier-total	2202
+standard-initialization-frontier	unsupported/FXAR0031/FXAR0031	2181
+standard-initialization-frontier	invalid/FXXM0001/FXXM0001	11
+standard-initialization-frontier	missing-resource/FXRS0002/FXRS0002	3
+standard-initialization-frontier	invalid/XTSE0710/XTSE0710	2
+standard-initialization-frontier	invalid/FXRS0004/FXRS0004	1
+standard-initialization-frontier	invalid/FXST0017/FXST0017	1
+standard-initialization-frontier	invalid/FXST1005/FXST1005	1
+standard-initialization-frontier	invalid/XTDE0855/XTDE0855	1
+standard-initialization-frontier	unsupported/FXST1009/unsupported attribute on xsl:import: {}unknown	1
+standard-execution-frontier-total	0
+comparison-frontier-total	1
+comparison-frontier	expected-not-parseable-document-or-fragment	1
+direct-dtd-frontier-property-total	337
+direct-dtd-frontier-property	external-identifier	95
+direct-dtd-frontier-property	internal-subset	95
+direct-dtd-frontier-property	role:source	80
+direct-dtd-frontier-property	role:stylesheet	20
+direct-dtd-frontier-property	attribute-list-declaration	16
+direct-dtd-frontier-property	default-attribute-candidate	15
+direct-dtd-frontier-property	entity-declaration	8
+direct-dtd-frontier-property	internal-general-entity-candidate	6
+direct-dtd-frontier-property	external-general-entity-candidate	2
+direct-dtd-frontier-comparator-total	100
+direct-dtd-frontier-comparator	XML	100
+direct-dtd-reference-outcome-total	100
+direct-dtd-reference-outcome	parsed-single-external-subset	84
+direct-dtd-reference-outcome	unsupported-declaration-semantics	11
+direct-dtd-reference-outcome	parsed	5
+direct-dtd-reference-case	parsed-single-external-subset	stylesheet	properties=external-identifier	Lotus/copy_copy19#1
+direct-dtd-reference-case	parsed-single-external-subset	stylesheet	properties=external-identifier	Lotus/copy_copy20#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=external-identifier	Lotus/idkey_idkey04#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=external-identifier	Lotus/numbering_numbering91#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=external-identifier	Lotus/string_string130#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81430#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81431#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81482#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81483#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81484#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81485#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81486#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81487#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81489#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81491#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81492#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81493#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81494#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81495#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81496#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81497#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81499#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81543#1
+direct-dtd-reference-case	parsed	stylesheet	properties=internal-subset,entity-declaration,internal-general-entity-candidate,attribute-list-declaration,default-attribute-candidate	Microsoft/Attributes__81544#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81545#1
+direct-dtd-reference-case	parsed	stylesheet	properties=internal-subset,entity-declaration,internal-general-entity-candidate,attribute-list-declaration,default-attribute-candidate	Microsoft/Attributes__81546#1
+direct-dtd-reference-case	parsed	stylesheet	properties=internal-subset,entity-declaration,internal-general-entity-candidate,attribute-list-declaration,default-attribute-candidate	Microsoft/Attributes__81547#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81548#1
+direct-dtd-reference-case	parsed	stylesheet	properties=internal-subset,entity-declaration,internal-general-entity-candidate,attribute-list-declaration,default-attribute-candidate	Microsoft/Attributes__81550#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__81551#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__83030#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,attribute-list-declaration	Microsoft/Attributes__89433#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,attribute-list-declaration,default-attribute-candidate	Microsoft/Attributes__89434#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,attribute-list-declaration,default-attribute-candidate	Microsoft/Attributes__89435#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__89436#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__89437#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__89438#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__89439#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,attribute-list-declaration,default-attribute-candidate	Microsoft/Attributes__89440#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__89441#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__89442#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__89459#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Attributes__89466#1
+direct-dtd-reference-case	parsed	stylesheet	properties=internal-subset,entity-declaration,internal-general-entity-candidate,attribute-list-declaration,default-attribute-candidate	Microsoft/BVTs_bvt004#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,entity-declaration,external-general-entity-candidate,attribute-list-declaration,default-attribute-candidate	Microsoft/BVTs_bvt045#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Completeness__84351#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Completeness__84354#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Completeness__84356#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Completeness__84357#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Completeness__84358#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Completeness__84359#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Completeness__84360#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Completeness__84361#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89062#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89063#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89065#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89069#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89070#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89071#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89072#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89104#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89107#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89110#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89111#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89112#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89113#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89171#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89175#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,attribute-list-declaration,default-attribute-candidate	Microsoft/Elements__89177#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89278#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89279#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89280#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89281#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89283#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89284#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89285#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89286#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89287#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89605#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89705#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89709#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89710#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89711#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89712#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89713#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89714#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89715#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89716#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89717#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89718#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89723#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Elements__89731#1
+direct-dtd-reference-case	parsed-single-external-subset	stylesheet	properties=internal-subset,external-identifier,attribute-list-declaration,default-attribute-candidate	Microsoft/Import__84615#1
+direct-dtd-reference-case	parsed-single-external-subset	stylesheet	properties=internal-subset,external-identifier,attribute-list-declaration,default-attribute-candidate	Microsoft/Include__77751#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Namespace__77669#1
+direct-dtd-reference-case	parsed-single-external-subset	source	properties=internal-subset,external-identifier	Microsoft/Namespace__77670#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,attribute-list-declaration,default-attribute-candidate	Microsoft/ProcessingInstruction__78200#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,entity-declaration,internal-general-entity-candidate,attribute-list-declaration,default-attribute-candidate	Microsoft/ProcessingInstruction__78202#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,attribute-list-declaration,default-attribute-candidate	Microsoft/ProcessingInstruction__78203#1
+direct-dtd-reference-case	unsupported-declaration-semantics	stylesheet	properties=internal-subset,external-identifier,entity-declaration,external-general-entity-candidate	Microsoft/XSLTFunctions_DocumentFunctionWithEntityRef#1
+frontier-example	invalid/FXAR0031/FXAR0031	Microsoft/Errors_err023#1: unknown instruction outside forward compatibility at https://oasis.invalid/Microsoft_Errors_err023_1/cdata-ns.xsl:131..143
+frontier-example	invalid/FXRS0004/FXRS0004	Microsoft/Import__91154#1: stylesheet identity is not a valid absolute resource URI:               
+frontier-example	invalid/FXST0007/FXST0007	Microsoft/Errors_err045#1: xsl:apply-imports must be empty in the private slice at https://oasis.invalid/Microsoft_Errors_err045_1/fwdcompat-empty.xsl:310..329
+frontier-example	invalid/FXST0008/FXST0008	Microsoft/Attributes__78377#1: missing required attribute: name at https://oasis.invalid/Microsoft_Attributes__78377_1/78377.xsl:182..213
+frontier-example	invalid/FXST0009/FXST0009	Microsoft/Errors_err071#1: expected xsl:stylesheet or its xsl:transform synonym at https://oasis.invalid/Microsoft_Errors_err071_1/oldns.xsl:21..77
+frontier-example	invalid/FXST0010/FXST0010	Microsoft/NamedTemplates__84031#1: duplicate named template: book at https://oasis.invalid/Microsoft_NamedTemplates__84031_1/84031.xsl:311..354
+frontier-example	invalid/FXST0011/FXST0011	Microsoft/Errors_err075#1: xsl:param must precede the template body at https://oasis.invalid/Microsoft_Errors_err075_1/param-pcdata.xsl:154..177
+frontier-example	invalid/FXST0014/FXST0014	Microsoft/Errors_err097#1: unknown named template: no-exist at https://oasis.invalid/Microsoft_Errors_err097_1/templ-noexist.xsl:139..175
+frontier-example	invalid/FXST0016/FXST0016	Microsoft/AVTs__77597#1: invalid local variable name: {node()} at https://oasis.invalid/Microsoft_AVTs__77597_1/XSLT17105.xsl:204..234
+frontier-example	invalid/FXST0017/FXST0017	Lotus/variable_variable20#1: duplicate local variable binding: $var at https://oasis.invalid/Lotus_variable_variable20_1/variable20.xsl:744..784
+frontier-example	invalid/FXST0026/FXST0026	Microsoft/Errors_err047#1: the private xsl:text slice permits character content only at https://oasis.invalid/Microsoft_Errors_err047_1/fwdcompat-text.xsl:334..343
+frontier-example	invalid/FXST0030/FXST0030	Microsoft/Errors_err053#1: stylesheet dependency cycle reaches https://oasis.invalid/Microsoft_Errors_err053_1/inc/xsl1-error.inc
+frontier-example	invalid/FXST0031/FXST0031	Microsoft/Namespace_XPath_UndeclaredPrefix#1: unbound prefix in template match pattern: a at https://oasis.invalid/Microsoft_Namespace_XPath_UndeclaredPrefix_1/namespace_xpath_2.xsl:246..274
+frontier-example	invalid/FXST1002/FXST1002	Microsoft/Errors_err088#1: element is not an XSLT 1.0 top-level declaration at https://oasis.invalid/Microsoft_Errors_err088_1/script.ns.xsl:103..116
+frontier-example	invalid/FXST1005/FXST1005	Lotus/idkey_idkey43#1: XSLT 1.0 template match patterns cannot contain variable references at https://oasis.invalid/Lotus_idkey_idkey43_1/idkey43.xsl:594..663
+frontier-example	invalid/FXXD0001/FXXD0001	Microsoft/Import__91146#1: stylesheet XDM construction failed at https://oasis.invalid/Microsoft_Import__91146_1/91146a.xsl: UnclosedElement
+frontier-example	invalid/FXXM0001/FXXM0001	Microsoft/Attributes_Attribute_UseXmlnsAsNamespaceForAttributeImplicitly#1: stylesheet XML is invalid at https://oasis.invalid/Microsoft_Attributes_Attribute_UseXmlnsAsNamespaceForAttributeImplicitly_1/xslt_attribute_XmlnsExplicitAsAttributeNs.xsl: LocatedFailure { resource: "https://oasis.invalid/Microsoft_Attribu…
+frontier-example	invalid/FXXM0001/stylesheet-input:non-utf8	Microsoft/Include__77514#1: stylesheet XML is invalid at https://oasis.invalid/Microsoft_Include__77514_1/notepad.exe: LocatedFailure { resource: "https://oasis.invalid/Microsoft_Include__77514_1/notepad.exe", failure: Malformed { offset: 0, detail: "cannot decode inp…
+frontier-example	invalid/XPST0003/XPST0003	Microsoft/Attributes__89445#1: the path expression contains punctuation that is not part of XPath location-path syntax at https://oasis.invalid/Microsoft_Attributes__89445_1/22-7-template_for.xsl:228..257
+frontier-example	invalid/XPST0008/XPST0008	Microsoft/Fallback__91822#1: unbound variable: $var at https://oasis.invalid/Microsoft_Fallback__91822_1/91822.xsl:240..269
+frontier-example	invalid/XPST0017/XPST0017	Microsoft/ForwardComp__91854#1: system-property requires exactly one argument
+frontier-example	invalid/XTDE0820/XTDE0820	Microsoft/AVTs__77562#1: xsl:element name AVT did not produce a lexical QName
+frontier-example	invalid/XTDE0835/XTDE0835	Microsoft/Elements_Element_UseXslElementWithNameSpaceAttrEqualToXmlnsUri#1: xsl:element cannot construct a name in the reserved xmlns namespace at https://oasis.invalid/Microsoft_Elements_Element_UseXslElementWithNameSpaceAttrEqualToXmlnsUri_1/xslt_element_XmlnsWithXmlnsUri.xsl:215..281
+frontier-example	invalid/XTDE0850/XTDE0850	Microsoft/Attributes__78378#1: xsl:attribute name is not a QName: a'a at https://oasis.invalid/Microsoft_Attributes__78378_1/78378.xsl:175..217
+frontier-example	invalid/XTDE0855/XTDE0855	Lotus/attribset_attribset15#1: xsl:attribute cannot construct a name in the reserved xmlns namespace at https://oasis.invalid/Lotus_attribset_attribset15_1/attribset15.xsl:897..925
+frontier-example	invalid/XTDE1390/XTDE1390	Microsoft/ForwardComp__91856#1: system-property argument converts to a string that is not a valid QName
+frontier-example	invalid/XTDE1450/XTDE1450	Microsoft/Errors_err065#1: forward-compatible instruction has no xsl:fallback: xsl:new
+frontier-example	invalid/XTMM9000/XTMM9000	Microsoft/Messages__78220#1: xsl:message requested termination: This is message 1.
+frontier-example	invalid/XTSE0010/XTSE0010	Microsoft/Errors__84390#1: xsl:choose permits only xsl:when and xsl:otherwise children at https://oasis.invalid/Microsoft_Errors__84390_1/84390.xsl:324..334
+frontier-example	invalid/XTSE0020/XTSE0020	Microsoft/Errors_err099#1: disable-output-escaping must be 'yes' or 'no' at https://oasis.invalid/Microsoft_Errors_err099_1/text-badesc.xsl:200..240
+frontier-example	invalid/XTSE0090/XTSE0090	Microsoft/Attributes__78387#1: unknown output attribute outside forward compatibility at https://oasis.invalid/Microsoft_Attributes__78387_1/78387.xsl:83..177
+frontier-example	invalid/XTSE0710/XTSE0710	Lotus/attribset_attribset37#1: xsl:use-attribute-sets references an undefined attribute set at https://oasis.invalid/Lotus_attribset_attribset37_1/impattset37t.xsl:327..401
+frontier-example	invalid/XTSE0808/XTSE0808	Microsoft/Namespace-alias__91790#1: invalid or unbound excluded result prefix: foo at https://oasis.invalid/Microsoft_Namespace-alias__91790_1/91790.xsl:0..288
+frontier-example	missing-resource/FXRS0002/FXRS0002	Microsoft/AttributeSets__91140#1: stylesheet is not admitted: http://webxtest/testcases/91140a.xsl
+frontier-example	unsupported/FXAR0031/FXAR0031	Lotus/attribset_attribset01#1: processor policy not yet propagated to this compilation shape at https://oasis.invalid/Lotus_attribset_attribset01_1/attribset01.xsl:522..559
+frontier-example	unsupported/FXST1009/unsupported attribute on xsl:import: {}unknown	Microsoft/BVTs_bvt033#1: unsupported attribute on xsl:import: {}unknown at https://oasis.invalid/Microsoft_BVTs_bvt033_1/fwdcompat.xsl:195..244
+frontier-example	unsupported/FXST1013/FXST1013	Microsoft/NamedTemplates__84027#1: unsupported named-template name: my:book at https://oasis.invalid/Microsoft_NamedTemplates__84027_1/84027.xsl:128..163
+frontier-example	unsupported/FXXP1001/location-path-shape:descendant+function	Microsoft/Errors_xsl_template_document_func_in_match_pattern#1: the expression uses syntax outside the private location-path grammar: document('test.xml')//body at https://oasis.invalid/Microsoft_Errors_xsl_template_document_func_in_match_pattern_1/xslt_xsl_template_document_func_in_match_pattern.xsl:61…
+comparison-example	expected-not-parseable-document-or-fragment	Microsoft/Elements__78347#1
+infrastructure-case	missing-supplemental-stylesheet/Microsoft/Import__91162#1
+infrastructure-case	missing-principal-source/Microsoft/Template_ApplyTemplateWithDuplicateParameter#1
+infrastructure-case	missing-principal-source/Microsoft/Template_CallTemplateWithDuplicateParameter#1
+unusable-error-expectation-excluded-case	Microsoft/Namespace__77665#1
+unusable-error-expectation-excluded-case	Microsoft/Namespace__77675#1
+host-parser-policy-excluded-case	Microsoft/BVTs_bvt056#1
+host-parser-policy-excluded-case	Microsoft/Output__77927#1
+host-parser-policy-excluded-case	Microsoft/Output__77928#1
+host-parser-policy-excluded-case	Microsoft/Output__78177#1
+host-parser-policy-excluded-case	Microsoft/Output__84010#1
+host-parser-policy-excluded-case	Microsoft/Output__84015#1
+serialization-layout-policy-excluded-case	Lotus/whitespace_whitespace17#1
+serialization-layout-policy-excluded-case	Microsoft/Messages__91758#1
+serialization-layout-policy-excluded-case	Microsoft/Output__84260#1
+serialization-layout-policy-excluded-case	Microsoft/Output__84264#1
+serialization-layout-policy-excluded-case	Microsoft/Output__84271#1
+serialization-layout-policy-excluded-case	Microsoft/Output__84273#1
+serialization-layout-policy-excluded-case	Microsoft/Output__84277#1
+serialization-layout-policy-excluded-case	Microsoft/Output__84280#1
+serialization-layout-policy-excluded-case	Microsoft/Output__84282#1
+serialization-layout-policy-excluded-case	Microsoft/Output__84285#1
+serialization-layout-policy-excluded-case	Microsoft/Output__84309#1
+serialization-layout-policy-excluded-case	Microsoft/Output_HtmlOutputWithLessThanInAttribute#1
+unusable-reference-result-excluded-case	Lotus/ver_ver05#1
+unusable-reference-result-excluded-case	Lotus/ver_ver06#1
+unusable-reference-result-excluded-case	Microsoft/Include_RelUriTest5#1
+unusable-reference-result-excluded-case	Microsoft/Output__77936#1
+unusable-reference-result-excluded-case	Microsoft/Output__84165#1
+unusable-reference-result-excluded-case	Microsoft/Output__84374#1
+unusable-reference-result-excluded-case	Microsoft/Output_EmptyElement1#1
+unusable-reference-result-excluded-case	Microsoft/Whitespaces__91453#1
+unusable-reference-result-excluded-case	Microsoft/Whitespaces__91455#1
+unusable-reference-result-excluded-case	Microsoft/Whitespaces__91456#1
+comparison-unsupported-case	expected-not-parseable-document-or-fragment	method=xml	Microsoft/Elements__78347#1
+exact-normalized-non-xml-comparison-pass-case	Lotus/output_output06#1
+exact-normalized-non-xml-comparison-pass-case	Lotus/output_output61#1
+exact-normalized-non-xml-comparison-pass-case	Lotus/output_output62#1
+exact-normalized-non-xml-comparison-pass-case	Microsoft/BVTs_bvt090#1
+exact-normalized-non-xml-comparison-pass-case	Microsoft/Output__84011#1
+exact-normalized-non-xml-comparison-pass-case	Microsoft/Output__84432#1
+exact-normalized-non-xml-comparison-pass-case	Microsoft/Output__84433#1
+exact-normalized-non-xml-comparison-pass-case	Microsoft/Output__84434#1
+exact-normalized-non-xml-comparison-pass-case	Microsoft/Text__78308#1
+exact-normalized-non-xml-comparison-pass-case	Microsoft/Text__78311#1
+mismatch-case	Lotus/whitespace_whitespace21#1
+mismatch-case	Microsoft/Text__78309#1
+category	Mixed	26	349
+category	XPath-Data-Model	6	83
+category	XPath-Expression	0	3
+category	XSLT-Data-Manipulation	1	165
+category	XSLT-Data-Model	6	49
+category	XSLT-Extendability	20	28
+category	XSLT-Output	96	176
+category	XSLT-Result-Tree	326	1908
+category	XSLT-Result-Tree-Testing	1	130
+category	XSLT-Structure	31	178
+category	XSLT-Template	29	104
+OASIS_XSLT10_MEASUREMENT_END

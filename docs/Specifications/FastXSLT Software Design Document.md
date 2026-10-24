@@ -576,6 +576,105 @@ ordinary 2,504/3,173 baseline. This is not XSLT 1.0 conformance, public profile
 selection or permission to widen R0. Ordinary facade/adapter defaults and native,
 WASM and .NET selector surfaces remain unchanged.
 
+Separately approved post-R0 breadth now admits attribute-free `xsl:comment`
+through selected-policy body lowering and the existing shared legacy comment
+runtime. Existing expression/version guards remain intact. The
+[comment integration report](../Campaigns/processor-edition-profile/evidence/post-r0-selected-comments-2026-10-23.md)
+records 393/3,173 selected exact matches without replacing the R0 baseline or
+changing the ordinary profile.
+
+A subsequent approved slice admits relative/rooted nonempty ASCII named-child
+paths for selected `xsl:copy-of`, using the same shared path and copy runtime.
+Other selection families remain guarded. Its [full replay](../Campaigns/processor-edition-profile/evidence/post-r0-selected-copy-paths-2026-10-23.md)
+records 449/3,173 selected exact matches; original promotion/checkpoint reports
+and ordinary defaults remain unchanged.
+
+Post-promotion B01-S1 additionally admits static ASCII NCName processing-instruction
+targets other than case-insensitive `xml`, with only the `name` attribute and
+selected-policy bodies, through the existing shared legacy PI runtime. Dynamic
+or qualified targets and additional attributes remain guarded. Its
+[conserved replay](../Campaigns/processor-edition-profile/evidence/b01-s1-selected-processing-instructions-2026-10-23.md)
+records 466/3,173 selected exact; ordinary defaults and baseline remain unchanged.
+
+B01-S2 adds standalone `*` child-element copying through the existing shared
+copy runtime; B01-S3 adds exactly `//` plus one ASCII NCName for `for-each`
+through shared path selection and selected body compilation. Wildcard path
+steps, broader descendant grammar, predicates and sorting remain guarded.
+The [completed batch replay](../Campaigns/processor-edition-profile/evidence/b01-review-2026-10-23.md)
+records 482/3,173 selected exact and 2,504/3,173 ordinary exact. These are
+bounded admission increments, not a new profile promotion or public/default change.
+
+B02-S1 admits standalone `*` for selected `for-each` through the same shared
+child-element selection and selected body lowering. Other wildcard path shapes
+remain guarded. The [full replay](../Campaigns/processor-edition-profile/evidence/b02-s1-wildcard-iteration-2026-10-23.md)
+records 483 selected exact and the unchanged ordinary baseline.
+
+B02-S2 adds XPath 1.0 quoted string literals to selected copying through shared
+static text lowering; numeric, boolean, variable and expression copying remain
+guarded. B02-S3 adds rooted ASCII named-child paths to selected iteration,
+excluding root-only, wildcard/predicate/qualified steps and mixed descendant
+paths. The [batch replay](../Campaigns/processor-edition-profile/evidence/b02-review-2026-10-23.md)
+records 487 selected exact, ordinary 2,504 unchanged. No new runtime owner,
+public profile surface, default or conformance claim follows.
+
+B03-S1 admits the exact case-insensitive ISO-8859-1 output label through shared
+output compilation and bounded byte serialization. Aliases, other previously
+guarded encodings and the string-result lane are unchanged. Both intermediate
+UTF-8 and final encoded bounds remain in force. Its
+[full replay](../Campaigns/processor-edition-profile/evidence/b03-s1-latin1-output-2026-10-23.md)
+records 491 selected exact and the unchanged 2,504 ordinary baseline.
+
+B03-S2 additionally admits the UTF-16 label, still only through byte output.
+The shared UTF-16 encoder bounds UTF-8 staging by the maximum UTF-8 length that
+can fit the caller's UTF-16 ceiling, checks exact encoded capacity before final
+allocation, and polls cancellation during sizing/encoding. This is not an RSS
+guarantee. [Repair evidence](../Campaigns/processor-edition-profile/evidence/b03-utf16-ceiling-repair-2026-10-23.md)
+and [admission replay](../Campaigns/processor-edition-profile/evidence/b03-s2-utf16-output-2026-10-23.md)
+leave both exact numerators unchanged; aliases and public/default behavior remain
+outside the slice.
+
+B03-S3 admits exact zero-argument `true()`/`false()` in selected `xsl:copy-of`
+through shared static atomic text copying. Numeric/general expressions remain
+guarded. Its [conserved replay](../Campaigns/processor-edition-profile/evidence/b03-s3-boolean-copy-2026-10-23.md)
+records 492 selected exact and 2,504 ordinary exact, with no profile/default claim.
+
+B04-S1 admits a final child-element wildcard after unprefixed named child steps
+in selected `xsl:copy-of`, optionally rooted, through the shared copy evaluator.
+Intermediate wildcards and other axes remain guarded. Its
+[conserved replay](../Campaigns/processor-edition-profile/evidence/b04-s1-final-wildcard-copy-2026-10-23.md)
+records 493 selected exact and 2,504 ordinary exact.
+
+B04-S2 admits final child-wildcard iteration after named steps; B04-S3 admits
+rooted `//` named child paths in copying. Both reuse shared selection/runtime
+semantics. Intermediate wildcards, predicates and adjacent selector families
+remain guarded. The [B04 review](../Campaigns/processor-edition-profile/evidence/b04-review-2026-10-23.md)
+records 501 selected exact and 2,504 ordinary exact, without a public/default or
+conformance change.
+
+B05 admits relative `.//name` iteration, complete `.` and `/` copy selectors,
+and child `comment()` copy paths optionally preceded by named child steps and
+rooted. All use existing shared selection, effective navigation and result
+copying. Adjacent axes, predicates and general functions remain guarded. The
+[B05 review](../Campaigns/processor-edition-profile/evidence/b05-review-2026-10-23.md)
+records 509 selected exact and 2,504 ordinary exact; no default/public change.
+
+B06 admits one interior descendant separator between unprefixed named copy
+paths, complete direct `current()` copying, and integer constant copying in the
+existing selected signed-i32 argument domain. Shared navigation and copying
+remain authoritative; composed `current()` paths, repeated descendant separators
+and general numeric expressions remain guarded. The
+[B06 review](../Campaigns/processor-edition-profile/evidence/b06-review-2026-10-23.md)
+records 513 selected exact and 2,504 ordinary exact, with all gates/WASM passing.
+
+B07 admits bounded constant Boolean trees in selected value-of through shared
+Boolean parsing/IR and text construction, explicit `./` before admitted child/
+text value paths, and terminal unprefixed named-attribute reads after named child
+paths (relative, explicit-relative or rooted). Shared legacy first-node string
+conversion remains authoritative. No attribute construction or owner change.
+Dynamic Boolean grammar and neighboring path families remain guarded. The
+[B07 review](../Campaigns/processor-edition-profile/evidence/b07-review-2026-10-23.md)
+records 527 selected exact and 2,504 ordinary exact, with all gates/WASM passing.
+
 Context-taking helpers that still use declaration-driven lowering accept only
 that processor qualification; a selected processor request fails explicitly
 before compilation or graph fallback. Preprocessing qualification alone does

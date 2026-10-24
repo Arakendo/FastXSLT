@@ -9,7 +9,7 @@ ordinary fix. Campaigns do not introduce another architectural approval layer.
 
 | Campaign | Status | Next boundary |
 | --- | --- | --- |
-| [Processor-edition profile](processor-edition-profile/README.md) | Complete: R0 promoted 2026-10-23, 9/9 closed | Preserve promotion baseline; future breadth separately scoped; no public/default change |
+| [Processor-edition profile](processor-edition-profile/README.md) | R0 promoted, 9/9 closed; B07 review | [B07 review](processor-edition-profile/evidence/b07-review-2026-10-23.md): +14 selected exact; ordinary unchanged |
 
 ## Historical campaign collections
 

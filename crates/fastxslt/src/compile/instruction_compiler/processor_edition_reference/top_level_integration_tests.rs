@@ -209,7 +209,7 @@ fn selected_declaration_attributes_keep_unpropagated_readers_guarded() {
     for attribute in [
         r#"method="xhtml""#,
         r#"method="future""#,
-        r#"encoding="UTF-16""#,
+        r#"encoding="UTF-16LE""#,
         r#"name="named""#,
         r#"standalone="yes""#,
         r#"html-version="5""#,

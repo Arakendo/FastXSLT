@@ -29,6 +29,43 @@ pub(super) fn text_result(
     }
 }
 
+// Reuse the bounded parser without admitting its dynamic leaves or changing
+// error timing for expressions outside this constant-only slice.
+fn constant_value(
+    expression: &str,
+    version: LocalVersion,
+    location: &SourceLocation,
+) -> Option<BooleanExpression> {
+    fn constant(value: &BooleanExpression) -> bool {
+        match value {
+            BooleanExpression::Constant(_) => true,
+            BooleanExpression::And { left, right } | BooleanExpression::Or { left, right } => {
+                constant(left) && constant(right)
+            }
+            BooleanExpression::Not(value) => constant(value),
+            _ => false,
+        }
+    }
+    if expression.len() > 4096 || matches!(version, LocalVersion::ModernWitness(_)) {
+        return None;
+    }
+    let (value, _) = parse(expression, location, version, 0, &|_| None)?;
+    constant(&value).then_some(value)
+}
+
+pub(super) fn value_with_leaf(
+    expression: &str,
+    version: LocalVersion,
+    location: &SourceLocation,
+    bindings: &[String],
+    static_leaf: &impl Fn(&str) -> Option<BooleanExpression>,
+) -> Result<Option<BooleanExpression>, CompileFailure> {
+    Ok(
+        compile_with_leaf(expression, version, location, bindings, static_leaf)?
+            .or_else(|| constant_value(expression, version, location)),
+    )
+}
+
 #[cfg(test)]
 pub(super) fn compile(
     expression: &str,

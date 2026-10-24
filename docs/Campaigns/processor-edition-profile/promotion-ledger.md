@@ -8,6 +8,12 @@
 - Review counter: **3/3 semantic tranches completed in the second approved interval; review complete**
 - Meaning: closure accounting, not a remaining-effort percentage
 
+R0 is closed. The separately authorized [post-promotion breadth workflow](breadth-workflow.md)
+owns current routine slices and their persistent three-slice review counter.
+It does not rewrite this ledger, widen R0 retroactively or waive promotion gates.
+Historical requests for per-slice approval do not govern eligible ordinary
+breadth under the maintainer's 2026-10-23 workflow direction.
+
 ## Approved admission scope
 
 Promote an **incomplete selected XSLT 1.0 processor / strict-1.0 preprocessing
